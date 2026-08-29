@@ -1,6 +1,6 @@
 ---
-name: review
-description: "Phase 5 of PILOT (see docs/pilot-process.md): runs the review agents (PM+architect+tech lead for type:feature, architect+tech lead only for type:tech) in parallel against an open pull request, then posts one consolidated GitHub comment — a joint go-ahead (status:approved), blocking points that are pure judgment calls for a human (needs-human added, status:in-review stays), or blocking points that need actual code changes (needs-human added, moved to status:changes-requested for /pilot:dev to address). Also re-reviews a PR once a human clears a prior needs-human flag on status:in-review, and runs bare with no argument to sweep every status:in-review PR ready for review or re-review (e.g. from a scheduled cron Routine), skipping any that's on-hold. A human always does the actual merge, PILOT never merges. Use once /pilot:dev has opened a PR and it's ready for review."
+name: pilot-review
+description: "Phase 5 of PILOT (see docs/pilot-process.md): runs the review agents (PM+architect+tech lead for type:feature, architect+tech lead only for type:tech) in parallel against an open pull request, then posts one consolidated GitHub comment — a joint go-ahead (status:approved), blocking points that are pure judgment calls for a human (needs-human added, status:in-review stays), or blocking points that need actual code changes (needs-human added, moved to status:changes-requested for /pilot-dev to address). Also re-reviews a PR once a human clears a prior needs-human flag on status:in-review, and runs bare with no argument to sweep every status:in-review PR ready for review or re-review (e.g. from a scheduled cron Routine), skipping any that's on-hold. A human always does the actual merge, PILOT never merges. Use once /pilot-dev has opened a PR and it's ready for review."
 argument-hint: "<PR number, or issue number, optional — sweeps status:in-review PRs ready for review/re-review if omitted>"
 disable-model-invocation: true
 ---
@@ -19,7 +19,7 @@ only covers the mechanics of running phase 5.
    (resumed; re-read the thread for what changed), excluding any still carrying
    `on-hold`. Phase 5 doesn't claim, so there's no assignee involved, just this label
    check. A ticket currently `status:changes-requested` is not in this pool —
-   `/pilot:dev` reclaims those; this skill only sees it again once dev pushes it back to
+   `/pilot-dev` reclaims those; this skill only sees it again once dev pushes it back to
    `status:in-review`. For each, read its linked issue
    (`mcp__github__pull_request_read`, `mcp__github__issue_read`) and its `type:` label to
    decide the reviewer set:
@@ -32,15 +32,14 @@ only covers the mechanics of running phase 5.
    (there's nothing to check yet) and the tech lead reviewer's own re-run in step 3 is the
    only safety net.
 3. Call the `Agent` tool once per reviewer, **in parallel** (independent calls in the
-   same turn, not sequential), with `subagent_type` set to that reviewer's bare persona
-   name (`pilot-pm`, `pilot-architect`, `pilot-techlead` — if a bare name isn't found,
-   these personas ship via the `pilot` plugin, retry as `pilot:pilot-pm` etc.) — none
-   should see another's verdict. Each call passes only
+   same turn, not sequential), with `subagent_type` set to that reviewer's persona name
+   (`pilot-pm`, `pilot-architect`, `pilot-techlead`) — none should see another's verdict.
+   Each call passes only
    what that reviewer needs: the PR diff/description, and for the PM, the linked story's
    acceptance criteria; for the architect, its own recorded security/architecture
    decisions from the ticket; for the tech lead, its own spec from the ticket (the tech
    lead re-runs validation on the PR branch itself as part of forming its verdict, per
-   `docs/pilot-process.md` §6). Each reviewer's persona (`agents/pilot-*.md`)
+   `docs/pilot-process.md` §6). Each reviewer's persona (`.claude/agents/pilot-*.md`)
    already knows to tag every blocking point `change` or `decision` — no extra instruction
    needed here.
 4. Collect the verdicts. Aggregate into exactly **one** GitHub comment on the PR
@@ -55,7 +54,7 @@ only covers the mechanics of running phase 5.
      counts) → one comment listing every point — marked `change`/`decision`, grouped by
      reviewer role — add `needs-human`, and move the ticket to `status:changes-requested`
      instead of leaving `status:in-review` (`docs/pilot-process.md` §3/§6/§4 "Reclaiming a
-     `status:changes-requested` ticket"). `/pilot:dev`, not this skill, picks it back up
+     `status:changes-requested` ticket"). `/pilot-dev`, not this skill, picks it back up
      once the flag is cleared.
    - All approved → one comment stating all reviewing agents approve and that a human
      still needs to merge; move the ticket to `status:approved` instead of leaving

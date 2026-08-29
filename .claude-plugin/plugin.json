@@ -1,9 +1,0 @@
-{
-  "name": "pilot",
-  "displayName": "PILOT",
-  "version": "0.2.0",
-  "description": "PILOT: a lightweight 5-phase ticket-process framework (plan, investigate, lay out, operate, test & validate) for driving GitHub-issue tickets through Claude Code agent personas, reusable across projects.",
-  "author": { "name": "Jonas Evenisse" },
-  "keywords": ["pilot", "ticket-process", "agents", "workflow"],
-  "license": "MIT"
-}

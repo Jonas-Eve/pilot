@@ -1,12 +1,12 @@
 Ticket work (functional or purely technical) goes through **PILOT**, a lightweight
 alternative to running the full BMAD-METHOD agent framework — five short phases
 (`plan` → `investigate` → `lay out` → `operate` → `test & validate`), each its own
-isolated, low-token agent context instead of one accumulating one. It's provided by the
-`pilot` Claude Code plugin (github.com/Jonas-Eve/pilot, pinned in
-`.claude/settings.json`) rather than living in this repo: the phase skills are invoked
-as `/pilot:story`, `/pilot:scope`, `/pilot:spec`, `/pilot:dev`, `/pilot:review` — driven
-one phase at a time, there's no single command that runs the whole pipeline end to
-end — and their personas live in the plugin's `agents/pilot-*.md`. `docs/pilot-process.md`
-in this repo is a verbatim copy of the plugin's canonical spec — the state machine,
-labels, and claim protocol — kept in sync by `/pilot:update`, never hand-edited here.
-Read it before creating or moving a ticket through any phase.
+isolated, low-token agent context instead of one accumulating one. Its skills
+(`.claude/skills/pilot-*`) and agent personas (`.claude/agents/pilot-*.md`) are copied
+into this repo from the `pilot` distribution repo (github.com/Jonas-Eve/pilot) rather
+than written here from scratch: the phase skills are invoked as `/pilot-story`,
+`/pilot-scope`, `/pilot-spec`, `/pilot-dev`, `/pilot-review` — driven one phase at a
+time, there's no single command that runs the whole pipeline end to end.
+`docs/pilot-process.md` in this repo is a verbatim copy of that repo's canonical spec —
+the state machine, labels, and claim protocol — kept in sync by `/pilot-update`, never
+hand-edited here. Read it before creating or moving a ticket through any phase.

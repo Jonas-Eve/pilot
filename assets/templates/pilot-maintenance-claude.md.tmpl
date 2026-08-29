@@ -1,0 +1,10 @@
+4. **PILOT's file family is tightly cross-referenced** — `docs/pilot-process.md`, every
+   `.claude/skills/pilot-*/SKILL.md`, every `.claude/agents/pilot-*.md`, the
+   `PILOT:INTRO` blocks in this file and `README.md`, and the rest of the PILOT mentions
+   in both. All of it is PILOT-owned, copied in from
+   [github.com/Jonas-Eve/pilot](https://github.com/Jonas-Eve/pilot): never hand-edit any
+   of it, run `/pilot-update` instead. A renamed label, moved section heading, or
+   changed mechanism upstream can leave stale references in the rest of this
+   file/`README.md` outside the marked blocks (e.g. a command name in prose) — after
+   running `/pilot-update`, check cheaply: `grep` the exact term(s) that changed across
+   both files and fix what turns up.

@@ -1,6 +1,6 @@
 ---
-name: dev
-description: "Phase 4 of PILOT (see docs/pilot-process.md): the senior-dev agent implements a single spec'd ticket (status:dev-ready) and opens a pull request — or flags needs-human and stops without a PR if it hits something it genuinely can't resolve alone. Claims the ticket (assignee + status:in-dev) before starting so multiple devs can run this skill in parallel without picking the same ticket. Defaults to pair mode — agrees on the implementation approach with a human live in the session before writing any code (pair-coding), checkpointing progress into the ticket as it goes; pass --auto to implement straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a ticket phase 5 sent back for changes (status:changes-requested, once needs-human is cleared) and pushes new commits to its existing PR, and runs bare with no argument to pick up fresh, needs-human-resumable, or reclaimable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold. Use once a ticket has a technical spec from /pilot:spec and is ready to be built."
+name: pilot-dev
+description: "Phase 4 of PILOT (see docs/pilot-process.md): the senior-dev agent implements a single spec'd ticket (status:dev-ready) and opens a pull request — or flags needs-human and stops without a PR if it hits something it genuinely can't resolve alone. Claims the ticket (assignee + status:in-dev) before starting so multiple devs can run this skill in parallel without picking the same ticket. Defaults to pair mode — agrees on the implementation approach with a human live in the session before writing any code (pair-coding), checkpointing progress into the ticket as it goes; pass --auto to implement straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a ticket phase 5 sent back for changes (status:changes-requested, once needs-human is cleared) and pushes new commits to its existing PR, and runs bare with no argument to pick up fresh, needs-human-resumable, or reclaimable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold. Use once a ticket has a technical spec from /pilot-spec and is ready to be built."
 argument-hint: "<issue number, optional — picks the next dev-ready or needs-human-resumable ticket if omitted> [--auto] | <issue number> --resume"
 disable-model-invocation: true
 ---
@@ -52,9 +52,7 @@ what keeps them from colliding.
 2. **Claim** it per `docs/pilot-process.md` §4: set assignee + `status:in-dev`, then
    re-read the ticket. If the assignee changed since the claim (another instance won the
    race), stand down and go back to step 1 for a different ticket rather than proceeding.
-3. Call the `Agent` tool with `subagent_type: "pilot-dev"` (if that bare name isn't found —
-   this persona ships via the `pilot` plugin — retry as `"pilot:pilot-dev"`), passing the
-   ticket's spec and
+3. Call the `Agent` tool with `subagent_type: "pilot-dev"`, passing the ticket's spec and
    the architect's decisions — not the running conversation history, and not the state
    of any other ticket being worked in parallel. **If this is a `status:changes-requested`
    reclaim** (per step 1 above): pass the phase-5 blocking comment (the `change`-tagged

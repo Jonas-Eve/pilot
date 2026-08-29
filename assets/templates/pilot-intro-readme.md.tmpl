@@ -4,29 +4,29 @@ Feature and technical work moves through **PILOT**, a lightweight alternative to
 running the full [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) agent
 framework: the same idea — specialized agent personas taking a ticket from a raw idea to
 a merged PR — at a fraction of the token cost, because each phase runs in its own short,
-focused context instead of one big context carrying the whole history. PILOT is provided
-by the [`pilot`](https://github.com/Jonas-Eve/pilot) Claude Code plugin, not this repo —
-see `.claude/settings.json` for how it's pinned, and `/pilot:update` to pull in the
-plugin's process-doc/label updates.
+focused context instead of one big context carrying the whole history. PILOT's own
+skills/agents/docs are copied in from
+[`Jonas-Eve/pilot`](https://github.com/Jonas-Eve/pilot), not written here from scratch —
+run `/pilot-update` to pull in that repo's process-doc/label/skill updates.
 
 Five phases, each with its own Claude Code skill and agent persona:
 
 | Phase | Skill | Agent | Produces |
 |---|---|---|---|
-| 1. Plan | `/pilot:story` | PM | A functional user story |
-| 2. Investigate | `/pilot:scope` | Architect | Scoped ticket(s) with security/architecture decisions |
-| 3. Lay out | `/pilot:spec` | Tech Lead | A technical implementation spec |
-| 4. Operate | `/pilot:dev` | Senior Dev | Code + an open pull request |
-| 5. Test & validate | `/pilot:review` | PM + Architect + Tech Lead | A consolidated go/no-go GitHub comment |
+| 1. Plan | `/pilot-story` | PM | A functional user story |
+| 2. Investigate | `/pilot-scope` | Architect | Scoped ticket(s) with security/architecture decisions |
+| 3. Lay out | `/pilot-spec` | Tech Lead | A technical implementation spec |
+| 4. Operate | `/pilot-dev` | Senior Dev | Code + an open pull request |
+| 5. Test & validate | `/pilot-review` | PM + Architect + Tech Lead | A consolidated go/no-go GitHub comment |
 
 Purely technical tickets (CI, security, deployment, migrations, optimization) skip
-phase 1 and start directly at `/pilot:scope`. There's no single command that runs all
+phase 1 and start directly at `/pilot-scope`. There's no single command that runs all
 five phases end to end — each phase is driven on its own, one at a time — and each also
 runs bare, with no argument at all, which is what lets a scheduled cron Routine drive a
-phase on a timer instead of a human typing it each time. `/pilot:story` always runs
-paired with a human (no Routine for it); `/pilot:scope`, `/pilot:spec`, and `/pilot:dev`
+phase on a timer instead of a human typing it each time. `/pilot-story` always runs
+paired with a human (no Routine for it); `/pilot-scope`, `/pilot-spec`, and `/pilot-dev`
 default to that same pair mode too, so their Routine's prompt adds `--auto` to run
-unattended; `/pilot:review` is already automatic and needs no flag.
+unattended; `/pilot-review` is already automatic and needs no flag.
 A GitHub label state machine (`status:backlog` → ... → `in-review` → `approved` →
 `done`, plus `priority:`, `type:feature`/`type:tech`, and a `type:epic`/`status:split`
 tracking hierarchy for work too big for one story) tracks where a ticket is and stops
@@ -39,7 +39,7 @@ something bigger in flight elsewhere (a restructuring, a dependency on other wor
 no immediate decision needed. Agents can propose a merge is ready, but a human always
 performs the actual merge.
 
-Each phase is a Claude Code slash command (`/pilot:story "..."`, `/pilot:scope 42`,
-`/pilot:dev 42`, ...) — see [docs/pilot-process.md](docs/pilot-process.md) §0 for the
+Each phase is a Claude Code slash command (`/pilot-story "..."`, `/pilot-scope 42`,
+`/pilot-dev 42`, ...) — see [docs/pilot-process.md](docs/pilot-process.md) §0 for the
 required GitHub labels (created once, not auto-created by any skill) and a full command
 quickstart, and the rest of that doc for the state machine and claim protocol in detail.
