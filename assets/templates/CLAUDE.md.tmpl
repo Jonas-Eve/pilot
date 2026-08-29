@@ -6,17 +6,13 @@
 The functional scope is specified in `PROJECT-FUNCTIONAL-SCOPE.md`. Read it before
 designing anything that touches product behavior.
 
-Ticket work (functional or purely technical) goes through **PILOT**, this repo's
-lightweight ticket-process framework — five short phases (`plan` → `investigate` →
-`lay out` → `operate` → `test & validate`), each its own isolated, low-token agent
-context instead of one accumulating one. See `docs/pilot-process.md` for the state
-machine, labels, and claim protocol, and `skills/pilot*` / `agents/pilot-*.md` (provided
-by the `pilot` plugin) for the skills and personas that drive it. Read it before creating
-or moving a ticket through any phase.
+<!-- PILOT:INTRO:START -->
+{{PILOT_INTRO_CLAUDE}}
+<!-- PILOT:INTRO:END -->
 
 <!-- PILOT:ARCHITECTURE:START -->
-_Architecture not yet defined — run `/init-archi` to describe this monorepo's apps and
-technologies. That will generate this section (per-app doc references, tech stack,
+_Architecture not yet defined — run `/pilot:init-archi` to describe this monorepo's apps
+and technologies. That will generate this section (per-app doc references, tech stack,
 Clean Architecture layering) and scaffold each app's skeleton._
 <!-- PILOT:ARCHITECTURE:END -->
 
@@ -24,8 +20,8 @@ Clean Architecture layering) and scaffold each app's skeleton._
 
 ## 2. COMMON COMMANDS
 <!-- PILOT:COMMANDS:START -->
-_Not yet defined — run `/init-archi` to generate the per-app dev/test/build commands
-for this section._
+_Not yet defined — run `/pilot:init-archi` to generate the per-app dev/test/build
+commands for this section._
 <!-- PILOT:COMMANDS:END -->
 
 ---
@@ -54,12 +50,15 @@ At the end of any task that modifies architecture, endpoints, folder structures,
    informs human developers — so the same facts (workflow, architecture, conventions)
    should hold true in both, but phrasing, depth, and emphasis can differ per audience.
    A change that touches one MUST be checked against the other before finalizing the task.
-4. **PILOT's file family is tightly cross-referenced** — `docs/pilot-process.md`, and the
-   PILOT mentions in this file and `README.md` (the skills and agent personas themselves
-   are distributed by the `pilot` plugin and updated via `/pilot-update`, not edited
-   locally). A renamed label, moved section heading, or changed mechanism in one can leave
-   stale references in the rest. After editing any of them, check cheaply: `grep` the
-   exact term(s) you changed across that file family and fix what turns up.
+4. **PILOT's file family is tightly cross-referenced** — `docs/pilot-process.md`, the
+   `PILOT:INTRO` blocks in this file and `README.md`, and the rest of the PILOT mentions
+   in both (the skills and agent personas themselves are distributed by the `pilot`
+   plugin and updated automatically, not edited locally). All three are PILOT-owned:
+   never hand-edit them, run `/pilot:update` instead. A renamed label, moved section
+   heading, or changed mechanism upstream can leave stale references in the rest of this
+   file/`README.md` outside the marked blocks (e.g. a command name in prose) — after
+   running `/pilot:update`, check cheaply: `grep` the exact term(s) that changed across
+   both files and fix what turns up.
 
 ---
 

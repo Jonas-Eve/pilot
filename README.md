@@ -22,16 +22,21 @@ copy; `/pilot:init` copies it into your project as `docs/pilot-process.md`, and
     accept the defaults — Clean Architecture, Node.js backend, React frontend, Expo for
     mobile, TypeScript throughout), generate each app's docs, and scaffold its skeleton
     pinned to the latest compatible dependency versions.
-  - `/pilot:update` — re-sync PILOT's own files (`docs/pilot-process.md`, the GitHub
-    labels) from this plugin into your project. Overwrites, no merge — see the warning
-    in `skills/update/SKILL.md`.
+  - `/pilot:update` — re-sync everything PILOT-owned that lives in your project's own
+    git tree (`docs/pilot-process.md`, the status-cascade workflow, the
+    `PILOT:INTRO` blocks in `CLAUDE.md`/`README.md`, the GitHub labels) from this
+    plugin, and propagate any skill/agent rename logged since your last sync.
+    Overwrites, no merge — see the warning in `skills/update/SKILL.md`.
   - `/pilot:story`, `/pilot:scope`, `/pilot:spec`, `/pilot:dev`, `/pilot:review` — the
     five phases themselves.
 - **Agents** (`agents/`): the four personas the phase skills delegate to —
   `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`.
 - **Scripts** (`scripts/`): `setup-github-labels.sh`, idempotent creation/update of every
   label the state machine uses.
-- **Templates** (`assets/templates/`): the doc skeletons `/pilot:init` fills in.
+- **Templates** (`assets/templates/`): the doc skeletons `/pilot:init` fills in, including
+  the `pilot-intro-*.md.tmpl` snippets `/pilot:update` re-syncs later.
+- **`assets/renames.json`**: the versioned log `/pilot:update` reads to catch a project up
+  on skill/agent renames it can't reach through the plugin update mechanism alone.
 
 ## Installing in a project
 
@@ -43,8 +48,12 @@ version. Once installed, run `/pilot:init` in the target project.
 
 - **Skills, agents, and this doc's own content**: handled automatically by Claude Code's
   plugin update mechanism — no PILOT-specific action needed.
-- **Files copied into a consuming project's own git tree** (`docs/pilot-process.md`, the
-  GitHub labels): run `/pilot:update` in that project after updating the plugin.
+- **Content copied into a consuming project's own git tree** (`docs/pilot-process.md`,
+  the `.github/workflows/pilot-status-on-merge.yml` workflow, the
+  `<!-- PILOT:INTRO:START -->` blocks in that project's `CLAUDE.md`/`README.md`, the
+  GitHub labels) and **skill/agent renames** (which the plugin mechanism can sync in
+  `skills/`/`agents/` but can't propagate into a project's own prose): run
+  `/pilot:update` in that project after updating the plugin.
 
 ## Developing this plugin
 
