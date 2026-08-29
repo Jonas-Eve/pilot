@@ -1,10 +1,9 @@
 # PILOT — Ticket Pipeline (Simplified Multi-Agent Process)
 
-PILOT is this repo's lightweight, in-house alternative to running the full BMAD-METHOD
-agent framework: the same idea (specialized agent personas taking a piece of work from a
-raw idea to a merged PR) with far fewer tokens spent per ticket — five short, focused
-phases instead of a large persona/template/checklist stack, each phase running in its own
-isolated agent context rather than one context accumulating the whole ticket's history.
+PILOT is this repo's lightweight, in-house multi-agent ticket process: specialized agent
+personas take a piece of work from a raw idea to a merged PR, with few tokens spent per
+ticket — five short, focused phases, each phase running in its own isolated agent context
+rather than one context accumulating the whole ticket's history.
 
 **P**lan → **I**nvestigate → **L**ay out → **O**perate → **T**est & validate.
 
@@ -642,7 +641,7 @@ nothing is actually blocking.
 
 ## 5. Token Efficiency: Isolated Contexts Per Phase
 
-The reason to build this instead of running full BMAD is cost. Two rules keep it cheap:
+Keeping token cost down per ticket is central to PILOT's design. Two rules keep it cheap:
 
 1. **Each phase is a separate agent context**, not one context that accumulates every
    prior phase's transcript. A phase skill reads only what that phase needs from the
