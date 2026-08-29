@@ -1,10 +1,9 @@
 # PILOT
 
-PILOT is a lightweight, in-house alternative to running the full BMAD-METHOD agent
-framework for ticket work: five short phases — `plan` → `investigate` → `lay out` →
-`operate` → `test & validate` — each its own isolated, low-token agent context instead of
-one accumulating one. It was built inside a single monorepo and is packaged here as a
-standalone, reusable repo any project can copy from.
+PILOT is a lightweight, in-house 5-phase ticket-process framework: `plan` →
+`investigate` → `lay out` → `operate` → `test & validate` — each its own isolated,
+low-token agent context instead of one accumulating one. It was built inside a single
+monorepo and is packaged here as a standalone, reusable repo any project can copy from.
 
 This repo is **not a Claude Code plugin** — plugin installation turned out to be local
 to whichever machine/container runs it (a Codespace, a local CLI), so it never reached
