@@ -1,6 +1,6 @@
 ---
 name: pilot-dev
-description: "Phase 4 of PILOT (see docs/pilot-process.md): the senior-dev agent implements a single spec'd ticket (status:dev-ready) and opens a pull request — or flags needs-human and stops without a PR if it hits something it genuinely can't resolve alone. Claims the ticket (assignee + status:in-dev) before starting so multiple devs can run this skill in parallel without picking the same ticket. Defaults to pair mode — agrees on the implementation approach with a human live in the session before writing any code (pair-coding), checkpointing progress into the ticket as it goes; pass --auto to implement straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a ticket phase 5 sent back for changes (status:changes-requested, once needs-human is cleared) and pushes new commits to its existing PR, and runs bare with no argument to pick up fresh, needs-human-resumable, or reclaimable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold. Use once a ticket has a technical spec from /pilot-spec and is ready to be built."
+description: "Phase 4 of PILOT (see docs/pilot-process.md): the senior-dev agent implements a single spec'd ticket (status:dev-ready) and opens a pull request — or flags needs-human and stops without a PR if it hits something it genuinely can't resolve alone. Claims the ticket (assignee + status:in-dev) before starting so multiple devs can run this skill in parallel without picking the same ticket. Defaults to pair mode — agrees on the implementation approach with a human live in the session before writing any code (pair-coding), checkpointing progress into the ticket as it goes; pass --auto to implement straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a ticket phase 5 sent back for changes (status:changes-requested, once needs-human is cleared) and pushes new commits to its existing PR, and runs bare with no argument to pick up fresh, needs-human-resumable, or reclaimable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference, and preferring a ticket that blocks another over one that doesn't. Use once a ticket has a technical spec from /pilot-spec and is ready to be built."
 argument-hint: "<issue number, optional — picks the next dev-ready or needs-human-resumable ticket if omitted> [--auto] | <issue number> --resume"
 disable-model-invocation: true
 ---
@@ -41,14 +41,22 @@ what keeps them from colliding.
      spec.
    - Given issue number, `status:changes-requested`, still has `needs-human` or
      `on-hold` → not resolved yet, report that and stop.
+   - Given issue number, `status:dev-ready`, unclaimed, but its body carries a "Depends on
+     #N" whose `#N` is still open → not ready yet, report which ticket it's blocked on
+     and stop rather than claiming it (`docs/pilot-process.md` §4 "Blocked-by
+     dependencies" — this check applies to an explicitly-given ticket exactly as it does
+     to bare-pool selection below, not just the pool).
    - Given issue number otherwise, or none given → per `docs/pilot-process.md` §4
      "Picking the next ticket...": the given ticket, or the merged pool of unclaimed
      `status:dev-ready` (fresh), `status:in-dev` with `needs-human`/`on-hold` just
      cleared (resumable), and `status:changes-requested` with `needs-human`/`on-hold`
      just cleared (reclaimable) — a ticket left mid-pair session is never in this pool,
-     only reachable via an explicit `--resume <issue>` — highest `priority:` then oldest
-     first (`mcp__github__search_issues`). This is what a scheduled cron Routine drives
-     with `--auto` added (`docs/pilot-process.md` §4 "Scheduled sweeps").
+     only reachable via an explicit `--resume <issue>` — excluding any with an unresolved
+     "Depends on #N" (`docs/pilot-process.md` §4 "Blocked-by dependencies"), highest
+     `priority:` then a ticket named in another open ticket's "Blocks #M" before one that
+     isn't, then oldest first (`mcp__github__search_issues`). This is what a scheduled
+     cron Routine drives with `--auto` added (`docs/pilot-process.md` §4 "Scheduled
+     sweeps").
 2. **Claim** it per `docs/pilot-process.md` §4: set assignee + `status:in-dev`, then
    re-read the ticket. If the assignee changed since the claim (another instance won the
    race), stand down and go back to step 1 for a different ticket rather than proceeding.
