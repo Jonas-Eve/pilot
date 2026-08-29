@@ -136,6 +136,44 @@ for both entry points:
 story/stories as sub-issues of it) rather than creating a duplicate. Only create a new
 Epic when no existing one fits and the idea genuinely can't be delivered as one story.
 
+### Prerequisite tech tickets (distinct from a split's sub-tickets)
+
+A sub-ticket (above) is part of the *same* ticket's tree — it inherits `type:` from the
+root and never recomputes it. A **prerequisite** is the opposite case: while scoping a
+`type:feature` (or `type:tech`) ticket in phase 2, the architect discovers it depends on
+technical work that isn't part of it at all — infra, CI, a shared library, a migration —
+exactly the kind of thing that would normally come in through phase 2's raw-need entry
+point (above), just discovered from inside another ticket's scoping pass instead of being
+reported to `/pilot-scope` directly.
+
+The architect creates it exactly the way a raw `type:tech` need is created — one story, or
+several under a new/reused Epic — **never** as a sub-issue of the ticket being scoped: a
+sub-issue would make it inherit the parent's `type:` and tie its lifecycle to the parent's
+tree, which is wrong for a ticket that is its own root and goes through phases 2-5
+independently. Instead, link the two directions with a plain issue reference: a comment on
+the new ticket ("Blocks #M") pointing back, and a line in the body of the ticket being
+scoped naming it. Never `sub_issue_write` for this relationship.
+
+Whether the prerequisite is a **hard blocker** — the ticket genuinely can't be spec'd or
+built until it lands — decides the exact wording of that line, because §4 "Blocked-by
+dependencies" below mechanically gates a ticket on the literal phrase, not on a label:
+- Hard blocker → write "Depends on #N". Nothing needs to be lifted by hand: §4's gate
+  excludes the ticket from every phase's candidate pool for as long as #N stays open, and
+  it becomes a normal candidate again on its own, the next time that phase runs, the
+  instant #N closes.
+- Not a hard blocker (the ticket can proceed in parallel, or the prerequisite is a
+  nice-to-have) → write a plain, non-gating reference instead — e.g. "Related
+  prerequisite: #N" — informational only, nothing reads or excludes on this wording.
+
+Don't reach for `on-hold` (§3) for this either way: its manual-lift requirement is the
+wrong tool for a wait that resolves itself in a specific, mechanically checkable way.
+Reserve `on-hold` for a pause with no single ticket to point at — a global restructuring,
+deliberately deferred work — where there genuinely is nothing for a phase skill to check.
+
+The prerequisite ticket itself is nothing special once created: a normal `type:tech`
+story, `status:backlog`, moving through phases 2-5 like any other. The only place its
+existence matters downstream is the gate check on whatever ticket names it (§4 below).
+
 ---
 
 ## 3. Labels
@@ -311,8 +349,12 @@ Distinct from `needs-human`: `needs-human` means a phase hit something it needs 
 person's judgment on *right now*, and stops until that judgment comes. `on-hold` means
 the opposite kind of "don't touch this" — nobody needs to look at it or decide anything
 imminently, it's paused because of something bigger in flight elsewhere (a global
-restructuring, a dependency on another ticket/Epic not yet resolved, deliberately
-deferred work) and picking it up now would just be wasted or wrong. Like `needs-human`,
+restructuring, a dependency on an Epic or on several/fuzzy conditions, deliberately
+deferred work) and picking it up now would just be wasted or wrong. A dependency on **one
+specific, still-open ticket** is not this — that's the "Depends on #N" mechanical gate
+instead (§4 "Blocked-by dependencies"), which needs no label and clears itself the moment
+that ticket closes; reach for `on-hold` only when there's no single ticket a phase skill
+could check. Like `needs-human`,
 it sits alongside whichever `status:` is already there rather than replacing it, for the
 same reason: losing track of which phase the ticket was at would make resuming it later
 harder, not easier.
@@ -385,12 +427,60 @@ and they're a distinct case from both of the above, not a "fresh" ticket and not
 same-claim "resume" either. See "Reclaiming a `status:changes-requested` ticket" below.
 
 All pools that apply to a given phase skill are merged and picked from together: highest
-`priority:` first, then oldest by creation date to break ties; untagged tickets sort
-last. A ticket still carrying `needs-human` or `on-hold` is never a candidate in any pool
-— it re-enters only once neither flag remains. A ticket left mid-pair session (already
-assigned, still in that phase's in-progress `status:`, but no `needs-human`) is likewise
-never a candidate in any bare pool — see "Resuming a paused pair session" below; it only
-resumes via an explicit `--resume <issue>`.
+`priority:` first, then a ticket referenced by another open ticket's "Blocks #M" comment
+(§2 "Prerequisite tech tickets") before one that isn't — resolving what unblocks something
+else is worth more than strict recency — then oldest by creation date to break ties;
+untagged tickets sort last. A ticket still carrying `needs-human` or `on-hold` is never a
+candidate in any pool — it re-enters only once neither flag remains — and neither is one
+whose body has an unresolved "Depends on #N" reference (below, "Blocked-by dependencies")
+— it re-enters automatically once #N closes, no flag to remove. A ticket left mid-pair
+session (already assigned, still in that phase's in-progress `status:`, but no
+`needs-human`) is likewise never a candidate in any bare pool — see "Resuming a paused pair
+session" below; it only resumes via an explicit `--resume <issue>`.
+
+### Blocked-by dependencies (mechanical gate, distinct from `on-hold`)
+
+A ticket's body may carry one or more "Depends on #N" references — today, only the
+architect writes these, when phase 2 spins out a prerequisite tech ticket it judges a hard
+blocker (§2 "Prerequisite tech tickets"), but the mechanism itself isn't specific to that
+case; anything that writes the same phrase gets the same gate for free.
+
+**Format: one dependency per line, always.** Multiple dependencies are multiple separate
+"Depends on #N" lines, one issue number each — never several numbers combined onto one
+line (never "Depends on #12, #15"). This is deliberate: it keeps the check a trivial
+per-line literal match, not a list/prose parse the skill would have to get right for every
+phrasing someone might use.
+
+Whenever a phase builds a candidate pool from its own `status:` pools (above), it also
+reads each candidate's body for this exact phrase and, for each `#N` found, checks whether
+that issue is still open (`mcp__github__issue_read`) — plain open/closed, not its
+`status:` label, since a closed ticket is `status:done` or `status:wont-do` either way. A
+candidate with at least one still-open dependency is excluded from the pool for this run,
+the same as `needs-human`/`on-hold` above — but unlike those two, nothing needs removing by
+hand: the moment the referenced ticket closes, the next run of that phase picks the ticket
+back up as an ordinary candidate. This is a deterministic tool-call check the skill
+performs directly (§5), never something the subagent reasons about.
+
+**In phases 3 and 4, the gate applies to an explicitly-given ticket number too, not just
+bare-pool selection.** `/pilot-spec` and `/pilot-dev` each run this same check before
+claiming any ticket, whether it got there via the pool or because a human named it
+directly, and report the blocking `#N` and stop instead of claiming if it's still open —
+exactly the same principle already applied to an explicit ticket number still carrying
+`needs-human`/`on-hold` (each phase skill's own "given issue number" handling, e.g.
+`.claude/skills/pilot-spec/SKILL.md` step 1). Skipping the check just because a number was
+given by hand would make the gate trivial to bypass by accident.
+
+**Phase 2 (`/pilot-scope`) is the deliberate exception.** Re-scoping a ticket — revisiting
+its decisions, splitting it further — doesn't need its prerequisite resolved first, only
+the phases that actually spec and build it (3 and 4) do; `/pilot-scope` doesn't check this
+gate on an explicitly-given ticket number, and it never meaningfully fires from phase 2's
+own bare pool either, since nothing writes "Depends on #N" onto a ticket before phase 2
+has scoped it at least once (the phrase is phase 2's own output, per §2 above).
+
+The same reference feeds the ordering tie-break above: a candidate that's itself named in
+another open ticket's "Blocks #M" comment sorts ahead of one that isn't, at the same
+`priority:`, since spec'ing or building it sooner is what lets that other ticket clear its
+own gate.
 
 ### Resuming a `needs-human` ticket
 

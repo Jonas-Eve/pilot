@@ -1,6 +1,6 @@
 ---
 name: pilot-scope
-description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent challenges a ticket and either scopes it as-is, splits it into dev-sized sub-tickets, or decides it shouldn't be built at all (status:wont-do). Handles both entry points — an existing type:feature story from /pilot-story, or a raw technical need in free text with no story (formalized into one or more type:tech stories, grouped under a new or reused type:epic if the need spans several). Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold. Use whenever a ticket needs to be scoped/decomposed, or a purely technical need needs to become a ticket in the first place."
+description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent challenges a ticket and either scopes it as-is, splits it into dev-sized sub-tickets, spins out separate type:tech prerequisite ticket(s) when it depends on technical work outside itself (a feature story included), or decides it shouldn't be built at all (status:wont-do). Handles both entry points — an existing type:feature story from /pilot-story, or a raw technical need in free text with no story (formalized into one or more type:tech stories, grouped under a new or reused type:epic if the need spans several). Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference. Use whenever a ticket needs to be scoped/decomposed, or a purely technical need needs to become a ticket in the first place."
 argument-hint: "<issue number> [--auto] | <issue number> --resume | <raw technical need in free text> [--auto]"
 disable-model-invocation: true
 ---
@@ -61,11 +61,16 @@ mechanics of running phase 2.
    split needed), a set of sub-tickets each with security/architecture decisions and a
    suggested priority, or a verdict that it shouldn't be built at all; for a fresh
    `type:tech` need — one new story (claim it now, per step 2, before scoping it inline),
-   or several new stories under a (new or reused) Epic.
+   or several new stories under a (new or reused) Epic. Independently of any of the above
+   (a `type:feature` ticket included), it may also flag one or more **prerequisite** tech
+   needs the ticket depends on — distinct from a split's sub-tickets
+   (`docs/pilot-process.md` §2 "Prerequisite tech tickets") — plus, for each, whether it's
+   a hard blocker.
 4a. **Unless `--auto` was given** (`docs/pilot-process.md` §4 "Interaction modes" — pair
     is the default for this skill): don't finalize anything yet. Show the human the
     proposed decomposition — split or not, security/architecture decisions, wont-do
-    verdict, whatever the agent decided — as a normal reply, wait for their response, and
+    verdict, any prerequisite tech need(s) flagged and whether each is a hard blocker,
+    whatever the agent decided — as a normal reply, wait for their response, and
     feed it back to the agent — repeat until they approve. Once a checkpoint is approved
     **and the ticket being scoped already exists** (an existing story, not a brand-new
     `type:tech` need with no issue yet), write it into the ticket right away (a comment
@@ -94,5 +99,16 @@ mechanics of running phase 2.
    - Won't-do (clear-cut only): label `status:wont-do`, close the issue. If it's not
      clear-cut, add `needs-human` with the subagent's reasoning instead (keep
      `status:scoping`) — don't close it.
-6. Report the outcome (ticket(s)/Epic created or updated, priorities set, or closed as
-   won't-do) back to the human.
+   - Prerequisite tech ticket(s) flagged (in addition to whichever of the above applies):
+     create each the same way a fresh `type:tech` need is created above (single story, or
+     Epic + several) — **never** as a sub-issue of the ticket being scoped, that would
+     make it inherit this ticket's `type:` (`docs/pilot-process.md` §2). For each one, add
+     a "Blocks #M" comment on the new ticket, and its own separate line in this ticket's
+     body naming it — "Depends on #N" if the architect judged it a hard blocker (this
+     exact phrase is what `docs/pilot-process.md` §4 "Blocked-by dependencies" mechanically
+     gates future phases on — no `on-hold`, nothing for a human to lift later), or a plain
+     non-gating reference (e.g. "Related prerequisite: #N") otherwise. Several
+     prerequisites means several separate lines, one `#N` each — never combined onto one
+     line (`docs/pilot-process.md` §4).
+6. Report the outcome (ticket(s)/Epic created or updated, priorities set, prerequisite
+   ticket(s) spun out, or closed as won't-do) back to the human.
