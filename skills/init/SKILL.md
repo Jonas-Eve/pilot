@@ -23,9 +23,15 @@ This skill's idempotency is tracked in `.pilot/state.json` at the project root:
   "archInitialized": false,
   "archInitializedAt": null,
   "lastProcessDocSyncAt": "<ISO8601>",
-  "lastLabelsSyncAt": "<ISO8601>"
+  "lastLabelsSyncAt": "<ISO8601>",
+  "lastIntroSyncAt": "<ISO8601>",
+  "lastSyncedPluginVersion": "<semver, from the plugin's own plugin.json at the time of this sync>"
 }
 ```
+
+`lastSyncedPluginVersion` is what `/pilot:update` compares against the plugin's current
+version to decide which entries in `assets/renames.json` are new since the last sync —
+see `skills/update/SKILL.md`.
 
 ## Steps
 
@@ -55,11 +61,16 @@ This skill's idempotency is tracked in `.pilot/state.json` at the project root:
    `${CLAUDE_PLUGIN_ROOT}/assets/templates/CLAUDE.md.tmpl`,
    `${CLAUDE_PLUGIN_ROOT}/assets/templates/README.md.tmpl`, and
    `${CLAUDE_PLUGIN_ROOT}/assets/templates/PROJECT-FUNCTIONAL-SCOPE.md.tmpl`, substitute
-   `{{PROJECT_NAME}}` and `{{FUNCTIONAL_VISION}}` with the gathered values and write the
-   result to the project root (`CLAUDE.md`, `README.md`, `PROJECT-FUNCTIONAL-SCOPE.md`),
-   respecting step 3's per-file decision. The `<!-- PILOT:ARCHITECTURE:START -->` and
-   `<!-- PILOT:COMMANDS:START -->` marker blocks in `CLAUDE.md`/`README.md` are left as
-   their template placeholder text — `/pilot:init-archi` fills those in later.
+   `{{PROJECT_NAME}}` and `{{FUNCTIONAL_VISION}}` with the gathered values, and
+   `{{PILOT_INTRO_CLAUDE}}` / `{{PILOT_INTRO_README}}` with the verbatim contents of
+   `${CLAUDE_PLUGIN_ROOT}/assets/templates/pilot-intro-claude.md.tmpl` /
+   `pilot-intro-readme.md.tmpl` respectively (inside their `<!-- PILOT:INTRO:START -->`/
+   `END` markers — keep those markers in the output, they're what `/pilot:update` looks
+   for later). Write the result to the project root (`CLAUDE.md`, `README.md`,
+   `PROJECT-FUNCTIONAL-SCOPE.md`), respecting step 3's per-file decision. The
+   `<!-- PILOT:ARCHITECTURE:START -->` and `<!-- PILOT:COMMANDS:START -->` marker blocks
+   in `CLAUDE.md`/`README.md` are left as their template placeholder text —
+   `/pilot:init-archi` fills those in later.
 
 5. **Copy the process doc.** Copy
    `${CLAUDE_PLUGIN_ROOT}/assets/docs/pilot-process.md` to `docs/pilot-process.md` at the
@@ -81,10 +92,12 @@ This skill's idempotency is tracked in `.pilot/state.json` at the project root:
    authenticated or the repo can't be resolved, tell the human and give them the exact
    command to run themselves later — don't block the rest of this skill on it.
 
-7. **Write the state marker.** Create `.pilot/state.json` per the schema above, with
-   `pilotInitialized: true`, the current timestamp, the project name, and
-   `lastProcessDocSyncAt`/`lastLabelsSyncAt` set to now (or left null if step 6 was
-   skipped).
+7. **Write the state marker.** Read the plugin's own version from
+   `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`'s `version` field. Create
+   `.pilot/state.json` per the schema above, with `pilotInitialized: true`, the current
+   timestamp, the project name, `lastSyncedPluginVersion` set to that version,
+   `lastIntroSyncAt` set to now, and `lastProcessDocSyncAt`/`lastLabelsSyncAt` set to now
+   (or left null if step 6 was skipped).
 
 8. **Report.** Summarize what was created/updated/skipped, and suggest running
    `/pilot:init-archi` next to describe the monorepo's apps and generate their scaffolds.

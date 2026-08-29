@@ -4,9 +4,9 @@
   "plugins": [
     {
       "name": "pilot",
-      "source": "./",
+      "source": { "source": "github", "repo": "Jonas-Eve/pilot" },
       "description": "PILOT: a lightweight 5-phase ticket-process framework (plan, investigate, lay out, operate, test & validate) for driving GitHub-issue tickets through Claude Code agent personas, reusable across projects.",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ]
 }

@@ -6,6 +6,15 @@ This repo **is** a Claude Code plugin (`.claude-plugin/plugin.json` +
 ticket-process framework — for reuse across projects. It is not itself an application;
 there is no "functional scope" here beyond the plugin's own behavior.
 
+`marketplace.json`'s one plugin entry deliberately uses the explicit
+`{ "source": "github", "repo": "Jonas-Eve/pilot" }` form, not a relative path like
+`"./"` — Claude Code's docs don't clearly settle whether a relative source in a
+same-repo, same-directory self-hosting marketplace (`plugin.json` and `marketplace.json`
+both under this repo's own `.claude-plugin/`) resolves against the marketplace file's
+own directory or the repo root. Getting that wrong means the plugin silently fails to
+load. The GitHub-repo form sidesteps the ambiguity entirely — keep it that way unless
+you've confirmed the relative-path resolution against a real install, not just the docs.
+
 The canonical, always-up-to-date spec for the process this plugin implements lives at
 `assets/docs/pilot-process.md`. Read it before changing any skill, agent, or label —
 those files must never drift from what it describes. It is genericized on purpose (no
@@ -24,7 +33,17 @@ forked PILOT, strip project-specific details the same way.
   consuming project as `docs/pilot-process.md` by `/pilot:init` and re-synced by
   `/pilot:update`.
 - `assets/templates/*.tmpl` — doc skeletons `/pilot:init` renders with `{{PLACEHOLDER}}`
-  substitution.
+  substitution. `pilot-intro-claude.md.tmpl` / `pilot-intro-readme.md.tmpl` are the
+  canonical `<!-- PILOT:INTRO:START -->`/`END` block contents, embedded inside
+  `CLAUDE.md.tmpl`/`README.md.tmpl` at init time and re-synced by `/pilot:update` from
+  the same two files without touching the rest of the consuming project's `CLAUDE.md`/
+  `README.md`.
+- `assets/renames.json` — the versioned log `/pilot:update` reads to propagate a
+  skill/agent rename into a consuming project's own docs (since it can't reach those
+  files through the plugin update mechanism, which only syncs `skills/`/`agents/`
+  themselves). **Add an entry here whenever you rename or remove a skill or agent** —
+  `{ type, from, to (null if removed), since: <the version you're about to bump to>,
+  note }`.
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot:init` and `/pilot:update`.
 
@@ -46,7 +65,10 @@ never a hardcoded path — the plugin installs at a different absolute path per 
   entry in `.claude-plugin/marketplace.json` whenever a change to a shipped file
   (skill, agent, script, template, or the process doc) would be visible to a consuming
   project — that's what lets `/pilot:update` and the plugin update flow report something
-  meaningful changed.
+  meaningful changed. If the change renames or removes a skill or agent, add the
+  `assets/renames.json` entry (see above) in the **same** commit as the bump, using that
+  bump's version as `since` — `/pilot:update` in every consuming project relies on that
+  version being the one where the rename actually shipped.
 
 ## 4. GIT WORKFLOW
 - **Commit Freely On A Work Branch, Never On `main`:** on a short-lived work branch,
