@@ -1,6 +1,6 @@
 ---
 name: pilot-init
-description: "One-time bootstrap for a new project adopting PILOT: asks for the project name and a short functional vision, copies PILOT's skills/agents and canonical docs into the project from github.com/Jonas-Eve/pilot, generates the project's own CLAUDE.md, README.md, and PROJECT-FUNCTIONAL-SCOPE.md from templates, and provisions the GitHub labels the state machine depends on. Refuses to run twice — if the project is already initialized, it stops with an explicit message instead of touching anything. Use when a human wants to start using PILOT in a project that hasn't run it before. Not for describing the monorepo's apps/technologies — that's /pilot-init-archi, and it requires this to have run first."
+description: "One-time bootstrap for a new project adopting PILOT: asks for the project name and a short functional vision, copies PILOT's skills/agents and canonical docs into the project from github.com/Jonas-Eve/pilot, generates the project's own CLAUDE.md, README.md, and PROJECT-FUNCTIONAL-SCOPE.md from templates, scaffolds a default `.github/pull_request_template.md` if the project has none, and provisions the GitHub labels the state machine depends on. Refuses to run twice — if the project is already initialized, it stops with an explicit message instead of touching anything. Use when a human wants to start using PILOT in a project that hasn't run it before. Not for describing the monorepo's apps/technologies — that's /pilot-init-archi, and it requires this to have run first."
 argument-hint: "[project name] [functional vision]"
 disable-model-invocation: true
 ---
@@ -112,16 +112,29 @@ see `.claude/skills/pilot-update/SKILL.md`.
    differs, treat it like step 3 — show the human what would change and ask before
    overwriting.
 
-8. **Provision GitHub labels.** Determine the target repo (`gh repo view --json
+8. **Copy the PR template.** If none of `.github/pull_request_template.md`,
+   `.github/PULL_REQUEST_TEMPLATE.md`, root `PULL_REQUEST_TEMPLATE.md`, or
+   `docs/PULL_REQUEST_TEMPLATE.md` already exist in the project, copy
+   `$PILOT_SRC/assets/github/pull_request_template.md` to
+   `.github/pull_request_template.md`, creating `.github/` if needed — this is what
+   `pilot-dev`'s "PILOT ticket" section (`.claude/agents/pilot-dev.md`,
+   `.claude/skills/pilot-dev/SKILL.md`) fills in when opening a PR. If one of those paths
+   already exists, treat it like step 3 — show the human what would be added and ask
+   before overwriting, or leave it alone if they'd rather merge the PILOT ticket section
+   in by hand. Unlike the process doc and workflow above, this file is a one-time
+   scaffold, not PILOT-owned: once copied, it's the project's own to customize freely,
+   and `/pilot-update` never re-syncs or touches it.
+
+9. **Provision GitHub labels.** Determine the target repo (`gh repo view --json
    nameWithOwner --jq .nameWithOwner`) and run
    `$PILOT_SRC/scripts/setup-github-labels.sh <owner>/<repo>`. If `gh` isn't
    authenticated or the repo can't be resolved, tell the human and give them the exact
    command to run themselves later — don't block the rest of this skill on it.
 
-9. **Write the state marker.** Create `.pilot/state.json` per the schema above, with
-   `pilotInitialized: true`, the current timestamp, the project name, and
-   `lastSkillsSyncAt`/`lastIntroSyncAt`/`lastProcessDocSyncAt`/`lastLabelsSyncAt` set to
-   now (or left null for whichever of labels was skipped in step 8).
+10. **Write the state marker.** Create `.pilot/state.json` per the schema above, with
+    `pilotInitialized: true`, the current timestamp, the project name, and
+    `lastSkillsSyncAt`/`lastIntroSyncAt`/`lastProcessDocSyncAt`/`lastLabelsSyncAt` set to
+    now (or left null for whichever of labels was skipped in step 9).
 
-10. **Report.** Summarize what was created/updated/skipped, and suggest running
+11. **Report.** Summarize what was created/updated/skipped, and suggest running
     `/pilot-init-archi` next to describe the monorepo's apps and generate their scaffolds.
