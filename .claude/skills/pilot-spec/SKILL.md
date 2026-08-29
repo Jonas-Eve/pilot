@@ -1,6 +1,6 @@
 ---
-name: spec
-description: "Phase 3 of PILOT (see docs/pilot-process.md): the tech lead agent writes the technical implementation spec for a single already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold. Use once a ticket has been through /pilot:scope and needs its spec written before development starts."
+name: pilot-spec
+description: "Phase 3 of PILOT (see docs/pilot-process.md): the tech lead agent writes the technical implementation spec for a single already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold. Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
 argument-hint: "<issue number, optional — picks the next spec-ready or needs-human-resumable ticket if omitted> [--auto] | <issue number> --resume"
 disable-model-invocation: true
 ---
@@ -39,9 +39,7 @@ mechanics of running phase 3.
      `--auto` added (`docs/pilot-process.md` §4 "Scheduled sweeps").
 2. **Claim** it per `docs/pilot-process.md` §4: set assignee + `status:in-spec`, re-read
    to confirm the claim held.
-3. Call the `Agent` tool with `subagent_type: "pilot-techlead"` (if that bare name isn't
-   found — this persona ships via the `pilot` plugin — retry as `"pilot:pilot-techlead"`),
-   passing only the
+3. Call the `Agent` tool with `subagent_type: "pilot-techlead"`, passing only the
    ticket's current body (including the architect's decisions, and, if resuming, the
    comment thread's resolution per §4) and pointers to the relevant docs for the area it
    touches (this project's own per-service/per-package docs, wherever it keeps them —

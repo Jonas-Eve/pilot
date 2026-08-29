@@ -11,7 +11,7 @@ designing anything that touches product behavior.
 <!-- PILOT:INTRO:END -->
 
 <!-- PILOT:ARCHITECTURE:START -->
-_Architecture not yet defined — run `/pilot:init-archi` to describe this monorepo's apps
+_Architecture not yet defined — run `/pilot-init-archi` to describe this monorepo's apps
 and technologies. That will generate this section (per-app doc references, tech stack,
 Clean Architecture layering) and scaffold each app's skeleton._
 <!-- PILOT:ARCHITECTURE:END -->
@@ -20,7 +20,7 @@ Clean Architecture layering) and scaffold each app's skeleton._
 
 ## 2. COMMON COMMANDS
 <!-- PILOT:COMMANDS:START -->
-_Not yet defined — run `/pilot:init-archi` to generate the per-app dev/test/build
+_Not yet defined — run `/pilot-init-archi` to generate the per-app dev/test/build
 commands for this section._
 <!-- PILOT:COMMANDS:END -->
 
@@ -50,15 +50,9 @@ At the end of any task that modifies architecture, endpoints, folder structures,
    informs human developers — so the same facts (workflow, architecture, conventions)
    should hold true in both, but phrasing, depth, and emphasis can differ per audience.
    A change that touches one MUST be checked against the other before finalizing the task.
-4. **PILOT's file family is tightly cross-referenced** — `docs/pilot-process.md`, the
-   `PILOT:INTRO` blocks in this file and `README.md`, and the rest of the PILOT mentions
-   in both (the skills and agent personas themselves are distributed by the `pilot`
-   plugin and updated automatically, not edited locally). All three are PILOT-owned:
-   never hand-edit them, run `/pilot:update` instead. A renamed label, moved section
-   heading, or changed mechanism upstream can leave stale references in the rest of this
-   file/`README.md` outside the marked blocks (e.g. a command name in prose) — after
-   running `/pilot:update`, check cheaply: `grep` the exact term(s) that changed across
-   both files and fix what turns up.
+<!-- PILOT:MAINTENANCE:START -->
+{{PILOT_MAINTENANCE_CLAUDE}}
+<!-- PILOT:MAINTENANCE:END -->
 
 ---
 

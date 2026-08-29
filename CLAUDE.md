@@ -1,74 +1,79 @@
-# CLAUDE CODE GUIDE & DIRECTIVES — `pilot` PLUGIN REPO
+# CLAUDE CODE GUIDE & DIRECTIVES — `pilot` REPO
 
 ## 1. WHAT THIS REPO IS
-This repo **is** a Claude Code plugin (`.claude-plugin/plugin.json` +
-`.claude-plugin/marketplace.json` at the root) that packages PILOT — a 5-phase
-ticket-process framework — for reuse across projects. It is not itself an application;
-there is no "functional scope" here beyond the plugin's own behavior.
+This repo packages PILOT — a 5-phase ticket-process framework — for reuse across
+projects, as a **plain repo consuming projects clone and copy from**, not a Claude Code
+plugin. A plugin was tried first, but plugin installation turned out to be local to
+whichever machine/container runs it (a Codespace, a local CLI) and never reached Claude
+Code on the web or the mobile app, so the distribution model here is deliberately just
+"clone this repo, copy its `.claude/skills/`/`.claude/agents/` into your project's own
+`.claude/`" — same paths on both sides, the same mechanism as any other project-local
+skill, which works identically on every surface. This repo is not itself an application;
+there is no "functional scope" here beyond its own content.
 
-`marketplace.json`'s one plugin entry deliberately uses the explicit
-`{ "source": "github", "repo": "Jonas-Eve/pilot" }` form, not a relative path like
-`"./"` — Claude Code's docs don't clearly settle whether a relative source in a
-same-repo, same-directory self-hosting marketplace (`plugin.json` and `marketplace.json`
-both under this repo's own `.claude-plugin/`) resolves against the marketplace file's
-own directory or the repo root. Getting that wrong means the plugin silently fails to
-load. The GitHub-repo form sidesteps the ambiguity entirely — keep it that way unless
-you've confirmed the relative-path resolution against a real install, not just the docs.
-
-The canonical, always-up-to-date spec for the process this plugin implements lives at
+The canonical, always-up-to-date spec for the process this repo implements lives at
 `assets/docs/pilot-process.md`. Read it before changing any skill, agent, or label —
 those files must never drift from what it describes. It is genericized on purpose (no
 references to any one consuming project); when porting a change from a project that
 forked PILOT, strip project-specific details the same way.
 
 ## 2. STRUCTURE
-- `skills/<name>/SKILL.md` — one per slash command, auto-discovered by Claude Code.
-  `init`, `init-archi`, `update` are this plugin's own bootstrap/maintenance commands
-  (no `pilot-` prefix — the plugin namespace already provides it, so `/pilot:init` etc.
-  would otherwise stutter); `story`, `scope`, `spec`, `dev`, `review` are the five PILOT
-  phases, same reasoning.
-- `agents/<name>.md` — the four personas (`pilot-pm`, `pilot-architect`,
-  `pilot-techlead`, `pilot-dev`) the phase skills delegate to via the `Agent` tool.
+- `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
+  consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
+  sync by `/pilot-update`) — same path on both sides. All eight carry the `pilot-`
+  prefix a project-local skill needs to avoid colliding with the project's own — there's
+  no plugin namespace to rely on instead. `pilot-init`, `pilot-init-archi`,
+  `pilot-update` are this repo's own bootstrap/maintenance commands; `pilot-story`,
+  `pilot-scope`, `pilot-spec`, `pilot-dev`, `pilot-review` are the five PILOT phases.
+- `.claude/agents/<name>.md` — the four personas (`pilot-pm`, `pilot-architect`,
+  `pilot-techlead`, `pilot-dev`) the phase skills delegate to via the `Agent` tool,
+  copied into a consuming project's `.claude/agents/` the same way.
 - `assets/docs/pilot-process.md` — canonical process spec, copied verbatim into a
-  consuming project as `docs/pilot-process.md` by `/pilot:init` and re-synced by
-  `/pilot:update`.
-- `assets/templates/*.tmpl` — doc skeletons `/pilot:init` renders with `{{PLACEHOLDER}}`
-  substitution. `pilot-intro-claude.md.tmpl` / `pilot-intro-readme.md.tmpl` are the
-  canonical `<!-- PILOT:INTRO:START -->`/`END` block contents, embedded inside
-  `CLAUDE.md.tmpl`/`README.md.tmpl` at init time and re-synced by `/pilot:update` from
-  the same two files without touching the rest of the consuming project's `CLAUDE.md`/
-  `README.md`.
-- `assets/renames.json` — the versioned log `/pilot:update` reads to propagate a
-  skill/agent rename into a consuming project's own docs (since it can't reach those
-  files through the plugin update mechanism, which only syncs `skills/`/`agents/`
-  themselves). **Add an entry here whenever you rename or remove a skill or agent** —
-  `{ type, from, to (null if removed), since: <the version you're about to bump to>,
-  note }`.
+  consuming project as `docs/pilot-process.md` by `/pilot-init` and re-synced by
+  `/pilot-update`.
+- `assets/templates/*.tmpl` — doc skeletons `/pilot-init` renders with `{{PLACEHOLDER}}`
+  substitution. `pilot-intro-claude.md.tmpl` / `pilot-intro-readme.md.tmpl` and
+  `pilot-maintenance-claude.md.tmpl` are canonical marked-block contents (`PILOT:INTRO`,
+  `PILOT:MAINTENANCE`), embedded inside `CLAUDE.md.tmpl`/`README.md.tmpl` at init time
+  and re-synced by `/pilot-update` from those same files without touching the rest of
+  the consuming project's `CLAUDE.md`/`README.md`. **Any PILOT-specific sentence in
+  `CLAUDE.md.tmpl`/`README.md.tmpl` belongs inside a `PILOT:<name>` marker with a
+  matching canonical snippet here — never bare in the template** — that's what keeps a
+  consuming project's own prose free of content only PILOT can keep current (see
+  §3 below).
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
-  `/pilot:init` and `/pilot:update`.
+  `/pilot-init` and `/pilot-update`.
 
-Within a skill or agent file, reference this plugin's own assets via
-`${CLAUDE_PLUGIN_ROOT}` (e.g. `${CLAUDE_PLUGIN_ROOT}/scripts/setup-github-labels.sh`),
-never a hardcoded path — the plugin installs at a different absolute path per consumer.
+Within a skill file, reference this repo's own assets via a fresh clone of
+`https://github.com/Jonas-Eve/pilot` into a scratch directory (called `$PILOT_SRC` in
+the skill files) — never a fixed path, there is no installed location.
 
 ## 3. CHANGE DISCIPLINE
 - **Mechanism vs. wording:** the phase names, label taxonomy, claim protocol, and
   skill-to-agent mapping in `assets/docs/pilot-process.md` are the actual product. Don't
-  change them casually; a mechanism change here affects every project that has installed
-  this plugin, not just one.
-- **Cross-reference check:** `assets/docs/pilot-process.md`, every `skills/*/SKILL.md`,
-  every `agents/pilot-*.md`, and the PILOT mentions in this file and `README.md` are
+  change them casually; a mechanism change here affects every project that has copied
+  from this repo, not just one.
+- **Cross-reference check:** `assets/docs/pilot-process.md`, every `.claude/skills/*/SKILL.md`,
+  every `.claude/agents/pilot-*.md`, and the PILOT mentions in this file and `README.md` are
   tightly cross-referenced. After editing any of them, `grep` the exact term(s) you
   changed (a renamed label, a moved section heading) across that whole family and fix
   what turns up, rather than re-reading every file end to end.
-- **Version bump:** bump `version` in both `.claude-plugin/plugin.json` and the matching
-  entry in `.claude-plugin/marketplace.json` whenever a change to a shipped file
-  (skill, agent, script, template, or the process doc) would be visible to a consuming
-  project — that's what lets `/pilot:update` and the plugin update flow report something
-  meaningful changed. If the change renames or removes a skill or agent, add the
-  `assets/renames.json` entry (see above) in the **same** commit as the bump, using that
-  bump's version as `since` — `/pilot:update` in every consuming project relies on that
-  version being the one where the rename actually shipped.
+- **Renaming or removing a skill/agent:** `/pilot-update` handles this by diffing a
+  project's locally-copied skills/agents against this repo's current `.claude/skills/`/
+  `.claude/agents/` and flagging anything that no longer matches anything upstream as
+  orphaned (see `.claude/skills/pilot-update/SKILL.md`) — there's no separate
+  version/rename log to maintain here, just keep this repo's own `.claude/skills/`/
+  `.claude/agents/` accurate and `/pilot-update` will reconcile a project's copy against
+  it next time it runs.
+- **PILOT never leaves unmarked content in a hybrid file:** `CLAUDE.md`/`README.md` in a
+  consuming project are otherwise project-owned, so any sentence only PILOT can keep
+  accurate (a command name, a file path under its control) must live inside a
+  `<!-- PILOT:<name>:START -->`/`END` marker with a matching canonical snippet in
+  `assets/templates/`, never as bare prose in `CLAUDE.md.tmpl`/`README.md.tmpl` — a bare
+  mention there goes stale the moment something renames and `/pilot-update` has no marker
+  telling it where to fix it. A project's own files that happen to reference a PILOT
+  command by choice (a PR template, an unrelated skill) are a different case — that's the
+  project's own doc-maintenance burden, not a gap in this rule.
 
 ## 4. GIT WORKFLOW
 - **Commit Freely On A Work Branch, Never On `main`:** on a short-lived work branch,
@@ -81,7 +86,7 @@ never a hardcoded path — the plugin installs at a different absolute path per 
 - **Trunk-Based Development:** `main` is the single trunk; short-lived branches merge
   back quickly, no long-lived feature branches.
 - **Conventional Commits:** `type(scope): description` (e.g.
-  `feat(skills): add init-archi scaffold for Expo mobile`). `scope` is typically the
+  `feat(skills): add pilot-init-archi scaffold for Expo mobile`). `scope` is typically the
   affected top-level dir (`skills`, `agents`, `scripts`, `docs`) or omitted for
   repo-wide changes.
 - **Rebase Merge Only:** PRs merge into `main` via rebase merge, keeping history linear.

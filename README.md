@@ -4,58 +4,67 @@ PILOT is a lightweight, in-house alternative to running the full BMAD-METHOD age
 framework for ticket work: five short phases — `plan` → `investigate` → `lay out` →
 `operate` → `test & validate` — each its own isolated, low-token agent context instead of
 one accumulating one. It was built inside a single monorepo and is packaged here as a
-standalone **Claude Code plugin** so any project can install it.
+standalone, reusable repo any project can copy from.
+
+This repo is **not a Claude Code plugin** — plugin installation turned out to be local
+to whichever machine/container runs it (a Codespace, a local CLI), so it never reached
+Claude Code on the web or the mobile app. PILOT is distributed the simpler way instead:
+this repo's own `.claude/skills/` and `.claude/agents/` are exactly what gets copied into
+a consuming project's — same paths, same layout — where they work identically on every
+surface, because that's exactly how any other project-local skill works.
 
 See [`assets/docs/pilot-process.md`](./assets/docs/pilot-process.md) for the full state
-machine, label taxonomy, and claim protocol this plugin implements — it's the canonical
-copy; `/pilot:init` copies it into your project as `docs/pilot-process.md`, and
-`/pilot:update` keeps it in sync.
+machine, label taxonomy, and claim protocol — it's the canonical copy;
+`/pilot-init` copies it into your project as `docs/pilot-process.md`, and
+`/pilot-update` keeps it in sync.
 
-## What this plugin ships
+## What this repo ships
 
-- **Skills** (`skills/`): three bootstrap/maintenance commands, plus the five PILOT
-  phase commands.
-  - `/pilot:init` — one-time: name the project, write its functional vision, generate
-    `CLAUDE.md` / `README.md` / `PROJECT-FUNCTIONAL-SCOPE.md`, copy in
-    `docs/pilot-process.md`, and create the GitHub labels PILOT depends on.
-  - `/pilot:init-archi` — one-time: describe the monorepo's apps and technology choices (or
+- **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, plus the five
+  PILOT phase commands — copied verbatim into a consuming project's `.claude/skills/`
+  (see "Installing in a project" below), so all of them, `pilot-init`/`pilot-init-archi`/
+  `pilot-update` included, are ordinary project-local commands once installed.
+  - `/pilot-init` — one-time: name the project, write its functional vision, copy in
+    PILOT's own skills/agents/docs, generate `CLAUDE.md` / `README.md` /
+    `PROJECT-FUNCTIONAL-SCOPE.md`, and create the GitHub labels PILOT depends on.
+  - `/pilot-init-archi` — one-time: describe the monorepo's apps and technology choices (or
     accept the defaults — Clean Architecture, Node.js backend, React frontend, Expo for
     mobile, TypeScript throughout), generate each app's docs, and scaffold its skeleton
     pinned to the latest compatible dependency versions.
-  - `/pilot:update` — re-sync everything PILOT-owned that lives in your project's own
-    git tree (`docs/pilot-process.md`, the status-cascade workflow, the
-    `PILOT:INTRO` blocks in `CLAUDE.md`/`README.md`, the GitHub labels) from this
-    plugin, and propagate any skill/agent rename logged since your last sync.
-    Overwrites, no merge — see the warning in `skills/update/SKILL.md`.
-  - `/pilot:story`, `/pilot:scope`, `/pilot:spec`, `/pilot:dev`, `/pilot:review` — the
+  - `/pilot-update` — re-sync everything PILOT-owned (skills, agents,
+    `docs/pilot-process.md`, the GitHub Actions workflow, the `PILOT:INTRO` blocks in
+    `CLAUDE.md`/`README.md`, the GitHub labels) from a fresh clone of this repo into
+    your project. Overwrites, no merge — see the warning in `.claude/skills/pilot-update/SKILL.md`.
+  - `/pilot-story`, `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, `/pilot-review` — the
     five phases themselves.
-- **Agents** (`agents/`): the four personas the phase skills delegate to —
+- **Agents** (`.claude/agents/`): the four personas the phase skills delegate to —
   `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`.
 - **Scripts** (`scripts/`): `setup-github-labels.sh`, idempotent creation/update of every
   label the state machine uses.
-- **Templates** (`assets/templates/`): the doc skeletons `/pilot:init` fills in, including
-  the `pilot-intro-*.md.tmpl` snippets `/pilot:update` re-syncs later.
-- **`assets/renames.json`**: the versioned log `/pilot:update` reads to catch a project up
-  on skill/agent renames it can't reach through the plugin update mechanism alone.
+- **Templates** (`assets/templates/`): the doc skeletons `/pilot-init` fills in.
 
 ## Installing in a project
 
-Add this repo as a plugin marketplace source, then install the `pilot` plugin — see
-Claude Code's plugin documentation for the exact marketplace-add command for your
-version. Once installed, run `/pilot:init` in the target project.
+There's no install command to run — a brand-new project has no PILOT skill available
+yet to invoke one. Instead:
+
+1. Clone this repo somewhere accessible: `git clone https://github.com/Jonas-Eve/pilot`.
+2. Copy its `.claude/skills/` and `.claude/agents/` straight into your project's own
+   `.claude/skills/`/`.claude/agents/` (verbatim, same paths — this is exactly what
+   `/pilot-init` does for itself when re-run later, so this manual first copy and every
+   subsequent `/pilot-update` end up identical).
+3. Run `/pilot-init` in your project. It takes care of everything else (docs, labels,
+   the status-cascade workflow).
 
 ## Updating
 
-- **Skills, agents, and this doc's own content**: handled automatically by Claude Code's
-  plugin update mechanism — no PILOT-specific action needed.
-- **Content copied into a consuming project's own git tree** (`docs/pilot-process.md`,
-  the `.github/workflows/pilot-status-on-merge.yml` workflow, the
-  `<!-- PILOT:INTRO:START -->` blocks in that project's `CLAUDE.md`/`README.md`, the
-  GitHub labels) and **skill/agent renames** (which the plugin mechanism can sync in
-  `skills/`/`agents/` but can't propagate into a project's own prose): run
-  `/pilot:update` in that project after updating the plugin.
+Everything PILOT ships is a plain file copy living in your project's own git tree —
+there's no separate plugin-update mechanism to think about. Run `/pilot-update` in your
+project whenever you want to pick up a change made here: it re-clones this repo fresh,
+diffs every PILOT-owned skill/agent/doc/workflow/label against your project's copy, and
+asks for confirmation before overwriting anything that differs.
 
-## Developing this plugin
+## Developing this repo
 
 Trunk-based development on `main`, Conventional Commits, rebase-merge PRs — see
 `CLAUDE.md` for the full set of conventions used to develop PILOT itself.

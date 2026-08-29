@@ -1,25 +1,25 @@
 ---
-name: init-archi
-description: "One-time monorepo architecture setup, run after /pilot:init: asks how many apps/services the project has and what technology each one uses (or accepts the defaults — Clean Architecture, a Node.js/TypeScript backend, a React/TypeScript frontend, Expo for any mobile app), generates each app's docs, fills in the root CLAUDE.md/README.md architecture and commands sections, and scaffolds each app's skeleton pinned to the latest compatible dependency versions. Refuses to run twice — if the architecture is already initialized, it stops with an explicit message instead of touching anything. Use when a human wants to define or scaffold the monorepo's apps. Requires /pilot:init to have already run."
+name: pilot-init-archi
+description: "One-time monorepo architecture setup, run after /pilot-init: asks how many apps/services the project has and what technology each one uses (or accepts the defaults — Clean Architecture, a Node.js/TypeScript backend, a React/TypeScript frontend, Expo for any mobile app), generates each app's docs, fills in the root CLAUDE.md/README.md architecture and commands sections, and scaffolds each app's skeleton pinned to the latest compatible dependency versions. Refuses to run twice — if the architecture is already initialized, it stops with an explicit message instead of touching anything. Use when a human wants to define or scaffold the monorepo's apps. Requires /pilot-init to have already run."
 argument-hint: "[free-text description of the apps/services and their tech]"
 disable-model-invocation: true
 ---
 
-# PILOT bootstrap — `init-archi`
+# PILOT bootstrap — `pilot-init-archi`
 
 Not one of the five PILOT phases — the second half of one-time setup, after
-`/pilot:init`. It reads and writes `.pilot/state.json` at the project root (schema in
-`skills/init/SKILL.md`).
+`/pilot-init`. It reads and writes `.pilot/state.json` at the project root (schema in
+`.claude/skills/pilot-init/SKILL.md`).
 
 ## Steps
 
 1. **Check preconditions.** Read `.pilot/state.json`.
    - Missing, or `pilotInitialized` is not `true` → stop and tell the human to run
-     `/pilot:init` first. Do nothing else.
+     `/pilot-init` first. Do nothing else.
    - `archInitialized` is already `true` → **stop here** and report, verbatim in
      substance:
      > This project's architecture is already initialized (on <archInitializedAt>):
-     > <comma-separated app names>. Nothing to do — `init-archi` only runs once. To add
+     > <comma-separated app names>. Nothing to do — `pilot-init-archi` only runs once. To add
      > a new app or change an existing one's stack, edit its docs and scaffold by hand;
      > this command doesn't support re-running against an existing architecture.
 
@@ -67,7 +67,7 @@ Not one of the five PILOT phases — the second half of one-time setup, after
    layering, which app calls which). Replace the content between the
    `<!-- PILOT:COMMANDS:START -->`/`END` markers with the actual per-app dev/test/build
    commands. Keep the marker comments themselves in place (untouched) so a future
-   `init-archi`-adjacent tool can still locate the block — only replace what's between
+   `pilot-init-archi`-adjacent tool can still locate the block — only replace what's between
    them.
 
 6. **Update the state marker.** Set in `.pilot/state.json`: `archInitialized: true`,

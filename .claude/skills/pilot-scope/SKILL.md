@@ -1,6 +1,6 @@
 ---
-name: scope
-description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent challenges a ticket and either scopes it as-is, splits it into dev-sized sub-tickets, or decides it shouldn't be built at all (status:wont-do). Handles both entry points — an existing type:feature story from /pilot:story, or a raw technical need in free text with no story (formalized into one or more type:tech stories, grouped under a new or reused type:epic if the need spans several). Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold. Use whenever a ticket needs to be scoped/decomposed, or a purely technical need needs to become a ticket in the first place."
+name: pilot-scope
+description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent challenges a ticket and either scopes it as-is, splits it into dev-sized sub-tickets, or decides it shouldn't be built at all (status:wont-do). Handles both entry points — an existing type:feature story from /pilot-story, or a raw technical need in free text with no story (formalized into one or more type:tech stories, grouped under a new or reused type:epic if the need spans several). Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold. Use whenever a ticket needs to be scoped/decomposed, or a purely technical need needs to become a ticket in the first place."
 argument-hint: "<issue number> [--auto] | <issue number> --resume | <raw technical need in free text> [--auto]"
 disable-model-invocation: true
 ---
@@ -51,9 +51,7 @@ mechanics of running phase 2.
    re-read to confirm the claim held. For a brand-new `type:tech` need (no issue exists
    yet), this happens after step 3 instead — there's nothing to claim before the
    agent has decided whether it's one story or several under an Epic.
-3. Call the `Agent` tool with `subagent_type: "pilot-architect"` (if that bare name isn't
-   found — this persona ships via the `pilot` plugin — retry as `"pilot:pilot-architect"`),
-   passing only what phase
+3. Call the `Agent` tool with `subagent_type: "pilot-architect"`, passing only what phase
    2 needs: the ticket's current body (or the raw free-text need plus the candidate Epic
    list, for a fresh `type:tech` need), and pointers to this project's own coding
    standards/security conventions and its own architecture docs (wherever it documents
@@ -76,7 +74,7 @@ mechanics of running phase 2.
     before final approval (`docs/pilot-process.md` §4 "Resuming a paused pair session").
     For a brand-new `type:tech` need with no ticket yet, the first checkpoint (one story
     or several under an Epic) is still held in-conversation until that first creation
-    happens, the same as `/pilot:story`. Requires a human live in this session; a
+    happens, the same as `/pilot-story`. Requires a human live in this session; a
     scheduled Routine must pass `--auto` instead. Once approved, continue to step 5 as
     normal — its GitHub write is then just the remaining piece (final labels, any
     still-unwritten sub-issues), since earlier checkpoints were already saved.
@@ -92,7 +90,7 @@ mechanics of running phase 2.
    - Fresh `type:tech` need, several stories: create the Epic if new (`type:epic` +
      `type:tech`, no `status:` label) or reuse the existing one, create each story
      (`type:tech` + `status:backlog`) linked as its sub-issue — leave each story to be
-     scoped by its own later `/pilot:scope` run, don't scope them inline here.
+     scoped by its own later `/pilot-scope` run, don't scope them inline here.
    - Won't-do (clear-cut only): label `status:wont-do`, close the issue. If it's not
      clear-cut, add `needs-human` with the subagent's reasoning instead (keep
      `status:scoping`) — don't close it.

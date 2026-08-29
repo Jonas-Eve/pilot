@@ -10,8 +10,8 @@ isolated agent context rather than one context accumulating the whole ticket's h
 
 This document is the source of truth for the process: the state machine, the GitHub
 label conventions, the claim protocol, and how the phases fit together. The agent
-personas (`agents/pilot-*.md`) and the skills that drive them
-(`skills/*/SKILL.md`) both reference this file rather than repeating it —
+personas (`.claude/agents/pilot-*.md`) and the skills that drive them
+(`.claude/skills/*/SKILL.md`) both reference this file rather than repeating it —
 keep this document accurate first, then bring those files in line with it (per this
 project's own documentation-maintenance convention, if it has one).
 
@@ -37,18 +37,18 @@ human typing it or a scheduled Routine doing the same on a timer (§4 "Scheduled
 Bare, no-argument commands are what make the scheduled case useful — see below:
 
 ```
-/pilot:story "let a user filter search results by wheelchair accessibility"
+/pilot-story "let a user filter search results by wheelchair accessibility"
     → opens a type:feature issue
 
-/pilot:scope "add the GitHub Actions CI workflow described in our tech-debt backlog"
+/pilot-scope "add the GitHub Actions CI workflow described in our tech-debt backlog"
     → opens one or more type:tech issues directly, no story needed
 
-/pilot:scope 42        → scopes/decomposes existing issue #42
-/pilot:spec 42         → writes the technical spec for #42 (must be status:spec-ready)
-/pilot:dev             → claims and implements the next status:dev-ready ticket, no
+/pilot-scope 42        → scopes/decomposes existing issue #42
+/pilot-spec 42         → writes the technical spec for #42 (must be status:spec-ready)
+/pilot-dev             → claims and implements the next status:dev-ready ticket, no
                           argument needed
-/pilot:dev 42          → claims and implements #42 specifically
-/pilot:review 57       → runs phase 5 against PR/issue #57
+/pilot-dev 42          → claims and implements #42 specifically
+/pilot-review 57       → runs phase 5 against PR/issue #57
 ```
 
 There's no single command that runs all five phases end to end — drive the pipeline one
@@ -58,9 +58,9 @@ Every phase skill also runs bare, with **no argument at all** — it then works 
 pool of fresh candidates (its own pre-claim `status:`) *and* its own `needs-human`/
 `on-hold` tickets whose flag has since been cleared (§4 "Picking the next ticket..." and
 "Scheduled sweeps"). This is what a cron Routine calls on a timer — literally bare for
-`/pilot:review` (no ticket number ever computed on its behalf); with `--auto` added for
-`/pilot:scope`, `/pilot:spec`, and `/pilot:dev`, which default to pair and need that flag
-to run unattended (§4 "Interaction modes"). `/pilot:story` is pair-only and is never
+`/pilot-review` (no ticket number ever computed on its behalf); with `--auto` added for
+`/pilot-scope`, `/pilot-spec`, and `/pilot-dev`, which default to pair and need that flag
+to run unattended (§4 "Interaction modes"). `/pilot-story` is pair-only and is never
 Routine-driven at all.
 
 ---
@@ -69,14 +69,14 @@ Routine-driven at all.
 
 | # | Phase | Skill | Agent | Produces |
 |---|-------|-------|-------|----------|
-| 1 | Plan | `/pilot:story` | `pilot-pm` | A functional user story, or an Epic + several stories (`type:feature`) |
-| 2 | Investigate | `/pilot:scope` | `pilot-architect` | For a raw tech need: a story, or a tech Epic + several stories. For an existing story: the story itself scoped, or split into sub-tickets ready for spec |
-| 3 | Lay out | `/pilot:spec` | `pilot-techlead` | A technical spec written into the ticket |
-| 4 | Operate | `/pilot:dev` | `pilot-dev` | An implementation + pull request (following `.github/pull_request_template.md`) |
-| 5 | Test & validate | `/pilot:review` | `pilot-pm` + `pilot-architect` + `pilot-techlead` (feature) or `pilot-architect` + `pilot-techlead` (tech) | A GitHub comment: either blocking points for a human (`needs-human`, plus `status:changes-requested` if any are code-level) or a consolidated go-ahead (`status:approved`) — a human always does the actual merge |
+| 1 | Plan | `/pilot-story` | `pilot-pm` | A functional user story, or an Epic + several stories (`type:feature`) |
+| 2 | Investigate | `/pilot-scope` | `pilot-architect` | For a raw tech need: a story, or a tech Epic + several stories. For an existing story: the story itself scoped, or split into sub-tickets ready for spec |
+| 3 | Lay out | `/pilot-spec` | `pilot-techlead` | A technical spec written into the ticket |
+| 4 | Operate | `/pilot-dev` | `pilot-dev` | An implementation + pull request (following `.github/pull_request_template.md`) |
+| 5 | Test & validate | `/pilot-review` | `pilot-pm` + `pilot-architect` + `pilot-techlead` (feature) or `pilot-architect` + `pilot-techlead` (tech) | A GitHub comment: either blocking points for a human (`needs-human`, plus `status:changes-requested` if any are code-level) or a consolidated go-ahead (`status:approved`) — a human always does the actual merge |
 
 There is no single global-orchestrator command — each phase skill is invoked on its own
-(`/pilot:scope 123`, etc.), as its own isolated agent call (see §5), one phase at a time.
+(`/pilot-scope 123`, etc.), as its own isolated agent call (see §5), one phase at a time.
 
 ---
 
@@ -87,10 +87,10 @@ security hardening, deployments, migrations, performance/optimization — never 
 product framing, so it skips phase 1 entirely:
 
 - **`type:feature`** — starts at phase 1. A human describes an idea in free text to
-  `/pilot:story`; the PM agent formalizes it into a user story. Phase 5 review involves
+  `/pilot-story`; the PM agent formalizes it into a user story. Phase 5 review involves
   all three agents (PM checks product fit against the story's acceptance criteria).
 - **`type:tech`** — starts at phase 2. A human describes a technical need in free text
-  directly to `/pilot:scope`; the architect agent formalizes it into a scoped ticket (or
+  directly to `/pilot-scope`; the architect agent formalizes it into a scoped ticket (or
   several) as part of the same pass that would otherwise challenge/decompose an existing
   story — there is no separate ticket-creation skill, it's the same act either way. Phase
   5 review is architect + tech lead only; the PM is never involved.
@@ -179,7 +179,7 @@ backlog → scoping → spec-ready → in-spec → dev-ready → in-dev → in-r
 - `status:changes-requested` — phase 5 found at least one blocking point tagged `change`
   (§6): an actionable code-level fix, not just a question for a human to weigh in on. Set
   instead of leaving `status:in-review`, alongside `needs-human` same as any block. Once a
-  human clears `needs-human`, `/pilot:dev` claims it like any other pre-claim status (§4
+  human clears `needs-human`, `/pilot-dev` claims it like any other pre-claim status (§4
   "Reclaiming a `status:changes-requested` ticket") — reclaiming here is expected to find
   an existing assignee (carried over from the original phase-4 claim) and overwrite it
   rather than treat that as a conflict, unlike a genuinely fresh `status:dev-ready`
@@ -192,7 +192,7 @@ backlog → scoping → spec-ready → in-spec → dev-ready → in-dev → in-r
   human (or an automation) can filter on without reading the review comment itself; a
   human still performs the actual merge, PILOT never does. There's no automatic
   re-review trigger if new commits land on the PR after this before it's actually
-  merged — re-run `/pilot:review` on it by hand, or move it back to `status:in-review`
+  merged — re-run `/pilot-review` on it by hand, or move it back to `status:in-review`
   yourself, before merging.
 - `status:wont-do` — the architect concluded during phase 2 that this ticket shouldn't be
   built after all (out of scope, duplicate, superseded) and closed the issue instead of
@@ -373,13 +373,13 @@ in competition for the same ticket.
 When a phase skill is invoked without an explicit ticket number, it builds its candidate
 pool from **two** queries, not one (`mcp__github__search_issues` / `list_issues`):
 1. **Fresh work** — tickets in its own pre-claim `status:`, no assignee (as before: e.g.
-   `status:spec-ready` for `/pilot:spec`).
+   `status:spec-ready` for `/pilot-spec`).
 2. **Resumable work** — tickets already in its own *in-progress* `status:` (e.g.
-   `status:in-spec` for `/pilot:spec`), still carrying the assignee from when they were
+   `status:in-spec` for `/pilot-spec`), still carrying the assignee from when they were
    originally claimed, but **no longer** carrying `needs-human` — see "Resuming a
    `needs-human` ticket" below for what that means and how to proceed once picked.
 
-`/pilot:dev` alone has a **third** pool: tickets in `status:changes-requested` with
+`/pilot-dev` alone has a **third** pool: tickets in `status:changes-requested` with
 `needs-human` no longer present — phase 5 sent these back for an actual code fix (§6),
 and they're a distinct case from both of the above, not a "fresh" ticket and not a
 same-claim "resume" either. See "Reclaiming a `status:changes-requested` ticket" below.
@@ -449,14 +449,14 @@ Finalization behaves exactly as any other pair run from here — the phase's com
 `status:` is set once the human gives final approval, same as "Interaction modes" below
 describes.
 
-### Reclaiming a `status:changes-requested` ticket (`/pilot:dev` only)
+### Reclaiming a `status:changes-requested` ticket (`/pilot-dev` only)
 
 Unlike "Resuming a `needs-human` ticket" or "Resuming a paused pair session" above (same
 claim, same in-progress `status:`, just re-entering), `status:changes-requested` is set
 by *phase 5*
-(§6), not by `/pilot:dev` itself — the ticket already has an open PR from the original
+(§6), not by `/pilot-dev` itself — the ticket already has an open PR from the original
 phase-4 pass, and whatever assignee is still on it is whoever ran *that* pass, not
-necessarily whoever runs `/pilot:dev` next.
+necessarily whoever runs `/pilot-dev` next.
 
 Reclaiming one follows the standard claim protocol above with a single, deliberate
 exception: an existing assignee doesn't count as "already claimed" for this status —
@@ -477,17 +477,17 @@ another review pass.
 
 Each phase skill is meant to also run **bare, on a timer** — a Routine (this
 environment's scheduled-trigger mechanism) whose prompt is nothing but the literal
-command. For `/pilot:scope`, `/pilot:spec`, and `/pilot:dev` — which default to pair mode
+command. For `/pilot-scope`, `/pilot-spec`, and `/pilot-dev` — which default to pair mode
 ("Interaction modes" below) — that literal command must include `--auto`
-(`/pilot:spec --auto`, still no ticket number computed by the routine itself), since pair
-requires a human live in the session and a Routine has none. `/pilot:review` needs no
+(`/pilot-spec --auto`, still no ticket number computed by the routine itself), since pair
+requires a human live in the session and a Routine has none. `/pilot-review` needs no
 flag either way, it's already auto-only, so its Routine's prompt stays a bare
-`/pilot:review`. `/pilot:story` is pair-only with no `--auto` and is therefore never
+`/pilot-review`. `/pilot-story` is pair-only with no `--auto` and is therefore never
 driven by a Routine at all. Beyond that flag, this works without any special-casing
 because "picking the next ticket when none is specified" (above) already covers both
 fresh and resumed work — the routine doesn't need to know which one it's about to do.
-Four independent Routines, one per claiming phase skill (`/pilot:scope --auto`,
-`/pilot:spec --auto`, `/pilot:dev --auto`) plus one for `/pilot:review` (which gets the
+Four independent Routines, one per claiming phase skill (`/pilot-scope --auto`,
+`/pilot-spec --auto`, `/pilot-dev --auto`) plus one for `/pilot-review` (which gets the
 same bare/no-argument pool over `status:in-review` instead of a claimed status, since
 phase 5 doesn't claim — see §6), each on its own schedule — not one combined routine, so
 a slow or failing phase never delays the others.
@@ -496,15 +496,15 @@ a slow or failing phase never delays the others.
 
 The five phase skills split into three groups by which modes they support:
 
-- **`/pilot:story`** — **pair only**, no `--auto` exists for it. Turning a raw idea into
+- **`/pilot-story`** — **pair only**, no `--auto` exists for it. Turning a raw idea into
   a story is a product conversation between the PM agent and a human, not something worth
   running unattended — there is no value in a story nobody validated. Never driven by a
   scheduled Routine as a result (above, "Scheduled sweeps").
-- **`/pilot:scope`, `/pilot:spec`, `/pilot:dev`** — default to **pair**, with `--auto` to
+- **`/pilot-scope`, `/pilot-spec`, `/pilot-dev`** — default to **pair**, with `--auto` to
   opt out of it. These three benefit from a human steering the outcome (a decomposition,
   a spec, an implementation approach) but don't strictly require it every time a Routine
   fires, so both modes stay available.
-- **`/pilot:review`** — **auto only**, no pair mode exists for it: reviewers run parallel
+- **`/pilot-review`** — **auto only**, no pair mode exists for it: reviewers run parallel
   and isolated on purpose (§6), with no natural mid-review checkpoint to pause at —
   reviewing shipped work is a judgment call to render, not a draft to iterate on together.
 
@@ -522,8 +522,8 @@ in-conversation until the whole phase is done — the ticket itself becomes the 
 record of how far the pair session got, which is what makes `--resume` possible (above,
 "Resuming a paused pair session"): if the session ends before the phase reaches final
 approval, nothing beyond the conversation itself is lost. This doesn't apply to a
-checkpoint reached before any ticket exists yet — `/pilot:story` creating its first
-story/Epic, or `/pilot:scope` formalizing a brand-new `type:tech` need with no issue
+checkpoint reached before any ticket exists yet — `/pilot-story` creating its first
+story/Epic, or `/pilot-scope` formalizing a brand-new `type:tech` need with no issue
 number — there's nothing to write into until that first creation happens, so that initial
 checkpoint is still held in-conversation exactly as before; any further checkpoint in the
 same paired run, once the ticket exists, is written immediately as above. Either way, the
@@ -533,12 +533,12 @@ one pass.
 
 **`--auto`** is the old default, before pair mode existed: the agent decides everything
 and the skill applies the finished result straight to GitHub in one pass, no human
-checkpoint. This is what a scheduled Routine must use for `/pilot:scope`, `/pilot:spec`,
-or `/pilot:dev` (above, "Scheduled sweeps") — pair requires a live human, so a Routine's
+checkpoint. This is what a scheduled Routine must use for `/pilot-scope`, `/pilot-spec`,
+or `/pilot-dev` (above, "Scheduled sweeps") — pair requires a live human, so a Routine's
 fired prompt for these three must include `--auto` explicitly now that pair is the
 default (the reverse of the old rule, back when `--pair` was opt-in: "never combine with
-a scheduled sweep"). `/pilot:story` has no `--auto` and is therefore never
-Routine-driven; `/pilot:review` needs no flag either way, it's already auto-only.
+a scheduled sweep"). `/pilot-story` has no `--auto` and is therefore never
+Routine-driven; `/pilot-review` needs no flag either way, it's already auto-only.
 
 `--auto` and `--resume` (above, "Resuming a paused pair session") are mutually exclusive
 with each other and with pair mode itself — pick exactly one per run.
@@ -558,7 +558,7 @@ The reason to build this instead of running full BMAD is cost. Two rules keep it
    prior phase's transcript. A phase skill reads only what that phase needs from the
    ticket (its current body, linked parent/children, the relevant `docs/` files) and
    hands that — not the pipeline's history — to a fresh `Agent` call using the matching
-   persona in `agents/pilot-*.md`.
+   persona in `.claude/agents/pilot-*.md`.
 2. **Claim/label bookkeeping is deterministic tool calls in the skill itself**, not
    something the agent reasons about. The skill does the GitHub read/write plumbing
    (§4) directly; only the actual thinking — writing the story, challenging the ticket,
@@ -578,7 +578,7 @@ ticket — never a running transcript of the prior phase's `Agent` call.
    blocking comment), excluding any that currently carries `on-hold` (§3). Phase 5 doesn't
    claim (below), so there's no assignee to filter on — just the presence/absence of
    `needs-human`/`on-hold`. A ticket phase 5 previously sent to `status:changes-requested`
-   is **not** in this pool — it's `/pilot:dev`'s to reclaim (§4), and only re-enters here
+   is **not** in this pool — it's `/pilot-dev`'s to reclaim (§4), and only re-enters here
    once dev pushes it back to `status:in-review`.
 1. Determine reviewers from `type:`: `pilot-pm` + `pilot-architect` + `pilot-techlead`
    for `type:feature`, `pilot-architect` + `pilot-techlead` only for `type:tech`.
@@ -615,7 +615,7 @@ ticket — never a running transcript of the prior phase's `Agent` call.
      counts) → one consolidated comment listing every point — both `change` and
      `decision` ones, marked which is which, grouped by reviewer — add `needs-human`, and
      move the ticket to `status:changes-requested` instead of leaving `status:in-review`
-     (§3; §4 "Reclaiming a `status:changes-requested` ticket"). `/pilot:dev`, not this
+     (§3; §4 "Reclaiming a `status:changes-requested` ticket"). `/pilot-dev`, not this
      skill, picks this back up once the flag is cleared.
    - All reviewers approve → one comment stating all agents approve and that merge is
      still a human action; move the ticket to `status:approved` instead of leaving
@@ -631,7 +631,7 @@ ticket — never a running transcript of the prior phase's `Agent` call.
    parent story (never a `type:epic` — that always closes by hand) — this runs
    independently of any live agent session, and is the only place `status:done` gets set
    on an actionable ticket; no phase skill sets it directly. `subscribe_pr_activity`
-   remains available to a `/pilot:dev` session for other PR-babysitting purposes (e.g.
+   remains available to a `/pilot-dev` session for other PR-babysitting purposes (e.g.
    surfacing CI failures or review comments back into the session) — it is simply no
    longer relied on for this step.
 
@@ -645,22 +645,3 @@ ticket — never a running transcript of the prior phase's `Agent` call.
    entirely when GitHub's own timeline shows the closure came from a merged commit
    reference (`Closes #N`) — that case is the `pull_request: closed` trigger's alone, so
    the same closure is never processed twice.
-
----
-
-## 7. Relationship To An Existing Backlog Doc
-
-Some projects track technical debt and future work in a plain markdown backlog
-(something like `FUTURE-IMPROVEMENTS.md` or `TECH-DEBT.md`) before adopting PILOT, and it
-tracks the kind of work `type:tech` tickets are meant for going forward (runtime
-foundations, security hardening, CI, migrations, and the like). If this project has one,
-migrating its existing entries into GitHub issues (as `type:tech` tickets) is a natural
-follow-up once PILOT is adopted, not something that has to happen before PILOT can be
-used. Once migrated, new technical work is opened directly as a `type:tech` ticket via
-`/pilot:scope` rather than appended to that file.
-
-If this project also has a one-shot "implement the next backlog item" skill that predates
-PILOT (one that reads that backlog file directly and implements its next ready item in
-one pass), retire it as part of the same migration — once the backlog has moved to
-GitHub issues, `/pilot:scope` → `/pilot:dev` fully supersede it, so delete it then, not
-before.
