@@ -1,0 +1,85 @@
+# CLAUDE CODE GUIDE & DIRECTIVES (MONOREPO ROOT)
+
+## 1. OVERVIEW & SPECIFICATIONS REFERENCE
+{{PROJECT_NAME}} — {{FUNCTIONAL_VISION}}
+
+The functional scope is specified in `PROJECT-FUNCTIONAL-SCOPE.md`. Read it before
+designing anything that touches product behavior.
+
+Ticket work (functional or purely technical) goes through **PILOT**, this repo's
+lightweight ticket-process framework — five short phases (`plan` → `investigate` →
+`lay out` → `operate` → `test & validate`), each its own isolated, low-token agent
+context instead of one accumulating one. See `docs/pilot-process.md` for the state
+machine, labels, and claim protocol, and `skills/pilot*` / `agents/pilot-*.md` (provided
+by the `pilot` plugin) for the skills and personas that drive it. Read it before creating
+or moving a ticket through any phase.
+
+<!-- PILOT:ARCHITECTURE:START -->
+_Architecture not yet defined — run `/init-archi` to describe this monorepo's apps and
+technologies. That will generate this section (per-app doc references, tech stack,
+Clean Architecture layering) and scaffold each app's skeleton._
+<!-- PILOT:ARCHITECTURE:END -->
+
+---
+
+## 2. COMMON COMMANDS
+<!-- PILOT:COMMANDS:START -->
+_Not yet defined — run `/init-archi` to generate the per-app dev/test/build commands
+for this section._
+<!-- PILOT:COMMANDS:END -->
+
+---
+
+## 3. CODING STANDARDS & GLOBAL RULES
+- **New Framework/Dependency → Latest Compatible Version:** when introducing a new
+  framework or library (not bumping an existing one), pin the latest stable release
+  compatible with the app's runtime — check the registry (`npm view <pkg> version`,
+  `pip index versions <pkg>`) rather than guessing or reusing an older version from
+  memory. Existing dependencies keep their current upgrade cadence; this rule is about
+  the version picked at introduction time.
+- **Clean Architecture:** Strict dependency isolation between Domain, Use Cases,
+  Adapters, and Infrastructure across all services.
+- **Security:** Never log secrets or tokens. Inter-service calls that cross a trust
+  boundary require an explicit shared secret or equivalent, never an implicit trust
+  assumption.
+
+---
+
+## 4. DOCUMENTATION MAINTENANCE RULE
+At the end of any task that modifies architecture, endpoints, folder structures, or API contracts:
+1. Check if files in `docs/` or subfolder `CLAUDE.md` files are outdated.
+2. Automatically update the corresponding `.md` files before finalizing the task.
+3. **Keep `CLAUDE.md` and `README.md` (root and per-app) synchronized in substance, not
+   verbatim.** They target different audiences — `CLAUDE.md` instructs the LLM, `README.md`
+   informs human developers — so the same facts (workflow, architecture, conventions)
+   should hold true in both, but phrasing, depth, and emphasis can differ per audience.
+   A change that touches one MUST be checked against the other before finalizing the task.
+4. **PILOT's file family is tightly cross-referenced** — `docs/pilot-process.md`, and the
+   PILOT mentions in this file and `README.md` (the skills and agent personas themselves
+   are distributed by the `pilot` plugin and updated via `/pilot-update`, not edited
+   locally). A renamed label, moved section heading, or changed mechanism in one can leave
+   stale references in the rest. After editing any of them, check cheaply: `grep` the
+   exact term(s) you changed across that file family and fix what turns up.
+
+---
+
+## 5. GIT WORKFLOW
+- **Commit Freely On A Work Branch, Never On `main`:** on a short-lived work branch,
+  committing and pushing completed work is authorized by default. On `main`, never commit
+  or push without the user explicitly asking in the current task.
+- **Amend, Don't Stack, Within The Same Not-Yet-Merged Context:** commits on a work
+  branch exist to separate distinct contexts. If a new commit only fixes, corrects, or
+  completes the change the immediately preceding commit made (not yet merged into `main`),
+  amend that commit instead of adding a separate commit for the same context. Once a
+  commit has merged into `main` (or a review has already landed on it), it's shared
+  history — never amend or force-push it. A branch is also "shared" the moment another
+  branch is created from it, even before either merges into `main`.
+- **Trunk-Based Development:** `main` is the single trunk. Work happens on short-lived
+  branches created from `main` and merged back quickly — no long-lived feature or release
+  branches.
+- **Conventional Commits:** Every commit message follows `type(scope): description`
+  (e.g. `fix(backend): resolve null pointer in session lookup`). Common types: `feat`,
+  `fix`, `docs`, `refactor`, `test`, `style`, `chore`. `scope` is typically the affected
+  app, or omitted for repo-wide changes.
+- **Rebase Merge Only:** PRs merge into `main` via **rebase merge** — never a merge
+  commit. Never force-push `main` to fix a past merge commit.

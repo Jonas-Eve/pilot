@@ -1,0 +1,12 @@
+{
+  "name": "pilot-marketplace",
+  "owner": { "name": "Jonas Evenisse", "email": "jevenisse@myavimobility.com" },
+  "plugins": [
+    {
+      "name": "pilot",
+      "source": "./",
+      "description": "PILOT: a lightweight 5-phase ticket-process framework (plan, investigate, lay out, operate, test & validate) for driving GitHub-issue tickets through Claude Code agent personas, reusable across projects.",
+      "version": "0.1.0"
+    }
+  ]
+}
