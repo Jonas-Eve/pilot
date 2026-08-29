@@ -35,6 +35,11 @@ changes.
   see step 3.
 - **GitHub labels** are re-applied idempotently (create-or-update, never delete) — safe
   to always re-run.
+- **`.github/pull_request_template.md`** is explicitly **not** PILOT-owned, even though
+  `pilot-init` copies it in from `$PILOT_SRC/assets/github/pull_request_template.md`. It's
+  a one-time scaffold, not a synced asset: this command never diffs, touches, or reports
+  on it, so the project is free to customize it however it likes right after `pilot-init`
+  runs.
 - Anything hand-edited inside a PILOT-owned file/block is lost on overwrite — that's why
   every step below diffs and confirms first, never overwrites silently.
 
