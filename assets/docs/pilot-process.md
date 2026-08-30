@@ -37,10 +37,12 @@ Bare, no-argument commands are what make the scheduled case useful — see below
 
 ```
 /pilot-story "let a user filter search results by wheelchair accessibility"
-    → opens a type:feature issue
+    → opens a type:feature issue (PM agent, auto-detected)
 
-/pilot-scope "add the GitHub Actions CI workflow described in our tech-debt backlog"
-    → opens one or more type:tech issues directly, no story needed
+/pilot-story "add the GitHub Actions CI workflow described in our tech-debt backlog"
+    → opens one or more type:tech issues (architect agent, auto-detected)
+
+/pilot-story --tech "..."   → skips detection, declares the need type:tech upfront
 
 /pilot-scope 42        → scopes/decomposes existing issue #42
 /pilot-spec 42         → writes the technical spec for #42 (must be status:spec-ready)
@@ -68,8 +70,8 @@ Routine-driven at all.
 
 | # | Phase | Skill | Agent | Produces |
 |---|-------|-------|-------|----------|
-| 1 | Plan | `/pilot-story` | `pilot-pm` | A functional user story, or an Epic + several stories (`type:feature`) |
-| 2 | Investigate | `/pilot-scope` | `pilot-architect` | For a raw tech need: a story, or a tech Epic + several stories. For an existing story: the story itself scoped, or split into sub-tickets ready for spec |
+| 1 | Plan | `/pilot-story` | `pilot-pm` (`type:feature`) or `pilot-architect` (`type:tech`) — auto-detected from the need, `--tech` to declare it upfront | A functional user story or formalized technical need, or an Epic + several stories, for either `type:` — content only, no dependency/prerequisite analysis |
+| 2 | Investigate | `/pilot-scope` | `pilot-architect` — plus `pilot-pm` when a `type:feature` story is split | The story itself scoped, or split into dev-sized sub-tickets ready for spec, with dependencies recorded (prerequisite `type:tech` ticket(s) and/or between sibling sub-tickets) — plus, either way, a wont-do verdict where applicable |
 | 3 | Lay out | `/pilot-spec` | `pilot-techlead` | A technical spec written into the ticket |
 | 4 | Operate | `/pilot-dev` | `pilot-dev` | An implementation + pull request (following `.github/pull_request_template.md`) |
 | 5 | Test & validate | `/pilot-review` | `pilot-pm` + `pilot-architect` + `pilot-techlead` (feature) or `pilot-architect` + `pilot-techlead` (tech) | A GitHub comment: either blocking points for a human (`needs-human`, plus `status:changes-requested` if any are code-level) or a consolidated go-ahead (`status:approved`) — a human always does the actual merge |
@@ -79,24 +81,36 @@ There is no single global-orchestrator command — each phase skill is invoked o
 
 ---
 
-## 2. Two Entry Points: `type:feature` vs `type:tech`
+## 2. Ticket Types: `type:feature` vs `type:tech`
 
-Not every ticket starts life as a functional user story. Purely technical work — CI,
-security hardening, deployments, migrations, performance/optimization — never needs a
-product framing, so it skips phase 1 entirely:
+Every ticket goes through phase 1 (creation) before phase 2 (decomposition) — `type:`
+decides only which agent phase 1 calls, never whether phase 1 runs at all. Phase 1 is
+purely about identifying and formalizing what the need actually is — never about
+dependencies, prerequisites, or splitting; that's entirely phase 2's job (below):
 
-- **`type:feature`** — starts at phase 1. A human describes an idea in free text to
-  `/pilot-story`; the PM agent formalizes it into a user story. Phase 5 review involves
-  all three agents (PM checks product fit against the story's acceptance criteria).
-- **`type:tech`** — starts at phase 2. A human describes a technical need in free text
-  directly to `/pilot-scope`; the architect agent formalizes it into a scoped ticket (or
-  several) as part of the same pass that would otherwise challenge/decompose an existing
-  story — there is no separate ticket-creation skill, it's the same act either way. Phase
-  5 review is architect + tech lead only; the PM is never involved.
+- **`type:feature`** — a human describes an idea in free text to `/pilot-story`; the PM
+  agent formalizes it into a user story. Phase 5 review involves all three agents (PM
+  checks product fit against the story's acceptance criteria).
+- **`type:tech`** — a human describes a technical need in free text to the same
+  `/pilot-story`; the architect agent formalizes it into a story (or several) in place of
+  the PM — there is no separate ticket-creation skill, it's the same act either way, just
+  a different agent behind it. Phase 5 review is architect + tech lead only; the PM is
+  never involved.
+
+**Which agent phase 1 calls is auto-detected from the need, not asked for explicitly.**
+`/pilot-story` is pair-only (§4 "Interaction modes"), so a wrong guess is never silent —
+the human sees which agent picked it up and corrects it live before anything is created.
+Pass `--tech` to skip detection and declare a `type:tech` need upfront (there is no
+`--feature` equivalent; feature is the default read of an undecorated need).
 
 A human never opens a raw, unformalized GitHub issue directly for either kind of ticket —
-every ticket is created by an agent (PM for `type:feature`, architect for `type:tech`),
-even when the origin is a five-word request from a person.
+every ticket is created by an agent during phase 1 (PM for `type:feature`, architect for
+`type:tech`), even when the origin is a five-word request from a person. Phase 2
+(`/pilot-scope`) always uses the architect regardless of `type:` — challenging/decomposing
+an already-created story is a technical judgment call either way, never the PM's on its
+own. The one exception is a prerequisite tech ticket the architect originates itself,
+inline, mid-phase-2 scoping pass — see "Prerequisite tech tickets" below; the other is the
+PM's own involvement when a `type:feature` story gets split — see "Three levels" below.
 
 **`type:` is fixed at the root and inherited by every child ticket.** A sub-ticket
 produced by decomposing a `type:feature` story stays `type:feature` (even if its content
@@ -113,9 +127,9 @@ for both entry points:
 - **Epic** (`type:epic`, alongside `type:feature` or `type:tech`) — groups several
   **stories** under a shared theme, for categorization ("CI", "wheelchair filtering
   across the app"). Never itself scoped, spec'd, or built — no `status:` label. Created
-  by the PM (phase 1) or the architect (phase 2's raw-need entry) at the same moment a
-  story would otherwise be created, the instant it's clear the idea can't be delivered as
-  a single story. **Stays open and is closed by hand, always** — unlike a split story's
+  by the PM (`type:feature`) or the architect (`type:tech`) during phase 1, at the same
+  moment a story would otherwise be created, the instant it's clear the idea can't be
+  delivered as a single story. **Stays open and is closed by hand, always** — unlike a split story's
   sub-tickets (a fixed set decided once, §3 "Cascading completion"), new stories can be
   added to an Epic at any point, so its completeness is never something PILOT can prove
   on its own.
@@ -127,13 +141,28 @@ for both entry points:
   3–4, the architect splits *that story* into dev-sized sub-tickets. This is the
   mechanism the earlier draft mislabeled `type:epic`; the story that got split now gets
   `status:split` instead (§3) — it is still just a story, one level below an Epic, not an
-  Epic itself.
+  Epic itself. Split along vertical slices (each sub-ticket delivers a coherent, ideally
+  independently shippable/testable unit) rather than by technical layer — a front-end-only
+  or back-end-only sub-ticket is rarely reviewable or testable on its own, unless the two
+  are genuinely decoupled (e.g. a backend API meant to be consumed later, independently).
+  **For a `type:feature` story only**, once the architect proposes a split, the PM is also
+  invoked to check the proposed sub-tickets still collectively cover the original story's
+  acceptance criteria before it's finalized — a split that quietly drops part of what the
+  story promised would otherwise only surface in phase 5, after everything's already been
+  built.
 
-**Creating or reusing an Epic** (phase 1 for `type:feature`, phase 2's raw-need entry for
-`type:tech`): before creating a new Epic, check open `type:epic` issues of the matching
+**Creating or reusing an Epic** (phase 1, for either type): before creating a new Epic, check open `type:epic` issues of the matching
 `type:` for one that already fits the idea/need by theme — reuse it (attach the new
 story/stories as sub-issues of it) rather than creating a duplicate. Only create a new
 Epic when no existing one fits and the idea genuinely can't be delivered as one story.
+
+**Phase 2 still claims and works exactly one ticket per invocation** (§4 "Claim
+Protocol") — nothing about the above changes that. But nothing stops the architect from
+*reading* related tickets for context while scoping that one ticket: the parent Epic (if
+any), sibling stories under it, or anything already linked via "Blocks #M"/"Depends on
+#N" or a sub-issue relationship — e.g. to avoid spinning out a prerequisite that a
+sibling ticket already covers, or proposing a split that conflicts with what a linked
+ticket already does. This is read-only context-gathering, not a second claim.
 
 ### Prerequisite tech tickets (distinct from a split's sub-tickets)
 
@@ -141,12 +170,16 @@ A sub-ticket (above) is part of the *same* ticket's tree — it inherits `type:`
 root and never recomputes it. A **prerequisite** is the opposite case: while scoping a
 `type:feature` (or `type:tech`) ticket in phase 2, the architect discovers it depends on
 technical work that isn't part of it at all — infra, CI, a shared library, a migration —
-exactly the kind of thing that would normally come in through phase 2's raw-need entry
-point (above), just discovered from inside another ticket's scoping pass instead of being
-reported to `/pilot-scope` directly.
+exactly the kind of thing that would normally come in through phase 1 as a human-reported
+`type:tech` need (above), just discovered from inside another ticket's phase-2 scoping pass
+instead of being reported to `/pilot-story` directly. This is the one place phase 2 still
+originates a brand-new ticket itself rather than routing back through phase 1 — the
+architect already has full scoping context loaded for this pass, so it creates the
+prerequisite inline, using the same mechanics phase 1 uses for a human-reported `type:tech`
+need.
 
-The architect creates it exactly the way a raw `type:tech` need is created — one story, or
-several under a new/reused Epic — **never** as a sub-issue of the ticket being scoped: a
+The architect creates it — one story, or several under a new/reused Epic — **never** as a
+sub-issue of the ticket being scoped: a
 sub-issue would make it inherit the parent's `type:` and tie its lifecycle to the parent's
 tree, which is wrong for a ticket that is its own root and goes through phases 2-5
 independently. Instead, link the two directions with a plain issue reference: a comment on
@@ -172,6 +205,18 @@ deliberately deferred work — where there genuinely is nothing for a phase skil
 The prerequisite ticket itself is nothing special once created: a normal `type:tech`
 story, `status:backlog`, moving through phases 2-5 like any other. The only place its
 existence matters downstream is the gate check on whatever ticket names it (§4 below).
+
+### Dependencies between sub-tickets of the same split
+
+Distinct from a prerequisite (above, a separate root ticket) and from `type:` inheritance
+(§2 intro): when the architect splits a story, two of its own sub-tickets can still
+depend on each other — e.g. a front-end sub-ticket that consumes an API a back-end
+sub-ticket in the same split creates. Unlike a prerequisite, this is *within* the same
+tree, both sub-tickets already inheriting the root's `type:`. Record it with the same
+"Depends on #N" phrase (§4 "Blocked-by dependencies") on the dependent sub-ticket, at
+split time — the mechanism already gates on the literal phrase regardless of whether the
+referenced ticket is a separate root or a sibling, so nothing new needs to be built for
+this, just the same phrase used one level down.
 
 ---
 
@@ -612,8 +657,8 @@ record of how far the pair session got, which is what makes `--resume` possible 
 "Resuming a paused pair session"): if the session ends before the phase reaches final
 approval, nothing beyond the conversation itself is lost. This doesn't apply to a
 checkpoint reached before any ticket exists yet — `/pilot-story` creating its first
-story/Epic, or `/pilot-scope` formalizing a brand-new `type:tech` need with no issue
-number — there's nothing to write into until that first creation happens, so that initial
+story/Epic (either type) — there's nothing to write into until that first creation
+happens, so that initial
 checkpoint is still held in-conversation exactly as before; any further checkpoint in the
 same paired run, once the ticket exists, is written immediately as above. Either way, the
 very last thing pair mode does — setting the phase's completion `status:` (e.g.
