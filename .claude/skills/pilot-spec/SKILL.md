@@ -63,9 +63,13 @@ mechanics of running phase 3.
     in-conversation — this is what `--resume` picks back up later if the session ends
     before final approval (`docs/pilot-process.md` §4 "Resuming a paused pair session").
     Requires a human live in this session; a scheduled Routine must pass `--auto`
-    instead. Once approved, continue to step 5 as normal — its GitHub write is then just
+    instead. Once approved, continue to step 4b — its GitHub write is then just
     the remaining piece (final `status:dev-ready`), since the spec itself was already
     saved checkpoint by checkpoint.
+4b. **Final consolidation pass** (`docs/pilot-process.md` §4 "Interaction modes"): before
+    applying anything, have the tech lead re-read the whole spec as it now stands — not
+    just the latest round's delta — and fix anything that no longer holds together
+    across rounds. Do this whether the run was pair or `--auto`.
 5. Apply the result:
    - Spec produced: update the ticket body, set `status:dev-ready`.
    - Blocking conflict: leave the subagent's explanation as a comment on the ticket, add

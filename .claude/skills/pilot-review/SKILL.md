@@ -25,6 +25,13 @@ only covers the mechanics of running phase 5.
    decide the reviewer set:
    - `type:feature` → `pilot-pm`, `pilot-architect`, `pilot-techlead`
    - `type:tech` → `pilot-architect`, `pilot-techlead` (no PM)
+
+   Together these cover every dimension phase 5 checks, with nothing dropped silently
+   (`docs/pilot-process.md` §6): PM — product fit against the story's acceptance
+   criteria (feature only); architect — conformance to the security/architecture
+   decisions recorded at scope time; tech lead — both conformance to its own spec *and*
+   general code quality/maintainability. If a future edit changes what any one agent's
+   own file says it checks, re-verify this list still adds up to full coverage.
 2. Once this project has a CI workflow covering the affected area, check it's green on
    the PR's head commit (`mcp__github__pull_request_read` `get_check_runs`/`get_status`)
    before going further — red or pending CI is an automatic, `change`-tagged block (step
@@ -34,14 +41,13 @@ only covers the mechanics of running phase 5.
 3. Call the `Agent` tool once per reviewer, **in parallel** (independent calls in the
    same turn, not sequential), with `subagent_type` set to that reviewer's persona name
    (`pilot-pm`, `pilot-architect`, `pilot-techlead`) — none should see another's verdict.
-   Each call passes only
-   what that reviewer needs: the PR diff/description, and for the PM, the linked story's
-   acceptance criteria; for the architect, its own recorded security/architecture
-   decisions from the ticket; for the tech lead, its own spec from the ticket (the tech
-   lead re-runs validation on the PR branch itself as part of forming its verdict, per
-   `docs/pilot-process.md` §6). Each reviewer's persona (`.claude/agents/pilot-*.md`)
-   already knows to tag every blocking point `change` or `decision` — no extra instruction
-   needed here.
+   Each call passes only what that reviewer needs: the PR diff/description, and for the
+   PM, the linked story's acceptance criteria; for the architect, its own recorded
+   security/architecture decisions from the ticket; for the tech lead, its own spec from
+   the ticket (the tech lead re-runs validation on the PR branch itself as part of
+   forming its verdict, per `docs/pilot-process.md` §6). Each reviewer's persona
+   (`.claude/agents/pilot-*.md`) already knows to tag every blocking point `change` or
+   `decision` — no extra instruction needed here.
 4. Collect the verdicts. Aggregate into exactly **one** GitHub comment on the PR
    (`mcp__github__pull_request_review_write` / `add_comment_to_pending_review`, or
    `add_issue_comment` on the PR):
