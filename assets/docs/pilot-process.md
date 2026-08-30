@@ -24,7 +24,7 @@ GitHub API call outright, not silently. Create them once (repo Settings → Labe
 the GitHub API/CLI):
 
 `type:feature`, `type:tech`, `type:epic`, `priority:P0`, `priority:P1`, `priority:P2`,
-`status:backlog`, `status:scoping`, `status:spec-ready`, `status:in-spec`,
+`status:draft`, `status:backlog`, `status:scoping`, `status:spec-ready`, `status:in-spec`,
 `status:dev-ready`, `status:in-dev`, `status:in-review`, `status:changes-requested`,
 `status:approved`, `status:wont-do`, `status:split`, `status:done`, `needs-human`,
 `on-hold`.
@@ -43,6 +43,7 @@ Bare, no-argument commands are what make the scheduled case useful — see below
     → opens one or more type:tech issues (architect agent, auto-detected)
 
 /pilot-story --tech "..."   → skips detection, declares the need type:tech upfront
+/pilot-story --resume 12    → picks back up a status:draft ticket left mid-pair
 
 /pilot-scope 42        → scopes/decomposes existing issue #42
 /pilot-spec 42         → writes the technical spec for #42 (must be status:spec-ready)
@@ -70,7 +71,7 @@ Routine-driven at all.
 
 | # | Phase | Skill | Agent | Produces |
 |---|-------|-------|-------|----------|
-| 1 | Plan | `/pilot-story` | `pilot-pm` (`type:feature`) or `pilot-architect` (`type:tech`) — auto-detected from the need, `--tech` to declare it upfront | A functional user story or formalized technical need, or an Epic + several stories, for either `type:` — content only, no dependency/prerequisite analysis |
+| 1 | Plan | `/pilot-story` | `pilot-pm` (`type:feature`) or `pilot-architect` (`type:tech`) — auto-detected from the need, `--tech` to declare it upfront | A functional user story or formalized technical need, or an Epic + several stories, for either `type:` — content only, no dependency/prerequisite analysis. The ticket exists as `status:draft` until the human's final approval (§3) |
 | 2 | Investigate | `/pilot-scope` | `pilot-architect` — plus `pilot-pm` when a `type:feature` story is split | The story itself scoped, or split into dev-sized sub-tickets ready for spec, with dependencies recorded (prerequisite `type:tech` ticket(s) and/or between sibling sub-tickets) — plus, either way, a wont-do verdict where applicable |
 | 3 | Lay out | `/pilot-spec` | `pilot-techlead` | A technical spec written into the ticket |
 | 4 | Operate | `/pilot-dev` | `pilot-dev` | An implementation + pull request (following `.github/pull_request_template.md`) |
@@ -235,16 +236,25 @@ completion" below), it never auto-closes.
 
 ### `status:` — the pipeline state machine, one label at a time
 ```
-backlog → scoping → spec-ready → in-spec → dev-ready → in-dev → in-review → approved → done
-   ↓          ↓
-   +---- wont-do (before dev starts) ----+
+draft → backlog → scoping → spec-ready → in-spec → dev-ready → in-dev → in-review → approved → done
+                      ↓         ↓
+                      +---- wont-do (before dev starts) ----+
 
-   scoping → split (tracker for sub-tickets, reaches done only by cascade — see below)
+scoping → split (tracker for sub-tickets, reaches done only by cascade — see below)
 
-   in-review → changes-requested → in-dev → in-review (loop back through dev when phase
-   5 blocks on something that needs an actual code change — see `status:changes-requested`
-   below and §6)
+in-review → changes-requested → in-dev → in-review (loop back through dev when phase
+5 blocks on something that needs an actual code change — see `status:changes-requested`
+below and §6)
 ```
+- `status:draft` — phase 1 (`/pilot-story`) has created the ticket but the human hasn't
+  given final approval yet — assigned to whoever's session created it, the moment the
+  agent's first draft exists (§4 "Interaction modes"). Mirrors an in-progress `status:`
+  below in every way that matters: excluded from every phase's candidate pools (§4
+  "Picking the next ticket..."), never picked up bare, only reachable by an explicit
+  `--resume <issue>` (§4 "Resuming a paused pair session") or once a cleared
+  `needs-human` flag makes it resumable (§4 "Resuming a `needs-human` ticket"). Becomes
+  `status:backlog`, unassigned, once the human gives final approval — an Epic still gets
+  no `status:` label at all (above), draft or not.
 - `status:backlog` — ticket exists, phase 2 hasn't started.
 - `status:scoping` — architect has claimed it for phase 2.
 - `status:spec-ready` — scoped, not split, ready for phase 3. A freshly created
@@ -434,7 +444,12 @@ once); clearing one has no effect on the other.
 ## 4. Claim Protocol (avoiding two agents on the same ticket)
 
 Phases 2, 3, and 4 each start by **claiming** the ticket before doing any real work,
-because several instances of the same phase (e.g. several devs) may run concurrently:
+because several instances of the same phase (e.g. several devs) may run concurrently.
+Phase 1 doesn't fit this pattern the same way — there's no pre-existing ticket to claim,
+since phase 1 is what creates one — but the moment it creates the ticket (`status:draft`,
+§3), it assigns it the same way, and that assignment sticks if the pair session ends
+before final approval, exactly like a claimed ticket left mid-phase; see "Resuming a
+paused pair session" below.
 
 1. Read the ticket's current `status:` and assignee (`mcp__github__issue_read` /
    `pull_request_read`).
@@ -456,8 +471,11 @@ in competition for the same ticket.
 
 ### Picking the next ticket when none is specified
 
-When a phase skill is invoked without an explicit ticket number, it builds its candidate
-pool from **two** queries, not one (`mcp__github__search_issues` / `list_issues`):
+Phase 1 has no such pool at all — it always starts from a raw need in free text (or an
+explicit `--resume <issue>`), never from picking an existing ticket, so nothing below
+applies to it. When any other phase skill is invoked without an explicit ticket number,
+it builds its candidate pool from **two** queries, not one
+(`mcp__github__search_issues` / `list_issues`):
 1. **Fresh work** — tickets in its own pre-claim `status:`, no assignee (as before: e.g.
    `status:spec-ready` for `/pilot-spec`).
 2. **Resumable work** — tickets already in its own *in-progress* `status:` (e.g.
@@ -555,11 +573,13 @@ explicitly as an argument):
 Distinct from both "Resuming a `needs-human` ticket" above and "Reclaiming a
 `status:changes-requested` ticket" below: this is for a ticket left mid-**pair**
 ("Interaction modes" below) — still carrying its original assignee, still in that phase's
-in-progress `status:` (`status:scoping`, `status:in-spec`, `status:in-dev`), with **no**
-`needs-human` — the pair session simply ended (the human stepped away, the session
-closed) before reaching the phase's final approval. Left alone, the normal claim-protocol
-check (above, step 2: "already has an assignee → stop") would treat this the same as a
-ticket someone else is actively working right now, which isn't the case here.
+in-progress `status:` (`status:draft`, `status:scoping`, `status:in-spec`,
+`status:in-dev`), with **no** `needs-human` — the pair session simply ended (the human
+stepped away, the session closed) before reaching the phase's final approval. Left alone,
+the normal claim-protocol check (above, step 2: "already has an assignee → stop") would
+treat this the same as a ticket someone else is actively working right now, which isn't
+the case here. For phase 1 specifically, `status:draft` is what makes this possible at
+all — before it existed, an interrupted phase-1 session left nothing behind to resume.
 
 `--resume` requires an **explicit ticket number** — it is never part of any bare/
 scheduled-sweep pool. Unlike `needs-human`, nothing on the ticket itself distinguishes an
@@ -631,9 +651,13 @@ a slow or failing phase never delays the others.
 The five phase skills split into three groups by which modes they support:
 
 - **`/pilot-story`** — **pair only**, no `--auto` exists for it. Turning a raw idea into
-  a story is a product conversation between the PM agent and a human, not something worth
-  running unattended — there is no value in a story nobody validated. Never driven by a
-  scheduled Routine as a result (above, "Scheduled sweeps").
+  a story or a technical need into a ticket is a conversation between the drafting agent
+  (PM or architect, §2) and a human, not something worth running unattended — there is no
+  value in a story nobody validated. Never driven by a
+  scheduled Routine as a result (above, "Scheduled sweeps"). Still supports
+  `--resume <issue>` for a `status:draft` ticket left mid-pair (above, "Resuming a paused
+  pair session") — that's a human deliberately picking back up, not unattended
+  automation.
 - **`/pilot-scope`, `/pilot-spec`, `/pilot-dev`** — default to **pair**, with `--auto` to
   opt out of it. These three benefit from a human steering the outcome (a decomposition,
   a spec, an implementation approach) but don't strictly require it every time a Routine
@@ -649,21 +673,37 @@ bookkeeping, unrelated to the content decision.
 natural checkpoint(s) — the drafted story, the proposed decomposition, the spec outline,
 the implementation plan — and the skill relays that to the human as an ordinary reply in
 the same conversation, not a GitHub write; it waits for the human's next message, feeds
-it back to the agent, and repeats until they approve. **Once a checkpoint is approved on
-a ticket that already exists, the skill writes that progress into the ticket
-immediately** (a comment, or a partial `issue_write`) instead of holding it
-in-conversation until the whole phase is done — the ticket itself becomes the durable
-record of how far the pair session got, which is what makes `--resume` possible (above,
-"Resuming a paused pair session"): if the session ends before the phase reaches final
-approval, nothing beyond the conversation itself is lost. This doesn't apply to a
-checkpoint reached before any ticket exists yet — `/pilot-story` creating its first
-story/Epic (either type) — there's nothing to write into until that first creation
-happens, so that initial
-checkpoint is still held in-conversation exactly as before; any further checkpoint in the
-same paired run, once the ticket exists, is written immediately as above. Either way, the
-very last thing pair mode does — setting the phase's completion `status:` (e.g.
-`status:spec-ready`) — is unchanged from before and identical to what `--auto` does in
-one pass.
+it back to the agent, and repeats until they approve. **The skill writes progress into
+the ticket immediately at every checkpoint** (a comment, or a partial `issue_write`)
+instead of holding it in-conversation until the whole phase is done — the ticket itself
+becomes the durable record of how far the pair session got, which is what makes
+`--resume` possible (above, "Resuming a paused pair session"): if the session ends before
+the phase reaches final approval, nothing beyond the conversation itself is lost.
+
+For phases 2-4 a ticket already exists before the phase starts, so this is
+straightforward. **Phase 1 is the one case where no ticket exists yet at the very first
+checkpoint** — `/pilot-story` creates it right there (`status:draft`, §3) as soon as the
+agent's first draft (a single story, or an Epic + several) is ready to show the human,
+instead of holding it in-conversation — the checkpoint the human sees *is* the draft
+ticket's current body from that point on. Every checkpoint, including the first, is
+written immediately from here, the same as phases 2-4; there's no in-conversation-only
+exception left. Either way, the very last thing pair mode does — setting the phase's
+completion `status:` (`status:backlog`, unassigned, for phase 1; e.g.
+`status:spec-ready` for phase 3) — is the same end-state `--auto` reaches in one pass,
+for the phases that have an `--auto` (phase 1 doesn't, below).
+
+**Final consolidation pass, every phase, right before setting the completion `status:`.**
+Writing progress checkpoint by checkpoint (above) means the ticket (or, for phase 4, the
+diff) was assembled incrementally, round by round of the pair conversation — nothing
+guarantees a decision from an early round still squares with one added several rounds
+later, or that nothing was left half-written in the seams between them. Once the human
+gives final approval, before applying the completion label, the agent re-reads the whole
+thing as it now stands — the full ticket body, not just the latest round's delta; the
+full diff, not just the last commit, for phase 4 — and fixes anything incoherent or
+incomplete it finds, the same way it would if it were seeing the finished result for the
+first time. This is also what `pilot-dev` uses in phase 4 as its own self-review of the
+implementation before opening the PR — a substitute for a separate reviewer checking the
+same thing again in phase 5 (§6), not an addition to it.
 
 **`--auto`** is the old default, before pair mode existed: the agent decides everything
 and the skill applies the finished result straight to GitHub in one pass, no human
@@ -715,7 +755,17 @@ ticket — never a running transcript of the prior phase's `Agent` call.
    is **not** in this pool — it's `/pilot-dev`'s to reclaim (§4), and only re-enters here
    once dev pushes it back to `status:in-review`.
 1. Determine reviewers from `type:`: `pilot-pm` + `pilot-architect` + `pilot-techlead`
-   for `type:feature`, `pilot-architect` + `pilot-techlead` only for `type:tech`.
+   for `type:feature`, `pilot-architect` + `pilot-techlead` only for `type:tech`. Three
+   distinct, non-overlapping lenses on every reviewed PR: PM checks product fit against
+   the story's acceptance criteria (feature only); architect checks conformance to the
+   security/architecture decisions recorded at scope time; tech lead checks both
+   conformance to its own spec *and* general code quality/maintainability — deliberately
+   not split out to a fourth reviewer, since `pilot-dev` already did its own self-review
+   pass on the diff before opening the PR in phase 4 (§4 "Interaction modes" — the same
+   final-consolidation-pass principle every pair-mode phase follows); a second, separate
+   agent re-reviewing the same code from the same technical vantage point would be a
+   near-duplicate of that self-review, not a genuinely distinct lens the way PM/architect/
+   tech lead are from each other.
 2. Before any reviewer votes, **re-run validation on the PR's actual branch** — the tech
    lead reviewer does this as part of forming its verdict, using this project's own
    build/test/lint commands (the same ones `pilot-dev` used in phase 4 — see this

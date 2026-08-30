@@ -1,7 +1,7 @@
 ---
 name: pilot-story
-description: "Phase 1 of PILOT (see docs/pilot-process.md): turn a raw need into a formalized GitHub issue — a functional type:feature user story (PM agent) or a type:tech technical need (architect agent), auto-detected from the need itself, or grouped into a new/reused type:epic if it genuinely spans several. Pass --tech to declare a technical need upfront instead of relying on detection. Always runs in pair mode — drafts the story/need with a human live in the session before creating anything, so a wrong detection is never silent, it's corrected live; there's no --auto for this phase, so it's never driven by a scheduled Routine. This phase only formalizes what the need is — it never decides dependencies, prerequisites, or whether it needs splitting; that's entirely /pilot-scope's job, run separately afterward. Use whenever a human wants to start a new ticket from scratch, whatever kind of work it is."
-argument-hint: "<raw need in free text> [--tech]"
+description: "Phase 1 of PILOT (see docs/pilot-process.md): turn a raw need into a formalized GitHub issue — a functional type:feature user story (PM agent) or a type:tech technical need (architect agent), auto-detected from the need itself, or grouped into a new/reused type:epic if it genuinely spans several. Pass --tech to declare a technical need upfront instead of relying on detection. Always runs in pair mode — drafts the story/need with a human live in the session, creating the ticket as status:draft the moment a first draft exists and refining it in place rather than holding it in conversation; a wrong detection is never silent, it's corrected live. There's no --auto for this phase, so it's never driven by a scheduled Routine — but --resume <issue number> picks back up a status:draft ticket left mid-pair if the session ends before final approval. This phase only formalizes what the need is — it never decides dependencies, prerequisites, or whether it needs splitting; that's entirely /pilot-scope's job, run separately afterward. Use whenever a human wants to start a new ticket from scratch, whatever kind of work it is."
+argument-hint: "<raw need in free text> [--tech] | --resume <issue number>"
 disable-model-invocation: true
 ---
 
@@ -13,9 +13,20 @@ mechanics of running phase 1.
 
 ## Steps
 
-1. Take the raw need (the argument, or ask the human for one if none was given). Do not
-   pre-analyze it yourself — phase 1's thinking belongs to whichever agent ends up
-   drafting it, not to this skill's orchestration layer.
+1. Determine the input:
+   - `--resume <issue number>`: must be `status:draft`, already assigned, with **no**
+     `needs-human` and **no** `on-hold` — a draft left mid-pair session
+     (`docs/pilot-process.md` §4 "Resuming a paused pair session"). Read the full ticket
+     and comment thread (`mcp__github__issue_read` `get_comments`) to reconstruct what's
+     already been drafted, then claim it — overwrite the assignee, the same as any
+     paused-pair resume. Skip to step 5b with that reconstructed state as the starting
+     point (call the agent in step 4 again first if the resumed conversation calls for
+     revising the draft, passing it the reconstructed context instead of a blank raw
+     need). If the ticket doesn't match (wrong status, unassigned, or still carrying
+     `needs-human`/`on-hold`), report that and stop.
+   - A raw need (the argument, or ask the human for one if none was given): continue with
+     steps 2-5 below. Do not pre-analyze it yourself — phase 1's thinking belongs to
+     whichever agent ends up drafting it, not to this skill's orchestration layer.
 2. Decide which agent drafts it:
    - `--tech` given → `pilot-architect`, `type:tech`.
    - No flag → auto-detect from the need's content: product-facing/user-value work reads
@@ -33,21 +44,37 @@ mechanics of running phase 1.
    it has one, `type:feature` only — stop and report that, create nothing); a single
    story; or several stories plus either an existing Epic number to reuse or a new Epic
    to create.
-5a. This phase always runs paired (`docs/pilot-process.md` §4 "Interaction modes" —
-    `/pilot-story` has no `--auto`): don't create anything yet. Show the human which
-    agent picked this up and why, along with the drafted story/stories (and epic
-    decision, if any), as a normal reply — this is also the point where the human
-    corrects a wrong `--tech`/auto-detect call, before anything exists on GitHub. Wait
-    for their response and feed it back to the agent — repeat until they approve,
-    restarting from step 2 with the other agent if they correct the type. Requires a
-    human live in this session; this phase is never run from a scheduled sweep. Once
-    approved, continue to step 6 as normal.
-6. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`):
-   - Single story: create it, matching `type:` + `status:backlog`, unassigned.
-   - Several stories, reusing an existing Epic: create each story the same way, link
-     each as that Epic's sub-issue.
-   - Several stories, new Epic: create the Epic (`type:epic` + matching `type:`, no
-     `status:` label, unassigned), then each story linked as its sub-issue.
+5a. **Create the draft ticket(s) right away** (`mcp__github__issue_write`,
+    `mcp__github__sub_issue_write`), before showing anything to the human — this is what
+    makes `--resume` possible if the session ends before final approval
+    (`docs/pilot-process.md` §3 `status:draft`, §4 "Resuming a paused pair session"):
+    - Single story: create it, matching `type:` + `status:draft`, assigned to this
+      session.
+    - Several stories, reusing an existing Epic: create each story the same way
+      (`status:draft`, assigned), link each as that Epic's sub-issue.
+    - Several stories, new Epic: create the Epic (`type:epic` + matching `type:`, no
+      `status:` label, unassigned — an Epic is never itself a draft) first, then each
+      story linked as its sub-issue, `status:draft` + assigned.
+5b. This phase always runs paired (`docs/pilot-process.md` §4 "Interaction modes" —
+    `/pilot-story` has no `--auto`): show the human which agent picked this up and why,
+    along with the drafted story/stories (and epic decision, if any) — pointing at the
+    real issue number(s) from 5a, not just conversation text. This is also the point
+    where the human corrects a wrong `--tech`/auto-detect call — if they do, update the
+    existing draft ticket's `type:` label and restart from step 2 with the other agent,
+    rather than creating a second ticket. If the agent instead now decides the idea is
+    out of scope, close the draft ticket(s) instead of leaving them open — nothing
+    proceeds to `status:backlog`. Otherwise, wait for the human's response and feed it
+    back to the agent, writing each further round's changes into the draft ticket(s)
+    (`issue_write`) as they're agreed — repeat until they approve. Requires a human live
+    in this session; this phase is never run from a scheduled sweep. Once approved,
+    continue to step 5c.
+5c. **Final consolidation pass** (`docs/pilot-process.md` §4 "Interaction modes"): before
+    finalizing, have the agent re-read each draft ticket's body as a whole — not just the
+    latest round's delta — and fix anything that no longer holds together across rounds
+    (an out-of-scope note from an early round that no longer matches an acceptance
+    criterion added later, a gap neither round's writer noticed).
+6. Finalize: flip each story from `status:draft` to `status:backlog`, unassigned
+   (`mcp__github__issue_write`).
 7. Report the issue number(s)/URL(s) back to the human.
 
 Do not decide whether a story needs splitting, record any dependency, or start phase 2

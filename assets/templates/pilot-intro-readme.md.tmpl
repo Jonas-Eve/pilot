@@ -12,22 +12,26 @@ Five phases, each with its own Claude Code skill and agent persona:
 
 | Phase | Skill | Agent | Produces |
 |---|---|---|---|
-| 1. Plan | `/pilot-story` | PM | A functional user story |
-| 2. Investigate | `/pilot-scope` | Architect | Scoped ticket(s) with security/architecture decisions |
+| 1. Plan | `/pilot-story` | PM or Architect (auto-detected; `--tech` to declare upfront) | A functional user story or a formalized technical need |
+| 2. Investigate | `/pilot-scope` | Architect (+ PM when a feature story is split) | Scoped ticket(s) with security/architecture decisions |
 | 3. Lay out | `/pilot-spec` | Tech Lead | A technical implementation spec |
 | 4. Operate | `/pilot-dev` | Senior Dev | Code + an open pull request |
 | 5. Test & validate | `/pilot-review` | PM + Architect + Tech Lead | A consolidated go/no-go GitHub comment |
 
-Purely technical tickets (CI, security, deployment, migrations, optimization) skip
-phase 1 and start directly at `/pilot-scope`. There's no single command that runs all
-five phases end to end — each phase is driven on its own, one at a time — and each also
-runs bare, with no argument at all, which is what lets a scheduled cron Routine drive a
-phase on a timer instead of a human typing it each time. `/pilot-story` always runs
-paired with a human (no Routine for it); `/pilot-scope`, `/pilot-spec`, and `/pilot-dev`
-default to that same pair mode too, so their Routine's prompt adds `--auto` to run
-unattended; `/pilot-review` is already automatic and needs no flag.
-A GitHub label state machine (`status:backlog` → ... → `in-review` → `approved` →
-`done`, plus `priority:`, `type:feature`/`type:tech`, and a `type:epic`/`status:split`
+Every ticket goes through phase 1 first, whether it's a functional feature or a purely
+technical need (CI, security, deployment, migrations, optimization) — `/pilot-story`
+auto-detects which agent should draft it (or `--tech` declares it upfront), so there's
+never a separate ticket-creation path to remember. There's no single command that runs
+all five phases end to end — each phase is driven on its own, one at a time — and each
+also runs bare, with no argument at all, which is what lets a scheduled cron Routine
+drive a phase on a timer instead of a human typing it each time. `/pilot-story` always
+runs paired with a human (no Routine for it, though `--resume` picks a paused draft back
+up); `/pilot-scope`, `/pilot-spec`, and `/pilot-dev` default to that same pair mode too,
+so their Routine's prompt adds `--auto` to run unattended; `/pilot-review` is already
+automatic and needs no flag.
+A GitHub label state machine (`status:draft` → `status:backlog` → ... → `in-review` →
+`approved` → `done`, plus `priority:`, `type:feature`/`type:tech`, and a
+`type:epic`/`status:split`
 tracking hierarchy for work too big for one story) tracks where a ticket is and stops
 multiple agents from picking up the same one — including a `status:changes-requested`
 loop back to the dev phase when review finds something that needs an actual code fix, as

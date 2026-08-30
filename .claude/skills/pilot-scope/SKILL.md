@@ -76,9 +76,16 @@ mechanics of running phase 2.
     instead of holding it in-conversation — this is what `--resume` picks back up later
     if the session ends before final approval (`docs/pilot-process.md` §4 "Resuming a
     paused pair session"). Requires a human live in this session; a scheduled Routine
-    must pass `--auto` instead. Once approved, continue to step 5 as normal — its GitHub
+    must pass `--auto` instead. Once approved, continue to step 4c — its GitHub
     write is then just the remaining piece (final labels, any still-unwritten
     sub-issues), since earlier checkpoints were already saved.
+4c. **Final consolidation pass** (`docs/pilot-process.md` §4 "Interaction modes"): before
+    applying anything, have the architect re-read the ticket (and every proposed
+    sub-ticket, if split) as a whole — not just the latest round's delta — and fix
+    anything that no longer holds together across rounds (an earlier security decision
+    that doesn't square with a later one, a gap neither checkpoint's author noticed). Do
+    this whether the run was pair or `--auto` — `--auto` has no rounds to reconcile, but
+    still benefits from one coherence read before writing.
 5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`):
    - No split: update the ticket body with the decisions, set `status:spec-ready`.
    - Split into sub-tickets: create the sub-issues, link them to the parent as native
