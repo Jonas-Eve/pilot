@@ -31,7 +31,13 @@ forked PILOT, strip project-specific details the same way.
   the `Agent` tool, copied into a consuming project's `.claude/agents/` the same way.
 - `assets/docs/pilot-process.md` — canonical process spec, copied verbatim into a
   consuming project as `docs/pilot-process.md` by `/pilot-init` and re-synced by
-  `/pilot-update`.
+  `/pilot-update`. Contains only what a skill or agent needs to operate — no purely
+  illustrative material (a diagram, a worked example) belongs here.
+- `assets/docs/pilot-process-visual.md` — a purely human-facing companion to the above
+  (currently a sequence diagram), synced the same way, for a human getting oriented; no
+  skill or agent reads it. Anything added to help a human understand the process, rather
+  than something a skill/agent needs to run it, goes here instead of bloating
+  `pilot-process.md`.
 - `assets/templates/*.tmpl` — doc skeletons `/pilot-init` renders with `{{PLACEHOLDER}}`
   substitution. `pilot-intro-claude.md.tmpl` / `pilot-intro-readme.md.tmpl` and
   `pilot-maintenance-claude.md.tmpl` are canonical marked-block contents (`PILOT:INTRO`,
