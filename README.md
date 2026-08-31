@@ -1,9 +1,11 @@
 # PILOT
 
-PILOT is a lightweight, in-house 5-phase ticket-process framework: `plan` →
-`investigate` → `lay out` → `operate` → `test & validate` — each its own isolated,
-low-token agent context instead of one accumulating one. It was built inside a single
-monorepo and is packaged here as a standalone, reusable repo any project can copy from.
+PILOT is a lightweight, in-house ticket-process framework: `plan` → `investigate` →
+`lay out` → `operate` → `test & validate`, each its own isolated, low-token agent context
+instead of one accumulating one — plus a mandatory sixth phase, human QA, for every
+`type:feature` story once every sub-ticket (including its automated end-to-end test) has
+merged. It was built inside a single monorepo and is packaged here as a standalone,
+reusable repo any project can copy from.
 
 This repo is **not a Claude Code plugin** — plugin installation turned out to be local
 to whichever machine/container runs it (a Codespace, a local CLI), so it never reached
@@ -19,7 +21,7 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
 
 ## What this repo ships
 
-- **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, plus the five
+- **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, plus the six
   PILOT phase commands — copied verbatim into a consuming project's `.claude/skills/`
   (see "Installing in a project" below), so all of them, `pilot-init`/`pilot-init-archi`/
   `pilot-update` included, are ordinary project-local commands once installed.
@@ -34,11 +36,13 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
     `docs/pilot-process.md`, the GitHub Actions workflow, the `PILOT:INTRO` blocks in
     `CLAUDE.md`/`README.md`, the GitHub labels) from a fresh clone of this repo into
     your project. Overwrites, no merge — see the warning in `.claude/skills/pilot-update/SKILL.md`.
-  - `/pilot-story`, `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, `/pilot-review` — the
-    five phases themselves.
-- **Agents** (`.claude/agents/`): the five personas the phase skills delegate to —
-  `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, and `pilot-e2e` (phase 4's
-  persona for an end-to-end-test sub-ticket, `type:e2e`, instead of `pilot-dev`).
+  - `/pilot-story`, `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
+    `/pilot-qa` — the six phases themselves.
+- **Agents** (`.claude/agents/`): the six personas the phase skills delegate to —
+  `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 4's
+  persona for an end-to-end-test sub-ticket, `type:e2e`, instead of `pilot-dev`), and
+  `pilot-qa` (phase 6's persona, a human-paired manual QA gate for every `type:feature`
+  story once its sub-tickets are all done).
 - **Scripts** (`scripts/`): `setup-github-labels.sh`, idempotent creation/update of every
   label the state machine uses.
 - **Templates** (`assets/templates/`): the doc skeletons `/pilot-init` fills in.

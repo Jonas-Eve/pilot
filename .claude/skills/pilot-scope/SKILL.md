@@ -1,6 +1,6 @@
 ---
 name: pilot-scope
-description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature, type:tech, or type:bug, created via /pilot-story) and, in one pass, challenges it — scoping it as-is, splitting it into dev-sized sub-tickets (including, when it makes sense, an end-to-end-test sub-ticket labeled type:e2e), recording dependencies (a prerequisite type:tech or type:bug ticket, and/or between sub-tickets of the same split), or deciding it shouldn't be built at all (status:wont-do) — or flags needs-human for a judgment call. When a type:feature story is split, the PM agent also checks the proposed non-e2e sub-tickets against the story's original acceptance criteria before it's finalized. Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference. Use whenever an already-created ticket needs to be scoped/decomposed — not for formalizing a brand-new need, that's /pilot-story."
+description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature, type:tech, or type:bug, created via /pilot-story) and, in one pass, challenges it, then either scopes it as-is or splits it into dev-sized sub-tickets — a judgment call for type:tech/type:bug (scoping as-is is fine), but mandatory for type:feature: one or more dev sub-tickets plus exactly one end-to-end-test sub-ticket labeled type:e2e, depending on every dev sub-ticket in the split. Also records dependencies (a prerequisite type:tech or type:bug ticket, and/or between sub-tickets of the same split), or decides the ticket shouldn't be built at all (status:wont-do) — or flags needs-human for a judgment call. For a type:feature story, the PM agent also checks the proposed dev sub-tickets (excluding the e2e one) against the story's original acceptance criteria before it's finalized. Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference. Use whenever an already-created ticket needs to be scoped/decomposed — not for formalizing a brand-new need, that's /pilot-story."
 argument-hint: "<issue number> [--auto] | <issue number> --resume"
 disable-model-invocation: true
 ---
@@ -51,25 +51,30 @@ mechanics of running phase 2.
    pointers to this project's own coding standards/security conventions and its own
    architecture docs (wherever it documents its identity/tenancy/security boundaries and
    its target system design, if it has such docs). Not the running conversation history.
-4. The subagent returns: a single scoped ticket body (no split needed), a set of
-   proposed sub-tickets each with security/architecture decisions, dependencies, and a
-   suggested priority, or a verdict that it shouldn't be built at all. One of the proposed
-   sub-tickets may itself be an end-to-end-test sub-ticket (`docs/pilot-process.md` §2
-   "End-to-end test sub-tickets" — flagged as such, to be labeled `type:e2e` in addition
-   to the inherited `type:` at step 5). Independently of any of this, it may also flag one
-   or more **prerequisite** needs — `type:tech` (`docs/pilot-process.md` §2 "Prerequisite
-   tech tickets") or `type:bug` (`docs/pilot-process.md` §2 "Prerequisite bug tickets
-   (phase 2 or phase 4)") — and, for each, whether it's a hard blocker.
-4a. **If the ticket is `type:feature` and the architect proposed a split**, call the
-    `Agent` tool a second time with `subagent_type: "pilot-pm"`, passing the original
-    story's acceptance criteria and the proposed sub-tickets **excluding any e2e
-    sub-ticket** (`docs/pilot-process.md` §2 "End-to-end test sub-tickets" — it doesn't
-    cover a criterion itself, it verifies criteria its siblings already cover), for a
-    coverage check (`docs/pilot-process.md` §2 "Three levels" — the PM checks the split's
-    coverage, not the architect's technical decisions). If the PM blocks with a gap, feed
-    that back to the architect and repeat until it approves, before showing anything to
-    the human in step 4b. This runs regardless of `--auto`/pair — it's a validation step,
-    not a human checkpoint.
+4. The subagent returns one of:
+   - For `type:tech`/`type:bug`: a single scoped ticket body (no split needed), or a set
+     of proposed sub-tickets (split, a judgment call) each with security/architecture
+     decisions, dependencies, and a suggested priority.
+   - For `type:feature`: always a set of proposed sub-tickets — one or more dev
+     sub-tickets, plus exactly one flagged as the mandatory end-to-end-test sub-ticket
+     (`docs/pilot-process.md` §2 "End-to-end test sub-tickets" — to be labeled `type:e2e`
+     in addition to the inherited `type:feature` at step 5, and dependent on every dev
+     sub-ticket in the set). Never a single unsplit body for `type:feature`.
+   - Or, for either: a verdict that it shouldn't be built at all.
+   Independently of any of this, it may also flag one or more **prerequisite** needs —
+   `type:tech` (`docs/pilot-process.md` §2 "Prerequisite tech tickets") or `type:bug`
+   (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2 or phase 4)") — and, for
+   each, whether it's a hard blocker.
+4a. **If the ticket is `type:feature`** (always split, per step 4), call the `Agent` tool a
+    second time with `subagent_type: "pilot-pm"`, passing the original story's acceptance
+    criteria and the proposed sub-tickets **excluding the e2e sub-ticket**
+    (`docs/pilot-process.md` §2 "End-to-end test sub-tickets" — it doesn't cover a
+    criterion itself, it verifies criteria its dev siblings already cover), for a coverage
+    check (`docs/pilot-process.md` §2 "Three levels" — the PM checks the split's coverage,
+    not the architect's technical decisions). If the PM blocks with a gap, feed that back
+    to the architect and repeat until it approves, before showing anything to the human in
+    step 4b. This runs regardless of `--auto`/pair — it's a validation step, not a human
+    checkpoint.
 4b. **Unless `--auto` was given** (`docs/pilot-process.md` §4 "Interaction modes" — pair
     is the default for this skill): don't finalize anything yet. Show the human the
     proposed decomposition — split or not, any e2e sub-ticket proposed, security/
@@ -93,7 +98,8 @@ mechanics of running phase 2.
     this whether the run was pair or `--auto` — `--auto` has no rounds to reconcile, but
     still benefits from one coherence read before writing.
 5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`):
-   - No split: update the ticket body with the decisions, set `status:spec-ready`.
+   - No split (`type:tech`/`type:bug` only — a `type:feature` story is never this case,
+     step 4): update the ticket body with the decisions, set `status:spec-ready`.
    - Split into sub-tickets: create the sub-issues, link them to the parent as native
      sub-issues, each inheriting the root `type:` and getting `status:spec-ready` +
      `priority:P0/P1/P2` — plus, for the one the architect flagged as an end-to-end test
