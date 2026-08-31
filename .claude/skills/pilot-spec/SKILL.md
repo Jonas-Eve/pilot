@@ -1,6 +1,6 @@
 ---
 name: pilot-spec
-description: "Phase 3 of PILOT (see docs/pilot-process.md): the tech lead agent writes the technical implementation spec for a single already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference, and preferring a ticket that blocks another over one that doesn't. Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
+description: "Phase 3 of PILOT (see docs/pilot-process.md): the tech lead agent writes the technical implementation spec for an already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a previously-flagged ticket once a human clears the flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything on-hold or blocked by an unresolved 'Depends on #N' reference, preferring a ticket that blocks another over one that doesn't. Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
 argument-hint: "<issue number, optional — picks the next spec-ready or needs-human-resumable ticket if omitted> [--auto] | <issue number> --resume"
 disable-model-invocation: true
 ---
@@ -14,27 +14,25 @@ mechanics of running phase 3.
 ## Steps
 
 1. Resolve the ticket:
-   - Given issue number with `--resume`: it must be `status:in-spec`, already assigned,
+   - Given issue number with `--resume`: must be `status:in-spec`, already assigned,
      with **no** `needs-human` and **no** `on-hold` — a ticket left mid-pair session.
      Follow `docs/pilot-process.md` §4 "Resuming a paused pair session" instead of steps
-     2-5 below — skip the claim, it's already claimed. If the ticket doesn't match, report
-     that and stop.
+     2-5 below — skip the claim, already claimed. If it doesn't match, report and stop.
    - Given issue number without `--resume`, `status:in-spec`, **no** `needs-human`, **no**
      `on-hold`, and its thread shows a `needs-human` block that was later cleared →
      resume, not a fresh claim. Follow `docs/pilot-process.md` §4 "Resuming a
-     `needs-human` ticket" instead of steps 2-5 below — skip the claim, it's already
-     claimed.
+     `needs-human` ticket" instead of steps 2-5 below — skip the claim, already claimed.
    - Given issue number without `--resume`, `status:in-spec`, already assigned, **no**
-     `needs-human`, **no** `on-hold`, but with no `needs-human` history in its thread →
-     this looks like a ticket left mid-pair session. Report that and ask the human to
-     re-run with `--resume` rather than proceeding.
+     `needs-human`, **no** `on-hold`, but no `needs-human` history in its thread → looks
+     like a ticket left mid-pair session. Report that and ask the human to re-run with
+     `--resume` rather than proceeding.
    - Given issue number, `status:in-spec`, still has `needs-human` or `on-hold` → not
      resolved yet, report that and stop.
    - Given issue number, `status:spec-ready`, unclaimed, but its body carries a "Depends
-     on #N" whose `#N` is still open → not ready yet, report which ticket it's blocked on
-     and stop rather than claiming it (`docs/pilot-process.md` §4 "Blocked-by
-     dependencies" — this check applies to an explicitly-given ticket exactly as it does
-     to bare-pool selection below, not just the pool).
+     on #N" whose `#N` is still open → not ready yet; report which ticket it's blocked on
+     and stop rather than claim it (`docs/pilot-process.md` §4 "Blocked-by dependencies" —
+     applies to an explicitly-given ticket the same as bare-pool selection below, not just
+     the pool).
    - Given issue number otherwise, or none given → per `docs/pilot-process.md` §4
      "Picking the next ticket...": the given ticket, or the merged pool of unclaimed
      `status:spec-ready` (fresh) and `status:in-spec` with `needs-human`/`on-hold` just
@@ -59,13 +57,12 @@ mechanics of running phase 3.
     is the default for this skill): don't finalize the spec yet. Show the human the
     drafted spec outline as a normal reply, wait for their response, and feed it back to
     the agent — repeat until they approve, writing each approved checkpoint into the
-    ticket right away (a comment, or a partial `issue_write`) instead of holding it
-    in-conversation — this is what `--resume` picks back up later if the session ends
-    before final approval (`docs/pilot-process.md` §4 "Resuming a paused pair session").
-    Requires a human live in this session; a scheduled Routine must pass `--auto`
-    instead. Once approved, continue to step 4b — its GitHub write is then just
-    the remaining piece (final `status:dev-ready`), since the spec itself was already
-    saved checkpoint by checkpoint.
+    ticket right away (a comment, or a partial `issue_write`) rather than holding it
+    in-conversation — this is what `--resume` picks back up if the session ends before
+    final approval (`docs/pilot-process.md` §4 "Resuming a paused pair session"). Requires
+    a human live in session; a scheduled Routine must pass `--auto` instead. Once
+    approved, continue to step 4b — its GitHub write is then just the remaining piece
+    (final `status:dev-ready`), since the spec was already saved checkpoint by checkpoint.
 4b. **Final consolidation pass** (`docs/pilot-process.md` §4 "Interaction modes"): before
     applying anything, have the tech lead re-read the whole spec as it now stands — not
     just the latest round's delta — and fix anything that no longer holds together
