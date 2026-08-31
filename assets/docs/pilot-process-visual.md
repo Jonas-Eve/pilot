@@ -76,8 +76,8 @@ sequenceDiagram
         QAAgent->>GH: status:done + close issue (reports any non-bug finding for phase 1)
     else genuine bug
         QAAgent->>GH: originates type:bug (level:task, spec-ready) + self-applies on-hold
-    else can't classify even after asking live
-        QAAgent->>GH: needs-human + findings
+    else can't classify on its own
+        QAAgent->>GH: needs-human + findings (resolved live and cleared same-turn, or left for later)
     end
     end
 ```

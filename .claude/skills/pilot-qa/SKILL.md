@@ -1,6 +1,6 @@
 ---
 name: pilot-qa
-description: "Phase 6 of PILOT (see docs/pilot-process.md): human QA for a type:feature story once every task — including its mandatory e2e one — has merged (status:qa). Builds a manual test plan from the story's acceptance criteria and its merged tasks, walks a human through testing it live, and reports the verdict. Pair-only, no --auto — there's no unattended version of a human testing something, so this is never Routine-driven. On a full pass, or once every failure turns out not to actually be a bug, sets status:done and closes the issue (the agent reports any not-a-bug finding to the human to raise via phase 1 separately). On a genuine defect, the agent originates a type:bug ticket itself, directly as a spec-ready task, and self-applies on-hold — same mechanics as a bug found mid-implementation in phase 4. A failure the agent genuinely can't classify even after asking the live human (rare, since a human is always right here) gets needs-human with the findings. Also resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up the next status:qa (fresh) or status:in-qa-with-needs-human-cleared (resumable) ticket, skipping anything still on-hold. Use once a type:feature story's tasks have all merged and it's ready for a human to confirm the shipped behavior."
+description: "Phase 6 of PILOT (see docs/pilot-process.md): human QA for a type:feature story once every task — including its mandatory e2e one — has merged (status:qa). Builds a manual test plan from the story's acceptance criteria and its merged tasks, walks a human through testing it live, and reports the verdict. Pair-only, no --auto — there's no unattended version of a human testing something, so this is never Routine-driven. On a full pass, or once every failure turns out not to actually be a bug, sets status:done and closes the issue (the agent reports any not-a-bug finding to the human to raise via phase 1 separately). On a genuine defect, the agent originates a type:bug ticket itself, directly as a spec-ready task, and self-applies on-hold — same mechanics as a bug found mid-implementation in phase 4. A failure the agent can't classify on its own goes through the standard needs-human flow (label + comment posted immediately, per docs/pilot-process.md §3 — resolved live and cleared in the same turn whenever the human answers right there, since this phase is always pair). Also resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up the next status:qa (fresh) or status:in-qa-with-needs-human-cleared (resumable) ticket, skipping anything still on-hold. Use once a type:feature story's tasks have all merged and it's ready for a human to confirm the shipped behavior."
 argument-hint: "<issue number> | --resume <issue number>"
 disable-model-invocation: true
 ---
@@ -74,11 +74,14 @@ this skill only covers the mechanics of running it.
      stays `in-qa` regardless. This ticket only becomes a candidate again for an explicit
      `--resume` once a human removes `on-hold` after the new bug ticket reaches
      `status:done`.
-   - **A failure the agent genuinely couldn't classify even after asking the human live**:
-     add `needs-human` with a comment listing exactly what failed, why it's still
-     unresolved, per case, as the agent reported it (`status:in-qa` stays,
-     `docs/pilot-process.md` §3 "`needs-human`"). Should be rare — this phase is always
-     pair, so the human who can answer is normally right there in step 5 already.
+   - **A failure still unresolved**: the agent already applied `needs-human` with a
+     comment listing exactly what failed and why, per case, the moment it couldn't
+     classify it on its own (`docs/pilot-process.md` §3 "`needs-human`" — label and
+     comment go on immediately, every time, never held back on the chance a human answers
+     right away). `status:in-qa` stays. This should be rare in practice — the human who
+     can answer is normally right there in step 5 already, in which case the agent posts
+     the resolution comment and clears the flag itself in the same turn, and you'll see
+     this outcome instead.
    These can land in the same pass — apply what applies; each is independent of the
    others (`docs/pilot-process.md` §3).
 7. Report the outcome (approved + closed, any not-a-bug finding to raise via phase 1, the

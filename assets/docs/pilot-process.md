@@ -1151,11 +1151,16 @@ pool `/pilot-qa` picks from.
 5. Show the plan to the human (pair, always — this skill has no `--auto`). The human
    performs the tests for real and reports back, case by case; feed each response back to
    the agent until it reaches a final verdict — every case confirmed, or one or more
-   failures. For each failure, the agent classifies it right there in the same live
-   exchange — genuinely a code defect, or actually a new/different need that was never
-   really a bug (§2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)") — asking the
-   human directly whenever it can't tell on its own, since a human is already live in this
-   session to answer.
+   failures. For each failure, the agent classifies it — genuinely a code defect, or
+   actually a new/different need that was never really a bug (§2 "Prerequisite bug
+   tickets (phase 2, phase 4, or phase 6)"). Whenever it genuinely can't tell on its own,
+   that's a `needs-human` situation like any other (§3): add the label and post the
+   why/what's-needed comment immediately, every time, even though a human is live in this
+   session right now — never skip straight to an informal answer just because one's
+   available. Then, since the human normally is right there, get their answer, post a
+   follow-up comment summarizing what was decided, and remove `needs-human` in the same
+   turn before continuing — the same two-comment pattern §3 documents for every other
+   phase's live-resolved block.
 6. Apply the result:
    - **All confirmed, or every failure resolves to "not actually a bug"** → set
      `status:done` and close the issue (`mcp__github__issue_write`) — this is the one place
@@ -1172,13 +1177,11 @@ pool `/pilot-qa` picks from.
      phase 4 uses (§2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)"). This takes
      priority over a same-pass "not actually a bug" failure — the story can't be done while
      a real defect is still open.
-   - **A failure the agent genuinely couldn't classify even after asking the human live** →
-     add `needs-human` with a comment describing exactly what failed and why it's still
-     unresolved (`status:in-qa` stays, per §3 "`needs-human` — an orthogonal flag"). This
-     should be rare — `/pilot-qa` is pair-only (§4 "Interaction modes"), so the human who
-     can answer is normally right there in step 5 already. If it does happen, clear the
-     flag yourself the moment the human does answer, rather than leaving it for a separate
-     `--resume`.
+   - **A failure still unresolved** (nobody answered on the spot — should be rare,
+     `/pilot-qa` is pair-only, §4 "Interaction modes") → the `needs-human` label and
+     comment from step 5 stay exactly as posted (`status:in-qa` stays, per §3 "`needs-human`
+     — an orthogonal flag"); a human resolves it later, same as any other `needs-human`
+     ticket.
 7. Report the outcome back to the human. Never invoke `pilot-e2e`/`pilot-dev` from this
    skill — a `type:bug` ticket the agent originates goes straight to `status:spec-ready`
    for `/pilot-spec` to pick up next, never handed to phase 4 directly from here.
