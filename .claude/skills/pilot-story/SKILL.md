@@ -1,6 +1,6 @@
 ---
 name: pilot-story
-description: "Phase 1 of PILOT (see docs/pilot-process.md): turn a raw need into a formalized GitHub issue — a functional type:feature user story (PM agent), a type:tech technical need, or a type:bug defect report (architect agent for either), auto-detected from the need itself, or grouped into a new/reused type:epic if it genuinely spans several. Pass --tech or --bug to declare the need's type upfront instead of relying on detection. Always runs in pair mode — drafts the story/need with a human live in the session, creating the ticket as status:draft the moment a first draft exists and refining it in place rather than holding it in conversation; a wrong detection is never silent, it's corrected live. There's no --auto for this phase, so it's never driven by a scheduled Routine — but --resume <issue number> picks back up a status:draft ticket left mid-pair if the session ends before final approval. This phase only formalizes what the need is — it never decides dependencies, prerequisites, or whether it needs splitting; that's entirely /pilot-scope's job, run separately afterward. Use whenever a human wants to start a new ticket from scratch, whatever kind of work it is."
+description: "Phase 1 of PILOT (see docs/pilot-process.md): turn a raw need into a formalized GitHub issue — a functional type:feature user story (PM agent), a type:tech technical need, or a type:bug defect report (architect agent for either), auto-detected from the need itself, or grouped into a new/reused level:epic if it genuinely spans several. Pass --tech or --bug to declare the need's type upfront instead of relying on detection. Always runs in pair mode — drafts the story/need with a human live in the session, creating the ticket as status:draft the moment a first draft exists and refining it in place rather than holding it in conversation; a wrong detection is never silent, it's corrected live. There's no --auto for this phase, so it's never driven by a scheduled Routine — but --resume <issue number> picks back up a status:draft ticket left mid-pair if the session ends before final approval. This phase only formalizes what the need is — it never decides dependencies, prerequisites, or whether it needs splitting; that's entirely /pilot-scope's job, run separately afterward. Use whenever a human wants to start a new ticket from scratch, whatever kind of work it is."
 argument-hint: "<raw need in free text> [--tech | --bug] | --resume <issue number>"
 disable-model-invocation: true
 ---
@@ -37,7 +37,7 @@ mechanics of running phase 1.
      reads as `type:tech` (`pilot-architect`); product-facing/user-value work reads as
      `type:feature` (`pilot-pm`). If it's genuinely ambiguous between any two of the
      three, ask the human which it is rather than guessing silently.
-3. Fetch open `type:epic` issues of the matching `type:` (title + body only,
+3. Fetch open `level:epic` issues of the matching `type:` (title + body only,
    `mcp__github__list_issues`/`search_issues`) as candidates the agent might reuse —
    cheap, deterministic bookkeeping, not the agent's job to search for itself.
 4. Call the `Agent` tool with the subagent chosen in step 2, passing the raw need and the
@@ -52,13 +52,13 @@ mechanics of running phase 1.
     `mcp__github__sub_issue_write`), before showing anything to the human — this is what
     makes `--resume` possible if the session ends before final approval
     (`docs/pilot-process.md` §3 `status:draft`, §4 "Resuming a paused pair session"):
-    - Single story: create it, matching `type:` + `status:draft`, assigned to this
-      session.
+    - Single story: create it, matching `type:` + `level:story` + `status:draft`, assigned
+      to this session.
     - Several stories, reusing an existing Epic: create each story the same way
-      (`status:draft`, assigned), link each as that Epic's sub-issue.
-    - Several stories, new Epic: create the Epic (`type:epic` + matching `type:`, no
+      (`level:story`, `status:draft`, assigned), link each as that Epic's sub-issue.
+    - Several stories, new Epic: create the Epic (`level:epic` + matching `type:`, no
       `status:` label, unassigned — an Epic is never itself a draft) first, then each
-      story linked as its sub-issue, `status:draft` + assigned.
+      story linked as its sub-issue, `level:story` + `status:draft` + assigned.
 5b. This phase always runs paired (`docs/pilot-process.md` §4 "Interaction modes" —
     `/pilot-story` has no `--auto`): show the human which agent picked this up and why,
     along with the drafted story/stories (and epic decision, if any) — pointing at the

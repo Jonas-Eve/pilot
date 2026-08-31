@@ -3,7 +3,7 @@
 PILOT is a lightweight, in-house ticket-process framework: `plan` → `investigate` →
 `lay out` → `operate` → `test & validate`, each its own isolated, low-token agent context
 instead of one accumulating one — plus a mandatory sixth phase, human QA, for every
-`type:feature` story once every sub-ticket (including its automated end-to-end test) has
+`type:feature` story once every task (including its automated end-to-end test) has
 merged. It was built inside a single monorepo and is packaged here as a standalone,
 reusable repo any project can copy from.
 
@@ -40,9 +40,9 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
     `/pilot-qa` — the six phases themselves.
 - **Agents** (`.claude/agents/`): the six personas the phase skills delegate to —
   `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 4's
-  persona for an end-to-end-test sub-ticket, `type:e2e`, instead of `pilot-dev`), and
+  persona for an end-to-end-test task, `type:e2e`, instead of `pilot-dev`), and
   `pilot-qa` (phase 6's persona, a human-paired manual QA gate for every `type:feature`
-  story once its sub-tickets are all done).
+  story once its tasks are all done).
 - **Scripts** (`scripts/`): `setup-github-labels.sh`, idempotent creation/update of every
   label the state machine uses.
 - **Templates** (`assets/templates/`): the doc skeletons `/pilot-init` fills in.

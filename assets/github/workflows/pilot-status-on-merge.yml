@@ -94,10 +94,10 @@ jobs:
                 return;
               }
 
-              // A type:feature story always splits into dev sub-ticket(s) plus exactly
-              // one e2e sub-ticket depending on all of them (pilot-process.md §2
-              // "End-to-end test sub-tickets"), so "all done" here is the same moment the
-              // e2e sub-ticket itself just finished. That story goes to status:qa for a
+              // A type:feature story always splits into dev task(s) plus exactly
+              // one e2e task depending on all of them (pilot-process.md §2
+              // "End-to-end test tasks"), so "all done" here is the same moment the
+              // e2e task itself just finished. That story goes to status:qa for a
               // human to confirm (§7 "Phase 6 — Human QA") instead of straight to
               // status:done — type:tech/type:bug parents are unaffected, unchanged cascade.
               if (parentLabels.includes('type:feature')) {
@@ -110,7 +110,7 @@ jobs:
             }
 
             if (context.eventName === 'issues') {
-              // Reacts to a sub-ticket closed outside the merge path: a status:wont-do
+              // Reacts to a task closed outside the merge path: a status:wont-do
               // ticket closed directly by the architect in phase 2, or a hand-closed
               // ticket. A closure GitHub attributes to a merged "Closes #N" commit is
               // already this workflow's pull_request:closed path's job — skip it here
