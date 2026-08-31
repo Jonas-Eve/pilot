@@ -125,7 +125,13 @@ dependencies, prerequisites, or splitting; that's entirely phase 2's job (below)
   dev-sized by definition, so it never goes through phase 2's scoping pass at all (§2
   "Three levels"). Whoever finds it must first be convinced it's genuinely a code defect
   and not a new or different need — see "Prerequisite bug tickets" below for what happens
-  when it turns out not to be one. Either way, an actual `type:bug` ticket's phase 5 review
+  when it turns out not to be one — nor, in phase 1 specifically, that it's not an
+  actionable defect at all (already fixed, not reproducible, an exact duplicate, working
+  as intended): a `--bug` report skips phase 2 entirely, so there's no later
+  `status:wont-do` checkpoint to catch an invalid one the way a story gets — the architect
+  makes that call in phase 1 itself, the same "out of scope, create nothing" outcome
+  `/pilot-story` already has for any raw need. Either way, an actual `type:bug` ticket's
+  phase 5 review
   is architect + tech lead only, same as `type:tech`; the PM is never involved, even when
   the bug was found via an end-to-end test or phase-6 QA on a `type:feature` flow — that
   story's acceptance criteria were already validated once when it shipped (or, for a

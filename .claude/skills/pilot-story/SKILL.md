@@ -48,8 +48,12 @@ mechanics of running phase 1.
    it has one, `type:feature` only — stop and report that, create nothing); a single
    story; several stories plus either an existing Epic number to reuse or a new Epic to
    create; or, for a `--bug`/auto-detected-`type:bug` attempt, a single `type:bug` ticket
-   ready to build, or a verdict that it isn't actually a defect (handled the same way as
-   any other wrong `--tech`/`--bug`/auto-detect call, step 5b).
+   ready to build, a verdict that it isn't actually a defect (handled the same way as any
+   other wrong `--tech`/`--bug`/auto-detect call, step 5b), or a verdict that it isn't a
+   real, actionable defect at all — already fixed, not reproducible, an exact duplicate,
+   working as intended — stop and report that, create nothing, the same "out of scope"
+   outcome above (a bug never reaches phase 2's own `status:wont-do` checkpoint, §2
+   "Three levels", so this is the only place that judgment call gets made for one).
 5a. **Create the draft ticket(s) right away** (`mcp__github__issue_write`,
     `mcp__github__sub_issue_write`), before showing anything to the human — this is what
     makes `--resume` possible if the session ends before final approval
