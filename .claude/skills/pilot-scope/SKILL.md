@@ -31,11 +31,17 @@ mechanics of running phase 2.
      human to re-run with `--resume` rather than proceeding.
    - An issue number that's `status:scoping` and still carries `needs-human` or
      `on-hold` → not resolved yet, report that and stop.
-   - An issue number that's `status:done` → terminal, refuse
+   - An issue number that's `level:task` → phase 2 only ever scopes `level:story`
+     tickets, never a task (a task is itself the *output* of scoping, §2 "Three levels").
+     Report that and point the human at the task's parent story instead. Never claim it.
+   - An issue number whose GitHub issue is **closed** (`status:done` or `status:wont-do`,
+     the only two ways a ticket ends up closed) → terminal, refuse
      (`docs/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split is
-     done"): report that it's already done and point the human at opening a new ticket
+     done"): report that it's already closed and point the human at opening a new ticket
      for the additional work instead (a plain "Extends #N" reference in its body is
-     enough). Never claim it.
+     enough). Never claim it. Check the issue's actual open/closed state here, not just
+     the `status:` label — `status:qa`/`status:in-qa` below are still *open*, this check
+     is what tells them apart from a truly finished ticket.
    - An issue number that's `status:qa` (unclaimed) or `status:in-qa` (already assigned,
      regardless of who) → a valid re-scope entry point, not a fresh claim in the usual
      sense (`docs/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split
@@ -46,9 +52,9 @@ mechanics of running phase 2.
      set `status:scoping` — before continuing to step 3, passing that extra context (the
      earlier round's already-done tasks) alongside the ticket body. Skip step 2, the claim
      already happened here.
-   - An issue number otherwise → this is an existing story (`type:feature`, `type:tech`,
-     or `type:bug`) being scoped/re-scoped. Read it (`mcp__github__issue_read`), along with
-     its parent Epic (if linked) and anything already referenced via "Blocks #M"/
+   - An issue number otherwise → this is an existing, open `level:story` (`type:feature`,
+     `type:tech`, or `type:bug`) being scoped/re-scoped. Read it (`mcp__github__issue_read`),
+     along with its parent Epic (if linked) and anything already referenced via "Blocks #M"/
      "Depends on #N" or a sub-issue relationship, as context for the agent. If it's
      `level:epic`, there's nothing to scope on the epic itself — stop and point at its
      stories instead.
