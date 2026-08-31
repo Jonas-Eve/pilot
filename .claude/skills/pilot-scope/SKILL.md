@@ -87,7 +87,7 @@ mechanics of running phase 2.
    - Or, for either: a verdict that it shouldn't be built at all.
    Independently of any of this, it may also flag one or more **prerequisite** needs —
    `type:tech` (`docs/pilot-process.md` §2 "Prerequisite tech tickets") or `type:bug`
-   (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2 or phase 4)") — and, for
+   (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)") — and, for
    each, whether it's a hard blocker.
 4a. **If the ticket is `type:feature`** (always split, per step 4), call the `Agent` tool a
     second time with `subagent_type: "pilot-pm"`, passing the original story's acceptance
@@ -151,7 +151,7 @@ mechanics of running phase 2.
      never combined onto one line (`docs/pilot-process.md` §4).
    - Prerequisite bug ticket(s) flagged (in addition to whichever of the above applies):
      create each the same way, `type:bug` instead of `type:tech`
-     (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2 or phase 4)") — same
+     (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)") — same
      linking rules, always a hard blocker for this case (the discovering ticket cannot be
      finished until the bug is fixed).
 6. Report the outcome (ticket(s) scoped/split, dependencies recorded, prerequisite

@@ -101,7 +101,7 @@ what keeps them from colliding.
      `needs-human` and posted its comment itself (`status:in-dev` stays, per
      `docs/pilot-process.md` §3).
    - Bug discovered mid-implementation (`docs/pilot-process.md` §2 "Prerequisite bug
-     tickets (phase 2 or phase 4)"): nothing further to set either — the subagent
+     tickets (phase 2, phase 4, or phase 6)"): nothing further to set either — the subagent
      (`pilot-dev` or `pilot-e2e`) already originated the new `type:bug` ticket, linked it
      ("Blocks #M"/"Depends on #N"), and added `on-hold` with its own comment
      (`status:in-dev` stays). This ticket only becomes a candidate again for an explicit

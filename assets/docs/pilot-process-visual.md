@@ -74,8 +74,10 @@ sequenceDiagram
     Human-->>QAAgent: results, case by case
     alt all confirmed
         QAAgent->>GH: status:done + close issue
-    else one or more failures
-        QAAgent->>GH: needs-human + findings (bug-handling flow: still provisional)
+    else change-tagged failure (clear-cut defect)
+        QAAgent->>GH: originates type:bug + self-applies on-hold
+    else decision-tagged failure (judgment call)
+        QAAgent->>GH: needs-human + findings
     end
     end
 ```
