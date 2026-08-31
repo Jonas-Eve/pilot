@@ -73,7 +73,9 @@ only covers the mechanics of running phase 5.
 6. Report the outcome back to the human. Never merge — that's always a human action,
    even after every reviewer approves. Once a human does merge, the
    `.github/workflows/pilot-status-on-merge.yml` GitHub Actions workflow sets
-   `status:done` and, if it's a task, runs the cascading-completion check against
-   its `status:split` parent story (never a `level:epic` — that always closes by hand,
-   see `docs/pilot-process.md` §3) — see `docs/pilot-process.md` §6; this skill's own job
-   ends at the consolidated comment.
+   `status:done` and, if it's a task with a `status:split` parent, runs the
+   cascading-completion check against that parent (never a `level:epic` — that always
+   closes by hand, see `docs/pilot-process.md` §3) — a standalone `type:bug` task has no
+   parent at all, so the check simply finds none and stops there
+   (`docs/pilot-process.md` §3 "Cascading completion") — see `docs/pilot-process.md` §6;
+   this skill's own job ends at the consolidated comment.

@@ -43,7 +43,14 @@ splitting decision to defer to a later phase the way a story has.
 1. Confirm it's actually a defect against already-agreed behavior (a regression, a broken
    promise, an error) — not a new feature request or an ambiguous product question in
    disguise. If it's the latter, say so and suggest `/pilot-story` without `--bug`, or
-   `--tech`, whichever actually fits, rather than forcing it into `type:bug`.
+   `--tech`, whichever actually fits, rather than forcing it into `type:bug`. If instead
+   you're confident it isn't a real, actionable defect at all — already fixed, not
+   reproducible from what's given plus your own investigation, an exact duplicate of an
+   already-open bug ticket, or working as intended — say so and create nothing: a bug
+   never reaches phase 2, so there's no later `status:wont-do` checkpoint to catch this the
+   way a story would (`docs/pilot-process.md` §2 "Three levels"). This is the same
+   "out of scope, create nothing" outcome `/pilot-story` already handles for any raw need
+   (`docs/pilot-process.md` §4 "Interaction modes"), not a new mechanism.
 2. Reproduce or otherwise pin down the failure as concretely as you can from what's given
    (the exact broken behavior, the error/assertion, the file(s)/module(s) most likely
    responsible) — enough that phase 3 can spec a fix without re-diagnosing from scratch.
