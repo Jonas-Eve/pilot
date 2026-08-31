@@ -34,8 +34,8 @@ wouldn't have cleared the dependency gate to reach you.
    failing-commit-first history.
 3. If running it does surface a genuine defect in that already-merged code — not a gap in
    your own ticket's scope — follow `pilot-dev.md` step 3a exactly as written: originate a
-   `type:bug` ticket (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2 or
-   phase 4)"), link it ("Blocks #M"/"Depends on #N"), self-apply `on-hold` with a comment,
+   `type:bug` ticket (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2,
+   phase 4, or phase 6)"), link it ("Blocks #M"/"Depends on #N"), self-apply `on-hold` with a comment,
    and stop without pushing a broken or partial commit. Your ticket cannot be marked done
    with a test that doesn't actually pass — there's no partial-credit version of an e2e test.
 4. Otherwise, continue exactly as `pilot-dev.md` describes from its own step 4 onward:

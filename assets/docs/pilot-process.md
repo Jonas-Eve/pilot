@@ -116,14 +116,15 @@ dependencies, prerequisites, or splitting; that's entirely phase 2's job (below)
   a different agent behind it. Phase 5 review is architect + tech lead only; the PM is
   never involved.
 - **`type:bug`** — a human reports broken behavior in already-shipped code via
-  `/pilot-story --bug`, or it's discovered inline while another ticket is being scoped or
-  implemented (see "Prerequisite bug tickets" below) instead of being reported through
-  `/pilot-story` directly. Either way, the architect formalizes/originates it — same agent
-  as `type:tech`, since a bug fix is a technical correction, not a new product decision.
-  Phase 5 review is architect + tech lead only, same as `type:tech`; the PM is never
-  involved, even when the bug was found via an end-to-end test on a `type:feature` flow —
-  that story's acceptance criteria were already validated once when it shipped, and a
-  regression fix against them isn't a new product judgment call.
+  `/pilot-story --bug` (architect originates it), or it's discovered inline while another
+  ticket is being scoped, implemented, or manually confirmed in phase 6 (the architect,
+  dev/`pilot-e2e`, or `pilot-qa` originates it — see "Prerequisite bug tickets" below)
+  instead of being reported through `/pilot-story` directly. Either way, phase 5 review is
+  architect + tech lead only, same as `type:tech`; the PM is never involved, even when the
+  bug was found via an end-to-end test or phase-6 QA on a `type:feature` flow — that
+  story's acceptance criteria were already validated once when it shipped (or, for a
+  phase-6 find, are exactly what's still being validated), and a regression fix isn't a
+  new product judgment call for the PM to weigh in on.
 - **`type:e2e`** — never created via phase 1 (there's no raw "e2e need" a human reports
   from scratch) — always originated by the architect during phase 2, as the one mandatory
   end-to-end-test task every `type:feature` split produces (see "End-to-end test tasks"
@@ -142,11 +143,12 @@ ticket — every ticket is created by an agent during phase 1 (PM for `type:feat
 architect for `type:tech`/`type:bug`; `type:e2e` is never phase-1-created at all), even
 when the origin is a five-word request from a person. Phase 2 (`/pilot-scope`) always uses
 the architect regardless of `type:` — challenging/decomposing an already-created story is a
-technical judgment call either way, never the PM's on its own. The one exception is a
+technical judgment call either way, never the PM's on its own. The exceptions: a
 prerequisite tech or bug ticket the architect originates itself, inline, mid-phase-2
-scoping pass — see "Prerequisite tech tickets" and "Prerequisite bug tickets" below; the
-other is the PM's own involvement when a `type:feature` story gets split — see "Three
-levels" below.
+scoping pass, or the same for a bug specifically that dev/`pilot-e2e` originates
+mid-phase-4 or `pilot-qa` originates mid-phase-6 — see "Prerequisite tech tickets" and
+"Prerequisite bug tickets" below; and the PM's own involvement when a `type:feature` story
+gets split — see "Three levels" below.
 
 **`type:` is never inherited.** Each task the architect creates when splitting a story
 gets its own `type:`, assigned for what that specific task actually is — not copied from
@@ -378,15 +380,16 @@ does, §2 "Three levels") — closed is just as terminal, `status:split` just as
 while it's still mid-flight — minus the e2e-task mechanics, which only ever apply to
 `type:feature`.
 
-### Prerequisite bug tickets (phase 2 or phase 4)
+### Prerequisite bug tickets (phase 2, phase 4, or phase 6)
 
 Distinct from a prerequisite *tech* ticket above (a new technical need, no defect
-implied): while scoping (phase 2) or implementing/testing (phase 4) a ticket, the
-architect or dev/`pilot-e2e` may instead discover a concrete **defect** in already-shipped
-code outside the ticket's own scope — not an ambiguity in what's being built (phase 4's
-own spec-deviation path, `pilot-dev.md`, still covers that), a genuine bug. Most commonly
-this happens while writing or running an end-to-end test task (above), but isn't
-limited to that case.
+implied): while scoping (phase 2), implementing/testing (phase 4), or manually confirming
+shipped behavior (phase 6), the architect, dev/`pilot-e2e`, or `pilot-qa` may instead
+discover a concrete **defect** in already-shipped code outside the ticket's own scope —
+not an ambiguity in what's being built (phase 4's own spec-deviation path, `pilot-dev.md`,
+still covers that), a genuine bug. Most commonly this happens while writing or running an
+end-to-end test task, or during a phase-6 manual test case (above; §7), but isn't limited
+to either case.
 
 Whoever finds it originates a new ticket for it using the exact same mechanics as a
 prerequisite tech ticket, just `type:bug` instead of `type:tech`: written directly (the
@@ -394,18 +397,22 @@ same quality bar as `/pilot-story --bug`'s own phase-1 output — what's broken,
 observed, root cause/fix if known), `status:backlog`, unassigned — never as a sub-issue of
 the ticket being worked. Link the two: "Blocks #M" on the new ticket, "Depends on #N" in
 the discovering ticket's own body — always a hard blocker, since the discovering ticket
-cannot be finished until the bug is fixed.
+cannot be finished until the bug is fixed. In phase 6 specifically, `pilot-qa` only does
+this for a `change`-tagged failure — a clear-cut defect it can describe plainly; a
+`decision`-tagged one (a genuine judgment call on whether it's actually wrong) gets
+`needs-human` instead, same tagging convention phase 5 reviewers already use (§6).
 
-**Phase 4 needs one thing phase 2 doesn't.** A ticket phase 2 is scoping isn't claimed by
-phase 3/4 yet, so recording "Depends on #N" and finishing the scoping pass normally is
-enough — the gate (§4 "Blocked-by dependencies") does the rest once phase 3/4 later try to
-claim it. A ticket phase 4 is *implementing*, by contrast, is already claimed and
-mid-phase (`status:in-dev`, assigned) — the dependency gate alone won't pull an
-already-in-progress ticket out of circulation. So from phase 4 (`pilot-dev` or
-`pilot-e2e`), also add `on-hold` to the ticket being implemented, with a comment naming the
-new bug ticket, before stopping — never push a broken or partial commit in the meantime. A
-human (or the same agent) removes `on-hold` once the bug ticket reaches `status:done`, and
-only then resumes the original with `--resume`.
+**Phase 4 and phase 6 need one thing phase 2 doesn't.** A ticket phase 2 is scoping isn't
+claimed by phase 3/4 yet, so recording "Depends on #N" and finishing the scoping pass
+normally is enough — the gate (§4 "Blocked-by dependencies") does the rest once phase 3/4
+later try to claim it. A ticket phase 4 is *implementing*, or phase 6 is *confirming*, by
+contrast, is already claimed and mid-phase (`status:in-dev` or `status:in-qa`, assigned) —
+the dependency gate alone won't pull an already-in-progress ticket out of circulation. So
+from phase 4 (`pilot-dev` or `pilot-e2e`) or phase 6 (`pilot-qa`), also add `on-hold` to
+the ticket being worked, with a comment naming the new bug ticket, before stopping — never
+push a broken or partial commit (phase 4), or finish the QA pass as if nothing were wrong
+(phase 6), in the meantime. A human (or the same agent) removes `on-hold` once the bug
+ticket reaches `status:done`, and only then resumes the original with `--resume`.
 
 ---
 
@@ -1107,18 +1114,25 @@ pool `/pilot-qa` picks from.
    performs the tests for real and reports back, case by case; feed each response back to
    the agent until it reaches a final verdict — either every case confirmed, or one or more
    concrete failures.
-6. Apply the result:
+6. Apply the result — the agent tags each failure `change` or `decision` first, the same
+   convention phase 5 reviewers use (§6):
    - **All confirmed** → set `status:done` and close the issue (`mcp__github__issue_write`)
      — this is the one place a phase skill sets `status:done` on an actionable ticket
      directly, since there's no PR merge here for
      `.github/workflows/pilot-status-on-merge.yml` to react to (§6 step 6). Nothing to
      cascade further — a `type:feature` story is never itself a task of another
      `status:split` parent.
-   - **One or more failures** → add `needs-human` with a comment describing exactly what
+   - **One or more `change`-tagged failures** (a clear-cut defect) → nothing further to
+     set — the agent already originated a `type:bug` ticket for each and self-applied
+     `on-hold` with its own comment (`status:in-qa` stays), the same mechanics a bug found
+     mid-implementation in phase 4 uses (§2 "Prerequisite bug tickets (phase 2, phase 4,
+     or phase 6)").
+   - **One or more `decision`-tagged failures** (a genuine judgment call, no `change`-tagged
+     ones needing the above) → add `needs-human` with a comment describing exactly what
      failed and how to reproduce it (`status:in-qa` stays, per §3 "`needs-human` — an
-     orthogonal flag"). **Provisional, until the bug-handling side of this phase is
-     designed**: this stops here rather than originating a `type:bug` ticket itself — a
-     human decides what happens next by hand for now.
+     orthogonal flag").
+   Both kinds can occur in the same pass — apply both, they're independent (§3).
 7. Report the outcome back to the human. Never invoke `pilot-e2e`/`pilot-dev` from this
-   skill — a QA failure is a human decision point, not an automatic handoff back into
+   skill — a `type:bug` ticket the agent originates goes through its own phases 2-5
+   independently, never handed off to phase 4 directly from here.
    phase 4 (unlike phase 5's `status:changes-requested` loop, §6).

@@ -51,7 +51,7 @@ comment in place of a fresh spec).
     this exact same step for a bug it finds), but isn't limited to that case. Originate a
     new ticket for it the same way the architect originates a prerequisite tech ticket in
     phase 2, just from phase 4 instead and `type:bug` instead of `type:tech`
-    (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2 or phase 4)"):
+    (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)"):
     `type:bug`, `status:backlog`, unassigned, body describing what's broken, how you
     observed it, and the root cause/suggested fix if you already know it — never as a
     sub-issue of your own ticket. Add a "Blocks #M" comment on the new ticket pointing back

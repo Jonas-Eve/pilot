@@ -33,8 +33,8 @@ record dependencies, or set a priority — that's phase 2's job, later and separ
 
 You receive a raw bug report in free text — a human's account of broken behavior, or a
 technical trace (failing assertion, error log, stack trace) if this came from another
-phase's own discovery (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2 or
-phase 4)") rather than through `/pilot-story` directly. Your job is to turn it into one
+phase's own discovery (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2,
+phase 4, or phase 6)") rather than through `/pilot-story` directly. Your job is to turn it into one
 well-formed `type:bug` GitHub issue — investigate enough to say where the defect actually
 lives and what's wrong, not to decide priority or whether it needs splitting (phase 2's
 job, later and separately).
@@ -141,7 +141,7 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    - **Prerequisite (bug)** — while scoping, you instead discover a concrete *defect* in
      already-shipped code outside the ticket's own scope, not a new technical need.
      Originate it the same way, just `type:bug` instead of `type:tech`
-     (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2 or phase 4)") — same
+     (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)") — same
      linking, same hard-blocker phrasing rule; finish scoping this ticket normally
      afterward, recording the "Depends on #N" — you don't need `on-hold` here, unlike a
      dev/`pilot-e2e` discovering the same thing mid-phase-4, because this ticket isn't
