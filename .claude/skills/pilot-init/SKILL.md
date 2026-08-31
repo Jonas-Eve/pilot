@@ -97,10 +97,13 @@ see `.claude/skills/pilot-update/SKILL.md`.
    `<!-- PILOT:COMMANDS:START -->` marker blocks in `CLAUDE.md`/`README.md` are left as
    their template placeholder text — `/pilot-init-archi` fills those in later.
 
-6. **Copy the process doc.** Copy `$PILOT_SRC/assets/docs/pilot-process.md` to
-   `docs/pilot-process.md` at the project root, creating `docs/` if needed. This file is
-   PILOT-owned from here on — never hand-edit it in the project; `/pilot-update`
-   overwrites it from a fresh `$PILOT_SRC`.
+6. **Copy the process docs.** Copy `$PILOT_SRC/assets/docs/pilot-process.md` to
+   `docs/pilot-process.md`, and `$PILOT_SRC/assets/docs/pilot-process-visual.md` to
+   `docs/pilot-process-visual.md`, both at the project root, creating `docs/` if needed.
+   The first is the operational spec every phase skill reads; the second is a purely
+   human-facing companion (a sequence diagram) that no skill or agent needs — copy both
+   regardless. Both files are PILOT-owned from here on — never hand-edit either in the
+   project; `/pilot-update` overwrites them from a fresh `$PILOT_SRC`.
 
 7. **Copy the status-cascade workflow.** Copy
    `$PILOT_SRC/assets/github/workflows/pilot-status-on-merge.yml` to
