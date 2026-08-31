@@ -1,32 +1,25 @@
 # PILOT — Ticket Pipeline (Simplified Multi-Agent Process)
 
 PILOT is this repo's lightweight, in-house multi-agent ticket process: specialized agent
-personas take a piece of work from a raw idea to a merged PR, with few tokens spent per
-ticket — five short, focused phases, each phase running in its own isolated agent context
-rather than one context accumulating the whole ticket's history.
+personas take a piece of work from a raw idea to a merged PR, each phase running in its
+own isolated agent context (§5) rather than accumulating the whole ticket's history.
 
-**P**lan → **I**nvestigate → **L**ay out → **O**perate → **T**est & validate.
+**P**lan → **I**nvestigate → **L**ay out → **O**perate → **T**est & validate, plus a sixth
+phase, Human QA (§7), mandatory for `type:feature` only — a manual acceptance check once
+every task is merged, before the story reaches `status:done`. `type:tech`/`type:bug`
+tickets never go through it.
 
-`type:feature` stories carry one more, mandatory phase 6 after those five — Human QA,
-§7 — a manual, human-paired acceptance check at the story level once every task is
-done, before the story itself reaches `status:done`. `type:tech`/`type:bug` tickets never
-go through it.
-
-This document is the source of truth for the process: the state machine, the GitHub
-label conventions, the claim protocol, and how the phases fit together. The agent
-personas (`.claude/agents/pilot-*.md`) and the skills that drive them
-(`.claude/skills/*/SKILL.md`) both reference this file rather than repeating it —
-keep this document accurate first, then bring those files in line with it (per this
-project's own documentation-maintenance convention, if it has one).
+This document is the source of truth: the state machine, GitHub label conventions, claim
+protocol, and how the phases fit together. The agent personas
+(`.claude/agents/pilot-*.md`) and skills (`.claude/skills/*/SKILL.md`) reference this file
+rather than repeating it — keep this document accurate first, then bring those in line.
 
 ---
 
 ## 0. Prerequisites & Quickstart
 
-**The GitHub labels below must exist in this repository before any PILOT skill runs.**
-No skill creates them on the fly — applying a label that doesn't exist yet fails the
-GitHub API call outright, not silently. Create them once (repo Settings → Labels, or
-the GitHub API/CLI):
+**These GitHub labels must exist before any PILOT skill runs** — no skill creates them on
+the fly, and applying a label that doesn't exist fails the API call outright:
 
 `type:feature`, `type:tech`, `type:bug`, `type:e2e`, `level:epic`, `level:story`,
 `level:task`, `priority:P0`, `priority:P1`, `priority:P2`,
@@ -36,10 +29,9 @@ the GitHub API/CLI):
 `status:done`, `needs-human`, `on-hold`.
 
 Each phase is a Claude Code slash command, run from a session with read/write access to
-this repo's issues and PRs. Nothing in PILOT triggers itself as reasoning — every phase
-runs because something sent its exact command as a literal message, whether that's a
-human typing it or a scheduled Routine doing the same on a timer (§4 "Scheduled sweeps").
-Bare, no-argument commands are what make the scheduled case useful — see below:
+this repo's issues and PRs — nothing in PILOT triggers itself as reasoning, every phase
+runs because something sent its exact command literally, human or scheduled Routine (§4
+"Scheduled sweeps"). Bare, no-argument commands are what make the scheduled case useful:
 
 ```
 /pilot-story "let a user filter search results by wheelchair accessibility"
@@ -69,10 +61,9 @@ Every phase skill also runs bare, with **no argument at all** — it then works 
 pool of fresh candidates (its own pre-claim `status:`) *and* its own `needs-human`/
 `on-hold` tickets whose flag has since been cleared (§4 "Picking the next ticket..." and
 "Scheduled sweeps"). This is what a cron Routine calls on a timer — literally bare for
-`/pilot-review` (no ticket number ever computed on its behalf); with `--auto` added for
-`/pilot-scope`, `/pilot-spec`, and `/pilot-dev`, which default to pair and need that flag
-to run unattended (§4 "Interaction modes"). `/pilot-story` and `/pilot-qa` are pair-only
-and are never Routine-driven at all.
+`/pilot-review`; with `--auto` added for `/pilot-scope`, `/pilot-spec`, and `/pilot-dev`,
+which default to pair and need that flag to run unattended (§4 "Interaction modes").
+`/pilot-story` and `/pilot-qa` are pair-only and are never Routine-driven at all.
 
 ---
 
@@ -80,12 +71,12 @@ and are never Routine-driven at all.
 
 | # | Phase | Skill | Agent | Produces |
 |---|-------|-------|-------|----------|
-| 1 | Plan | `/pilot-story` | `pilot-pm` (`type:feature`) or `pilot-architect` (`type:tech`/`type:bug`) — auto-detected from the need, `--tech`/`--bug` to declare it upfront | A functional user story or formalized technical need (`level:story`), or an Epic + several stories, for `type:feature`/`type:tech` — content only, no dependency/prerequisite analysis; or, for a genuine `type:bug` report, a `type:bug` ticket created directly as `level:task` — dev-sized by definition, it skips phase 2 outright (§2 "Three levels"). Either way the ticket exists as `status:draft` until the human's final approval (§3), then finalizes to `status:backlog` (story) or straight to `status:spec-ready` (bug) |
-| 2 | Investigate | `/pilot-scope` | `pilot-architect` — plus `pilot-pm` when a `type:feature` story is split | The story itself scoped (`type:tech` only — `type:bug` never reaches phase 2 at all, §2 "Three levels"), or split into dev-sized tasks ready for spec — mandatory for `type:feature` (dev task(s) + one e2e task, §2 "End-to-end test tasks"), a size judgment call for `type:tech` — with dependencies recorded (prerequisite ticket(s) and/or between sibling tasks) — plus, either way, a wont-do verdict where applicable |
+| 1 | Plan | `/pilot-story` | `pilot-pm` (`type:feature`) or `pilot-architect` (`type:tech`/`type:bug`) — auto-detected, `--tech`/`--bug` to declare it upfront | A `level:story` (feature/tech), or, for a genuine `type:bug`, a `level:task` ready to build directly — a bug skips phase 2 (§2 "Three levels"). Either way `status:draft` until human approval, then `status:backlog` (story) or `status:spec-ready` (bug) |
+| 2 | Investigate | `/pilot-scope` | `pilot-architect` — plus `pilot-pm` when a `type:feature` story is split | The story scoped as-is or split into dev-sized tasks — mandatory for `type:feature`, a size judgment call for `type:tech`; `type:bug` never reaches this phase at all (§2 "Three levels") |
 | 3 | Lay out | `/pilot-spec` | `pilot-techlead` | A technical spec written into the ticket (the test plan itself, for an e2e task) |
 | 4 | Operate | `/pilot-dev` | `pilot-dev`, or `pilot-e2e` instead for a `type:e2e` task | An implementation + pull request (following `.github/pull_request_template.md`) |
-| 5 | Test & validate | `/pilot-review` | `pilot-pm` + `pilot-architect` + `pilot-techlead` (feature) or `pilot-architect` + `pilot-techlead` (tech/bug) | A GitHub comment: either blocking points for a human (`needs-human`, plus `status:changes-requested` if any are code-level) or a consolidated go-ahead (`status:approved`) — a human always does the actual merge |
-| 6 | Human QA (`type:feature` only) | `/pilot-qa` | `pilot-qa` | A human-confirmed `status:done` on the story once every task has merged, or a `needs-human` flag with what failed (§7) |
+| 5 | Test & validate | `/pilot-review` | `pilot-pm` + `pilot-architect` + `pilot-techlead` (feature/e2e) or `pilot-architect` + `pilot-techlead` (tech/bug) | A consolidated GitHub comment: `status:approved`, or blocking points (`needs-human`, plus `status:changes-requested` if code-level) — a human always does the actual merge |
+| 6 | Human QA (`type:feature` only) | `/pilot-qa` | `pilot-qa` | A human-confirmed `status:done` once every task has merged, or a `needs-human` flag with what failed (§7) |
 
 There is no single global-orchestrator command — each phase skill is invoked on its own
 (`/pilot-scope 123`, etc.), as its own isolated agent call (see §5), one phase at a time.
@@ -112,34 +103,22 @@ dependencies, prerequisites, or splitting; that's entirely phase 2's job (below)
   checks product fit against the story's acceptance criteria).
 - **`type:tech`** — a human describes a technical need in free text to the same
   `/pilot-story`; the architect agent formalizes it into a story (or several) in place of
-  the PM — there is no separate ticket-creation skill, it's the same act either way, just
-  a different agent behind it. Phase 5 review is architect + tech lead only; the PM is
-  never involved.
-- **`type:bug`** — a human reports broken behavior in already-shipped code via
-  `/pilot-story --bug` (the architect classifies it and, if it's genuinely a defect,
-  originates it), or it's discovered inline while another ticket is being scoped,
-  implemented, or manually confirmed in phase 6 (the architect, dev/`pilot-e2e`, or
-  `pilot-qa` classifies and originates it — see "Prerequisite bug tickets" below) instead
-  of being reported through `/pilot-story` directly. Always created directly as
-  `level:task`, `status:spec-ready` — never `level:story`/`status:backlog`: a bug is
-  dev-sized by definition, so it never goes through phase 2's scoping pass at all (§2
-  "Three levels"). Whoever finds it must first be convinced it's genuinely a code defect
-  and not a new or different need — see "Prerequisite bug tickets" below for what happens
-  when it turns out not to be one — nor, in phase 1 specifically, that it's not an
-  actionable defect at all (already fixed, not reproducible, an exact duplicate, working
-  as intended): a `--bug` report skips phase 2 entirely, so there's no later
-  `status:wont-do` checkpoint to catch an invalid one the way a story gets — the architect
-  makes that call in phase 1 itself, the same "out of scope, create nothing" outcome
-  `/pilot-story` already has for any raw need. Either way, an actual `type:bug` ticket's
-  phase 5 review
-  is architect + tech lead only, same as `type:tech`; the PM is never involved, even when
-  the bug was found via an end-to-end test or phase-6 QA on a `type:feature` flow — that
-  story's acceptance criteria were already validated once when it shipped (or, for a
-  phase-6 find, are exactly what's still being validated), and a regression fix isn't a
-  new product judgment call for the PM to weigh in on.
+  the PM — same act either way, just a different agent. Phase 5 review is architect + tech
+  lead only; the PM is never involved.
+- **`type:bug`** — a defect in already-shipped code: reported via `/pilot-story --bug`, or
+  discovered inline while another ticket is being scoped, implemented, or manually
+  confirmed in phase 6 (the architect, dev/`pilot-e2e`, or `pilot-qa` — "Prerequisite bug
+  tickets" below). Classified first by whoever finds it: genuinely a code defect (created
+  directly as `level:task`, skipping phase 2 outright — "Three levels" below has the
+  mechanics); actually a different/new need in disguise (handled as `type:feature`/
+  `type:tech` instead); or not actionable at all (create nothing, the same "out of scope"
+  outcome any raw need gets — a bug has no later `status:wont-do` checkpoint to catch an
+  invalid one). Phase 5 review is architect + tech lead only, same as `type:tech` — the PM
+  is never involved, even when found via an e2e test or phase-6 QA on a `type:feature`
+  flow: a regression fix isn't a new product call.
 - **`type:e2e`** — never created via phase 1 (there's no raw "e2e need" a human reports
   from scratch) — always originated by the architect during phase 2, as the one mandatory
-  end-to-end-test task every `type:feature` split produces (see "End-to-end test tasks"
+  end-to-end-test task every `type:feature` split produces ("End-to-end test tasks"
   below). Phase 5 review is PM + architect + tech lead, the same set as `type:feature` —
   deliberately: reading the test is how the PM confirms the split, taken as a whole,
   actually validates the story's real end-to-end flow, not just its individual pieces.
@@ -152,15 +131,14 @@ no `--feature` equivalent; feature is the default read of an undecorated need).
 
 A human never opens a raw, unformalized GitHub issue directly for any of these kinds of
 ticket — every ticket is created by an agent during phase 1 (PM for `type:feature`,
-architect for `type:tech`/`type:bug`; `type:e2e` is never phase-1-created at all), even
-when the origin is a five-word request from a person. Phase 2 (`/pilot-scope`) always uses
-the architect regardless of `type:` — challenging/decomposing an already-created story is a
-technical judgment call either way, never the PM's on its own. The exceptions: a
-prerequisite tech or bug ticket the architect originates itself, inline, mid-phase-2
-scoping pass, or the same for a bug specifically that dev/`pilot-e2e` originates
-mid-phase-4 or `pilot-qa` originates mid-phase-6 — see "Prerequisite tech tickets" and
-"Prerequisite bug tickets" below; and the PM's own involvement when a `type:feature` story
-gets split — see "Three levels" below.
+architect for `type:tech`/`type:bug`; `type:e2e` is never phase-1-created at all). Phase 2
+(`/pilot-scope`) always uses the architect regardless of `type:` — challenging/decomposing
+an already-created story is a technical judgment call either way, never the PM's on its
+own. The exceptions: a prerequisite tech or bug ticket the architect originates itself,
+inline, mid-phase-2 scoping pass, or the same for a bug specifically that dev/`pilot-e2e`
+originates mid-phase-4 or `pilot-qa` originates mid-phase-6 — see "Prerequisite tech
+tickets" and "Prerequisite bug tickets" below; and the PM's own involvement when a
+`type:feature` story gets split — see "Three levels" below.
 
 **`type:` is never inherited.** Each task the architect creates when splitting a story
 gets its own `type:`, assigned for what that specific task actually is — not copied from
@@ -183,19 +161,19 @@ not the same thing as a story split into tasks — the two are different levels 
 conflate. Symmetric for both entry points:
 
 - **`level:epic`** (alongside `type:feature` or `type:tech` — never `type:bug`, which is
-  never grouped, §2 "Prerequisite bug tickets") — groups several **`level:story`** tickets
-  under a shared theme, for categorization ("CI", "wheelchair filtering across the app").
-  Never itself scoped, spec'd, or built — no `status:` label. Created by the PM
-  (`type:feature`) or the architect (`type:tech`) during phase 1, at the same moment a
-  story would otherwise be created, the instant it's clear the idea can't be delivered as
-  a single story. **Stays open and is closed by hand, always** — unlike a split story's
-  tasks (a fixed set decided once, §3 "Cascading completion"), new stories can be added to
-  an Epic at any point, so its completeness is never something PILOT can prove on its own.
+  never grouped, "Prerequisite bug tickets" below) — groups several **`level:story`**
+  tickets under a shared theme, for categorization. Never itself scoped, spec'd, or
+  built — no `status:` label. Created by the PM (`type:feature`) or the architect
+  (`type:tech`) during phase 1, at the same moment a story would otherwise be created, the
+  instant it's clear the idea can't be delivered as a single story. **Stays open and is
+  closed by hand, always** — unlike a split story's tasks (a fixed set decided once, §3
+  "Cascading completion"), new stories can be added to an Epic at any point, so its
+  completeness is never something PILOT can prove on its own.
 - **`level:story`** (`type:feature`/`type:tech`, `status:backlog` at creation — never
   `type:bug`, which is always `level:task` directly, below) — one functional or technical
-  unit, exactly what phase 1 always produces for these two types. Whether or not it belongs
-  to an Epic, it always goes through phase 2 on its own, where the architect decides
-  whether it needs splitting into tasks.
+  unit, exactly what phase 1 always produces for these two types. Whether or not it
+  belongs to an Epic, it always goes through phase 2 on its own, where the architect
+  decides whether it needs splitting into tasks.
 - **`level:task`** — normally the architect splits a story into dev-sized tasks; the story
   that got split then gets `status:split` instead (§3) — it is still just a `level:story`,
   one level below an Epic, not an Epic itself. Split along vertical slices (each task
@@ -207,32 +185,24 @@ conflate. Symmetric for both entry points:
     (§2 "Scoping an already-created story" in `pilot-architect.md`), a well-scoped story
     can carry itself through phases 3-4 as a single ticket, `level:story` the whole way,
     never split into `level:task`s.
-  - **`type:bug` ticket: always `level:task` directly, never `level:story`, never
-    split.** The one exception to "the architect splits a story into dev-sized tasks"
-    above: a bug is a small, well-defined mismatch between shipped behavior and what was
-    already agreed on — dev-sized by nature, so it never goes through phase 2 at all.
-    Whoever reports or discovers it (phase 1, or inline from phase 2/4/6, §2 "Prerequisite
-    bug tickets" below) creates it directly as `level:task`, `status:spec-ready` — a
-    standalone root, the one place `level:task` exists with no `status:split` parent.
-    That also means classifying it — genuinely a code defect, or actually a new/different
-    need — happens once, at the point it's reported or discovered, never in a later
-    scoping pass ("Prerequisite bug tickets" below covers what happens when it turns out
-    not to be one).
+  - **`type:bug` ticket: always `level:task` directly, never split, no parent.** The one
+    exception to "the architect splits a story into tasks" above: dev-sized by nature, so
+    it skips phase 2 entirely, created directly as `level:task`/`status:spec-ready` — the
+    one place `level:task` exists standalone. Classified once, at the point it's reported
+    or discovered (§2 above; "Prerequisite bug tickets" below), never in a later pass.
   - **`type:feature` story: splitting is never optional.** A feature story always ends up
     `status:split` with **at least two** tasks — one or more tasks doing the dev work
     (typically `type:feature`, sometimes mixed with a `type:tech` enabler, above) plus
     exactly one `type:e2e` task — never a single unsplit ticket carried through phases 3-4
     directly. See "End-to-end test tasks" below for why, and §7 "Phase 6 — Human QA" for
     what this makes possible once every task is done. The architect's real judgment for a
-    feature story is how many tasks it needs and what each one's own `type:` should be
-    (one `type:feature` task is enough for a small story) — never *whether* to split at
-    all.
+    feature story is how many tasks it needs and what each one's own `type:` should be —
+    never *whether* to split at all.
   Either way, **for a `type:feature` story**, the PM is also invoked to check the proposed
   `type:feature` tasks still collectively cover the original story's acceptance criteria
   before it's finalized (excluding any `type:tech` or `type:e2e` task from that check —
-  neither implements a criterion, see "End-to-end test tasks" below) — a split that
-  quietly drops part of what the story promised would otherwise only surface in phase 5,
-  after everything's already been built.
+  neither implements a criterion) — a split that quietly drops part of what the story
+  promised would otherwise only surface in phase 5, after everything's already been built.
 
 **Creating or reusing an Epic** (phase 1, for either type): before creating a new Epic,
 check open `level:epic` issues of the matching `type:` for one that already fits the
@@ -241,12 +211,10 @@ than creating a duplicate. Only create a new Epic when no existing one fits and 
 genuinely can't be delivered as one story.
 
 **Phase 2 still claims and works exactly one ticket per invocation** (§4 "Claim
-Protocol") — nothing about the above changes that. But nothing stops the architect from
-*reading* related tickets for context while scoping that one ticket: the parent Epic (if
-any), sibling stories under it, or anything already linked via "Blocks #M"/"Depends on
-#N" or a sub-issue relationship — e.g. to avoid spinning out a prerequisite that a
-sibling ticket already covers, or proposing a split that conflicts with what a linked
-ticket already does. This is read-only context-gathering, not a second claim.
+Protocol"). But nothing stops the architect from *reading* related tickets for context
+while scoping that one ticket: the parent Epic (if any), sibling stories under it, or
+anything already linked via "Blocks #M"/"Depends on #N" or a sub-issue relationship — this
+is read-only context-gathering, not a second claim.
 
 ### Prerequisite tech tickets (distinct from a split's tasks)
 
@@ -266,9 +234,9 @@ The architect creates it — one story, or several under a new/reused Epic, each
 `level:story` — **never** as a sub-issue of the ticket being scoped: a sub-issue would
 make it `level:task` and tie its lifecycle to the parent's split-tracking, which is wrong
 for a ticket that is its own root and goes through phases 2-5 independently. Instead, link
-the two directions with a plain issue reference: a comment on
-the new ticket ("Blocks #M") pointing back, and a line in the body of the ticket being
-scoped naming it. Never `sub_issue_write` for this relationship.
+the two directions with a plain issue reference: a comment on the new ticket ("Blocks #M")
+pointing back, and a line in the body of the ticket being scoped naming it. Never
+`sub_issue_write` for this relationship.
 
 Whether the prerequisite is a **hard blocker** — the ticket genuinely can't be spec'd or
 built until it lands — decides the exact wording of that line, because §4 "Blocked-by
@@ -283,8 +251,7 @@ dependencies" below mechanically gates a ticket on the literal phrase, not on a 
 
 Don't reach for `on-hold` (§3) for this either way: its manual-lift requirement is the
 wrong tool for a wait that resolves itself in a specific, mechanically checkable way.
-Reserve `on-hold` for a pause with no single ticket to point at — a global restructuring,
-deliberately deferred work — where there genuinely is nothing for a phase skill to check.
+Reserve `on-hold` for a pause with no single ticket to point at.
 
 The prerequisite ticket itself is nothing special once created: a normal `type:tech`
 story, `status:backlog`, moving through phases 2-5 like any other. The only place its
@@ -300,18 +267,17 @@ the same tree, both tasks `level:task` under the same `level:story` parent regar
 each one's own independent `type:`. Record it with the same "Depends on #N" phrase (§4
 "Blocked-by dependencies") on the dependent task, at split time — the mechanism already
 gates on the literal phrase regardless of whether the referenced ticket is a separate root
-or a sibling, so nothing new needs to be built for this, just the same phrase used one
-level down.
+or a sibling.
 
 ### End-to-end test tasks
 
 **Mandatory for every `type:feature` story, never for `type:tech`/`type:bug`.** A story is
 one feature — one integrated flow a human can exercise — so every `type:feature` story
-gets exactly **one** end-to-end-test task alongside its dev task(s), covering
-every case of that flow worth exercising (think one test *file*/`describe` block with
-several cases inside, not a single assertion), not a judgment call the architect makes per
-story. `type:tech`/`type:bug` tickets never get one — they have no user-facing flow to
-exercise this way, and split there stays purely a size judgment (above).
+gets exactly **one** end-to-end-test task alongside its dev task(s), covering every case of
+that flow worth exercising (think one test *file*/`describe` block with several cases
+inside, not a single assertion), not a judgment call the architect makes per story.
+`type:tech`/`type:bug` tickets never get one — they have no user-facing flow to exercise
+this way.
 
 Title convention: "E2E: <story summary>". A dev-sized ticket like any other, `level:task`
 under the story, going through phases 2-5 exactly like its siblings, labeled `type:e2e` —
@@ -319,35 +285,31 @@ its own type, never stacked with anything else (§2 intro). No new `status:` on 
 itself.
 
 It depends on **every** other task in the same split, dev and tech alike — not a
-judgment-selected subset: one "Depends on #N" line per sibling (§4 "Blocked-by
-dependencies"; §2 "Dependencies between tasks of the same split"), so it naturally isn't
+judgment-selected subset: one "Depends on #N" line per sibling, so it naturally isn't
 claimable by phase 3/4 until all of them have merged, and structurally can never be the
 ticket that finishes the split before its siblings.
 
-**Excluded from the PM's split-coverage check** (above, "Three levels" — the PM confirms
-the proposed `type:feature` tasks collectively cover the original story's acceptance
-criteria): neither the e2e task nor any `type:tech` sibling implements a criterion — the
-e2e task verifies criteria the `type:feature` tasks already cover, and a `type:tech` task
-is an enabler, not a delivered piece of product behavior — so the architect asks the PM to
-check coverage against the `type:feature` tasks only.
+**Excluded from the PM's split-coverage check** (above, "Three levels"): neither the e2e
+task nor any `type:tech` sibling implements a criterion — the e2e task verifies criteria
+the `type:feature` tasks already cover, and a `type:tech` task is an enabler, not a
+delivered piece of product behavior.
 
-**Once the e2e task reaches `status:done`, the whole split is structurally
-finished** (every dev sibling necessarily already is, per the dependency above) — this is
-what triggers §7 "Phase 6 — Human QA" instead of the ordinary cascade straight to
-`status:done` (§3 "Cascading completion").
+**Once the e2e task reaches `status:done`, the whole split is structurally finished**
+(every dev sibling necessarily already is, per the dependency above) — this is what
+triggers §7 "Phase 6 — Human QA" instead of the ordinary cascade straight to `status:done`
+(§3 "Cascading completion").
 
-Phase 3 (tech lead) for an e2e task writes the test plan itself as the spec: which
-flow, which existing test tooling/framework this project already uses for e2e (its own
-docs/CI config, if it has one), and what its dependencies having merged now makes
-exercisable end-to-end. **Phase 4 for an e2e task is `pilot-e2e`, not `pilot-dev`** —
-`/pilot-dev` (the skill) reads the `type:e2e` label before calling `Agent` and picks the
-`pilot-e2e` persona instead, precisely so the agent implementing it gets a context already
-tailored to writing a test against real, already-merged integration points rather than
-generic implementation instructions. `pilot-e2e` writes the test against that already-merged
-behavior — the ticket cannot be marked done with a test that doesn't actually pass. If
-running it surfaces a genuine defect in that already-merged code rather than a gap in the
-e2e ticket's own scope, that's a bug discovered mid-implementation, not a workaround — see
-"Prerequisite bug tickets" below.
+Phase 3 (tech lead) for an e2e task writes the test plan itself as the spec: which flow,
+which existing test tooling/framework this project already uses for e2e, and what its
+dependencies having merged now makes exercisable end-to-end. **Phase 4 for an e2e task is
+`pilot-e2e`, not `pilot-dev`** — `/pilot-dev` (the skill) reads the `type:e2e` label before
+calling `Agent` and picks the `pilot-e2e` persona instead, precisely so the agent
+implementing it gets a context already tailored to writing a test against real,
+already-merged integration points rather than generic implementation instructions.
+`pilot-e2e` writes the test against that already-merged behavior — the ticket cannot be
+marked done with a test that doesn't actually pass. If running it surfaces a genuine
+defect in that already-merged code rather than a gap in the e2e ticket's own scope,
+that's a bug discovered mid-implementation — see "Prerequisite bug tickets" below.
 
 ### Re-scoping a `type:feature` story after its split is done
 
@@ -357,41 +319,32 @@ that's re-splitting the *story*, not scoping the task). Within that, `/pilot-sco
 an already-once-split `level:story` differently depending on exactly how finished it is:
 
 - **Closed (`status:done` or `status:wont-do`)** — terminal, full stop. `/pilot-scope`
-  refuses to claim it: report that it's already closed and stop, no exception. This isn't
-  arbitrary — nothing else in PILOT ever moves a ticket backward out of a terminal state (a
-  bug found in already-shipped code becomes its own new ticket, "Prerequisite bug tickets"
-  above, never a reopening of the original) — reopening a closed issue to re-scope it would
-  be the one place PILOT ever did that. The new work gets its own story instead (a plain,
-  non-gating "Extends #N" reference in its body is enough to keep the link visible — never
-  a sub-issue, same reasoning as a prerequisite ticket, §2 above).
+  refuses to claim it: report that it's already closed and stop, no exception — nothing
+  else in PILOT ever moves a ticket backward out of a terminal state. The new work gets
+  its own story instead (a plain, non-gating "Extends #N" reference in its body is enough
+  to keep the link visible — never a sub-issue, same reasoning as a prerequisite ticket,
+  §2 above).
 - **`status:qa` or `status:in-qa`** — still reversible, because nothing terminal has
   happened yet: the cascade only just mechanically set `status:qa` the moment the e2e task
   closed, and no human has confirmed anything (`status:in-qa` is one step further — a
   `/pilot-qa` session may even be live — but still short of a verdict). Claiming an issue
   number in either status is a valid, explicit `/pilot-scope` entry point (never part of a
-  bare pool, same as `--resume` or a `status:changes-requested` reclaim, §4) — an existing
-  `status:in-qa` assignee doesn't block this claim, the architect's claim simply overwrites
-  it, the same non-conflict exception a `status:changes-requested` reclaim already gets
-  (§4). Post a comment explaining why (new scope found, any in-progress QA session is being
-  set aside), then claim it into `status:scoping` — the one deliberate, phase-2-only
-  backward transition in the whole state machine; nothing else ever moves a ticket out of
-  `status:qa`/`status:in-qa` this way. From here it's an ordinary phase-2 pass, just with
-  extra context (which tasks, including the original e2e one, are already `status:done`
-  from the earlier round):
-  1. Propose the new task(s) the same way as any split (§2 "Three levels" — a mix of
-     `type:feature`/`type:tech`, each its own `level:task`).
+  bare pool) — an existing `status:in-qa` assignee doesn't block this claim, the
+  architect's claim simply overwrites it. Post a comment explaining why, then claim it
+  into `status:scoping` — the one deliberate, phase-2-only backward transition in the
+  whole state machine. From here it's an ordinary phase-2 pass, just with extra context
+  (which tasks, including the original e2e one, are already `status:done` from the
+  earlier round):
+  1. Propose the new task(s) the same way as any split (§2 "Three levels").
   2. Propose exactly one new `type:e2e` task for *this round* — never reopen or amend the
      original, already-`status:done` e2e task. Title it distinctly (e.g. "E2E: <story
-     summary> (round 2)") and depend only on this round's new task(s) — not the
-     already-closed originals, the gate is a no-op for those anyway. Its phase-3 spec
+     summary> (round 2)") and depend only on this round's new task(s). Its phase-3 spec
      should say explicitly that its job is to *extend* the existing e2e test asset the
-     original task wrote, not duplicate coverage from scratch — point at the original
-     task's PR for what already exists.
+     original task wrote, not duplicate coverage from scratch.
   3. Run the PM coverage check (§2 above) against this round's new `type:feature` tasks
-     only — the original tasks were already checked against the story's acceptance
-     criteria at split time; re-checking them again here would be redundant.
+     only — the original tasks were already checked at split time.
   4. Finalize exactly like any other split (§4 "Claim Protocol"): the story lands back on
-     `status:split` — the same status it left, now tracking this round's new tasks instead.
+     `status:split`, now tracking this round's new tasks instead.
   Once this round's new e2e task also reaches `status:done`, the story cascades to
   `status:qa` again exactly as before (§3 "Cascading completion") — the new behavior gets
   its own human QA pass in phase 6, same as the original.
@@ -419,12 +372,11 @@ isn't limited to either case.
 
 **Classify it before creating anything** — the same read `/pilot-story --bug` gives a raw
 report (§2 intro above): genuinely a code defect against something already agreed on, or
-actually a new/different need in disguise (the "already agreed on" part was never really
-true). If it's not a bug, don't create a `type:bug` ticket at all: treat it as a
-prerequisite *tech* ticket instead (above) if it's a new technical need, or, if it needs an
-actual product/judgment decision, leave it for a human to take through phase 1 themselves
-rather than originating anything — §7 "Phase 6 — Human QA" step 6 covers the phase-6
-version of this specifically, including how the story itself is treated in the meantime.
+actually a new/different need in disguise. If it's not a bug, don't create a `type:bug`
+ticket at all: treat it as a prerequisite *tech* ticket instead (above) if it's a new
+technical need, or, if it needs an actual product/judgment decision, leave it for a human
+to take through phase 1 themselves rather than originating anything — §7 "Phase 6 — Human
+QA" step 6 covers the phase-6 version of this specifically.
 
 If it genuinely is a bug, originate a new ticket for it using the same linking mechanics as
 a prerequisite tech ticket, just `type:bug` instead of `type:tech` — with one difference:
@@ -474,9 +426,11 @@ the four fits that specific task, assigned by the architect at split time.
   checklist. It stays **open indefinitely and is closed by hand** — new stories can be
   added to it at any time, so unlike a split story (see "Cascading completion" below), it
   never auto-closes.
-- `level:story` — the root unit phase 1 always produces (§2 "Three levels").
-- `level:task` — a dev-sized unit of a `status:split` story (§2 "Three levels"). Never
-  itself split further — depth is capped at these three levels.
+- `level:story` — the root unit phase 1 always produces for `type:feature`/`type:tech`
+  (§2 "Three levels").
+- `level:task` — a dev-sized unit of a `status:split` story, or a standalone `type:bug`
+  ticket with no parent (§2 "Three levels"). Never itself split further — depth is capped
+  at these three levels.
 
 ### `status:` — the pipeline state machine, one label at a time
 ```
@@ -495,17 +449,15 @@ below and §6)
 ```
 - `status:draft` — phase 1 (`/pilot-story`) has created the ticket but the human hasn't
   given final approval yet — assigned to whoever's session created it, the moment the
-  agent's first draft exists (§4 "Interaction modes"). Mirrors an in-progress `status:`
-  below in every way that matters: excluded from every phase's candidate pools (§4
-  "Picking the next ticket..."), never picked up bare, only reachable by an explicit
-  `--resume <issue>` (§4 "Resuming a paused pair session") or once a cleared
-  `needs-human` flag makes it resumable (§4 "Resuming a `needs-human` ticket"). Becomes
-  `status:backlog`, unassigned, once the human gives final approval — an Epic still gets
-  no `status:` label at all (above), draft or not.
+  agent's first draft exists (§4 "Interaction modes"). Excluded from every phase's
+  candidate pools, never picked up bare, only reachable by an explicit `--resume <issue>`
+  or once a cleared `needs-human` flag makes it resumable. Becomes `status:backlog`
+  (story) or `status:spec-ready` (bug), unassigned, once the human gives final approval.
 - `status:backlog` — ticket exists, phase 2 hasn't started.
 - `status:scoping` — architect has claimed it for phase 2.
-- `status:spec-ready` — scoped, not split, ready for phase 3. A freshly created
-  task also starts here directly — it was already scoped as part of being created.
+- `status:spec-ready` — ready for phase 3: an unsplit `type:tech` story, a freshly split
+  task (already scoped as part of the split), or a `type:bug` ticket skipping phase 2
+  entirely.
 - `status:split` — the architect decided in phase 2 this story is too big for one pass
   through phases 3-4 and broke it into tasks instead (§2 "Three levels"). The story
   carries no further `status:` transitions of its own from here — it's a tracker for its
@@ -521,14 +473,11 @@ below and §6)
   human clears `needs-human`, `/pilot-dev` claims it like any other pre-claim status (§4
   "Reclaiming a `status:changes-requested` ticket") — reclaiming here is expected to find
   an existing assignee (carried over from the original phase-4 claim) and overwrite it
-  rather than treat that as a conflict, unlike a genuinely fresh `status:dev-ready`
-  ticket. The dev pushes new commits to the *same* already-open PR (never a second PR for
-  the same ticket) and moves the ticket back to `status:in-review` when done — landing it
-  in the exact same bare/no-`needs-human` bucket phase 5 already sweeps (§6 step 0), so no
-  separate "review this again" pool is needed on that side.
+  rather than treat that as a conflict. The dev pushes new commits to the *same*
+  already-open PR (never a second PR for the same ticket) and moves the ticket back to
+  `status:in-review` when done.
 - `status:approved` — phase 5 ran and every reviewer approved (§6) — set instead of
-  leaving `status:in-review`. This is the "ready to merge, nothing outstanding" signal a
-  human (or an automation) can filter on without reading the review comment itself; a
+  leaving `status:in-review`. This is the "ready to merge, nothing outstanding" signal; a
   human still performs the actual merge, PILOT never does. There's no automatic
   re-review trigger if new commits land on the PR after this before it's actually
   merged — re-run `/pilot-review` on it by hand, or move it back to `status:in-review`
@@ -555,83 +504,58 @@ below and §6)
   being alive; see §6. `/pilot-qa` is the one place a phase skill *does* set `status:done`
   directly, once a human confirms the story's behavior in phase 6 (§7).
 
-  **Known limitation:** GitHub only recognizes a
-  `Closes #N` reference (populating `closingIssuesReferences`, which the workflow reads)
-  when the merging PR's base is the repository's *default* branch — never for a PR
-  merged into an intermediate, not-yet-merged branch, even once that branch later reaches
-  the default branch itself. If a ticket's implementing PR had to be based on another
-  PILOT PR's branch instead of the default branch directly (per this project's own
-  git-workflow conventions on dependent/stacked branches, if it documents one), the
-  workflow finds zero closing issues on that merge and does nothing — set `status:done`
-  on the ticket by hand once everything has actually landed on the default branch. This
-  isn't fixable in the workflow itself; it's a GitHub platform behavior.
+  **Known limitation:** GitHub only recognizes a `Closes #N` reference (populating
+  `closingIssuesReferences`, which the workflow reads) when the merging PR's base is the
+  repository's *default* branch — never for a PR merged into an intermediate,
+  not-yet-merged branch, even once that branch later reaches the default branch itself.
+  If a ticket's implementing PR had to be based on another PILOT PR's branch instead of
+  the default branch directly, the workflow finds zero closing issues on that merge and
+  does nothing — set `status:done` on the ticket by hand once everything has actually
+  landed on the default branch. Not fixable in the workflow itself; a GitHub platform
+  behavior.
 
 `level:epic` tickets never carry a `status:` label at all. `status:wont-do` and
 `status:split` tickets don't carry any *other* `status:` label — the rest of the state
-machine only applies to tickets still actively moving through phases 3-5 themselves
-(leaf tickets, or a story that turned out not to need splitting).
+machine only applies to tickets still actively moving through phases 3-5 themselves.
 
 ### `needs-human` — an orthogonal flag, not a pipeline state
 
 Unlike every label above, `needs-human` never replaces the ticket's current `status:` —
 it sits alongside whichever one is already there. When a phase hits something only a
-human can decide, it leaves the ticket's `status:` exactly where it was (e.g.
-`status:in-spec` stays `status:in-spec`) and adds `needs-human`, plus a comment. That
-comment is never optional and is never just the label with no context attached — it must
-say, explicitly, both **why** the ticket needs a human right now (what was found, what
-decision the phase couldn't make on its own) and **what's needed** from a human to
-unblock it (a decision, a missing piece of information, an explicit approval). A label
-with no comment, or a comment that only restates "needs a human" without saying why or
-what for, is not a valid use of this flag — whoever reads it next (a human, or a phase
-skill resuming a different ticket later) has to be able to act from the comment alone,
-without reconstructing the agent's reasoning. This is deliberate: collapsing everything
-into one `status:blocked` value would throw away *which phase* was mid-work, which is
-exactly the information needed to know which phase skill should pick the ticket back up —
-see §4 "Resuming a `needs-human` ticket."
+human can decide, it leaves the ticket's `status:` exactly where it was and adds
+`needs-human`, plus a comment. That comment is never optional and is never just the label
+with no context attached — it must say, explicitly, both **why** the ticket needs a human
+right now and **what's needed** from a human to unblock it. A label with no comment, or
+one that only restates "needs a human" without saying why or what for, is not a valid use
+of this flag — whoever reads it next has to be able to act from the comment alone.
 
-**Phase 5 is the one exception to "`status:` stays exactly where it was."** Elsewhere,
-the very question a block raises is often what determines what happens next (a phase-2
-judgment call might still lead to splitting further, or not; a phase-3 conflict might
-still need a re-spec, or not), so `status:` has to wait for the answer. A phase-5 block
-tagged `change` (§6) is different: the answer is already known regardless of what a human
-says about it — the ticket needs code, so it moves straight to `status:changes-requested`
-(above) as part of applying the block, not just `needs-human` on an unchanged
-`status:in-review`. `needs-human` itself still only ever sits alongside whichever
-`status:` it lands on, in-review or changes-requested — it's phase 5's aggregation step,
-not the flag, that moves `status:` here.
+**Phase 5 is the one exception to "`status:` stays exactly where it was."** A phase-5
+block tagged `change` (§6) is different: the answer is already known regardless of what a
+human says about it — the ticket needs code, so it moves straight to
+`status:changes-requested` (above) as part of applying the block, not just `needs-human`
+on an unchanged `status:in-review`.
 
 A human resolves it by **removing the `needs-human` label** once they've responded (a
-reply comment) or decided there's nothing more to add (approve as proposed, no reply
-needed) — the label's absence is the whole signal; nothing else needs to change by hand.
+reply comment) or decided there's nothing more to add — the label's absence is the whole
+signal; nothing else needs to change by hand.
 
 **Always add `needs-human` and post the why/what's-needed comment the moment a phase
 hits something only a human can decide** — one path, not two, whether or not a human
-happens to be live in the same session right then. This is deliberate: an agent that
-skips the label or the comment when it *thinks* someone's there to ask is one
-interrupted session away from a ticket stuck with no signal on it at all (or a label
-with no explanation attached), and no way to tell it apart from any other in-progress
-ticket.
-
-What differs by context is only what happens *next* — never whether the flag and its
-comment get posted in the first place:
+happens to be live in the same session right then. What differs by context is only what
+happens *next*:
 
 - **Nobody answers on the spot** (a scheduled sweep with no human present, or an
   interactive human who says they need to think about it) — the label and comment stay
-  exactly as posted, and the ticket waits for the async resume protocol below, same as
-  ever.
-- **A human is live in the same session** (an interactive run, not a scheduled sweep —
-  below) and answers right there in conversation — the agent still posts the
-  why/what's-needed comment first, as part of applying the flag, exactly as it would if
-  nobody were around; a quick answer is not a reason to skip straight to a resolution.
-  Once the human answers, the agent proceeds with that answer and, in the same turn,
-  posts a **second** comment summarizing what was actually decided (the question that was
-  asked, and the resolution reached) — *then* **removes `needs-human` itself**. It
-  doesn't wait for the human to separately go remove it on GitHub, but it also never
-  removes it silently: the ticket's GitHub history must show both the block and its
-  resolution even when the conversation that resolved it never touched GitHub at all.
-  Whoever reads the ticket later sees the same two-comment trail either way — a blocking
-  comment followed by a resolution comment — whether the gap between them was seconds
-  (live) or days (async).
+  exactly as posted, and the ticket waits for the async resume protocol below.
+- **A human is live in the same session** and answers right there in conversation — the
+  agent still posts the why/what's-needed comment first, exactly as it would if nobody
+  were around; a quick answer is not a reason to skip straight to a resolution. Once the
+  human answers, the agent proceeds with that answer and, in the same turn, posts a
+  **second** comment summarizing what was actually decided — *then* **removes
+  `needs-human` itself**. It never removes it silently: the ticket's GitHub history must
+  show both the block and its resolution even when the conversation that resolved it never
+  touched GitHub at all — a blocking comment followed by a resolution comment, whether the
+  gap between them was seconds (live) or days (async).
 
 #### Cascading completion
 
@@ -639,9 +563,8 @@ This applies to `status:split` stories only — a story's tasks are a fixed set 
 whichever round is currently in flight (the original split, or a later re-scope round,
 "Re-scoping a `type:feature` story after its split is done" above), so completeness at
 any given moment is provable from a live read of its current sub-issues — never a cached
-list. An Epic's stories are not
-(§2, §3 "type: — set once..." above) — an Epic never auto-closes, a human always closes
-it by hand, regardless of how many of its current stories are done.
+list. An Epic's stories are not — an Epic never auto-closes, a human always closes it by
+hand, regardless of how many of its current stories are done.
 
 Whenever a task reaches `status:done` or `status:wont-do`, check whether its parent
 is a `status:split` story and, if so, whether *all* of that story's other tasks are
@@ -651,20 +574,18 @@ levels") — this check simply finds none and does nothing further; the bug tick
 - Not all done yet → do nothing further, the parent stays `status:split`.
 - All done, parent is `type:tech` (the only root type that can reach `status:split`
   without being `type:feature` — `type:bug` is never even a `level:story`, so it never
-  has a parent to check in the first place, §2 "Three levels") →
-  set the parent story itself to `status:done` — it was never merged directly, but its
-  work is now finished. This does
+  has a parent to check in the first place) → set the parent story itself to
+  `status:done` — it was never merged directly, but its work is now finished. This does
   not cascade any further: if that story belongs to an Epic, the Epic still does not
-  auto-close (see above) — a human closes it whenever they judge it complete.
+  auto-close — a human closes it whenever they judge it complete.
 - All done, parent is `type:feature` → set the parent to **`status:qa`** instead of
   `status:done` (§7 "Phase 6 — Human QA") — every `type:feature` split includes exactly
-  one e2e task depending on all its dev siblings (§2 "End-to-end test tasks"),
-  so "all done" here is structurally the same moment the e2e task itself just
-  finished. `status:done` for this story is set later, by `/pilot-qa` itself, once a human
-  confirms the behavior — not by this workflow.
+  one e2e task depending on all its dev siblings, so "all done" here is structurally the
+  same moment the e2e task itself just finished. `status:done` for this story is set
+  later, by `/pilot-qa` itself, once a human confirms the behavior.
 
-No periodic sweep exists beyond this — the check is event-driven, not polled (below and
-§6). A `status:split` story whose last task was closed without ever carrying
+No periodic sweep exists beyond this — the check is event-driven, not polled. A
+`status:split` story whose last task was closed without ever carrying
 `status:done`/`status:wont-do` (mislabeled outside PILOT's own conventions) is the one
 case this still can't catch, since there is no terminal-status event to react to.
 
@@ -679,36 +600,28 @@ deferred work) and picking it up now would just be wasted or wrong. A dependency
 specific, still-open ticket** is not this — that's the "Depends on #N" mechanical gate
 instead (§4 "Blocked-by dependencies"), which needs no label and clears itself the moment
 that ticket closes; reach for `on-hold` only when there's no single ticket a phase skill
-could check. Like `needs-human`,
-it sits alongside whichever `status:` is already there rather than replacing it, for the
-same reason: losing track of which phase the ticket was at would make resuming it later
-harder, not easier.
+could check. Like `needs-human`, it sits alongside whichever `status:` is already there
+rather than replacing it.
 
-A human applies it directly at any time (no phase skill needs to be running), or a phase
-agent applies it itself if it notices mid-work that the ticket depends on unresolved
-global work — either way, always with a comment saying what it's waiting on (a linked
-ticket/Epic, or a plain description of the restructuring in question). A bare `on-hold`
-label with no comment is as invalid as a bare `needs-human` one, for the same reason:
-whoever looks at the ticket next has to know what it's waiting for without asking around.
+A human applies it directly at any time, or a phase agent applies it itself if it notices
+mid-work that the ticket depends on unresolved global work — either way, always with a
+comment saying what it's waiting on. A bare `on-hold` label with no comment is as invalid
+as a bare `needs-human` one.
 
-Excluded from every phase's candidate pools exactly like `needs-human` (§4 "Picking the
-next ticket..."). Only a human removes it, once whatever it was waiting on has actually
-resolved — there's no live-session "answer it and remove it in the same turn" path like
-`needs-human` has, because there's no question being asked that a live human could answer
-on the spot; lifting it is itself the human's call. Once removed, the ticket is simply a
-normal candidate again in whichever pool its current `status:`/assignee state already
-puts it in — no special resume handshake, since nothing was actually asked. The two flags
-are independent and can coexist (a ticket can be both `needs-human` and `on-hold` at
-once); clearing one has no effect on the other.
+Excluded from every phase's candidate pools exactly like `needs-human`. Only a human
+removes it, once whatever it was waiting on has actually resolved — there's no
+live-session "answer it and remove it in the same turn" path like `needs-human` has,
+since there's no question being asked that a live human could answer on the spot. Once
+removed, the ticket is simply a normal candidate again. The two flags are independent and
+can coexist; clearing one has no effect on the other.
 
 ### `priority:`
 - `priority:P0` / `priority:P1` / `priority:P2` — set by the architect, on each
   leaf/task, during phase 2. Not set on `level:epic` or `status:split` tracker
-  parents — priority lives on the actionable tickets underneath them. Same rough meaning
-  as most backlog conventions: P0 closes a real gap (security, correctness, a broken
-  safety net) — do it soon; P1 is solid value, not urgent; P2 is nice-to-have or
-  conditional. Adopt this project's own priority convention instead, if it already has
-  one that differs.
+  parents. Same rough meaning as most backlog conventions: P0 closes a real gap (security,
+  correctness, a broken safety net) — do it soon; P1 is solid value, not urgent; P2 is
+  nice-to-have or conditional. Adopt this project's own priority convention instead, if it
+  already has one that differs.
 
 ---
 
@@ -716,25 +629,20 @@ once); clearing one has no effect on the other.
 
 Phases 2, 3, 4, and 6 each start by **claiming** the ticket before doing any real work,
 because several instances of the same phase (e.g. several devs) may run concurrently.
-Phase 1 doesn't fit this pattern the same way — there's no pre-existing ticket to claim,
-since phase 1 is what creates one — but the moment it creates the ticket (`status:draft`,
-§3), it assigns it the same way, and that assignment sticks if the pair session ends
-before final approval, exactly like a claimed ticket left mid-phase; see "Resuming a
-paused pair session" below.
+Phase 1 doesn't fit this pattern the same way — there's no pre-existing ticket to claim —
+but the moment it creates the ticket (`status:draft`, §3), it assigns it the same way, and
+that assignment sticks if the pair session ends before final approval, exactly like a
+claimed ticket left mid-phase; see "Resuming a paused pair session" below.
 
-1. Read the ticket's current `status:` and assignee (`mcp__github__issue_read` /
-   `pull_request_read`).
+1. Read the ticket's current `status:` and assignee.
 2. If it's not in the expected pre-claim status, or already has an assignee, stop — it's
    being worked or has moved on; pick a different ticket (or report nothing to do, if a
    specific ticket number was requested explicitly).
 3. Otherwise, immediately set the assignee to the current agent/session and swap the
-   `status:` label to the in-progress one for this phase (`issue_write`), in the same
-   call where possible.
+   `status:` label to the in-progress one for this phase.
 4. Re-read the ticket once more. If the assignee is no longer this agent, another run won
    the race — stand down and pick something else. This is optimistic, not a real lock:
-   it's cheap insurance against the common case (two devs starting around the same time),
-   not a guarantee under true concurrent writes, but that's an acceptable trade-off at
-   the scale of a handful of parallel agents.
+   cheap insurance against the common case, not a guarantee under true concurrent writes.
 5. Only after a successful claim does the phase's real work (the subagent call) start.
 
 Phase 5 does **not** claim — the three (or two) reviewers run in parallel by design, not
@@ -743,33 +651,26 @@ in competition for the same ticket.
 ### Picking the next ticket when none is specified
 
 Phase 1 has no such pool at all — it always starts from a raw need in free text (or an
-explicit `--resume <issue>`), never from picking an existing ticket, so nothing below
-applies to it. When any other phase skill is invoked without an explicit ticket number,
-it builds its candidate pool from **two** queries, not one
-(`mcp__github__search_issues` / `list_issues`):
-1. **Fresh work** — tickets in its own pre-claim `status:`, no assignee (as before: e.g.
-   `status:spec-ready` for `/pilot-spec`).
-2. **Resumable work** — tickets already in its own *in-progress* `status:` (e.g.
-   `status:in-spec` for `/pilot-spec`), still carrying the assignee from when they were
-   originally claimed, but **no longer** carrying `needs-human` — see "Resuming a
-   `needs-human` ticket" below for what that means and how to proceed once picked.
+explicit `--resume <issue>`). When any other phase skill is invoked without an explicit
+ticket number, it builds its candidate pool from **two** queries, not one:
+1. **Fresh work** — tickets in its own pre-claim `status:`, no assignee.
+2. **Resumable work** — tickets already in its own *in-progress* `status:`, still carrying
+   the assignee from when they were originally claimed, but **no longer** carrying
+   `needs-human` — see "Resuming a `needs-human` ticket" below.
 
 `/pilot-dev` alone has a **third** pool: tickets in `status:changes-requested` with
-`needs-human` no longer present — phase 5 sent these back for an actual code fix (§6),
-and they're a distinct case from both of the above, not a "fresh" ticket and not a
-same-claim "resume" either. See "Reclaiming a `status:changes-requested` ticket" below.
+`needs-human` no longer present — phase 5 sent these back for an actual code fix (§6). See
+"Reclaiming a `status:changes-requested` ticket" below.
 
 All pools that apply to a given phase skill are merged and picked from together: highest
 `priority:` first, then a ticket referenced by another open ticket's "Blocks #M" comment
-(§2 "Prerequisite tech tickets") before one that isn't — resolving what unblocks something
-else is worth more than strict recency — then oldest by creation date to break ties;
-untagged tickets sort last. A ticket still carrying `needs-human` or `on-hold` is never a
-candidate in any pool — it re-enters only once neither flag remains — and neither is one
-whose body has an unresolved "Depends on #N" reference (below, "Blocked-by dependencies")
-— it re-enters automatically once #N closes, no flag to remove. A ticket left mid-pair
-session (already assigned, still in that phase's in-progress `status:`, but no
-`needs-human`) is likewise never a candidate in any bare pool — see "Resuming a paused pair
-session" below; it only resumes via an explicit `--resume <issue>`.
+before one that isn't, then oldest by creation date to break ties. A ticket still carrying
+`needs-human` or `on-hold` is never a candidate in any pool, and neither is one whose body
+has an unresolved "Depends on #N" reference (below, "Blocked-by dependencies") — both
+re-enter automatically once resolved, no flag to remove for the dependency case. A ticket
+left mid-pair session (already assigned, still in that phase's in-progress `status:`, but
+no `needs-human`) is likewise never a candidate in any bare pool — see "Resuming a paused
+pair session" below; it only resumes via an explicit `--resume <issue>`.
 
 ### Blocked-by dependencies (mechanical gate, distinct from `on-hold`)
 
@@ -780,40 +681,29 @@ case; anything that writes the same phrase gets the same gate for free.
 
 **Format: one dependency per line, always.** Multiple dependencies are multiple separate
 "Depends on #N" lines, one issue number each — never several numbers combined onto one
-line (never "Depends on #12, #15"). This is deliberate: it keeps the check a trivial
-per-line literal match, not a list/prose parse the skill would have to get right for every
-phrasing someone might use.
+line. This keeps the check a trivial per-line literal match, not a list/prose parse.
 
 Whenever a phase builds a candidate pool from its own `status:` pools (above), it also
 reads each candidate's body for this exact phrase and, for each `#N` found, checks whether
-that issue is still open (`mcp__github__issue_read`) — plain open/closed, not its
-`status:` label, since a closed ticket is `status:done` or `status:wont-do` either way. A
-candidate with at least one still-open dependency is excluded from the pool for this run,
-the same as `needs-human`/`on-hold` above — but unlike those two, nothing needs removing by
-hand: the moment the referenced ticket closes, the next run of that phase picks the ticket
-back up as an ordinary candidate. This is a deterministic tool-call check the skill
-performs directly (§5), never something the subagent reasons about.
+that issue is still open — plain open/closed, not its `status:` label. A candidate with at
+least one still-open dependency is excluded from the pool for this run, the same as
+`needs-human`/`on-hold` above — but unlike those two, nothing needs removing by hand: the
+moment the referenced ticket closes, the next run of that phase picks the ticket back up
+as an ordinary candidate.
 
 **In phases 3 and 4, the gate applies to an explicitly-given ticket number too, not just
 bare-pool selection.** `/pilot-spec` and `/pilot-dev` each run this same check before
 claiming any ticket, whether it got there via the pool or because a human named it
-directly, and report the blocking `#N` and stop instead of claiming if it's still open —
-exactly the same principle already applied to an explicit ticket number still carrying
-`needs-human`/`on-hold` (each phase skill's own "given issue number" handling, e.g.
-`.claude/skills/pilot-spec/SKILL.md` step 1). Skipping the check just because a number was
-given by hand would make the gate trivial to bypass by accident.
+directly — the same principle already applied to an explicit ticket number still carrying
+`needs-human`/`on-hold`.
 
-**Phase 2 (`/pilot-scope`) is the deliberate exception.** Re-scoping a ticket — revisiting
-its decisions, splitting it further — doesn't need its prerequisite resolved first, only
-the phases that actually spec and build it (3 and 4) do; `/pilot-scope` doesn't check this
-gate on an explicitly-given ticket number, and it never meaningfully fires from phase 2's
-own bare pool either, since nothing writes "Depends on #N" onto a ticket before phase 2
-has scoped it at least once (the phrase is phase 2's own output, per §2 above).
+**Phase 2 (`/pilot-scope`) is the deliberate exception.** Re-scoping a ticket doesn't need
+its prerequisite resolved first, only the phases that actually spec and build it (3 and 4)
+do; `/pilot-scope` doesn't check this gate on an explicitly-given ticket number, and it
+never meaningfully fires from phase 2's own bare pool either, since nothing writes
+"Depends on #N" onto a ticket before phase 2 has scoped it at least once.
 
-The same reference feeds the ordering tie-break above: a candidate that's itself named in
-another open ticket's "Blocks #M" comment sorts ahead of one that isn't, at the same
-`priority:`, since spec'ing or building it sooner is what lets that other ticket clear its
-own gate.
+The same reference feeds the ordering tie-break above.
 
 ### Resuming a `needs-human` ticket
 
@@ -822,22 +712,19 @@ optionally after leaving a reply comment with guidance, or with no reply at all 
 there's nothing to add beyond "proceed as proposed." That removal, not a reaction or a
 particular comment, is the entire signal a phase skill looks for. This can happen from
 any session, at any time — nothing depends on the session that raised the block still
-being alive, the same isolation every other phase call already relies on (§5); the full
-context (the blocking comment, and anything posted after it) lives on the ticket itself.
+being alive.
 
 A phase skill treats a ticket as **resuming**, not a fresh claim, whenever it's already
-in that phase's in-progress `status:` (whether picked up bare, per above, or given
-explicitly as an argument):
-1. Read the full comment thread (`mcp__github__issue_read` `get_comments`), not just the
-   ticket body — the blocking comment and everything posted after it.
+in that phase's in-progress `status:` (whether picked up bare or given explicitly):
+1. Read the full comment thread, not just the ticket body — the blocking comment and
+   everything posted after it.
 2. If `needs-human` is still present, it isn't resolved yet — report that and stop (this
-   only matters when a ticket number was given explicitly; the bare/no-argument pool
-   above already excludes these).
+   only matters when a ticket number was given explicitly; the bare pool above already
+   excludes these).
 3. Otherwise, proceed with the phase's `Agent` call, passing both the original blocking
    context and whatever's in the thread after it (a specific reply, or "no reply — treat
-   as approved as proposed" if none). The agent proceeds, corrects, or blocks again
-   (re-adds `needs-human`, posts a fresh comment) if that still doesn't actually resolve
-   things.
+   as approved as proposed" if none). The agent proceeds, corrects, or blocks again if
+   that still doesn't actually resolve things.
 
 ### Resuming a paused pair session (`--resume`)
 
@@ -845,78 +732,60 @@ Distinct from both "Resuming a `needs-human` ticket" above and "Reclaiming a
 `status:changes-requested` ticket" below: this is for a ticket left mid-**pair**
 ("Interaction modes" below) — still carrying its original assignee, still in that phase's
 in-progress `status:` (`status:draft`, `status:scoping`, `status:in-spec`,
-`status:in-dev`, `status:in-qa`), with **no** `needs-human` — the pair session simply ended (the human
-stepped away, the session closed) before reaching the phase's final approval. Left alone,
-the normal claim-protocol check (above, step 2: "already has an assignee → stop") would
-treat this the same as a ticket someone else is actively working right now, which isn't
-the case here. For phase 1 specifically, `status:draft` is what makes this possible at
-all — before it existed, an interrupted phase-1 session left nothing behind to resume.
+`status:in-dev`, `status:in-qa`), with **no** `needs-human` — the pair session simply
+ended before reaching the phase's final approval. Left alone, the normal claim-protocol
+check ("already has an assignee → stop") would treat this the same as a ticket someone
+else is actively working right now, which isn't the case here. For phase 1 specifically,
+`status:draft` is what makes this possible at all.
 
 `--resume` requires an **explicit ticket number** — it is never part of any bare/
 scheduled-sweep pool. Unlike `needs-human`, nothing on the ticket itself distinguishes an
-abandoned pair session from one genuinely still in progress elsewhere; only a human
-deliberately choosing to pick a specific ticket back up makes reclaiming it safe.
+abandoned pair session from one genuinely still in progress elsewhere.
 
 To resume:
-1. Read the full ticket — body and comment thread (`mcp__github__issue_read`
-   `get_comments`), not just the latest checkpoint. Pair mode's incremental writes
-   ("Interaction modes" below) are exactly the state to reconstruct from: what's already
-   validated (already written into the body) versus what's still open.
+1. Read the full ticket — body and comment thread, not just the latest checkpoint. Pair
+   mode's incremental writes ("Interaction modes" below) are exactly the state to
+   reconstruct from.
 2. Claim it the same way a `status:changes-requested` reclaim does (below) — an existing
-   assignee doesn't count as a conflict here, carrying one forward from the original pair
-   session is the norm, not a signal to stand down. Overwrite it (assignee → this
-   session); `status:` stays at its current in-progress value, nothing to change there.
-3. Pass the reconstructed state to the phase's `Agent` call as its starting context, in
-   place of a fresh, empty brief, and continue the normal pair loop (checkpoint, show the
-   human, wait, write) from wherever that leaves off.
+   assignee doesn't count as a conflict here. Overwrite it (assignee → this session);
+   `status:` stays at its current in-progress value.
+3. Pass the reconstructed state to the phase's `Agent` call as its starting context, and
+   continue the normal pair loop from wherever that leaves off.
 
-Finalization behaves exactly as any other pair run from here — the phase's completion
-`status:` is set once the human gives final approval, same as "Interaction modes" below
-describes.
+Finalization behaves exactly as any other pair run from here.
 
 ### Reclaiming a `status:changes-requested` ticket (`/pilot-dev` only)
 
-Unlike "Resuming a `needs-human` ticket" or "Resuming a paused pair session" above (same
-claim, same in-progress `status:`, just re-entering), `status:changes-requested` is set
-by *phase 5*
-(§6), not by `/pilot-dev` itself — the ticket already has an open PR from the original
-phase-4 pass, and whatever assignee is still on it is whoever ran *that* pass, not
-necessarily whoever runs `/pilot-dev` next.
+Unlike "Resuming a `needs-human` ticket" or "Resuming a paused pair session" above,
+`status:changes-requested` is set by *phase 5* (§6), not by `/pilot-dev` itself — the
+ticket already has an open PR from the original phase-4 pass, and whatever assignee is
+still on it is whoever ran *that* pass, not necessarily whoever runs `/pilot-dev` next.
 
 Reclaiming one follows the standard claim protocol above with a single, deliberate
-exception: an existing assignee doesn't count as "already claimed" for this status —
-carrying one forward from the original phase-4 claim is the norm here, not a conflict
-signal — the claiming session simply overwrites it (assignee → itself, `status:` →
-`in-dev`) and re-reads to confirm the overwrite held, the same optimistic check any other
-claim uses.
+exception: an existing assignee doesn't count as "already claimed" for this status — the
+claiming session simply overwrites it (assignee → itself, `status:` → `in-dev`) and
+re-reads to confirm the overwrite held.
 
 Once claimed, pass the subagent the phase-5 blocking comment (the `change`-tagged points
 to fix, plus any `decision`-tagged points and their resolution) instead of a fresh spec —
-there's no new spec to write; the existing PR's branch is what gets more commits. The
-subagent pushes to that same branch/PR (never a second PR for the same ticket) and, once
-satisfied, moves the ticket back to `status:in-review` exactly as it would after a
-first-time implementation — landing it back in phase 5's own bare pool (§6 step 0) for
-another review pass.
+the existing PR's branch is what gets more commits. The subagent pushes to that same
+branch/PR (never a second PR for the same ticket) and, once satisfied, moves the ticket
+back to `status:in-review` exactly as it would after a first-time implementation.
 
 ### Scheduled sweeps
 
-Each phase skill is meant to also run **bare, on a timer** — a Routine (this
-environment's scheduled-trigger mechanism) whose prompt is nothing but the literal
-command. For `/pilot-scope`, `/pilot-spec`, and `/pilot-dev` — which default to pair mode
-("Interaction modes" below) — that literal command must include `--auto`
-(`/pilot-spec --auto`, still no ticket number computed by the routine itself), since pair
+Each phase skill is meant to also run **bare, on a timer** — a Routine whose prompt is
+nothing but the literal command. For `/pilot-scope`, `/pilot-spec`, and `/pilot-dev` —
+which default to pair mode ("Interaction modes" below) — that literal command must
+include `--auto` (still no ticket number computed by the routine itself), since pair
 requires a human live in the session and a Routine has none. `/pilot-review` needs no
-flag either way, it's already auto-only, so its Routine's prompt stays a bare
-`/pilot-review`. `/pilot-story` and `/pilot-qa` are pair-only with no `--auto` and are
-therefore never driven by a Routine at all — phase 6 is a human physically testing
-something, there is no unattended version of that. Beyond that flag, this works without
-any special-casing because "picking the next ticket when none is specified" (above)
-already covers both fresh and resumed work — the routine doesn't need to know which one
-it's about to do. Four independent Routines, one per claiming phase skill
-(`/pilot-scope --auto`, `/pilot-spec --auto`, `/pilot-dev --auto`) plus one for
-`/pilot-review` (which gets the same bare/no-argument pool over `status:in-review` instead
-of a claimed status, since phase 5 doesn't claim — see §6), each on its own schedule — not
-one combined routine, so a slow or failing phase never delays the others.
+flag either way, it's already auto-only. `/pilot-story` and `/pilot-qa` are pair-only with
+no `--auto` and are therefore never driven by a Routine at all. Beyond that flag, this
+works without any special-casing because "picking the next ticket when none is specified"
+(above) already covers both fresh and resumed work identically. Four independent
+Routines — one each for `/pilot-scope --auto`, `/pilot-spec --auto`, `/pilot-dev --auto`,
+and `/pilot-review` — each on its own schedule, so a slow or failing phase never delays
+the others.
 
 ### Interaction modes: pair (default) and `--auto`
 
@@ -924,75 +793,59 @@ The six phase skills split into three groups by which modes they support:
 
 - **`/pilot-story`, `/pilot-qa`** — **pair only**, no `--auto` exists for either. Turning a
   raw idea into a story or a technical need into a ticket is a conversation between the
-  drafting agent (PM or architect, §2) and a human, not something worth running unattended
-  — there is no value in a story nobody validated; symmetrically, phase 6 is a human
-  physically testing shipped behavior, which has no unattended equivalent at all. Neither
-  is ever driven by a scheduled Routine as a result (above, "Scheduled sweeps"). Both still
-  support `--resume <issue>` for a ticket left mid-pair (above, "Resuming a paused pair
-  session") — that's a human deliberately picking back up, not unattended automation.
+  drafting agent and a human, not something worth running unattended; symmetrically, phase
+  6 is a human physically testing shipped behavior, which has no unattended equivalent at
+  all. Neither is ever driven by a scheduled Routine as a result. Both still support
+  `--resume <issue>` for a ticket left mid-pair.
 - **`/pilot-scope`, `/pilot-spec`, `/pilot-dev`** — default to **pair**, with `--auto` to
-  opt out of it. These three benefit from a human steering the outcome (a decomposition,
-  a spec, an implementation approach) but don't strictly require it every time a Routine
-  fires, so both modes stay available.
+  opt out of it.
 - **`/pilot-review`** — **auto only**, no pair mode exists for it: reviewers run parallel
-  and isolated on purpose (§6), with no natural mid-review checkpoint to pause at —
-  reviewing shipped work is a judgment call to render, not a draft to iterate on together.
+  and isolated on purpose (§6), with no natural mid-review checkpoint to pause at.
 
 Both modes still claim (above) immediately, same as always — it's concurrency
 bookkeeping, unrelated to the content decision.
 
 **Pair** requires a human live in the same session. The agent stops at its phase's
 natural checkpoint(s) — the drafted story, the proposed decomposition, the spec outline,
-the implementation plan — and the skill relays that to the human as an ordinary reply in
-the same conversation, not a GitHub write; it waits for the human's next message, feeds
-it back to the agent, and repeats until they approve. **The skill writes progress into
-the ticket immediately at every checkpoint** (a comment, or a partial `issue_write`)
-instead of holding it in-conversation until the whole phase is done — the ticket itself
-becomes the durable record of how far the pair session got, which is what makes
-`--resume` possible (above, "Resuming a paused pair session"): if the session ends before
-the phase reaches final approval, nothing beyond the conversation itself is lost.
+the implementation plan — and the skill relays that to the human as an ordinary reply,
+waits for their next message, feeds it back to the agent, and repeats until they approve.
+**The skill writes progress into the ticket immediately at every checkpoint** (a comment,
+or a partial `issue_write`) instead of holding it in-conversation until the whole phase is
+done — the ticket itself becomes the durable record of how far the pair session got, which
+is what makes `--resume` possible.
 
-For phases 2-4 a ticket already exists before the phase starts, so this is
-straightforward. **Phase 1 is the one case where no ticket exists yet at the very first
-checkpoint** — `/pilot-story` creates it right there (`status:draft`, §3) as soon as the
-agent's first draft (a single story, or an Epic + several) is ready to show the human,
-instead of holding it in-conversation — the checkpoint the human sees *is* the draft
-ticket's current body from that point on. Every checkpoint, including the first, is
-written immediately from here, the same as phases 2-4; there's no in-conversation-only
-exception left. Either way, the very last thing pair mode does — setting the phase's
-completion `status:` (`status:backlog`, unassigned, for phase 1; e.g.
-`status:spec-ready` for phase 3) — is the same end-state `--auto` reaches in one pass,
-for the phases that have an `--auto` (phase 1 doesn't, below).
+For phases 2-4 a ticket already exists before the phase starts. **Phase 1 is the one case
+where no ticket exists yet at the very first checkpoint** — `/pilot-story` creates it
+right there (`status:draft`, §3) as soon as the agent's first draft is ready to show the
+human, instead of holding it in-conversation. Either way, the very last thing pair mode
+does — setting the phase's completion `status:` — is the same end-state `--auto` reaches
+in one pass, for the phases that have an `--auto` (phase 1 doesn't, below).
 
 **Final consolidation pass, every phase, right before setting the completion `status:`.**
-Writing progress checkpoint by checkpoint (above) means the ticket (or, for phase 4, the
-diff) was assembled incrementally, round by round of the pair conversation — nothing
-guarantees a decision from an early round still squares with one added several rounds
-later, or that nothing was left half-written in the seams between them. Once the human
-gives final approval, before applying the completion label, the agent re-reads the whole
-thing as it now stands — the full ticket body, not just the latest round's delta; the
-full diff, not just the last commit, for phase 4 — and fixes anything incoherent or
-incomplete it finds, the same way it would if it were seeing the finished result for the
-first time. This is also what `pilot-dev` uses in phase 4 as its own self-review of the
-implementation before opening the PR — a substitute for a separate reviewer checking the
-same thing again in phase 5 (§6), not an addition to it.
+Writing progress checkpoint by checkpoint means the ticket (or, for phase 4, the diff) was
+assembled incrementally, round by round of the pair conversation — nothing guarantees a
+decision from an early round still squares with one added several rounds later. Once the
+human gives final approval, before applying the completion label, the agent re-reads the
+whole thing as it now stands — the full ticket body, not just the latest round's delta;
+the full diff, not just the last commit, for phase 4 — and fixes anything incoherent or
+incomplete it finds. This is also what `pilot-dev` uses in phase 4 as its own self-review
+of the implementation before opening the PR — a substitute for a separate reviewer
+checking the same thing again in phase 5 (§6), not an addition to it.
 
 **`--auto`** is the old default, before pair mode existed: the agent decides everything
 and the skill applies the finished result straight to GitHub in one pass, no human
 checkpoint. This is what a scheduled Routine must use for `/pilot-scope`, `/pilot-spec`,
-or `/pilot-dev` (above, "Scheduled sweeps") — pair requires a live human, so a Routine's
-fired prompt for these three must include `--auto` explicitly now that pair is the
-default (the reverse of the old rule, back when `--pair` was opt-in: "never combine with
-a scheduled sweep"). `/pilot-story` has no `--auto` and is therefore never
-Routine-driven; `/pilot-review` needs no flag either way, it's already auto-only.
+or `/pilot-dev` (above, "Scheduled sweeps") — pair requires a live human. `/pilot-story`
+has no `--auto` and is therefore never Routine-driven; `/pilot-review` needs no flag
+either way, it's already auto-only.
 
-`--auto` and `--resume` (above, "Resuming a paused pair session") are mutually exclusive
-with each other and with pair mode itself — pick exactly one per run.
+`--auto` and `--resume` are mutually exclusive with each other and with pair mode itself —
+pick exactly one per run.
 
 This is unrelated to the "ask live" behavior in §3 ("`needs-human` — an orthogonal
-flag") — that one is for a genuine blocker the agent can't resolve alone and fires
-whether or not pair mode is active; pair is for iterating on a draft together even when
-nothing is actually blocking.
+flag") — that one fires for a genuine blocker the agent can't resolve alone, whether or
+not pair mode is active; pair is for iterating on a draft together even when nothing is
+actually blocking.
 
 ---
 
@@ -1006,81 +859,64 @@ Keeping token cost down per ticket is central to PILOT's design. Two rules keep 
    hands that — not the pipeline's history — to a fresh `Agent` call using the matching
    persona in `.claude/agents/pilot-*.md`.
 2. **Claim/label bookkeeping is deterministic tool calls in the skill itself**, not
-   something the agent reasons about. The skill does the GitHub read/write plumbing
-   (§4) directly; only the actual thinking — writing the story, challenging the ticket,
-   writing the spec, writing the code, reviewing the PR — goes through an `Agent` call.
+   something the agent reasons about. Only the actual thinking — writing the story,
+   challenging the ticket, writing the spec, writing the code, reviewing the PR — goes
+   through an `Agent` call.
 
 A human driving several phases back to back for the same ticket passes forward only the
-ticket number between them, the same thing each phase skill itself would read off the
-ticket — never a running transcript of the prior phase's `Agent` call.
+ticket number between them — never a running transcript of the prior phase's `Agent` call.
 
 ---
 
 ## 6. Phase 5 — Review Consensus
 
 0. Resolve the PR/issue: the number given, or — bare, no argument — every `status:in-review`
-   PR that either has no `needs-human` flag yet (fresh, never reviewed) or had one and it
-   was just removed (resumed, per §4; re-read the thread for what changed since the
-   blocking comment), excluding any that currently carries `on-hold` (§3). Phase 5 doesn't
-   claim (below), so there's no assignee to filter on — just the presence/absence of
-   `needs-human`/`on-hold`. A ticket phase 5 previously sent to `status:changes-requested`
-   is **not** in this pool — it's `/pilot-dev`'s to reclaim (§4), and only re-enters here
-   once dev pushes it back to `status:in-review`.
+   PR that either has no `needs-human` flag yet or had one and it was just removed,
+   excluding any that currently carries `on-hold` (§3). Phase 5 doesn't claim (below), so
+   there's no assignee to filter on. A ticket phase 5 previously sent to
+   `status:changes-requested` is **not** in this pool — it's `/pilot-dev`'s to reclaim
+   (§4), and only re-enters here once dev pushes it back to `status:in-review`.
 1. Determine reviewers from **the ticket's own `type:`** (§2 "`type:` is never
    inherited" — a `level:task` under a `type:feature` story can itself be `type:tech`, and
    is reviewed as `type:tech`, not as if it inherited `type:feature` from its parent):
    `pilot-pm` + `pilot-architect` + `pilot-techlead` for `type:feature` or `type:e2e`,
    `pilot-architect` + `pilot-techlead` only for `type:tech` or `type:bug`. Three
-   distinct, non-overlapping lenses on every reviewed PR: PM checks product fit against
-   the story's acceptance criteria (`type:feature`) or that the test actually validates
-   the story's end-to-end flow (`type:e2e`); architect checks conformance to the
-   security/architecture decisions recorded at scope time; tech lead checks both
-   conformance to its own spec *and* general code quality/maintainability — deliberately
-   not split out to a fourth reviewer, since `pilot-dev`/`pilot-e2e` already did its own
-   self-review pass on the diff before opening the PR in phase 4 (§4 "Interaction modes" —
-   the same final-consolidation-pass principle every pair-mode phase follows); a second, separate
-   agent re-reviewing the same code from the same technical vantage point would be a
-   near-duplicate of that self-review, not a genuinely distinct lens the way PM/architect/
-   tech lead are from each other.
+   distinct, non-overlapping lenses: PM checks product fit against the story's acceptance
+   criteria (`type:feature`) or that the test actually validates the story's end-to-end
+   flow (`type:e2e`); architect checks conformance to the security/architecture decisions
+   recorded at scope time; tech lead checks both conformance to its own spec *and* general
+   code quality/maintainability — deliberately not split out to a fourth reviewer, since
+   `pilot-dev`/`pilot-e2e` already did its own self-review pass on the diff before opening
+   the PR in phase 4.
 2. Before any reviewer votes, **re-run validation on the PR's actual branch** — the tech
    lead reviewer does this as part of forming its verdict, using this project's own
-   build/test/lint commands (the same ones `pilot-dev` used in phase 4 — see this
-   project's own docs for what those are). Reviewers approve based on a result they
-   reproduced themselves, not only on the PR description's claim that tests pass; a
-   mismatch (validation fails despite the PR saying otherwise) is an automatic block, and
-   always a `change`-tagged one (step 3 below) — something in the code needs fixing, it's
-   never a judgment call.
-   Once this project has a CI workflow covering the affected area, phase 5 additionally
-   requires that check to be green on the PR's head commit (`pull_request_read`
-   `get_check_runs` / `get_status`) before any approval — red or pending CI is likewise an
-   automatic, `change`-tagged block; skip straight to step 4. Until CI exists (or for
-   anything CI doesn't cover), this local re-run is the only safety net PILOT has.
+   build/test/lint commands (the same ones `pilot-dev` used in phase 4). Reviewers approve
+   based on a result they reproduced themselves, not only on the PR description's claim
+   that tests pass; a mismatch is an automatic block, and always a `change`-tagged one
+   (step 3 below). Once this project has a CI workflow covering the affected area, phase 5
+   additionally requires that check to be green on the PR's head commit before any
+   approval — red or pending CI is likewise an automatic, `change`-tagged block; skip
+   straight to step 4. Until CI exists, this local re-run is the only safety net PILOT has.
 3. Run all reviewers **in parallel, independently** — none sees another's verdict before
-   giving its own, to avoid anchoring and to keep the round cheap (no back-and-forth).
-   Each reviewer returns a structured verdict: approve, or block with one or more
-   specific, actionable points, each tagged either `change` — a concrete code-level fix
-   the reviewer can articulate (a missing test, the wrong approach, a security gap with a
-   known fix) — or `decision` — a genuine judgment call with no fix to propose until a
-   human weighs in. Reviewers default to `change` whenever they can say what should be
-   different; `decision` is reserved for when the right answer depends on information or
-   a preference only a human has.
+   giving its own. Each reviewer returns a structured verdict: approve, or block with one
+   or more specific, actionable points, each tagged either `change` — a concrete
+   code-level fix the reviewer can articulate — or `decision` — a genuine judgment call
+   with no fix to propose until a human weighs in. Reviewers default to `change` whenever
+   they can say what should be different; `decision` is reserved for when the right answer
+   depends on information or a preference only a human has.
 4. Aggregate into exactly **one** GitHub comment on the PR:
-   - Every blocking point across all reviewers (and any CI/validation failure from step 2,
-     which is always `change`) is tagged `decision` → one consolidated comment listing
-     every point, grouped by reviewer, and add `needs-human` (`status:in-review` stays
-     as-is — §3 "needs-human — an orthogonal flag"). This ticket re-enters phase 5's own
-     bare pool (step 0 above) once the flag is cleared — a human's answer here doesn't by
-     itself imply new code.
+   - Every blocking point across all reviewers is tagged `decision` → one consolidated
+     comment listing every point, grouped by reviewer, and add `needs-human`
+     (`status:in-review` stays as-is). This ticket re-enters phase 5's own bare pool (step
+     0 above) once the flag is cleared.
    - Any blocking point is tagged `change` (a CI/validation failure from step 2 always
      counts) → one consolidated comment listing every point — both `change` and
-     `decision` ones, marked which is which, grouped by reviewer — add `needs-human`, and
-     move the ticket to `status:changes-requested` instead of leaving `status:in-review`
-     (§3; §4 "Reclaiming a `status:changes-requested` ticket"). `/pilot-dev`, not this
-     skill, picks this back up once the flag is cleared.
+     `decision` ones, marked which is which — add `needs-human`, and move the ticket to
+     `status:changes-requested` instead of leaving `status:in-review`. `/pilot-dev`, not
+     this skill, picks this back up once the flag is cleared.
    - All reviewers approve → one comment stating all agents approve and that merge is
      still a human action; move the ticket to `status:approved` instead of leaving
-     `status:in-review` (§3) — no `needs-human` to add, this isn't a block. Human merge
-     is still the last step, PILOT never merges.
+     `status:in-review` — no `needs-human` to add, this isn't a block.
 5. Never post one comment per reviewer — the aggregation step is what keeps this from
    turning into review-bot noise.
 6. **After a human merges the PR**, the `.github/workflows/pilot-status-on-merge.yml`
@@ -1090,21 +926,16 @@ ticket — never a running transcript of the prior phase's `Agent` call.
    a task, runs the cascading-completion check from §3 against its `status:split`
    parent story (never a `level:epic` — that always closes by hand) — this runs
    independently of any live agent session, and is the only place `status:done` gets set
-   on an actionable ticket; no phase skill sets it directly. `subscribe_pr_activity`
-   remains available to a `/pilot-dev` session for other PR-babysitting purposes (e.g.
-   surfacing CI failures or review comments back into the session) — it is simply no
-   longer relied on for this step.
+   on an actionable ticket; no phase skill sets it directly.
 
    The same workflow also triggers on `issues: closed`, for the task completions
    that never go through a PR merge at all: `status:wont-do` (§3), which the architect
    sets and closes directly in phase 2, and any hand-closed issue. This path runs only
    the cascading-completion check (§3) — never `swapToDone`, since the closing party is
-   responsible for the issue's own terminal `status:` label, not this workflow — and only
-   when the issue already carries `status:done` or `status:wont-do`; a hand-closed issue
-   with neither label is left alone (no terminal status to cascade from). It skips
-   entirely when GitHub's own timeline shows the closure came from a merged commit
-   reference (`Closes #N`) — that case is the `pull_request: closed` trigger's alone, so
-   the same closure is never processed twice.
+   responsible for the issue's own terminal `status:` label — and only when the issue
+   already carries `status:done` or `status:wont-do`. It skips entirely when GitHub's own
+   timeline shows the closure came from a merged commit reference, so the same closure is
+   never processed twice.
 
 ---
 
@@ -1117,43 +948,31 @@ because it requires a real environment and a real person's judgment on the exper
 just the diff. `type:tech`/`type:bug` tickets never reach this phase: a `type:tech` split
 cascades straight to `status:done` once all its tasks are done (§3 "Cascading
 completion"); a `type:bug` ticket — always a standalone `level:task`, never split (§2
-"Three levels") — reaches `status:done` directly once its own PR merges. Either way, the
-same as before this phase existed.
+"Three levels") — reaches `status:done` directly once its own PR merges.
 
 ### When it fires
 
 A `type:feature` story is always `status:split` (§2 "Three levels" — splitting is never
-optional for a feature). Its e2e task depends on every dev task in the split
-(§2 "End-to-end test tasks"), so the moment that e2e task reaches
-`status:done`, every dev sibling structurally already has too — that's the same "all
-tasks done" moment §3's cascading-completion check reacts to. For a `type:feature`
-parent specifically, that check sets `status:qa` instead of `status:done`
-(`.github/workflows/pilot-status-on-merge.yml`) — unclaimed, unassigned, the fresh-work
-pool `/pilot-qa` picks from.
+optional for a feature). Its e2e task depends on every dev task in the split, so the
+moment that e2e task reaches `status:done`, every dev sibling structurally already has
+too — that's the same "all tasks done" moment §3's cascading-completion check reacts to.
+For a `type:feature` parent specifically, that check sets `status:qa` instead of
+`status:done` — unclaimed, unassigned, the fresh-work pool `/pilot-qa` picks from.
 
 ### Steps
 
 1. Resolve the story: the given issue number (must be `status:qa` unclaimed, or
    `status:in-qa` already assigned with no `needs-human`/`on-hold` for an explicit
-   `--resume`, same shape as every other phase's paused-pair-session case — §4 "Resuming a
-   paused pair session"), or — bare, no argument — the merged pool of unclaimed
-   `status:qa` (fresh) and `status:in-qa` with `needs-human` just cleared (resumable),
-   highest `priority:` then oldest first, same selection rules as every other phase (§4
-   "Picking the next ticket..."). `/pilot-qa` is **pair-only**, like `/pilot-story` — no
-   `--auto`, never Routine-driven (§4 "Interaction modes", "Scheduled sweeps"): there is no
-   meaningful unattended version of a human manually testing something.
+   `--resume`), or — bare, no argument — the merged pool of unclaimed `status:qa` (fresh)
+   and `status:in-qa` with `needs-human` just cleared (resumable), highest `priority:`
+   then oldest first. `/pilot-qa` is **pair-only**, like `/pilot-story` — no `--auto`,
+   never Routine-driven.
 2. **Claim** it per §4: assignee + `status:in-qa`, re-read to confirm.
-3. Gather context: the story's acceptance criteria (its own body, or its `status:split`
-   parent's if this is being read from a task — it never is here, phase 6 only ever
-   runs on the story itself, but the acceptance criteria always live on the story), and
-   each dev/e2e task's spec and PR — enough for the `pilot-qa` agent to build a
-   concrete manual test plan grounded in what was actually specified and shipped, not just
-   the original story text.
+3. Gather context: the story's acceptance criteria and each dev/e2e task's spec and PR —
+   enough for the `pilot-qa` agent to build a concrete manual test plan grounded in what
+   was actually specified and shipped, not just the original story text.
 4. Call the `Agent` tool with `subagent_type: "pilot-qa"`, passing that context. The agent
-   returns a manual test plan: concrete cases to test and how to test each, derived from
-   the acceptance criteria and the merged tasks — not the running conversation
-   history, per the same isolated-context principle every other phase already follows
-   (§5).
+   returns a manual test plan: concrete cases to test and how to test each.
 5. Show the plan to the human (pair, always — this skill has no `--auto`). The human
    performs the tests for real and reports back, case by case; feed each response back to
    the agent until it reaches a final verdict — every case confirmed, or one or more
@@ -1162,20 +981,18 @@ pool `/pilot-qa` picks from.
    tickets (phase 2, phase 4, or phase 6)"). Whenever it genuinely can't tell on its own,
    that's a `needs-human` situation like any other (§3): add the label and post the
    why/what's-needed comment immediately, every time, even though a human is live in this
-   session right now — never skip straight to an informal answer just because one's
-   available. Then, since the human normally is right there, get their answer, post a
-   follow-up comment summarizing what was decided, and remove `needs-human` in the same
-   turn before continuing — the same two-comment pattern §3 documents for every other
+   session right now. Then, since the human normally is right there, get their answer,
+   post a follow-up comment summarizing what was decided, and remove `needs-human` in the
+   same turn before continuing — the same two-comment pattern §3 documents for every other
    phase's live-resolved block.
 6. Apply the result:
    - **All confirmed, or every failure resolves to "not actually a bug"** → set
-     `status:done` and close the issue (`mcp__github__issue_write`) — this is the one place
-     a phase skill sets `status:done` on an actionable ticket directly, since there's no PR
-     merge here for `.github/workflows/pilot-status-on-merge.yml` to react to (§6 step 6).
-     Nothing to cascade further — a `type:feature` story is never itself a task of another
-     `status:split` parent. A "not actually a bug" failure means the story is validated for
-     what it actually covers; report each one to the human so they take it through phase 1
-     themselves as a new ticket — the agent never creates that ticket itself.
+     `status:done` and close the issue — this is the one place a phase skill sets
+     `status:done` on an actionable ticket directly, since there's no PR merge here for
+     the merge workflow to react to. Nothing to cascade further. A "not actually a bug"
+     failure means the story is validated for what it actually covers; report each one to
+     the human so they take it through phase 1 themselves as a new ticket — the agent
+     never creates that ticket itself.
    - **One or more real-bug failures** → nothing further to set — the agent already
      originated a `type:bug` ticket for each, directly as `level:task`/`status:spec-ready`
      (§2 "Three levels" — never through phase 2), and self-applied `on-hold` with its own
@@ -1184,10 +1001,9 @@ pool `/pilot-qa` picks from.
      priority over a same-pass "not actually a bug" failure — the story can't be done while
      a real defect is still open.
    - **A failure still unresolved** (nobody answered on the spot — should be rare,
-     `/pilot-qa` is pair-only, §4 "Interaction modes") → the `needs-human` label and
-     comment from step 5 stay exactly as posted (`status:in-qa` stays, per §3 "`needs-human`
-     — an orthogonal flag"); a human resolves it later, same as any other `needs-human`
-     ticket.
+     `/pilot-qa` is pair-only) → the `needs-human` label and comment from step 5 stay
+     exactly as posted (`status:in-qa` stays); a human resolves it later, same as any other
+     `needs-human` ticket.
 7. Report the outcome back to the human. Never invoke `pilot-e2e`/`pilot-dev` from this
    skill — a `type:bug` ticket the agent originates goes straight to `status:spec-ready`
    for `/pilot-spec` to pick up next, never handed to phase 4 directly from here.
