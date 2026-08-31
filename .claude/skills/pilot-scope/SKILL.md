@@ -1,6 +1,6 @@
 ---
 name: pilot-scope
-description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature, type:tech, or type:bug, created via /pilot-story) and, in one pass, challenges it, then either scopes it as-is or splits it into dev-sized tasks (level:task, each with its own independent type: — never inherited) — a judgment call for type:tech/type:bug (scoping as-is is fine), but mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler mixed in) plus exactly one end-to-end-test task typed type:e2e, depending on every other task in the split. Also records dependencies (a prerequisite type:tech or type:bug ticket, and/or between tasks of the same split), or decides the ticket shouldn't be built at all (status:wont-do) — or flags needs-human for a judgment call. For a type:feature story, the PM agent also checks the proposed type:feature tasks (excluding any type:tech or type:e2e sibling) against the story's original acceptance criteria before it's finalized. Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference. Use whenever an already-created ticket needs to be scoped/decomposed — not for formalizing a brand-new need, that's /pilot-story."
+description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature, type:tech, or type:bug, created via /pilot-story) and, in one pass, challenges it, then either scopes it as-is or splits it into dev-sized tasks (level:task, each with its own independent type: — never inherited) — a judgment call for type:tech/type:bug (scoping as-is is fine), but mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler mixed in) plus exactly one end-to-end-test task typed type:e2e, depending on every other task in the split. Also records dependencies (a prerequisite type:tech or type:bug ticket, and/or between tasks of the same split), or decides the ticket shouldn't be built at all (status:wont-do) — or flags needs-human for a judgment call. For a type:feature story, the PM agent also checks the proposed type:feature tasks (excluding any type:tech or type:e2e sibling) against the story's original acceptance criteria before it's finalized. Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a type:feature story sitting at status:qa/status:in-qa to add a new round of tasks (moving it back to status:scoping, then status:split once the round is proposed — refuses outright on a status:done story, which always needs a new ticket instead), and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference. Use whenever an already-created ticket needs to be scoped/decomposed — not for formalizing a brand-new need, that's /pilot-story."
 argument-hint: "<issue number> [--auto] | <issue number> --resume"
 disable-model-invocation: true
 ---
@@ -31,6 +31,21 @@ mechanics of running phase 2.
      human to re-run with `--resume` rather than proceeding.
    - An issue number that's `status:scoping` and still carries `needs-human` or
      `on-hold` → not resolved yet, report that and stop.
+   - An issue number that's `status:done` → terminal, refuse
+     (`docs/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split is
+     done"): report that it's already done and point the human at opening a new ticket
+     for the additional work instead (a plain "Extends #N" reference in its body is
+     enough). Never claim it.
+   - An issue number that's `status:qa` (unclaimed) or `status:in-qa` (already assigned,
+     regardless of who) → a valid re-scope entry point, not a fresh claim in the usual
+     sense (`docs/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split
+     is done"). Read the ticket and its tasks (which ones are `status:done`, including the
+     original e2e task) for context, post a comment explaining why (new scope found; any
+     `status:in-qa` session is being set aside), then claim it — overwrite the assignee if
+     any (same non-conflict exception a `status:changes-requested` reclaim gets, below) and
+     set `status:scoping` — before continuing to step 3, passing that extra context (the
+     earlier round's already-done tasks) alongside the ticket body. Skip step 2, the claim
+     already happened here.
    - An issue number otherwise → this is an existing story (`type:feature`, `type:tech`,
      or `type:bug`) being scoped/re-scoped. Read it (`mcp__github__issue_read`), along with
      its parent Epic (if linked) and anything already referenced via "Blocks #M"/
@@ -50,7 +65,9 @@ mechanics of running phase 2.
    2 needs: the ticket's current body, its parent Epic/linked tickets if any, and
    pointers to this project's own coding standards/security conventions and its own
    architecture docs (wherever it documents its identity/tenancy/security boundaries and
-   its target system design, if it has such docs). Not the running conversation history.
+   its target system design, if it has such docs) — plus, for a `status:qa`/`status:in-qa`
+   reclaim (step 1 above), which of its existing tasks are already `status:done` from the
+   earlier round, including the original e2e one. Not the running conversation history.
 4. The subagent returns one of:
    - For `type:tech`/`type:bug`: a single scoped ticket body (no split needed), or a set
      of proposed tasks (split, a judgment call) each with security/architecture

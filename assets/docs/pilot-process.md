@@ -172,11 +172,10 @@ inline (§2); `--resume` (a paused pair session) and reclaiming a `status:change
 ticket (§4); a `type:tech`/`type:bug` story that never splits, cascading straight to
 `status:done` with no phase 6 at all.
 
-**One open question this diagram surfaces, not yet answered elsewhere in this document:**
-what happens if `/pilot-scope` runs again on a `type:feature` story that's already
-`status:split`, after some of its tasks have already merged — does the architect add a new
-task to the existing split, and if so, does the already-`status:done` e2e task get reopened
-or superseded to add the new "Depends on #N"? Nothing here says either way yet.
+**Re-scoping a story after its split is already done** (adding tasks once the original e2e
+task has merged) isn't in this diagram either — see §2 "Re-scoping a `type:feature` story
+after its split is done" for how that reaches back into `status:split` from `status:qa`/
+`status:in-qa`, and why `status:done` never does.
 
 ## 2. Ticket Types And Levels
 
@@ -411,6 +410,61 @@ behavior — the ticket cannot be marked done with a test that doesn't actually 
 running it surfaces a genuine defect in that already-merged code rather than a gap in the
 e2e ticket's own scope, that's a bug discovered mid-implementation, not a workaround — see
 "Prerequisite bug tickets" below.
+
+### Re-scoping a `type:feature` story after its split is done
+
+New work can surface after a story's original split has already finished — `/pilot-scope`
+handles this differently depending on exactly how finished:
+
+- **`status:done`** — terminal, full stop. `/pilot-scope` refuses to claim it: report that
+  it's already done and stop, no exception. This isn't arbitrary — nothing else in PILOT
+  ever moves a ticket backward out of a terminal state (a bug found in already-shipped code
+  becomes its own new ticket, "Prerequisite bug tickets" above, never a reopening of the
+  original), and `status:done` usually means the GitHub issue itself is closed too (merge,
+  or `/pilot-qa` closing it directly, §7) — reopening a closed issue to re-scope it would be
+  the one place PILOT ever did that. The new work gets its own story instead (a plain,
+  non-gating "Extends #N" reference in its body is enough to keep the link visible — never
+  a sub-issue, same reasoning as a prerequisite ticket, §2 above).
+- **`status:qa` or `status:in-qa`** — still reversible, because nothing terminal has
+  happened yet: the cascade only just mechanically set `status:qa` the moment the e2e task
+  closed, and no human has confirmed anything (`status:in-qa` is one step further — a
+  `/pilot-qa` session may even be live — but still short of a verdict). Claiming an issue
+  number in either status is a valid, explicit `/pilot-scope` entry point (never part of a
+  bare pool, same as `--resume` or a `status:changes-requested` reclaim, §4) — an existing
+  `status:in-qa` assignee doesn't block this claim, the architect's claim simply overwrites
+  it, the same non-conflict exception a `status:changes-requested` reclaim already gets
+  (§4). Post a comment explaining why (new scope found, any in-progress QA session is being
+  set aside), then claim it into `status:scoping` — the one deliberate, phase-2-only
+  backward transition in the whole state machine; nothing else ever moves a ticket out of
+  `status:qa`/`status:in-qa` this way. From here it's an ordinary phase-2 pass, just with
+  extra context (which tasks, including the original e2e one, are already `status:done`
+  from the earlier round):
+  1. Propose the new task(s) the same way as any split (§2 "Three levels" — a mix of
+     `type:feature`/`type:tech`, each its own `level:task`).
+  2. Propose exactly one new `type:e2e` task for *this round* — never reopen or amend the
+     original, already-`status:done` e2e task. Title it distinctly (e.g. "E2E: <story
+     summary> (round 2)") and depend only on this round's new task(s) — not the
+     already-closed originals, the gate is a no-op for those anyway. Its phase-3 spec
+     should say explicitly that its job is to *extend* the existing e2e test asset the
+     original task wrote, not duplicate coverage from scratch — point at the original
+     task's PR for what already exists.
+  3. Run the PM coverage check (§2 above) against this round's new `type:feature` tasks
+     only — the original tasks were already checked against the story's acceptance
+     criteria at split time; re-checking them again here would be redundant.
+  4. Finalize exactly like any other split (§4 "Claim Protocol"): the story lands back on
+     `status:split` — the same status it left, now tracking this round's new tasks instead.
+  Once this round's new e2e task also reaches `status:done`, the story cascades to
+  `status:qa` again exactly as before (§3 "Cascading completion") — the new behavior gets
+  its own human QA pass in phase 6, same as the original.
+- **`status:split`, original e2e task not yet done** — no special handling needed: the
+  story hasn't finished its first round yet, so this is an ordinary re-scope. Add the new
+  task(s) to the existing split and extend the *existing* (still-open) e2e task's
+  dependencies to also cover them, rather than spinning up a second one.
+
+This applies the same way to a `type:tech`/`type:bug` story that did split (not every one
+does, §2 "Three levels") — `status:done` is just as terminal, `status:split` just as
+reversible while it's still mid-flight — minus the e2e-task mechanics, which only ever
+apply to `type:feature`.
 
 ### Prerequisite bug tickets (phase 2 or phase 4)
 
@@ -827,7 +881,7 @@ Distinct from both "Resuming a `needs-human` ticket" above and "Reclaiming a
 `status:changes-requested` ticket" below: this is for a ticket left mid-**pair**
 ("Interaction modes" below) — still carrying its original assignee, still in that phase's
 in-progress `status:` (`status:draft`, `status:scoping`, `status:in-spec`,
-`status:in-dev`), with **no** `needs-human` — the pair session simply ended (the human
+`status:in-dev`, `status:in-qa`), with **no** `needs-human` — the pair session simply ended (the human
 stepped away, the session closed) before reaching the phase's final approval. Left alone,
 the normal claim-protocol check (above, step 2: "already has an assignee → stop") would
 treat this the same as a ticket someone else is actively working right now, which isn't
