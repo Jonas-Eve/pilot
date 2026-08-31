@@ -87,11 +87,13 @@ parallel instances; the claim step below prevents collisions.
      `needs-human` and posted its comment itself (`status:in-dev` stays, per
      `docs/pilot-process.md` §3).
    - Bug discovered mid-implementation (`docs/pilot-process.md` §2 "Prerequisite bug
-     tickets (phase 2, phase 4, or phase 6)"): nothing further to set either — the subagent
+     tickets (phase 2, phase 4, or phase 6)"): nothing further to set — the subagent
      (`pilot-dev` or `pilot-e2e`) already originated the new `type:bug` ticket, linked it
-     ("Blocks #M"/"Depends on #N"), and added `on-hold` with its own comment
-     (`status:in-dev` stays). This ticket only becomes a candidate again for an explicit
-     `--resume` once a human removes `on-hold` after the new ticket reaches
-     `status:done`.
+     ("Blocks #M"/"Depends on #N"), pushed its WIP to a branch with a comment naming it,
+     cleared the assignee, and moved the ticket back to `status:dev-ready` itself. It's
+     now an ordinary `status:dev-ready` candidate again, gated only by the dependency
+     (step 1's "Depends on #N" bullet) — no flag to clear, no `--resume` needed;
+     whichever future run claims it picks up that branch per the persona's own claim-time
+     check (`pilot-dev.md`/`pilot-e2e.md`).
 6. Report the PR URL, or the blocking summary, back to the human. Never merge as part of
    this skill.
