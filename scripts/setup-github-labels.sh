@@ -30,7 +30,7 @@ LABELS=(
   "type:tech|0E8A16|PILOT: technical need, formalized by the architect during phase 1"
   "type:bug|D93F0B|PILOT: defect in already-shipped code, formalized/originated by the architect"
   "type:epic|5319E7|PILOT: groups several type:feature/type:tech/type:bug stories by theme; never scoped/spec'd/built itself"
-  "type:e2e|FBCA04|PILOT: secondary label on a sub-ticket, alongside its inherited type:; routes phase 4 to pilot-qa"
+  "type:e2e|FBCA04|PILOT: secondary label on a sub-ticket, alongside its inherited type:; routes phase 4 to pilot-e2e"
   "priority:P0|B60205|PILOT: highest priority, set by the architect during phase 2"
   "priority:P1|D93F0B|PILOT: medium priority, set by the architect during phase 2"
   "priority:P2|FBCA04|PILOT: lowest priority, set by the architect during phase 2"

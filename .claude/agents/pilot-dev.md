@@ -47,7 +47,7 @@ comment in place of a fresh spec).
     doesn't itself touch — not an ambiguity in what you're building (that's a spec
     deviation, step 4) but a bug outside this ticket's own scope — this is most likely to
     happen while writing an end-to-end test sub-ticket (`docs/pilot-process.md` §2
-    "End-to-end test sub-tickets", implemented by `pilot-qa` rather than you — it follows
+    "End-to-end test sub-tickets", implemented by `pilot-e2e` rather than you — it follows
     this exact same step for a bug it finds), but isn't limited to that case. Originate a
     new ticket for it the same way the architect originates a prerequisite tech ticket in
     phase 2, just from phase 4 instead and `type:bug` instead of `type:tech`

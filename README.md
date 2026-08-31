@@ -37,7 +37,7 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
   - `/pilot-story`, `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, `/pilot-review` — the
     five phases themselves.
 - **Agents** (`.claude/agents/`): the five personas the phase skills delegate to —
-  `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, and `pilot-qa` (phase 4's
+  `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, and `pilot-e2e` (phase 4's
   persona for an end-to-end-test sub-ticket, `type:e2e`, instead of `pilot-dev`).
 - **Scripts** (`scripts/`): `setup-github-labels.sh`, idempotent creation/update of every
   label the state machine uses.

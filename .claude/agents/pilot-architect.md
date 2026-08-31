@@ -122,7 +122,7 @@ prerequisite a sibling ticket already covers.
      (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2 or phase 4)") — same
      linking, same hard-blocker phrasing rule; finish scoping this ticket normally
      afterward, recording the "Depends on #N" — you don't need `on-hold` here, unlike a
-     dev/`pilot-qa` discovering the same thing mid-phase-4, because this ticket isn't
+     dev/`pilot-e2e` discovering the same thing mid-phase-4, because this ticket isn't
      claimed by phase 3/4 yet; the dependency gate alone is enough.
    - **Between sub-tickets of the same split** — if two of the sub-tickets you're
      proposing depend on each other (e.g. a front-end one consuming an API a back-end one
