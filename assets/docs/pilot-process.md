@@ -324,16 +324,17 @@ e2e ticket's own scope, that's a bug discovered mid-implementation, not a workar
 
 ### Re-scoping a `type:feature` story after its split is done
 
-New work can surface after a story's original split has already finished — `/pilot-scope`
-handles this differently depending on exactly how finished:
+Phase 2 only ever scopes a `level:story` — never a `level:task` (a task is the *output* of
+scoping, not something scoped again itself; if a task turns out to need further breakdown,
+that's re-splitting the *story*, not scoping the task). Within that, `/pilot-scope` handles
+an already-once-split `level:story` differently depending on exactly how finished it is:
 
-- **`status:done`** — terminal, full stop. `/pilot-scope` refuses to claim it: report that
-  it's already done and stop, no exception. This isn't arbitrary — nothing else in PILOT
-  ever moves a ticket backward out of a terminal state (a bug found in already-shipped code
-  becomes its own new ticket, "Prerequisite bug tickets" above, never a reopening of the
-  original), and `status:done` usually means the GitHub issue itself is closed too (merge,
-  or `/pilot-qa` closing it directly, §7) — reopening a closed issue to re-scope it would be
-  the one place PILOT ever did that. The new work gets its own story instead (a plain,
+- **Closed (`status:done` or `status:wont-do`)** — terminal, full stop. `/pilot-scope`
+  refuses to claim it: report that it's already closed and stop, no exception. This isn't
+  arbitrary — nothing else in PILOT ever moves a ticket backward out of a terminal state (a
+  bug found in already-shipped code becomes its own new ticket, "Prerequisite bug tickets"
+  above, never a reopening of the original) — reopening a closed issue to re-scope it would
+  be the one place PILOT ever did that. The new work gets its own story instead (a plain,
   non-gating "Extends #N" reference in its body is enough to keep the link visible — never
   a sub-issue, same reasoning as a prerequisite ticket, §2 above).
 - **`status:qa` or `status:in-qa`** — still reversible, because nothing terminal has
@@ -373,9 +374,9 @@ handles this differently depending on exactly how finished:
   dependencies to also cover them, rather than spinning up a second one.
 
 This applies the same way to a `type:tech`/`type:bug` story that did split (not every one
-does, §2 "Three levels") — `status:done` is just as terminal, `status:split` just as
-reversible while it's still mid-flight — minus the e2e-task mechanics, which only ever
-apply to `type:feature`.
+does, §2 "Three levels") — closed is just as terminal, `status:split` just as reversible
+while it's still mid-flight — minus the e2e-task mechanics, which only ever apply to
+`type:feature`.
 
 ### Prerequisite bug tickets (phase 2 or phase 4)
 
