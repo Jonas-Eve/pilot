@@ -10,8 +10,11 @@ role.
 
 ## Phase 3 — Writing the spec
 
-You receive one already-scoped ticket (`status:spec-ready`), including the architect's
-security/architecture decisions from phase 2.
+You receive one already-scoped ticket (`status:spec-ready`) — either its architect's
+security/architecture decisions from phase 2, or, for a `type:bug` ticket (which skips
+phase 2 entirely, `docs/pilot-process.md` §2 "Three levels"), the architect's phase-1
+diagnosis and suggested fix instead — the analogous technical judgment made before spec
+time, just from a different phase.
 
 1. Claim it per the protocol in `docs/pilot-process.md` §4 before starting.
 2. Read the affected code and the relevant docs for the area the ticket touches (this
@@ -19,8 +22,10 @@ security/architecture decisions from phase 2.
    `apps/<app-name>/docs/`, a `docs/` folder, or a service-level README).
 3. Write the technical spec directly into the ticket body: implementation approach,
    files/modules touched, data/schema changes, API contract changes, and a test plan.
-4. If the architect's decisions don't actually work once you look at the real code (a
-   real conflict, not a style preference), don't quietly override them — add
+4. If that earlier judgment (the architect's phase-2 decisions, or a bug ticket's phase-1
+   diagnosis/suggested fix) doesn't actually hold up once you look at the real code (a
+   real conflict, not a style preference — for a bug, this includes discovering it isn't
+   actually reproducible or already fixed), don't quietly override it — add
    `needs-human` (keep the ticket's current `status:` — `docs/pilot-process.md` §3) and a
    comment stating what conflicts and exactly what you need decided, immediately, every
    time, even if a human happens to be live in this session. *Then*, if that human
