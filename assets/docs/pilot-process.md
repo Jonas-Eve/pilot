@@ -90,12 +90,6 @@ and are never Routine-driven at all.
 There is no single global-orchestrator command — each phase skill is invoked on its own
 (`/pilot-scope 123`, etc.), as its own isolated agent call (see §5), one phase at a time.
 
-For a visual walkthrough of a `type:feature` story moving through all six phases — useful
-for a human getting oriented, not needed to operate any phase skill — see this project's
-own `README.md` rather than this document: this file stays the operational spec every
-phase skill actually reads, so it only carries content a skill or agent needs to function,
-never purely illustrative material.
-
 ## 2. Ticket Types And Levels
 
 Two independent axes classify every ticket, and neither is inherited from a parent to a
@@ -172,8 +166,7 @@ never deeper: a `level:task` is never itself split into further tasks. If phase 
 discovers one is still too big, that's an estimation problem to fix by re-spec'ing it or
 re-splitting the *story* differently — never a reason for a fourth level. `level:epic` is
 not the same thing as a story split into tasks — the two are different levels and easy to
-conflate (an earlier draft of this document used one label, `type:epic`, for both).
-Symmetric for both entry points:
+conflate. Symmetric for both entry points:
 
 - **`level:epic`** (alongside `type:feature`, `type:tech`, or `type:bug`) — groups several
   **`level:story`** tickets under a shared theme, for categorization ("CI", "wheelchair
@@ -188,9 +181,8 @@ Symmetric for both entry points:
   — one functional or technical unit, exactly what phase 1 always produces. Whether or not
   it belongs to an Epic, it always goes through phase 2 on its own, where the architect
   decides whether it needs splitting into tasks.
-- **`level:task`** — the architect splits a story into dev-sized tasks. This is the
-  mechanism the earlier draft mislabeled `type:epic`; the story that got split now gets
-  `status:split` instead (§3) — it is still just a `level:story`, one level below an Epic,
+- **`level:task`** — the architect splits a story into dev-sized tasks. The story that got
+  split now gets `status:split` instead (§3) — it is still just a `level:story`, one level below an Epic,
   not an Epic itself. Split along vertical slices (each task delivers a coherent, ideally
   independently shippable/testable unit) rather than by technical layer — a front-end-only
   or back-end-only task is rarely reviewable or testable on its own, unless the two
@@ -518,7 +510,7 @@ below and §6)
   being alive; see §6. `/pilot-qa` is the one place a phase skill *does* set `status:done`
   directly, once a human confirms the story's behavior in phase 6 (§7).
 
-  **Known limitation, hit during PILOT's own bootstrapping:** GitHub only recognizes a
+  **Known limitation:** GitHub only recognizes a
   `Closes #N` reference (populating `closingIssuesReferences`, which the workflow reads)
   when the merging PR's base is the repository's *default* branch — never for a PR
   merged into an intermediate, not-yet-merged branch, even once that branch later reaches
@@ -548,9 +540,9 @@ with no comment, or a comment that only restates "needs a human" without saying 
 what for, is not a valid use of this flag — whoever reads it next (a human, or a phase
 skill resuming a different ticket later) has to be able to act from the comment alone,
 without reconstructing the agent's reasoning. This is deliberate: collapsing everything
-into one `status:blocked` value (an earlier draft of this document did that) throws away
-*which phase* was mid-work, which is exactly the information needed to know which phase
-skill should pick the ticket back up — see §4 "Resuming a `needs-human` ticket."
+into one `status:blocked` value would throw away *which phase* was mid-work, which is
+exactly the information needed to know which phase skill should pick the ticket back up —
+see §4 "Resuming a `needs-human` ticket."
 
 **Phase 5 is the one exception to "`status:` stays exactly where it was."** Elsewhere,
 the very question a block raises is often what determines what happens next (a phase-2
