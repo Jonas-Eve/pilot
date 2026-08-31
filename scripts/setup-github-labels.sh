@@ -11,6 +11,12 @@
 #
 # Safe to re-run: each label is created if missing, or updated in place (color +
 # description) if it already exists. Never deletes a label.
+#
+# If a `.pilot/state.json` exists in the current directory (i.e. this is being run from
+# a PILOT-initialized project's own root, as pilot-init/pilot-update both do), this also
+# bumps that file's `lastLabelsSyncAt` field to now, in place, leaving everything else in
+# the file untouched. Run from anywhere else (no such file, or too early in pilot-init's
+# own flow, before it has created one yet), this step is a silent no-op.
 
 set -euo pipefail
 
@@ -69,3 +75,14 @@ for entry in "${LABELS[@]}"; do
 done
 
 echo "Done. ${#LABELS[@]} PILOT labels are in sync."
+
+STATE_FILE=".pilot/state.json"
+if [[ -f "$STATE_FILE" ]] && grep -q '"lastLabelsSyncAt"' "$STATE_FILE"; then
+  NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  if command -v perl >/dev/null 2>&1; then
+    perl -pi -e 's/"lastLabelsSyncAt"\s*:\s*(null|"[^"]*")/"lastLabelsSyncAt": "'"$NOW"'"/' "$STATE_FILE"
+    echo "Updated $STATE_FILE: lastLabelsSyncAt=$NOW"
+  else
+    echo "warning: perl not found, couldn't bump lastLabelsSyncAt in $STATE_FILE — set it to $NOW by hand." >&2
+  fi
+fi

@@ -49,7 +49,9 @@ forked PILOT, strip project-specific details the same way.
   consuming project's own prose free of content only PILOT can keep current (see
   §3 below).
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
-  `/pilot-init` and `/pilot-update`.
+  `/pilot-init` and `/pilot-update`; also bumps the calling project's own
+  `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
+  the file already exists there.
 
 Within a skill file, reference this repo's own assets via a fresh clone of
 `https://github.com/Jonas-Eve/pilot` into a scratch directory (called `$PILOT_SRC` in

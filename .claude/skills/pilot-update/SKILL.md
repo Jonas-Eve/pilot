@@ -86,13 +86,19 @@ from a previous run — the whole point is picking up upstream changes.
    another `PILOT:<name>:START`/`END` marker later, treat it the same way.
 
 5. **Re-provision GitHub labels.** Resolve the repo (`gh repo view --json
-   nameWithOwner --jq .nameWithOwner`) and run
-   `$PILOT_SRC/scripts/setup-github-labels.sh <owner>/<repo>`.
+   nameWithOwner --jq .nameWithOwner`) and run, from the project's own root,
+   `$PILOT_SRC/scripts/setup-github-labels.sh <owner>/<repo>` — running it from there
+   (not from inside `$PILOT_SRC`) is what lets it find this project's own
+   `.pilot/state.json` and bump `lastLabelsSyncAt` itself (see the script's own header
+   comment). If `gh` isn't installed or authenticated, tell the human and give them the
+   exact command to run themselves later — don't block steps 2-4 or 6 on it, and leave
+   `lastLabelsSyncAt` as whatever it already was.
 
 6. **Update the state marker.** Set `lastSkillsSyncAt` (if step 2 changed anything),
-   `lastProcessDocSyncAt` (if step 3 changed any of its three files),
-   `lastIntroSyncAt` (if step 4 changed anything), and `lastLabelsSyncAt` (step 5) in
-   `.pilot/state.json` to now.
+   `lastProcessDocSyncAt` (if step 3 changed any of its three files), and
+   `lastIntroSyncAt` (if step 4 changed anything) in `.pilot/state.json` to now.
+   `lastLabelsSyncAt` needs no action here — step 5's script bumps it itself when it runs
+   successfully.
 
 7. **Report.** Summarize what changed across steps 2-5: skills/agents added, updated,
    flagged as orphaned (and whether removed), each root file overwritten or left as-is

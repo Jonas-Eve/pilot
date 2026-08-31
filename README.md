@@ -45,7 +45,8 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
   `pilot-qa` (phase 6's persona, a human-paired manual QA gate for every `type:feature`
   story once its tasks are all done).
 - **Scripts** (`scripts/`): `setup-github-labels.sh`, idempotent creation/update of every
-  label the state machine uses.
+  label the state machine uses — also bumps the calling project's own
+  `.pilot/state.json` (`lastLabelsSyncAt`) when run from that project's root.
 - **Templates** (`assets/templates/`): the doc skeletons `/pilot-init` fills in.
 
 See [`assets/docs/pilot-process-visual.md`](./assets/docs/pilot-process-visual.md) for a
