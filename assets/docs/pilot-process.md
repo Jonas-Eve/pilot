@@ -590,8 +590,11 @@ comment get posted in the first place:
 
 #### Cascading completion
 
-This applies to `status:split` stories only — a story's tasks are a fixed set
-decided once, at split time, so its completeness is provable. An Epic's stories are not
+This applies to `status:split` stories only — a story's tasks are a fixed set for
+whichever round is currently in flight (the original split, or a later re-scope round,
+"Re-scoping a `type:feature` story after its split is done" above), so completeness at
+any given moment is provable from a live read of its current sub-issues — never a cached
+list. An Epic's stories are not
 (§2, §3 "type: — set once..." above) — an Epic never auto-closes, a human always closes
 it by hand, regardless of how many of its current stories are done.
 
@@ -661,7 +664,7 @@ once); clearing one has no effect on the other.
 
 ## 4. Claim Protocol (avoiding two agents on the same ticket)
 
-Phases 2, 3, and 4 each start by **claiming** the ticket before doing any real work,
+Phases 2, 3, 4, and 6 each start by **claiming** the ticket before doing any real work,
 because several instances of the same phase (e.g. several devs) may run concurrently.
 Phase 1 doesn't fit this pattern the same way — there's no pre-existing ticket to claim,
 since phase 1 is what creates one — but the moment it creates the ticket (`status:draft`,
