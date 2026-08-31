@@ -1,6 +1,6 @@
 ---
 name: pilot-scope
-description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature, type:tech, or type:bug, created via /pilot-story) and, in one pass, challenges it, then either scopes it as-is or splits it into dev-sized sub-tickets — a judgment call for type:tech/type:bug (scoping as-is is fine), but mandatory for type:feature: one or more dev sub-tickets plus exactly one end-to-end-test sub-ticket labeled type:e2e, depending on every dev sub-ticket in the split. Also records dependencies (a prerequisite type:tech or type:bug ticket, and/or between sub-tickets of the same split), or decides the ticket shouldn't be built at all (status:wont-do) — or flags needs-human for a judgment call. For a type:feature story, the PM agent also checks the proposed dev sub-tickets (excluding the e2e one) against the story's original acceptance criteria before it's finalized. Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference. Use whenever an already-created ticket needs to be scoped/decomposed — not for formalizing a brand-new need, that's /pilot-story."
+description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature, type:tech, or type:bug, created via /pilot-story) and, in one pass, challenges it, then either scopes it as-is or splits it into dev-sized tasks (level:task, each with its own independent type: — never inherited) — a judgment call for type:tech/type:bug (scoping as-is is fine), but mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler mixed in) plus exactly one end-to-end-test task typed type:e2e, depending on every other task in the split. Also records dependencies (a prerequisite type:tech or type:bug ticket, and/or between tasks of the same split), or decides the ticket shouldn't be built at all (status:wont-do) — or flags needs-human for a judgment call. For a type:feature story, the PM agent also checks the proposed type:feature tasks (excluding any type:tech or type:e2e sibling) against the story's original acceptance criteria before it's finalized. Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference. Use whenever an already-created ticket needs to be scoped/decomposed — not for formalizing a brand-new need, that's /pilot-story."
 argument-hint: "<issue number> [--auto] | <issue number> --resume"
 disable-model-invocation: true
 ---
@@ -35,7 +35,7 @@ mechanics of running phase 2.
      or `type:bug`) being scoped/re-scoped. Read it (`mcp__github__issue_read`), along with
      its parent Epic (if linked) and anything already referenced via "Blocks #M"/
      "Depends on #N" or a sub-issue relationship, as context for the agent. If it's
-     `type:epic`, there's nothing to scope on the epic itself — stop and point at its
+     `level:epic`, there's nothing to scope on the epic itself — stop and point at its
      stories instead.
    - No argument → per `docs/pilot-process.md` §4 "Picking the next ticket...": the
      merged pool of unclaimed `status:backlog` tickets (fresh) and `status:scoping`
@@ -53,13 +53,14 @@ mechanics of running phase 2.
    its target system design, if it has such docs). Not the running conversation history.
 4. The subagent returns one of:
    - For `type:tech`/`type:bug`: a single scoped ticket body (no split needed), or a set
-     of proposed sub-tickets (split, a judgment call) each with security/architecture
+     of proposed tasks (split, a judgment call) each with security/architecture
      decisions, dependencies, and a suggested priority.
-   - For `type:feature`: always a set of proposed sub-tickets — one or more dev
-     sub-tickets, plus exactly one flagged as the mandatory end-to-end-test sub-ticket
-     (`docs/pilot-process.md` §2 "End-to-end test sub-tickets" — to be labeled `type:e2e`
-     in addition to the inherited `type:feature` at step 5, and dependent on every dev
-     sub-ticket in the set). Never a single unsplit body for `type:feature`.
+   - For `type:feature`: always a set of proposed tasks — one or more dev tasks (each
+     assigned its own `type:feature` or `type:tech`, whichever fits — `docs/pilot-process.md`
+     §2 "`type:` is never inherited"), plus exactly one flagged as the mandatory
+     end-to-end-test task, its own `type:e2e` (`docs/pilot-process.md` §2 "End-to-end test
+     tasks"), dependent on every other task in the set. Never a single unsplit body for
+     `type:feature`.
    - Or, for either: a verdict that it shouldn't be built at all.
    Independently of any of this, it may also flag one or more **prerequisite** needs —
    `type:tech` (`docs/pilot-process.md` §2 "Prerequisite tech tickets") or `type:bug`
@@ -67,17 +68,18 @@ mechanics of running phase 2.
    each, whether it's a hard blocker.
 4a. **If the ticket is `type:feature`** (always split, per step 4), call the `Agent` tool a
     second time with `subagent_type: "pilot-pm"`, passing the original story's acceptance
-    criteria and the proposed sub-tickets **excluding the e2e sub-ticket**
-    (`docs/pilot-process.md` §2 "End-to-end test sub-tickets" — it doesn't cover a
-    criterion itself, it verifies criteria its dev siblings already cover), for a coverage
-    check (`docs/pilot-process.md` §2 "Three levels" — the PM checks the split's coverage,
-    not the architect's technical decisions). If the PM blocks with a gap, feed that back
+    criteria and **only the `type:feature` tasks** — excluding any `type:tech` task and
+    the `type:e2e` task (`docs/pilot-process.md` §2 "End-to-end test tasks" — neither
+    covers a criterion itself: a tech task is an enabler, the e2e task verifies criteria
+    its `type:feature` siblings already cover), for a coverage check
+    (`docs/pilot-process.md` §2 "Three levels" — the PM checks the split's coverage, not
+    the architect's technical decisions). If the PM blocks with a gap, feed that back
     to the architect and repeat until it approves, before showing anything to the human in
     step 4b. This runs regardless of `--auto`/pair — it's a validation step, not a human
     checkpoint.
 4b. **Unless `--auto` was given** (`docs/pilot-process.md` §4 "Interaction modes" — pair
     is the default for this skill): don't finalize anything yet. Show the human the
-    proposed decomposition — split or not, any e2e sub-ticket proposed, security/
+    proposed decomposition — split or not, any e2e task proposed, security/
     architecture decisions, dependencies, wont-do verdict, any prerequisite tech/bug
     need(s) flagged and whether each is a hard blocker, the PM's coverage check if one
     ran — as a normal reply, wait for
@@ -92,7 +94,7 @@ mechanics of running phase 2.
     sub-issues), since earlier checkpoints were already saved.
 4c. **Final consolidation pass** (`docs/pilot-process.md` §4 "Interaction modes"): before
     applying anything, have the architect re-read the ticket (and every proposed
-    sub-ticket, if split) as a whole — not just the latest round's delta — and fix
+    task, if split) as a whole — not just the latest round's delta — and fix
     anything that no longer holds together across rounds (an earlier security decision
     that doesn't square with a later one, a gap neither checkpoint's author noticed). Do
     this whether the run was pair or `--auto` — `--auto` has no rounds to reconcile, but
@@ -100,24 +102,24 @@ mechanics of running phase 2.
 5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`):
    - No split (`type:tech`/`type:bug` only — a `type:feature` story is never this case,
      step 4): update the ticket body with the decisions, set `status:spec-ready`.
-   - Split into sub-tickets: create the sub-issues, link them to the parent as native
-     sub-issues, each inheriting the root `type:` and getting `status:spec-ready` +
-     `priority:P0/P1/P2` — plus, for the one the architect flagged as an end-to-end test
-     (step 4), the secondary `type:e2e` label alongside its inherited `type:`
-     (`docs/pilot-process.md` §2 "End-to-end test sub-tickets"). If the architect recorded
-     a dependency between two of them, add a "Depends on #N" line to the dependent one's
-     body (`docs/pilot-process.md` §2 "Dependencies between sub-tickets of the same
-     split" — this is also how an e2e sub-ticket's own dependencies on its exercised
-     siblings get recorded). Set the parent's `status:` to `split` (not `type:epic` —
-     that label is reserved for a group of *stories*, not a story's own sub-tickets; see
+   - Split into tasks: create the sub-issues, link them to the parent as native
+     sub-issues, each labeled `level:task` plus its own `type:` as the architect assigned
+     it in step 4 (never the parent's — `docs/pilot-process.md` §2 "`type:` is never
+     inherited": `type:feature` or `type:tech` for a dev task, `type:e2e` for the one
+     end-to-end task), and `status:spec-ready` + `priority:P0/P1/P2`. If the architect
+     recorded a dependency between two of them, add a "Depends on #N" line to the
+     dependent one's body (`docs/pilot-process.md` §2 "Dependencies between tasks of the
+     same split" — this is also how the e2e task's own dependencies on every sibling get
+     recorded). Set the parent's `status:` to `split` (its `level:` stays `level:story` —
+     `level:epic` is reserved for a group of *stories*, not a story's own tasks; see
      `docs/pilot-process.md` §2), leave it open and unassigned as a tracker.
    - Won't-do (clear-cut only): label `status:wont-do`, close the issue. If it's not
      clear-cut, add `needs-human` with the subagent's reasoning instead (keep
      `status:scoping`) — don't close it.
    - Prerequisite tech ticket(s) flagged (in addition to whichever of the above
      applies): create each the same way a fresh `type:tech` need is created
-     (`docs/pilot-process.md` §2) — **never** as a sub-issue of the ticket being scoped,
-     that would make it inherit this ticket's `type:`. For each one, add a "Blocks #M"
+     (`docs/pilot-process.md` §2), its own `level:story` — **never** as a sub-issue of the
+     ticket being scoped, that would make it `level:task` instead. For each one, add a "Blocks #M"
      comment on the new ticket, and its own separate line in this ticket's body naming
      it — "Depends on #N" if the architect judged it a hard blocker (this exact phrase is
      what `docs/pilot-process.md` §4 "Blocked-by dependencies" mechanically gates future

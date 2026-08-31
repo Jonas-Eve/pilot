@@ -13,11 +13,11 @@ Six phases, each with its own Claude Code skill and agent persona:
 | Phase | Skill | Agent | Produces |
 |---|---|---|---|
 | 1. Plan | `/pilot-story` | PM, or Architect for a technical need or bug report (auto-detected; `--tech`/`--bug` to declare upfront) | A functional user story, a formalized technical need, or a bug report |
-| 2. Investigate | `/pilot-scope` | Architect (+ PM when a feature story is split) | Scoped ticket (tech/bug) or sub-tickets with security/architecture decisions — mandatory for a feature story: dev sub-ticket(s) plus one end-to-end-test sub-ticket |
-| 3. Lay out | `/pilot-spec` | Tech Lead | A technical implementation spec (or a test plan, for the e2e sub-ticket) |
-| 4. Operate | `/pilot-dev` | Senior Dev, or the e2e persona for the end-to-end-test sub-ticket | Code + an open pull request |
+| 2. Investigate | `/pilot-scope` | Architect (+ PM when a feature story is split) | Scoped ticket (tech/bug) or tasks with security/architecture decisions — mandatory for a feature story: dev task(s) plus one end-to-end-test task |
+| 3. Lay out | `/pilot-spec` | Tech Lead | A technical implementation spec (or a test plan, for the e2e task) |
+| 4. Operate | `/pilot-dev` | Senior Dev, or the e2e persona for the end-to-end-test task | Code + an open pull request |
 | 5. Test & validate | `/pilot-review` | PM + Architect + Tech Lead (feature) or Architect + Tech Lead (tech/bug) | A consolidated go/no-go GitHub comment |
-| 6. Human QA (feature stories only) | `/pilot-qa` | QA persona, paired with a human | A human-confirmed done, once every sub-ticket has merged |
+| 6. Human QA (feature stories only) | `/pilot-qa` | QA persona, paired with a human | A human-confirmed done, once every task has merged |
 
 Every ticket goes through phase 1 first, whether it's a functional feature, a purely
 technical need (CI, security, deployment, migrations, optimization), or a bug report —
@@ -32,12 +32,12 @@ though `--resume` picks a paused session back up); `/pilot-scope`, `/pilot-spec`
 to run unattended; `/pilot-review` is already automatic and needs no flag.
 A GitHub label state machine (`status:draft` → `status:backlog` → ... → `in-review` →
 `approved` → `done`, plus `priority:`, `type:feature`/`type:tech`/`type:bug`, and a
-`type:epic`/`status:split`
+`level:epic`/`status:split`
 tracking hierarchy for work too big for one story) tracks where a ticket is and stops
 multiple agents from picking up the same one — including a `status:changes-requested`
 loop back to the dev phase when review finds something that needs an actual code fix, as
 opposed to a pure judgment call. A `type:feature` story never reaches `done` straight from
-its sub-tickets, either: it passes through `status:qa` → `status:in-qa` first, phase 6's
+its tasks, either: it passes through `status:qa` → `status:in-qa` first, phase 6's
 human confirmation, before `/pilot-qa` itself sets `done`. Two flags sit orthogonal to
 that state machine, each
 cleared by a human once resolved: `needs-human` is what a phase adds when it hits

@@ -1,6 +1,6 @@
 ---
 name: pilot-dev
-description: "Phase 4 of PILOT (see docs/pilot-process.md): implements a single spec'd ticket (status:dev-ready) and opens a pull request — or flags needs-human and stops without a PR if it hits something it genuinely can't resolve alone. Calls the senior-dev agent (pilot-dev) for an ordinary ticket, or the end-to-end-test agent (pilot-e2e) instead when the ticket carries the secondary type:e2e label. Claims the ticket (assignee + status:in-dev) before starting so multiple devs can run this skill in parallel without picking the same ticket. Defaults to pair mode — agrees on the implementation approach with a human live in the session before writing any code (pair-coding), checkpointing progress into the ticket as it goes; pass --auto to implement straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a ticket phase 5 sent back for changes (status:changes-requested, once needs-human is cleared) and pushes new commits to its existing PR, and runs bare with no argument to pick up fresh, needs-human-resumable, or reclaimable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference, and preferring a ticket that blocks another over one that doesn't. Use once a ticket has a technical spec from /pilot-spec and is ready to be built."
+description: "Phase 4 of PILOT (see docs/pilot-process.md): implements a single spec'd ticket (status:dev-ready) and opens a pull request — or flags needs-human and stops without a PR if it hits something it genuinely can't resolve alone. Calls the senior-dev agent (pilot-dev) for an ordinary ticket, or the end-to-end-test agent (pilot-e2e) instead when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) before starting so multiple devs can run this skill in parallel without picking the same ticket. Defaults to pair mode — agrees on the implementation approach with a human live in the session before writing any code (pair-coding), checkpointing progress into the ticket as it goes; pass --auto to implement straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a ticket phase 5 sent back for changes (status:changes-requested, once needs-human is cleared) and pushes new commits to its existing PR, and runs bare with no argument to pick up fresh, needs-human-resumable, or reclaimable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference, and preferring a ticket that blocks another over one that doesn't. Use once a ticket has a technical spec from /pilot-spec and is ready to be built."
 argument-hint: "<issue number, optional — picks the next dev-ready or needs-human-resumable ticket if omitted> [--auto] | <issue number> --resume"
 disable-model-invocation: true
 ---
@@ -60,12 +60,12 @@ what keeps them from colliding.
 2. **Claim** it per `docs/pilot-process.md` §4: set assignee + `status:in-dev`, then
    re-read the ticket. If the assignee changed since the claim (another instance won the
    race), stand down and go back to step 1 for a different ticket rather than proceeding.
-2a. **Pick the persona**: if the ticket carries the secondary `type:e2e` label
-    (`docs/pilot-process.md` §2 "End-to-end test sub-tickets") — alongside whichever
-    `type:` it inherits from its root — `subagent_type: "pilot-e2e"`; otherwise
-    `subagent_type: "pilot-dev"` as before. This is the only thing `type:e2e` changes
-    about this skill's mechanics — claim, pool selection, and everything below apply
-    identically either way.
+2a. **Pick the persona**: if the ticket's own `type:` is `type:e2e`
+    (`docs/pilot-process.md` §2 "End-to-end test tasks" — never inherited, so this is
+    read directly off the ticket, not its story) → `subagent_type: "pilot-e2e"`;
+    otherwise `subagent_type: "pilot-dev"` as before. This is the only thing `type:e2e`
+    changes about this skill's mechanics — claim, pool selection, and everything below
+    apply identically either way.
 3. Call the `Agent` tool with the `subagent_type` chosen in step 2a, passing the ticket's
    spec and the architect's decisions — not the running conversation history, and not the
    state of any other ticket being worked in parallel. **If this is a
