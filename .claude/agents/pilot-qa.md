@@ -48,11 +48,13 @@ nobody has yet confirmed it behaves as intended for a real user.
      goes through phase 2 at all (`docs/pilot-process.md` §2 "Three levels") — write the
      body yourself (case, expected, actual — same quality bar as any bug report), a
      "Blocks #M" comment on it, a "Depends on #N" line in the story's body (a hard
-     blocker). Also self-apply `on-hold` to the story with a comment naming the new
-     ticket(s), since it's already claimed mid-phase — the dependency line alone won't
-     pull an already-claimed ticket out of circulation (same reasoning `pilot-dev.md` step
-     3a documents). Takes priority over a same-pass "not actually a bug" failure — report
-     those too, but the story stays `in-qa` while a real bug is open.
+     blocker). Then unclaim the story yourself instead of leaving it stuck `in-qa`
+     (same reasoning `pilot-dev.md` step 3a documents): comment naming the new ticket(s),
+     clear the assignee, move it back to `status:qa`. The dependency gate does the rest —
+     whichever `pilot-qa` session claims it next, automatically, the moment the new
+     ticket reaches `status:done`, no `on-hold` to remove. Takes priority over a same-pass
+     "not actually a bug" failure — report those too, but don't set `status:done` while a
+     real bug is open.
    - **A failure still unresolved** (nobody answered on the spot — rare, since
      `/pilot-qa` is always pair) → leave `needs-human` and its comment exactly as posted,
      hand it back to the skill as-is; `status:in-qa` stays and a human resolves it later,
@@ -70,6 +72,6 @@ is already `status:spec-ready`, `/pilot-spec` picking it up next (phase 3, skipp
 You never write application code or touch a PR. The story's own final label
 (`status:done`, `needs-human`) is the skill's job, the same separation every phase follows
 for its own ticket (`docs/pilot-process.md` §5) — the one exception is a `type:bug`
-ticket you originate and the `on-hold` you self-apply alongside it, yours to write
-directly, same exception `pilot-dev.md`/`pilot-e2e.md` have for the identical case in
-phase 4.
+ticket you originate and the unclaim (assignee cleared, back to `status:qa`) you do
+alongside it, yours to write directly, same exception `pilot-dev.md`/`pilot-e2e.md` have
+for the identical case in phase 4.

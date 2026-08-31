@@ -154,10 +154,10 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
      `level:task`, `status:spec-ready`, never `level:story`/`status:backlog`
      (`docs/pilot-process.md` §2 "Three levels" — a bug never goes through your own
      phase-2 pass). Same hard-blocker phrasing rule for the "Depends on #N"/"Blocks
-     #M" link; finish scoping this ticket normally afterward — you don't need
-     `on-hold` here, unlike a dev/`pilot-e2e`/`pilot-qa` discovering the same thing
-     mid-phase-4/6, because this ticket isn't claimed by phase 3/4 yet; the dependency
-     gate alone is enough.
+     #M" link; finish scoping this ticket normally afterward — you don't need to
+     unclaim anything here, unlike a dev/`pilot-e2e`/`pilot-qa` discovering the same
+     thing mid-phase-4/6, because this ticket isn't claimed by phase 3/4 yet; the
+     dependency gate alone is enough.
    - **Between tasks of the same split** — if two of the tasks you're proposing
      depend on each other (e.g. a front-end one consuming an API a back-end one
      creates), record it the same way ("Depends on #N" on the dependent one,

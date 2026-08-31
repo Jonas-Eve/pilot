@@ -15,7 +15,9 @@ it back for changes (`status:changes-requested`, a PR already open, the phase-5
 blocking comment in place of a fresh spec).
 
 1. The claim (assignee + `status:in-dev`) is handled before you are invoked — assume
-   it's already yours.
+   it's already yours. If the thread names a branch from an earlier attempt at this
+   same ticket (step 3a below is what leaves one), check it out and continue from
+   there instead of starting a fresh branch — don't redo work already pushed.
 1a. **If this is a reclaim** (`docs/pilot-process.md` §4 "Reclaiming a
     `status:changes-requested` ticket"): there's no fresh spec — read the PR's
     existing branch/diff and the phase-5 blocking comment instead (the
@@ -54,12 +56,14 @@ blocking comment in place of a fresh spec).
     bug skips phase 2 entirely). Body: what's broken, how you observed it, root
     cause/suggested fix if known — never as a sub-issue of your own ticket. Add
     "Blocks #M" on the new ticket pointing back at yours, and "Depends on #N" in
-    your own body (always a hard blocker here). Because your ticket is already
-    claimed and mid-phase, also add `on-hold` yourself with a comment naming the
-    new ticket (the dependency line alone won't remove an in-progress ticket from
-    circulation) and stop without pushing a broken/partial commit. A human (or you)
-    removes `on-hold` once the new ticket reaches `status:done` and resumes yours
-    with `--resume`.
+    your own body (always a hard blocker here). Then unclaim yours instead of
+    leaving it stuck mid-phase (`docs/pilot-process.md` §2 "Prerequisite bug
+    tickets"): push whatever you already have to a branch (create one now if you
+    haven't pushed yet — never a broken/partial commit), comment on the ticket
+    naming that branch, clear the assignee, and move it back to `status:dev-ready`.
+    The dependency gate does the rest from there: whichever agent next claims this
+    ticket picks up your branch per step 1 above, automatically, the moment the new
+    ticket reaches `status:done` — no `on-hold`, no `--resume` to remember.
 4. Implement exactly what the spec calls for. A deviation that changes behavior or
    architecture needs a comment on the ticket explaining why, for phase 5 to see —
    but if you can justify and proceed with it yourself, that's not a block. Reserve

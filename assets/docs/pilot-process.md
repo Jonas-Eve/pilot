@@ -390,17 +390,25 @@ never as a sub-issue of the ticket being worked. Link the two: "Blocks #M" on th
 ticket, "Depends on #N" in the discovering ticket's own body — always a hard blocker, since
 the discovering ticket cannot be finished until the bug is fixed.
 
-**Phase 4 and phase 6 need one thing phase 2 doesn't.** A ticket phase 2 is scoping isn't
-claimed by phase 3/4 yet, so recording "Depends on #N" and finishing the scoping pass
-normally is enough — the gate (§4 "Blocked-by dependencies") does the rest once phase 3/4
-later try to claim it. A ticket phase 4 is *implementing*, or phase 6 is *confirming*, by
-contrast, is already claimed and mid-phase (`status:in-dev` or `status:in-qa`, assigned) —
-the dependency gate alone won't pull an already-in-progress ticket out of circulation. So
-from phase 4 (`pilot-dev` or `pilot-e2e`) or phase 6 (`pilot-qa`), also add `on-hold` to
-the ticket being worked, with a comment naming the new bug ticket, before stopping — never
-push a broken or partial commit (phase 4), or finish the QA pass as if nothing were wrong
-(phase 6), in the meantime. A human (or the same agent) removes `on-hold` once the bug
-ticket reaches `status:done`, and only then resumes the original with `--resume`.
+**Phase 4 and phase 6 need one thing phase 2 doesn't: unclaiming, not just linking.** A
+ticket phase 2 is scoping isn't claimed by phase 3/4 yet, so recording "Depends on #N" and
+finishing the scoping pass normally is enough — the gate (§4 "Blocked-by dependencies")
+does the rest once phase 3/4 later try to claim it. A ticket phase 4 is *implementing*, or
+phase 6 is *confirming*, by contrast, is already claimed and mid-phase (`status:in-dev` or
+`status:in-qa`, assigned) — the gate only ever fires when a phase builds a candidate pool
+or claims a ticket, so leaving it claimed would just sit there with nothing ever
+rechecking it. So from phase 4 (`pilot-dev` or `pilot-e2e`) or phase 6 (`pilot-qa`), also
+unclaim the ticket being worked before stopping: clear its assignee and move it back to
+its own pre-claim `status:` (`status:dev-ready` for phase 4, `status:qa` for phase 6) —
+never push a broken or partial commit (phase 4), or finish the QA pass as if nothing were
+wrong (phase 6), in the meantime. For phase 4, first push whatever's already done to a
+branch (creating one if none exists yet) and comment on the ticket naming it, so whichever
+agent claims it next — the same one or a different one — resumes from that branch instead
+of starting over (`pilot-dev.md`/`pilot-e2e.md` cover the claim-time check for this). The
+ticket is now an ordinary `status:dev-ready`/`status:qa` candidate again, gated only by
+"Depends on #N" like any other — no flag to remove, no `--resume` to remember: the moment
+the bug ticket reaches `status:done`, the next run (bare, or an explicit ticket number —
+§4 extends its explicit-number check to phase 6 too) picks it back up on its own.
 
 ---
 
@@ -704,11 +712,11 @@ moment the referenced ticket closes, the next run of that phase picks the ticket
 as an ordinary candidate. This is a deterministic tool-call check the skill performs
 directly (§5), never something the subagent reasons about.
 
-**In phases 3 and 4, the gate applies to an explicitly-given ticket number too, not just
-bare-pool selection.** `/pilot-spec` and `/pilot-dev` each run this same check before
-claiming any ticket, whether it got there via the pool or because a human named it
-directly — the same principle already applied to an explicit ticket number still carrying
-`needs-human`/`on-hold`.
+**In phases 3, 4, and 6, the gate applies to an explicitly-given ticket number too, not
+just bare-pool selection.** `/pilot-spec`, `/pilot-dev`, and `/pilot-qa` each run this same
+check before claiming any ticket, whether it got there via the pool or because a human
+named it directly — the same principle already applied to an explicit ticket number still
+carrying `needs-human`/`on-hold`.
 
 **Phase 2 (`/pilot-scope`) is the deliberate exception.** Re-scoping a ticket doesn't need
 its prerequisite resolved first, only the phases that actually spec and build it (3 and 4)
@@ -1006,13 +1014,13 @@ For a `type:feature` parent specifically, that check sets `status:qa` instead of
      failure means the story is validated for what it actually covers; report each one to
      the human so they take it through phase 1 themselves as a new ticket — the agent
      never creates that ticket itself.
-   - **One or more real-bug failures** → nothing further to set — the agent already
-     originated a `type:bug` ticket for each, directly as `level:task`/`status:spec-ready`
-     (§2 "Three levels" — never through phase 2), and self-applied `on-hold` with its own
-     comment (`status:in-qa` stays), the same mechanics a bug found mid-implementation in
-     phase 4 uses (§2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)"). This takes
-     priority over a same-pass "not actually a bug" failure — the story can't be done while
-     a real defect is still open.
+   - **One or more real-bug failures** → the agent already originated a `type:bug` ticket
+     for each, directly as `level:task`/`status:spec-ready` (§2 "Three levels" — never
+     through phase 2), then unclaims the story itself (assignee cleared, `status:in-qa` →
+     `status:qa`) with a comment naming the new bug ticket(s) — the same mechanics a bug
+     found mid-implementation in phase 4 uses (§2 "Prerequisite bug tickets (phase 2,
+     phase 4, or phase 6)"). This takes priority over a same-pass "not actually a bug"
+     failure — the story can't be done while a real defect is still open.
    - **A failure still unresolved** (nobody answered on the spot — should be rare,
      `/pilot-qa` is pair-only) → the `needs-human` label and comment from step 5 stay
      exactly as posted (`status:in-qa` stays); a human resolves it later, same as any other

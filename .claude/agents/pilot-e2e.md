@@ -32,9 +32,10 @@ wouldn't have cleared the dependency gate to reach you.
 3. If running it surfaces a genuine defect in that already-merged code — not a gap in
    your own ticket's scope — follow `pilot-dev.md` step 3a exactly: originate a
    `type:bug` ticket (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2,
-   phase 4, or phase 6)"), link it ("Blocks #M"/"Depends on #N"), self-apply `on-hold`
-   with a comment, and stop without pushing a broken or partial commit — your ticket
-   can't be marked done with a test that doesn't actually pass.
+   phase 4, or phase 6)"), link it ("Blocks #M"/"Depends on #N"), then unclaim yours
+   (push what you have to a branch, comment naming it, clear the assignee, back to
+   `status:dev-ready`) — never push a broken or partial commit; your ticket can't be
+   marked done with a test that doesn't actually pass.
 4. Otherwise, continue exactly as `pilot-dev.md` describes from step 4 onward: implement
    per the spec, run validation, final self-review (step 5a), commit/push/open the PR per
    this project's template, move the ticket to `status:in-review`, and update any affected
