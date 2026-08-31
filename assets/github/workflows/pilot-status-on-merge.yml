@@ -99,7 +99,9 @@ jobs:
               // "End-to-end test tasks"), so "all done" here is the same moment the
               // e2e task itself just finished. That story goes to status:qa for a
               // human to confirm (§7 "Phase 6 — Human QA") instead of straight to
-              // status:done — type:tech/type:bug parents are unaffected, unchanged cascade.
+              // status:done — a type:tech parent (the only other type that can reach
+              // status:split; type:bug never does, pilot-process.md §2 "Three levels")
+              // is unaffected, unchanged cascade.
               if (parentLabels.includes('type:feature')) {
                 core.info(`All sub-issues of #${parent.number} are done/wont-do; cascading status:qa (type:feature) to parent.`);
                 await swapToDone(parent.number, dryRun, 'status:qa');

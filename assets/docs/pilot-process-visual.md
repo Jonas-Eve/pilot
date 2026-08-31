@@ -72,11 +72,11 @@ sequenceDiagram
     GH->>QAAgent: status:qa → status:in-qa (claim)
     QAAgent-->>Human: manual test plan
     Human-->>QAAgent: results, case by case
-    alt all confirmed
-        QAAgent->>GH: status:done + close issue
-    else change-tagged failure (clear-cut defect)
-        QAAgent->>GH: originates type:bug + self-applies on-hold
-    else decision-tagged failure (judgment call)
+    alt all confirmed, or a failure isn't actually a bug
+        QAAgent->>GH: status:done + close issue (reports any non-bug finding for phase 1)
+    else genuine bug
+        QAAgent->>GH: originates type:bug (level:task, spec-ready) + self-applies on-hold
+    else can't classify even after asking live
         QAAgent->>GH: needs-human + findings
     end
     end

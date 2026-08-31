@@ -1,6 +1,6 @@
 ---
 name: pilot-scope
-description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature, type:tech, or type:bug, created via /pilot-story) and, in one pass, challenges it, then either scopes it as-is or splits it into dev-sized tasks (level:task, each with its own independent type: — never inherited) — a judgment call for type:tech (scoping as-is is fine), but mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler mixed in) plus exactly one end-to-end-test task typed type:e2e, depending on every other task in the split. type:bug never splits — one that turns out to need several tasks gets wont-do'd and redirected into a freshly formalized type:feature/type:tech story instead. Also records dependencies (a prerequisite type:tech or type:bug ticket, and/or between tasks of the same split), or decides the ticket shouldn't be built at all (status:wont-do) — or flags needs-human for a judgment call. For a type:feature story, the PM agent also checks the proposed type:feature tasks (excluding any type:tech or type:e2e sibling) against the story's original acceptance criteria before it's finalized. Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a type:feature story sitting at status:qa/status:in-qa to add a new round of tasks (moving it back to status:scoping, then status:split once the round is proposed — refuses outright on a status:done story, which always needs a new ticket instead), and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference. Use whenever an already-created ticket needs to be scoped/decomposed — not for formalizing a brand-new need, that's /pilot-story."
+description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature or type:tech only, created via /pilot-story — type:bug never reaches this phase, it's always created directly as a spec-ready task) and, in one pass, challenges it, then either scopes it as-is or splits it into dev-sized tasks (level:task, each with its own independent type: — never inherited) — a judgment call for type:tech (scoping as-is is fine), but mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler mixed in) plus exactly one end-to-end-test task typed type:e2e, depending on every other task in the split. Also records dependencies (a prerequisite type:tech or type:bug ticket, and/or between tasks of the same split), or decides the ticket shouldn't be built at all (status:wont-do) — or flags needs-human for a judgment call. For a type:feature story, the PM agent also checks the proposed type:feature tasks (excluding any type:tech or type:e2e sibling) against the story's original acceptance criteria before it's finalized. Defaults to pair mode — walks through the proposed decomposition with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to finalize straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged needs-human once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a type:feature story sitting at status:qa/status:in-qa to add a new round of tasks (moving it back to status:scoping, then status:split once the round is proposed — refuses outright on a status:done story, which always needs a new ticket instead), and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference. Use whenever an already-created type:feature/type:tech ticket needs to be scoped/decomposed — not for formalizing a brand-new need, that's /pilot-story."
 argument-hint: "<issue number> [--auto] | <issue number> --resume"
 disable-model-invocation: true
 ---
@@ -34,6 +34,10 @@ mechanics of running phase 2.
    - An issue number that's `level:task` → phase 2 only ever scopes `level:story`
      tickets, never a task (a task is itself the *output* of scoping, §2 "Three levels").
      Report that and point the human at the task's parent story instead. Never claim it.
+   - An issue number that's `type:bug` → a bug never reaches phase 2 at all: it's always
+     created directly as `level:task`, `status:spec-ready` (`docs/pilot-process.md` §2
+     "Three levels"). Report that and point the human at `/pilot-spec` instead. Never
+     claim it.
    - An issue number whose GitHub issue is **closed** (`status:done` or `status:wont-do`,
      the only two ways a ticket ends up closed) → terminal, refuse
      (`docs/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split is
@@ -52,8 +56,8 @@ mechanics of running phase 2.
      set `status:scoping` — before continuing to step 3, passing that extra context (the
      earlier round's already-done tasks) alongside the ticket body. Skip step 2, the claim
      already happened here.
-   - An issue number otherwise → this is an existing, open `level:story` (`type:feature`,
-     `type:tech`, or `type:bug`) being scoped/re-scoped. Read it (`mcp__github__issue_read`),
+   - An issue number otherwise → this is an existing, open `level:story` (`type:feature`
+     or `type:tech`) being scoped/re-scoped. Read it (`mcp__github__issue_read`),
      along with its parent Epic (if linked) and anything already referenced via "Blocks #M"/
      "Depends on #N" or a sub-issue relationship, as context for the agent. If it's
      `level:epic`, there's nothing to scope on the epic itself — stop and point at its
@@ -78,12 +82,6 @@ mechanics of running phase 2.
    - For `type:tech`: a single scoped ticket body (no split needed), or a set of proposed
      tasks (split, a judgment call) each with security/architecture decisions,
      dependencies, and a suggested priority.
-   - For `type:bug`: a single scoped ticket body only — `type:bug` never splits
-     (`docs/pilot-process.md` §2 "Three levels"). If the subagent instead concludes the
-     bug genuinely needs several tasks, that's a redirect, not a split: a `status:wont-do`
-     verdict for this ticket, plus a freshly formalized `type:feature`/`type:tech` story
-     for the real underlying need (`docs/pilot-process.md` §2 "Redirecting a `type:bug`
-     that isn't one").
    - For `type:feature`: always a set of proposed tasks — one or more dev tasks (each
      assigned its own `type:feature` or `type:tech`, whichever fits — `docs/pilot-process.md`
      §2 "`type:` is never inherited"), plus exactly one flagged as the mandatory
@@ -109,8 +107,7 @@ mechanics of running phase 2.
 4b. **Unless `--auto` was given** (`docs/pilot-process.md` §4 "Interaction modes" — pair
     is the default for this skill): don't finalize anything yet. Show the human the
     proposed decomposition — split or not, any e2e task proposed, security/
-    architecture decisions, dependencies, wont-do verdict (including a `type:bug`
-    redirect — the new story it proposes in place of a split), any prerequisite tech/bug
+    architecture decisions, dependencies, wont-do verdict, any prerequisite tech/bug
     need(s) flagged and whether each is a hard blocker, the PM's coverage check if one
     ran — as a normal reply, wait for
     their response, and feed it back to the architect (and PM, if its check applies) —
@@ -130,15 +127,8 @@ mechanics of running phase 2.
     this whether the run was pair or `--auto` — `--auto` has no rounds to reconcile, but
     still benefits from one coherence read before writing.
 5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`):
-   - No split (`type:tech` or `type:bug` — a `type:feature` story is never this case,
-     step 4): update the ticket body with the decisions, set `status:spec-ready`.
-   - `type:bug` redirect, in place of a split (`docs/pilot-process.md` §2 "Redirecting a
-     `type:bug` that isn't one"): label the bug ticket `status:wont-do` and close it, with
-     a comment explaining the redirect and pointing at the new story. Create the new story
-     the same way a fresh `type:feature`/`type:tech` need is formalized in phase 1
-     (`level:story`, `status:backlog`, unassigned), referencing the original bug ticket in
-     its body. Never as a sub-issue or `level:task` of the bug ticket — it's an
-     independent root going through its own phases 2-5.
+   - No split (`type:tech` only — a `type:feature` story is never this case, step 4):
+     update the ticket body with the decisions, set `status:spec-ready`.
    - Split into tasks: create the sub-issues, link them to the parent as native
      sub-issues, each labeled `level:task` plus its own `type:` as the architect assigned
      it in step 4 (never the parent's — `docs/pilot-process.md` §2 "`type:` is never
@@ -164,9 +154,12 @@ mechanics of running phase 2.
      otherwise. Several prerequisites means several separate lines, one `#N` each —
      never combined onto one line (`docs/pilot-process.md` §4).
    - Prerequisite bug ticket(s) flagged (in addition to whichever of the above applies):
-     create each the same way, `type:bug` instead of `type:tech`
-     (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)") — same
-     linking rules, always a hard blocker for this case (the discovering ticket cannot be
+     create each directly as `type:bug`, `level:task`, `status:spec-ready` — never
+     `level:story`/`status:backlog` (`docs/pilot-process.md` §2 "Three levels" — a bug
+     never goes through its own phase-2 pass), never as a sub-issue
+     (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)")
+     — same linking rules, always a hard blocker for this case (the discovering ticket
+     cannot be
      finished until the bug is fixed).
 6. Report the outcome (ticket(s) scoped/split, dependencies recorded, prerequisite
    ticket(s) spun out, or closed as won't-do) back to the human.
