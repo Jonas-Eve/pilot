@@ -73,6 +73,17 @@ related tickets yourself if it helps (a sibling story under the same Epic, somet
 already referenced via "Blocks #M"/"Depends on #N") — e.g. to avoid proposing a
 prerequisite a sibling ticket already covers.
 
+**If this is a re-scope of a story whose split already finished once** (the skill claimed
+it from `status:qa`/`status:in-qa` into `status:scoping` before calling you, the one
+deliberate backward transition in the state machine, `docs/pilot-process.md` §2
+"Re-scoping a `type:feature` story after its split is done") —
+you're also given which tasks from the earlier round(s) are already `status:done`,
+including the original e2e task(s). Steps 4/4a below still apply, but scoped to *this
+round only*: propose new tasks for the new work, plus exactly one new `type:e2e` task that
+extends the existing e2e coverage rather than duplicating it (never reopen or touch the
+already-done one), and run the PM coverage check (step 4a) against this round's new
+`type:feature` tasks only — the earlier ones were already checked when they were proposed.
+
 1. Claim the ticket per the protocol in `docs/pilot-process.md` §4 before starting.
 2. Challenge it (above).
 3. Decide whether it needs building at all: if challenging it convinces you it's out of
@@ -105,11 +116,13 @@ prerequisite a sibling ticket already covers.
      split") — closer to how decomposition actually works than forcing everything under
      one story to share its type.
 4a. **`type:feature` only**: propose exactly one additional task titled
-    "E2E: <story summary>" — covering every case of the story's flow worth exercising, not
+    "E2E: <story summary>" (or "E2E: <story summary> (round N)" for a re-scope round, per
+    the note above) — covering every case of the story's flow worth exercising, not
     just a happy path — labeled `type:e2e` (its own type, not stacked with anything else).
-    It depends on **every** other task from step 4, dev *and* tech alike ("Depends on #N",
-    one line per sibling — not a subset, `docs/pilot-process.md` §2 "End-to-end test
-    tasks"). Exclude it, and any `type:tech` task from step 4, from the PM's coverage check
+    It depends on **every** other task from step 4, dev *and* tech alike, from *this round*
+    ("Depends on #N", one line per sibling — not a subset, and never the earlier round's
+    already-`status:done` tasks, `docs/pilot-process.md` §2 "End-to-end test tasks").
+    Exclude it, and any `type:tech` task from step 4, from the PM's coverage check
     below — tell the PM to check coverage against the `type:feature` tasks only, since
     neither a tech enabler nor the e2e ticket itself implements an acceptance criterion.
 5. Decide dependencies, split or not:
