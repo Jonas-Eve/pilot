@@ -43,23 +43,29 @@ comment in place of a fresh spec).
    TDD-enforcing skill or convention (e.g. for its Python code), use it; otherwise mirror
    the same red-green-refactor discipline, and the same separate-commit convention,
    across whatever languages the change touches.
-3a. If running a test surfaces a genuine defect in already-merged code your ticket
-    doesn't itself touch — not an ambiguity in what you're building (that's a spec
-    deviation, step 4) but a bug outside this ticket's own scope — this is most likely to
-    happen while writing an end-to-end test task (`docs/pilot-process.md` §2
-    "End-to-end test tasks", implemented by `pilot-e2e` rather than you — it follows
-    this exact same step for a bug it finds), but isn't limited to that case. Originate a
-    new ticket for it the same way the architect originates a prerequisite tech ticket in
-    phase 2, just from phase 4 instead and `type:bug` instead of `type:tech`
-    (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)"):
-    `type:bug`, `status:backlog`, unassigned, body describing what's broken, how you
-    observed it, and the root cause/suggested fix if you already know it — never as a
-    sub-issue of your own ticket. Add a "Blocks #M" comment on the new ticket pointing back
-    at yours, and a "Depends on #N" line in your own ticket's body (always a hard blocker
-    here). Then, because your ticket is already claimed and mid-phase, also add `on-hold`
-    to it yourself with a comment naming the new ticket — the dependency line alone won't
-    keep it out of circulation for an already-in-progress ticket — and stop without pushing
-    a broken or partial commit. A human (or you) removes `on-hold` once the new ticket
+3a. If running a test surfaces something that looks like a genuine defect in already-merged
+    code your ticket doesn't itself touch — not an ambiguity in what you're building
+    (that's a spec deviation, step 4) — this is most likely to happen while writing an
+    end-to-end test task (`docs/pilot-process.md` §2 "End-to-end test tasks", implemented
+    by `pilot-e2e` rather than you — it follows this exact same step for a bug it finds),
+    but isn't limited to that case. Classify it first (`docs/pilot-process.md` §2
+    "Prerequisite bug tickets (phase 2, phase 4, or phase 6)"): genuinely a code defect
+    against something already agreed on, or actually a new/different need in disguise — if
+    the latter, it's not a bug, treat it the way that section describes instead (a
+    prerequisite tech ticket, or leave it for a human via phase 1) rather than originating
+    a `type:bug` ticket. If it genuinely is a bug, originate a new ticket for it the same
+    way the architect originates a prerequisite tech ticket in phase 2, just from phase 4
+    instead and `type:bug` instead of `type:tech` — with one difference: create it
+    directly as `type:bug`, `level:task`, `status:spec-ready`, never
+    `level:story`/`status:backlog` (`docs/pilot-process.md` §2 "Three levels" — a bug
+    never goes through phase 2 at all). Body describing what's broken, how you observed
+    it, and the root cause/suggested fix if you already know it — never as a sub-issue of
+    your own ticket. Add a "Blocks #M" comment on the new ticket pointing back at yours,
+    and a "Depends on #N" line in your own ticket's body (always a hard blocker here).
+    Then, because your ticket is already claimed and mid-phase, also add `on-hold` to it
+    yourself with a comment naming the new ticket — the dependency line alone won't keep it
+    out of circulation for an already-in-progress ticket — and stop without pushing a
+    broken or partial commit. A human (or you) removes `on-hold` once the new ticket
     reaches `status:done`, and resumes your ticket with `--resume`.
 4. Implement exactly what the spec calls for. If you find you need to deviate from it in
    a way that changes behavior or architecture, don't just do it silently — leave a

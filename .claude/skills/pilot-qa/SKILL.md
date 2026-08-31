@@ -1,6 +1,6 @@
 ---
 name: pilot-qa
-description: "Phase 6 of PILOT (see docs/pilot-process.md): human QA for a type:feature story once every task — including its mandatory e2e one — has merged (status:qa). Builds a manual test plan from the story's acceptance criteria and its merged tasks, walks a human through testing it live, and reports the verdict. Pair-only, no --auto — there's no unattended version of a human testing something, so this is never Routine-driven. On a full pass, sets status:done and closes the issue. On a failure, the agent tags it change (clear-cut defect — originates a type:bug ticket itself and self-applies on-hold, same mechanics as a bug found mid-implementation in phase 4) or decision (genuine judgment call — needs-human with the findings, a human decides). Also resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up the next status:qa (fresh) or status:in-qa-with-needs-human-cleared (resumable) ticket, skipping anything still on-hold. Use once a type:feature story's tasks have all merged and it's ready for a human to confirm the shipped behavior."
+description: "Phase 6 of PILOT (see docs/pilot-process.md): human QA for a type:feature story once every task — including its mandatory e2e one — has merged (status:qa). Builds a manual test plan from the story's acceptance criteria and its merged tasks, walks a human through testing it live, and reports the verdict. Pair-only, no --auto — there's no unattended version of a human testing something, so this is never Routine-driven. On a full pass, or once every failure turns out not to actually be a bug, sets status:done and closes the issue (the agent reports any not-a-bug finding to the human to raise via phase 1 separately). On a genuine defect, the agent originates a type:bug ticket itself, directly as a spec-ready task, and self-applies on-hold — same mechanics as a bug found mid-implementation in phase 4. A failure the agent genuinely can't classify even after asking the live human (rare, since a human is always right here) gets needs-human with the findings. Also resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up the next status:qa (fresh) or status:in-qa-with-needs-human-cleared (resumable) ticket, skipping anything still on-hold. Use once a type:feature story's tasks have all merged and it's ready for a human to confirm the shipped behavior."
 argument-hint: "<issue number> | --resume <issue number>"
 disable-model-invocation: true
 ---
@@ -57,27 +57,35 @@ this skill only covers the mechanics of running it.
    modes") — this is what makes `--resume` possible if the session ends before a final
    verdict.
 6. Apply the agent's verdict:
-   - **Approved** (every case confirmed): set `status:done` and close the issue
-     (`mcp__github__issue_write`) — this is the one phase that sets `status:done` directly
-     on an actionable ticket, since there's no PR merge here for
-     `.github/workflows/pilot-status-on-merge.yml` to react to. Nothing else to cascade — a
-     `type:feature` story is never itself a task of another `status:split` parent.
-   - **One or more `change`-tagged failures**: nothing further to set — the agent already
-     originated the `type:bug` ticket(s) itself and self-applied `on-hold` with its own
-     comment (`status:in-qa` stays), the same pattern `pilot-dev`/`pilot-e2e` use for a bug
-     found mid-implementation (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase
-     2, phase 4, or phase 6)"). This ticket only becomes a candidate again for an explicit
+   - **Approved** (every case confirmed, or every failure resolved to "not actually a
+     bug"): set `status:done` and close the issue (`mcp__github__issue_write`) — this is
+     the one phase that sets `status:done` directly on an actionable ticket, since there's
+     no PR merge here for `.github/workflows/pilot-status-on-merge.yml` to react to.
+     Nothing else to cascade — a `type:feature` story is never itself a task of another
+     `status:split` parent. Include any "not actually a bug" finding in the report to the
+     human (step 7) — they raise it as a new ticket via phase 1 themselves.
+   - **One or more real-bug failures**: nothing further to set — the agent already
+     originated the `type:bug` ticket(s) itself, directly as `level:task`/
+     `status:spec-ready` (never through phase 2, `docs/pilot-process.md` §2 "Three
+     levels"), and self-applied `on-hold` with its own comment (`status:in-qa` stays), the
+     same pattern `pilot-dev`/`pilot-e2e` use for a bug found mid-implementation
+     (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or phase
+     6)"). This takes priority over a same-pass "not actually a bug" failure — the story
+     stays `in-qa` regardless. This ticket only becomes a candidate again for an explicit
      `--resume` once a human removes `on-hold` after the new bug ticket reaches
      `status:done`.
-   - **One or more `decision`-tagged failures** (and no `change`-tagged ones): add
-     `needs-human` with a comment listing exactly what failed, per case, as the agent
-     reported it (`status:in-qa` stays, `docs/pilot-process.md` §3 "`needs-human`").
-   Both kinds of failure can land in the same pass — apply both labels if so; each is
-   independent of the other (`docs/pilot-process.md` §3).
-7. Report the outcome (approved + closed, the bug ticket(s) originated, and/or the
-   `decision`-tagged findings) back to the human. Never invoke `pilot-e2e`/`pilot-dev` from
-   this skill — a `type:bug` ticket the agent originates goes through its own phases 2-5
-   independently, never handed off to phase 4 directly from here.
+   - **A failure the agent genuinely couldn't classify even after asking the human live**:
+     add `needs-human` with a comment listing exactly what failed, why it's still
+     unresolved, per case, as the agent reported it (`status:in-qa` stays,
+     `docs/pilot-process.md` §3 "`needs-human`"). Should be rare — this phase is always
+     pair, so the human who can answer is normally right there in step 5 already.
+   These can land in the same pass — apply what applies; each is independent of the
+   others (`docs/pilot-process.md` §3).
+7. Report the outcome (approved + closed, any not-a-bug finding to raise via phase 1, the
+   bug ticket(s) originated, and/or the unresolved findings) back to the human. Never
+   invoke `pilot-e2e`/`pilot-dev` from this skill — a `type:bug` ticket the agent
+   originates is already `status:spec-ready`, `/pilot-spec` picking it up next (phase 3,
+   skipping phase 2 entirely), never handed off to phase 4 directly from here.
 
 Do not run this against a `type:tech`/`type:bug` ticket, or against a task itself —
 neither ever reaches `status:qa` (`docs/pilot-process.md` §7 "When it fires").
