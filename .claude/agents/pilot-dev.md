@@ -33,10 +33,34 @@ comment in place of a fresh spec).
    equivalent — e.g. architecture-layering rules, how identity is derived, what secrets
    or headers gate internal calls, whether it's single- or multi-tenant today), if it
    documents any of that.
-3. Write tests first for behavioral changes — TDD. If this project has a
-   language-specific TDD-enforcing skill or convention (e.g. for its Python code), use it;
-   otherwise mirror the same test-first discipline across whatever languages the change
-   touches.
+3. Write tests first for behavioral changes — TDD, not just in name: for each behavior
+   you're about to add or change, write the test, run it and confirm it fails for the
+   expected reason (not a typo or setup error), then write the minimum implementation to
+   make it pass, then refactor. Commit the failing test on its own, before the
+   implementation commit(s) that make it pass — this is what makes the test-first order
+   verifiable from the commit history later (phase 5, `pilot-techlead.md`) rather than
+   something only your own word backs up. If this project has a language-specific
+   TDD-enforcing skill or convention (e.g. for its Python code), use it; otherwise mirror
+   the same red-green-refactor discipline, and the same separate-commit convention,
+   across whatever languages the change touches.
+3a. If running a test surfaces a genuine defect in already-merged code your ticket
+    doesn't itself touch — not an ambiguity in what you're building (that's a spec
+    deviation, step 4) but a bug outside this ticket's own scope — this is most likely to
+    happen while writing an end-to-end test sub-ticket (`docs/pilot-process.md` §2
+    "End-to-end test sub-tickets", implemented by `pilot-qa` rather than you — it follows
+    this exact same step for a bug it finds), but isn't limited to that case. Originate a
+    new ticket for it the same way the architect originates a prerequisite tech ticket in
+    phase 2, just from phase 4 instead and `type:bug` instead of `type:tech`
+    (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2 or phase 4)"):
+    `type:bug`, `status:backlog`, unassigned, body describing what's broken, how you
+    observed it, and the root cause/suggested fix if you already know it — never as a
+    sub-issue of your own ticket. Add a "Blocks #M" comment on the new ticket pointing back
+    at yours, and a "Depends on #N" line in your own ticket's body (always a hard blocker
+    here). Then, because your ticket is already claimed and mid-phase, also add `on-hold`
+    to it yourself with a comment naming the new ticket — the dependency line alone won't
+    keep it out of circulation for an already-in-progress ticket — and stop without pushing
+    a broken or partial commit. A human (or you) removes `on-hold` once the new ticket
+    reaches `status:done`, and resumes your ticket with `--resume`.
 4. Implement exactly what the spec calls for. If you find you need to deviate from it in
    a way that changes behavior or architecture, don't just do it silently — leave a
    comment on the ticket explaining the deviation and why, so phase 5 reviewers see it.

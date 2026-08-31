@@ -1,6 +1,6 @@
 ---
 name: pilot-dev
-description: "Phase 4 of PILOT (see docs/pilot-process.md): the senior-dev agent implements a single spec'd ticket (status:dev-ready) and opens a pull request — or flags needs-human and stops without a PR if it hits something it genuinely can't resolve alone. Claims the ticket (assignee + status:in-dev) before starting so multiple devs can run this skill in parallel without picking the same ticket. Defaults to pair mode — agrees on the implementation approach with a human live in the session before writing any code (pair-coding), checkpointing progress into the ticket as it goes; pass --auto to implement straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a ticket phase 5 sent back for changes (status:changes-requested, once needs-human is cleared) and pushes new commits to its existing PR, and runs bare with no argument to pick up fresh, needs-human-resumable, or reclaimable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference, and preferring a ticket that blocks another over one that doesn't. Use once a ticket has a technical spec from /pilot-spec and is ready to be built."
+description: "Phase 4 of PILOT (see docs/pilot-process.md): implements a single spec'd ticket (status:dev-ready) and opens a pull request — or flags needs-human and stops without a PR if it hits something it genuinely can't resolve alone. Calls the senior-dev agent (pilot-dev) for an ordinary ticket, or the QA agent (pilot-qa) instead when the ticket carries the secondary type:e2e label (an end-to-end-test sub-ticket). Claims the ticket (assignee + status:in-dev) before starting so multiple devs can run this skill in parallel without picking the same ticket. Defaults to pair mode — agrees on the implementation approach with a human live in the session before writing any code (pair-coding), checkpointing progress into the ticket as it goes; pass --auto to implement straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a ticket it previously flagged once a human clears that flag, resumes a ticket left mid-pair session with --resume <issue number>, reclaims a ticket phase 5 sent back for changes (status:changes-requested, once needs-human is cleared) and pushes new commits to its existing PR, and runs bare with no argument to pick up fresh, needs-human-resumable, or reclaimable work (e.g. --auto from a scheduled cron Routine), skipping anything still on-hold or blocked by an unresolved 'Depends on #N' reference, and preferring a ticket that blocks another over one that doesn't. Use once a ticket has a technical spec from /pilot-spec and is ready to be built."
 argument-hint: "<issue number, optional — picks the next dev-ready or needs-human-resumable ticket if omitted> [--auto] | <issue number> --resume"
 disable-model-invocation: true
 ---
@@ -60,9 +60,16 @@ what keeps them from colliding.
 2. **Claim** it per `docs/pilot-process.md` §4: set assignee + `status:in-dev`, then
    re-read the ticket. If the assignee changed since the claim (another instance won the
    race), stand down and go back to step 1 for a different ticket rather than proceeding.
-3. Call the `Agent` tool with `subagent_type: "pilot-dev"`, passing the ticket's spec and
-   the architect's decisions — not the running conversation history, and not the state
-   of any other ticket being worked in parallel. **If this is a `status:changes-requested`
+2a. **Pick the persona**: if the ticket carries the secondary `type:e2e` label
+    (`docs/pilot-process.md` §2 "End-to-end test sub-tickets") — alongside whichever
+    `type:` it inherits from its root — `subagent_type: "pilot-qa"`; otherwise
+    `subagent_type: "pilot-dev"` as before. This is the only thing `type:e2e` changes
+    about this skill's mechanics — claim, pool selection, and everything below apply
+    identically either way.
+3. Call the `Agent` tool with the `subagent_type` chosen in step 2a, passing the ticket's
+   spec and the architect's decisions — not the running conversation history, and not the
+   state of any other ticket being worked in parallel. **If this is a
+   `status:changes-requested`
    reclaim** (per step 1 above): pass the phase-5 blocking comment (the `change`-tagged
    points to fix, plus any `decision`-tagged points and their resolution) instead of a
    fresh spec — there's no new spec here, only more commits on the existing PR. **Unless
@@ -93,5 +100,12 @@ what keeps them from colliding.
    - Blocking conflict: nothing further to set — the subagent already added
      `needs-human` and posted its comment itself (`status:in-dev` stays, per
      `docs/pilot-process.md` §3).
+   - Bug discovered mid-implementation (`docs/pilot-process.md` §2 "Prerequisite bug
+     tickets (phase 2 or phase 4)"): nothing further to set either — the subagent
+     (`pilot-dev` or `pilot-qa`) already originated the new `type:bug` ticket, linked it
+     ("Blocks #M"/"Depends on #N"), and added `on-hold` with its own comment
+     (`status:in-dev` stays). This ticket only becomes a candidate again for an explicit
+     `--resume` once a human removes `on-hold` after the new ticket reaches
+     `status:done`.
 6. Report the PR URL, or the blocking summary, back to the human. Never merge as part of
    this skill.

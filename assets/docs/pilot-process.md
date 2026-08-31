@@ -23,7 +23,8 @@ No skill creates them on the fly — applying a label that doesn't exist yet fai
 GitHub API call outright, not silently. Create them once (repo Settings → Labels, or
 the GitHub API/CLI):
 
-`type:feature`, `type:tech`, `type:epic`, `priority:P0`, `priority:P1`, `priority:P2`,
+`type:feature`, `type:tech`, `type:bug`, `type:epic`, `type:e2e`, `priority:P0`,
+`priority:P1`, `priority:P2`,
 `status:draft`, `status:backlog`, `status:scoping`, `status:spec-ready`, `status:in-spec`,
 `status:dev-ready`, `status:in-dev`, `status:in-review`, `status:changes-requested`,
 `status:approved`, `status:wont-do`, `status:split`, `status:done`, `needs-human`,
@@ -82,7 +83,7 @@ There is no single global-orchestrator command — each phase skill is invoked o
 
 ---
 
-## 2. Ticket Types: `type:feature` vs `type:tech`
+## 2. Ticket Types: `type:feature` vs `type:tech` vs `type:bug`
 
 Every ticket goes through phase 1 (creation) before phase 2 (decomposition) — `type:`
 decides only which agent phase 1 calls, never whether phase 1 runs at all. Phase 1 is
@@ -97,27 +98,45 @@ dependencies, prerequisites, or splitting; that's entirely phase 2's job (below)
   the PM — there is no separate ticket-creation skill, it's the same act either way, just
   a different agent behind it. Phase 5 review is architect + tech lead only; the PM is
   never involved.
+- **`type:bug`** — a human reports broken behavior in already-shipped code via
+  `/pilot-story --bug`, or it's discovered inline while another ticket is being scoped or
+  implemented (see "Prerequisite bug tickets" below) instead of being reported through
+  `/pilot-story` directly. Either way, the architect formalizes/originates it — same agent
+  as `type:tech`, since a bug fix is a technical correction, not a new product decision.
+  Phase 5 review is architect + tech lead only, same as `type:tech`; the PM is never
+  involved, even when the bug was found via an end-to-end test on a `type:feature` flow —
+  that story's acceptance criteria were already validated once when it shipped, and a
+  regression fix against them isn't a new product judgment call.
 
 **Which agent phase 1 calls is auto-detected from the need, not asked for explicitly.**
 `/pilot-story` is pair-only (§4 "Interaction modes"), so a wrong guess is never silent —
 the human sees which agent picked it up and corrects it live before anything is created.
-Pass `--tech` to skip detection and declare a `type:tech` need upfront (there is no
-`--feature` equivalent; feature is the default read of an undecorated need).
+Pass `--tech` or `--bug` to skip detection and declare the need's type upfront (there is
+no `--feature` equivalent; feature is the default read of an undecorated need).
 
-A human never opens a raw, unformalized GitHub issue directly for either kind of ticket —
-every ticket is created by an agent during phase 1 (PM for `type:feature`, architect for
-`type:tech`), even when the origin is a five-word request from a person. Phase 2
-(`/pilot-scope`) always uses the architect regardless of `type:` — challenging/decomposing
-an already-created story is a technical judgment call either way, never the PM's on its
-own. The one exception is a prerequisite tech ticket the architect originates itself,
-inline, mid-phase-2 scoping pass — see "Prerequisite tech tickets" below; the other is the
+A human never opens a raw, unformalized GitHub issue directly for any of these three
+kinds of ticket — every ticket is created by an agent during phase 1 (PM for
+`type:feature`, architect for `type:tech`/`type:bug`), even when the origin is a
+five-word request from a person. Phase 2 (`/pilot-scope`) always uses the architect
+regardless of `type:` — challenging/decomposing an already-created story is a technical
+judgment call either way, never the PM's on its own. The one exception is a prerequisite
+tech or bug ticket the architect originates itself, inline, mid-phase-2 scoping pass —
+see "Prerequisite tech tickets" and "Prerequisite bug tickets" below; the other is the
 PM's own involvement when a `type:feature` story gets split — see "Three levels" below.
 
 **`type:` is fixed at the root and inherited by every child ticket.** A sub-ticket
 produced by decomposing a `type:feature` story stays `type:feature` (even if its content
 is purely technical) so the PM still checks it against the story's acceptance criteria in
-phase 5. A sub-ticket produced by decomposing a `type:tech` ticket stays `type:tech`. Never
-recompute `type:` partway down a ticket tree.
+phase 5. A sub-ticket produced by decomposing a `type:tech` or `type:bug` ticket stays
+`type:tech`/`type:bug` respectively. Never recompute `type:` partway down a ticket tree.
+
+**`type:e2e` is not a fourth member of this list.** It's a secondary label, never applied
+on its own — always alongside the `type:` a sub-ticket already inherits from its root, the
+same stacking `type:epic` already uses (below). It marks an end-to-end-test sub-ticket
+created during phase 2 (see "End-to-end test sub-tickets" below) and changes only which
+agent `/pilot-dev` calls in phase 4 (`pilot-qa` instead of `pilot-dev`) — it changes
+neither the phase-1 agent (an e2e ticket is never a root ticket, so this never applies) nor
+the phase-5 reviewer set (still decided from the inherited `type:` alone, §6).
 
 ### Three levels: Epic → Story → Sub-ticket
 
@@ -125,19 +144,19 @@ An **Epic** is not the same thing as a story split into sub-tickets — the two 
 different levels and easy to conflate (an earlier draft of this document did). Symmetric
 for both entry points:
 
-- **Epic** (`type:epic`, alongside `type:feature` or `type:tech`) — groups several
-  **stories** under a shared theme, for categorization ("CI", "wheelchair filtering
-  across the app"). Never itself scoped, spec'd, or built — no `status:` label. Created
-  by the PM (`type:feature`) or the architect (`type:tech`) during phase 1, at the same
-  moment a story would otherwise be created, the instant it's clear the idea can't be
-  delivered as a single story. **Stays open and is closed by hand, always** — unlike a split story's
-  sub-tickets (a fixed set decided once, §3 "Cascading completion"), new stories can be
-  added to an Epic at any point, so its completeness is never something PILOT can prove
-  on its own.
-- **Story** (`type:feature`/`type:tech`, `status:backlog`) — one functional or technical
-  unit, exactly what phase 1/2 always produced before. Whether or not it belongs to an
-  Epic, it always goes through phase 2 on its own, where the architect decides whether it
-  needs further splitting.
+- **Epic** (`type:epic`, alongside `type:feature`, `type:tech`, or `type:bug`) — groups
+  several **stories** under a shared theme, for categorization ("CI", "wheelchair
+  filtering across the app"). Never itself scoped, spec'd, or built — no `status:` label.
+  Created by the PM (`type:feature`) or the architect (`type:tech`/`type:bug`) during
+  phase 1, at the same moment a story would otherwise be created, the instant it's clear
+  the idea can't be delivered as a single story. **Stays open and is closed by hand,
+  always** — unlike a split story's sub-tickets (a fixed set decided once, §3 "Cascading
+  completion"), new stories can be added to an Epic at any point, so its completeness is
+  never something PILOT can prove on its own.
+- **Story** (`type:feature`/`type:tech`/`type:bug`, `status:backlog`) — one functional or
+  technical unit, exactly what phase 1/2 always produced before. Whether or not it belongs
+  to an Epic, it always goes through phase 2 on its own, where the architect decides
+  whether it needs further splitting.
 - **Sub-ticket** — when phase 2 decides a story is too big for one pass through phases
   3–4, the architect splits *that story* into dev-sized sub-tickets. This is the
   mechanism the earlier draft mislabeled `type:epic`; the story that got split now gets
@@ -146,6 +165,9 @@ for both entry points:
   independently shippable/testable unit) rather than by technical layer — a front-end-only
   or back-end-only sub-ticket is rarely reviewable or testable on its own, unless the two
   are genuinely decoupled (e.g. a backend API meant to be consumed later, independently).
+  A split can also be proposed purely to carve out an end-to-end test as its own
+  sub-ticket, even when the story wouldn't otherwise need splitting for size — see
+  "End-to-end test sub-tickets" below.
   **For a `type:feature` story only**, once the architect proposes a split, the PM is also
   invoked to check the proposed sub-tickets still collectively cover the original story's
   acceptance criteria before it's finalized — a split that quietly drops part of what the
@@ -219,6 +241,75 @@ split time — the mechanism already gates on the literal phrase regardless of w
 referenced ticket is a separate root or a sibling, so nothing new needs to be built for
 this, just the same phrase used one level down.
 
+### End-to-end test sub-tickets
+
+Distinct from splitting for size (above): during phase 2, alongside deciding whether/how
+to split, the architect also judges whether the story's shipped, *integrated* behavior is
+worth covering with an end-to-end test of the real user flow — never automatic, and most
+`type:tech` tickets with no user-facing flow won't need one, nor does every `type:feature`
+story (one already fully exercised by a sibling story's existing e2e doesn't need a
+second). When it does make sense, propose exactly **one** additional sub-ticket for it
+(title convention: "E2E: <story summary>") — a dev-sized ticket like any other, going
+through phases 2-5 exactly like its siblings, labeled with **both** the `type:` it
+inherits from the root **and** the secondary `type:e2e` label (§2 intro, §3) — the same
+stacking `type:epic` already uses. No new `status:`.
+
+Record its dependencies the same way as any cross-sub-ticket dependency (above): one
+"Depends on #N" line per sub-ticket that makes up the flow it actually exercises (not
+necessarily every sub-ticket of the split — only the ones on the tested path), so it
+naturally isn't claimable by phase 3/4 until those have merged. This alone is reason
+enough to split an otherwise single-ticket story into just the story plus its e2e ticket —
+that doesn't imply the story itself was too big for one dev pass, only that the e2e
+ticket is a separate, dependent unit of work.
+
+**Excluded from the PM's split-coverage check** (above, "Three levels" — the PM confirms
+the proposed sub-tickets collectively cover the original story's acceptance criteria): an
+e2e sub-ticket doesn't implement any criterion, it verifies criteria already covered by
+its sibling(s), so the architect asks the PM to check coverage against the non-e2e
+sub-tickets only.
+
+Phase 3 (tech lead) for an e2e sub-ticket writes the test plan itself as the spec: which
+flow, which existing test tooling/framework this project already uses for e2e (its own
+docs/CI config, if it has one), and what its dependencies having merged now makes
+exercisable end-to-end. **Phase 4 for an e2e sub-ticket is `pilot-qa`, not `pilot-dev`** —
+`/pilot-dev` (the skill) reads the `type:e2e` label before calling `Agent` and picks the
+`pilot-qa` persona instead, precisely so the agent implementing it gets a context already
+tailored to writing a test against real, already-merged integration points rather than
+generic implementation instructions. `pilot-qa` writes the test against that already-merged
+behavior — the ticket cannot be marked done with a test that doesn't actually pass. If
+running it surfaces a genuine defect in that already-merged code rather than a gap in the
+e2e ticket's own scope, that's a bug discovered mid-implementation, not a workaround — see
+"Prerequisite bug tickets" below.
+
+### Prerequisite bug tickets (phase 2 or phase 4)
+
+Distinct from a prerequisite *tech* ticket above (a new technical need, no defect
+implied): while scoping (phase 2) or implementing/testing (phase 4) a ticket, the
+architect or dev/`pilot-qa` may instead discover a concrete **defect** in already-shipped
+code outside the ticket's own scope — not an ambiguity in what's being built (phase 4's
+own spec-deviation path, `pilot-dev.md`, still covers that), a genuine bug. Most commonly
+this happens while writing or running an end-to-end test sub-ticket (above), but isn't
+limited to that case.
+
+Whoever finds it originates a new ticket for it using the exact same mechanics as a
+prerequisite tech ticket, just `type:bug` instead of `type:tech`: written directly (the
+same quality bar as `/pilot-story --bug`'s own phase-1 output — what's broken, how
+observed, root cause/fix if known), `status:backlog`, unassigned — never as a sub-issue of
+the ticket being worked. Link the two: "Blocks #M" on the new ticket, "Depends on #N" in
+the discovering ticket's own body — always a hard blocker, since the discovering ticket
+cannot be finished until the bug is fixed.
+
+**Phase 4 needs one thing phase 2 doesn't.** A ticket phase 2 is scoping isn't claimed by
+phase 3/4 yet, so recording "Depends on #N" and finishing the scoping pass normally is
+enough — the gate (§4 "Blocked-by dependencies") does the rest once phase 3/4 later try to
+claim it. A ticket phase 4 is *implementing*, by contrast, is already claimed and
+mid-phase (`status:in-dev`, assigned) — the dependency gate alone won't pull an
+already-in-progress ticket out of circulation. So from phase 4 (`pilot-dev` or
+`pilot-qa`), also add `on-hold` to the ticket being implemented, with a comment naming the
+new bug ticket, before stopping — never push a broken or partial commit in the meantime. A
+human (or the same agent) removes `on-hold` once the bug ticket reaches `status:done`, and
+only then resumes the original with `--resume`.
+
 ---
 
 ## 3. Labels
@@ -226,13 +317,21 @@ this, just the same phrase used one level down.
 ### `type:` — set once, at ticket creation, inherited by all children
 - `type:feature`
 - `type:tech`
+- `type:bug` — a defect in already-shipped code (§2); formalized/originated by the
+  architect, reviewed by architect + tech lead only, same as `type:tech`.
 
-An Epic gets `type:epic` alongside its `type:feature`/`type:tech` (§2 "Three levels").
-It carries no `status:` label and never moves through the pipeline itself — its stories
-are linked to it as native GitHub sub-issues (`mcp__github__sub_issue_write`), not a
-hand-written checklist. It stays **open indefinitely and is closed by hand** — new
+An Epic gets `type:epic` alongside its `type:feature`/`type:tech`/`type:bug` (§2 "Three
+levels"). It carries no `status:` label and never moves through the pipeline itself — its
+stories are linked to it as native GitHub sub-issues (`mcp__github__sub_issue_write`), not
+a hand-written checklist. It stays **open indefinitely and is closed by hand** — new
 stories can be added to it at any time, so unlike a split story (see "Cascading
 completion" below), it never auto-closes.
+
+An end-to-end-test sub-ticket gets `type:e2e` alongside whichever of the three above it
+inherits from its root (§2 "End-to-end test sub-tickets") — the same stacking `type:epic`
+uses. It's never applied on its own, never a root ticket's only `type:`, and doesn't
+affect the phase-5 reviewer set (§6) — it only changes which agent `/pilot-dev` calls in
+phase 4 (`pilot-qa` instead of `pilot-dev`).
 
 ### `status:` — the pipeline state machine, one label at a time
 ```
@@ -754,8 +853,10 @@ ticket — never a running transcript of the prior phase's `Agent` call.
    `needs-human`/`on-hold`. A ticket phase 5 previously sent to `status:changes-requested`
    is **not** in this pool — it's `/pilot-dev`'s to reclaim (§4), and only re-enters here
    once dev pushes it back to `status:in-review`.
-1. Determine reviewers from `type:`: `pilot-pm` + `pilot-architect` + `pilot-techlead`
-   for `type:feature`, `pilot-architect` + `pilot-techlead` only for `type:tech`. Three
+1. Determine reviewers from the ticket's **inherited** `type:` (ignore a secondary
+   `type:e2e` label if present — §2 "End-to-end test sub-tickets" — it never changes the
+   reviewer set): `pilot-pm` + `pilot-architect` + `pilot-techlead` for `type:feature`,
+   `pilot-architect` + `pilot-techlead` only for `type:tech` or `type:bug`. Three
    distinct, non-overlapping lenses on every reviewed PR: PM checks product fit against
    the story's acceptance criteria (feature only); architect checks conformance to the
    security/architecture decisions recorded at scope time; tech lead checks both
