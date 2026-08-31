@@ -93,10 +93,12 @@ actually is, never copied down a tree:
 - **`level:`** ("Three levels" below) — *depth* in the tree: `epic`, `story`, or `task`,
   capped at exactly these three, never deeper.
 
-Every ticket goes through phase 1 (creation) before phase 2 (decomposition) — `type:`
-decides only which agent phase 1 calls, never whether phase 1 runs at all. Phase 1 is
-purely about identifying and formalizing what the need actually is — never about
-dependencies, prerequisites, or splitting; that's entirely phase 2's job (below):
+Every ticket is created in phase 1 — `type:` decides only which agent phase 1 calls,
+never whether phase 1 runs at all. What comes *after* phase 1 does depend on `type:`: a
+`type:feature`/`type:tech` story goes on to phase 2 (decomposition), a `type:bug` skips
+straight to phase 3 ("Three levels" below). Phase 1 itself is purely about identifying and
+formalizing what the need actually is — never about dependencies, prerequisites, or
+splitting; that's entirely phase 2's job, for the tickets that have one (below):
 
 - **`type:feature`** — a human describes an idea in free text to `/pilot-story`; the PM
   agent formalizes it into a user story. Phase 5 review involves all three agents (PM
@@ -486,7 +488,11 @@ below and §6)
   built after all (out of scope, duplicate, superseded) and closed the issue instead of
   scoping it. Only settable from phase 2, before any spec or code has been written —
   once a ticket has reached `status:in-spec` or later, killing it is a human call: flag
-  `needs-human` with the reasoning instead and let a human close it.
+  `needs-human` with the reasoning instead and let a human close it. A `type:bug` ticket
+  therefore never carries this label at all: it has no phase 2 (§2 "Three levels"), so an
+  invalid report is caught in phase 1 by creating nothing in the first place, and a bug
+  that only turns out to be invalid after creation goes the `needs-human` route like any
+  other post-phase-2 ticket.
 - `status:qa` — a `type:feature` `status:split` story whose e2e task (and therefore
   every dev task it depends on) has reached `status:done` — set by
   `.github/workflows/pilot-status-on-merge.yml` in place of the ordinary cascade straight
@@ -616,9 +622,10 @@ removed, the ticket is simply a normal candidate again. The two flags are indepe
 can coexist; clearing one has no effect on the other.
 
 ### `priority:`
-- `priority:P0` / `priority:P1` / `priority:P2` — set by the architect, on each
-  leaf/task, during phase 2. Not set on `level:epic` or `status:split` tracker
-  parents. Same rough meaning as most backlog conventions: P0 closes a real gap (security,
+- `priority:P0` / `priority:P1` / `priority:P2` — set by the architect on each leaf/task,
+  during phase 2 — or, for a `type:bug` ticket (which never reaches phase 2, §2 "Three
+  levels"), during phase 1, when the architect creates it. Not set on `level:epic` or
+  `status:split` tracker parents. Same rough meaning as most backlog conventions: P0 closes a real gap (security,
   correctness, a broken safety net) — do it soon; P1 is solid value, not urgent; P2 is
   nice-to-have or conditional. Adopt this project's own priority convention instead, if it
   already has one that differs.
@@ -664,7 +671,8 @@ ticket number, it builds its candidate pool from **two** queries, not one:
 
 All pools that apply to a given phase skill are merged and picked from together: highest
 `priority:` first, then a ticket referenced by another open ticket's "Blocks #M" comment
-before one that isn't, then oldest by creation date to break ties. A ticket still carrying
+before one that isn't, then oldest by creation date to break ties; a ticket carrying no
+`priority:` at all sorts last. A ticket still carrying
 `needs-human` or `on-hold` is never a candidate in any pool, and neither is one whose body
 has an unresolved "Depends on #N" reference (below, "Blocked-by dependencies") — both
 re-enter automatically once resolved, no flag to remove for the dependency case. A ticket
@@ -674,10 +682,14 @@ pair session" below; it only resumes via an explicit `--resume <issue>`.
 
 ### Blocked-by dependencies (mechanical gate, distinct from `on-hold`)
 
-A ticket's body may carry one or more "Depends on #N" references — today, only the
-architect writes these, when phase 2 spins out a prerequisite tech ticket it judges a hard
-blocker (§2 "Prerequisite tech tickets"), but the mechanism itself isn't specific to that
-case; anything that writes the same phrase gets the same gate for free.
+A ticket's body may carry one or more "Depends on #N" references. Three places write
+them today: the architect, when phase 2 spins out a prerequisite tech ticket it judges a
+hard blocker (§2 "Prerequisite tech tickets"); the architect again, for a prerequisite bug
+ticket (§2 "Prerequisite bug tickets (phase 2, phase 4, or phase 6)"); and
+`pilot-dev`/`pilot-e2e` (phase 4) or `pilot-qa` (phase 6), into their own ticket's body
+when they originate a bug inline (same section — always a hard blocker there). The
+mechanism itself isn't specific to any of them; anything that writes the same phrase gets
+the same gate for free.
 
 **Format: one dependency per line, always.** Multiple dependencies are multiple separate
 "Depends on #N" lines, one issue number each — never several numbers combined onto one
@@ -689,7 +701,8 @@ that issue is still open — plain open/closed, not its `status:` label. A candi
 least one still-open dependency is excluded from the pool for this run, the same as
 `needs-human`/`on-hold` above — but unlike those two, nothing needs removing by hand: the
 moment the referenced ticket closes, the next run of that phase picks the ticket back up
-as an ordinary candidate.
+as an ordinary candidate. This is a deterministic tool-call check the skill performs
+directly (§5), never something the subagent reasons about.
 
 **In phases 3 and 4, the gate applies to an explicitly-given ticket number too, not just
 bare-pool selection.** `/pilot-spec` and `/pilot-dev` each run this same check before
