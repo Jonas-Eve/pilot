@@ -1,7 +1,7 @@
 # CLAUDE CODE GUIDE & DIRECTIVES — `pilot` REPO
 
 ## 1. WHAT THIS REPO IS
-This repo packages PILOT — a 5-phase ticket-process framework — for reuse across
+This repo packages PILOT — a 6-phase ticket-process framework — for reuse across
 projects, as a **plain repo consuming projects clone and copy from**, not a Claude Code
 plugin. A plugin was tried first, but plugin installation turned out to be local to
 whichever machine/container runs it (a Codespace, a local CLI) and never reached Claude
@@ -20,14 +20,15 @@ forked PILOT, strip project-specific details the same way.
 ## 2. STRUCTURE
 - `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
   consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
-  sync by `/pilot-update`) — same path on both sides. All eight carry the `pilot-`
+  sync by `/pilot-update`) — same path on both sides. All nine carry the `pilot-`
   prefix a project-local skill needs to avoid colliding with the project's own — there's
   no plugin namespace to rely on instead. `pilot-init`, `pilot-init-archi`,
   `pilot-update` are this repo's own bootstrap/maintenance commands; `pilot-story`,
-  `pilot-scope`, `pilot-spec`, `pilot-dev`, `pilot-review` are the five PILOT phases.
-- `.claude/agents/<name>.md` — the four personas (`pilot-pm`, `pilot-architect`,
-  `pilot-techlead`, `pilot-dev`) the phase skills delegate to via the `Agent` tool,
-  copied into a consuming project's `.claude/agents/` the same way.
+  `pilot-scope`, `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa` are the six PILOT
+  phases.
+- `.claude/agents/<name>.md` — the six personas (`pilot-pm`, `pilot-architect`,
+  `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`) the phase skills delegate to via
+  the `Agent` tool, copied into a consuming project's `.claude/agents/` the same way.
 - `assets/docs/pilot-process.md` — canonical process spec, copied verbatim into a
   consuming project as `docs/pilot-process.md` by `/pilot-init` and re-synced by
   `/pilot-update`.

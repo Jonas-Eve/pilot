@@ -46,21 +46,21 @@ jobs:
               return issue.labels.map(l => (typeof l === 'string' ? l : l.name)).filter(n => n && n.startsWith(STATUS_PREFIX));
             }
 
-            async function swapToDone(issueNumber, dryRun) {
+            async function swapToDone(issueNumber, dryRun, targetStatus = 'status:done') {
               const currentStatusLabels = await getStatusLabels(issueNumber);
-              core.info(`Issue #${issueNumber}: removing [${currentStatusLabels.join(', ')}], adding status:done` + (dryRun ? ' (dry run)' : ''));
+              core.info(`Issue #${issueNumber}: removing [${currentStatusLabels.join(', ')}], adding ${targetStatus}` + (dryRun ? ' (dry run)' : ''));
               if (dryRun) return;
 
               for (const label of currentStatusLabels) {
-                if (label === 'status:done') continue;
+                if (label === targetStatus) continue;
                 try {
                   await github.rest.issues.removeLabel({ owner, repo, issue_number: issueNumber, name: label });
                 } catch (err) {
                   if (err.status !== 404) throw err;
                 }
               }
-              if (!currentStatusLabels.includes('status:done')) {
-                await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: ['status:done'] });
+              if (!currentStatusLabels.includes(targetStatus)) {
+                await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: [targetStatus] });
               }
             }
 
@@ -77,8 +77,8 @@ jobs:
               }
               if (!parent) return;
 
-              const parentStatusLabels = await getStatusLabels(parent.number);
-              if (!parentStatusLabels.includes('status:split')) return;
+              const parentLabels = parent.labels.map(l => (typeof l === 'string' ? l : l.name));
+              if (!parentLabels.includes('status:split')) return;
 
               const { data: siblings } = await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
                 owner, repo, issue_number: parent.number,
@@ -89,11 +89,23 @@ jobs:
                 return labels.includes('status:done') || labels.includes('status:wont-do');
               });
 
-              if (allDone) {
+              if (!allDone) {
+                core.info(`Parent #${parent.number} is status:split but not all sub-issues are done yet; leaving as-is.`);
+                return;
+              }
+
+              // A type:feature story always splits into dev sub-ticket(s) plus exactly
+              // one e2e sub-ticket depending on all of them (pilot-process.md §2
+              // "End-to-end test sub-tickets"), so "all done" here is the same moment the
+              // e2e sub-ticket itself just finished. That story goes to status:qa for a
+              // human to confirm (§7 "Phase 6 — Human QA") instead of straight to
+              // status:done — type:tech/type:bug parents are unaffected, unchanged cascade.
+              if (parentLabels.includes('type:feature')) {
+                core.info(`All sub-issues of #${parent.number} are done/wont-do; cascading status:qa (type:feature) to parent.`);
+                await swapToDone(parent.number, dryRun, 'status:qa');
+              } else {
                 core.info(`All sub-issues of #${parent.number} are done/wont-do; cascading status:done to parent.`);
                 await swapToDone(parent.number, dryRun);
-              } else {
-                core.info(`Parent #${parent.number} is status:split but not all sub-issues are done yet; leaving as-is.`);
               }
             }
 

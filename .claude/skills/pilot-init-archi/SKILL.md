@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # PILOT bootstrap — `pilot-init-archi`
 
-Not one of the five PILOT phases — the second half of one-time setup, after
+Not one of the six PILOT phases — the second half of one-time setup, after
 `/pilot-init`. It reads and writes `.pilot/state.json` at the project root (schema in
 `.claude/skills/pilot-init/SKILL.md`).
 

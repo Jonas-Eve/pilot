@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # PILOT maintenance — `pilot-update`
 
-Not one of the five PILOT phases, and not `pilot-init`/`pilot-init-archi`'s one-time setup —
+Not one of the six PILOT phases, and not `pilot-init`/`pilot-init-archi`'s one-time setup —
 this is the ongoing maintenance command, safe to run repeatedly.
 
 ## Get a fresh copy of the source repo
@@ -21,7 +21,7 @@ changes.
 
 - **Every skill under `.claude/skills/`** whose directory name matches one that exists
   under `$PILOT_SRC/.claude/skills/` (i.e. every PILOT skill: `pilot-story`, `pilot-scope`,
-  `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-init`, `pilot-init-archi`,
+  `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa`, `pilot-init`, `pilot-init-archi`,
   `pilot-update`) — and every agent under `.claude/agents/` matching
   `$PILOT_SRC/.claude/agents/pilot-*.md` — are PILOT-owned. This command re-copies all of them
   verbatim from `$PILOT_SRC`, **overwriting with no merge**. If a project-local skill or
