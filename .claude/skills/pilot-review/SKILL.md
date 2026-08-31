@@ -1,6 +1,6 @@
 ---
 name: pilot-review
-description: "Phase 5 of PILOT (see docs/pilot-process.md): runs the review agents (PM+architect+tech lead for type:feature, architect+tech lead only for type:tech) in parallel against an open pull request, then posts one consolidated GitHub comment — a joint go-ahead (status:approved), blocking points that are pure judgment calls for a human (needs-human added, status:in-review stays), or blocking points that need actual code changes (needs-human added, moved to status:changes-requested for /pilot-dev to address). Also re-reviews a PR once a human clears a prior needs-human flag on status:in-review, and runs bare with no argument to sweep every status:in-review PR ready for review or re-review (e.g. from a scheduled cron Routine), skipping any that's on-hold. A human always does the actual merge, PILOT never merges. Use once /pilot-dev has opened a PR and it's ready for review."
+description: "Phase 5 of PILOT (see docs/pilot-process.md): runs the review agents (PM+architect+tech lead for type:feature, architect+tech lead only for type:tech or type:bug) in parallel against an open pull request, then posts one consolidated GitHub comment — a joint go-ahead (status:approved), blocking points that are pure judgment calls for a human (needs-human added, status:in-review stays), or blocking points that need actual code changes (needs-human added, moved to status:changes-requested for /pilot-dev to address). Also re-reviews a PR once a human clears a prior needs-human flag on status:in-review, and runs bare with no argument to sweep every status:in-review PR ready for review or re-review (e.g. from a scheduled cron Routine), skipping any that's on-hold. A human always does the actual merge, PILOT never merges. Use once /pilot-dev has opened a PR and it's ready for review."
 argument-hint: "<PR number, or issue number, optional — sweeps status:in-review PRs ready for review/re-review if omitted>"
 disable-model-invocation: true
 ---
@@ -22,9 +22,11 @@ only covers the mechanics of running phase 5.
    `/pilot-dev` reclaims those; this skill only sees it again once dev pushes it back to
    `status:in-review`. For each, read its linked issue
    (`mcp__github__pull_request_read`, `mcp__github__issue_read`) and its `type:` label to
-   decide the reviewer set:
+   decide the reviewer set — reading the **inherited** `type:` and ignoring a secondary
+   `type:e2e` label if present (`docs/pilot-process.md` §2 "End-to-end test sub-tickets" —
+   it never changes the reviewer set):
    - `type:feature` → `pilot-pm`, `pilot-architect`, `pilot-techlead`
-   - `type:tech` → `pilot-architect`, `pilot-techlead` (no PM)
+   - `type:tech` or `type:bug` → `pilot-architect`, `pilot-techlead` (no PM)
 
    Together these cover every dimension phase 5 checks, with nothing dropped silently
    (`docs/pilot-process.md` §6): PM — product fit against the story's acceptance

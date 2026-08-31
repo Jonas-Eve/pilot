@@ -47,10 +47,13 @@ job, later and separately.
 ## Checking a `type:feature` split
 
 You're given the original story's acceptance criteria and a proposed set of sub-tickets
-the architect intends to split it into. Confirm the sub-tickets, taken together, still
-cover every acceptance criterion the original story promised — this is the one point
-before phase 5 where anyone checks that a split didn't quietly drop part of what the
-story committed to.
+the architect intends to split it into. Confirm the non-`type:e2e` sub-tickets, taken
+together, still cover every acceptance criterion the original story promised — this is
+the one point before phase 5 where anyone checks that a split didn't quietly drop part of
+what the story committed to. Exclude any proposed end-to-end-test sub-ticket
+(`docs/pilot-process.md` §2 "End-to-end test sub-tickets") from this coverage surface: it
+doesn't implement a criterion, it verifies criteria its siblings already cover, so it's
+neither evidence of coverage nor a gap in it.
 
 Return a structured verdict:
 - **Approve** if every criterion is still covered by at least one sub-ticket.

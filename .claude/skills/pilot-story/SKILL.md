@@ -1,7 +1,7 @@
 ---
 name: pilot-story
-description: "Phase 1 of PILOT (see docs/pilot-process.md): turn a raw need into a formalized GitHub issue — a functional type:feature user story (PM agent) or a type:tech technical need (architect agent), auto-detected from the need itself, or grouped into a new/reused type:epic if it genuinely spans several. Pass --tech to declare a technical need upfront instead of relying on detection. Always runs in pair mode — drafts the story/need with a human live in the session, creating the ticket as status:draft the moment a first draft exists and refining it in place rather than holding it in conversation; a wrong detection is never silent, it's corrected live. There's no --auto for this phase, so it's never driven by a scheduled Routine — but --resume <issue number> picks back up a status:draft ticket left mid-pair if the session ends before final approval. This phase only formalizes what the need is — it never decides dependencies, prerequisites, or whether it needs splitting; that's entirely /pilot-scope's job, run separately afterward. Use whenever a human wants to start a new ticket from scratch, whatever kind of work it is."
-argument-hint: "<raw need in free text> [--tech] | --resume <issue number>"
+description: "Phase 1 of PILOT (see docs/pilot-process.md): turn a raw need into a formalized GitHub issue — a functional type:feature user story (PM agent), a type:tech technical need, or a type:bug defect report (architect agent for either), auto-detected from the need itself, or grouped into a new/reused type:epic if it genuinely spans several. Pass --tech or --bug to declare the need's type upfront instead of relying on detection. Always runs in pair mode — drafts the story/need with a human live in the session, creating the ticket as status:draft the moment a first draft exists and refining it in place rather than holding it in conversation; a wrong detection is never silent, it's corrected live. There's no --auto for this phase, so it's never driven by a scheduled Routine — but --resume <issue number> picks back up a status:draft ticket left mid-pair if the session ends before final approval. This phase only formalizes what the need is — it never decides dependencies, prerequisites, or whether it needs splitting; that's entirely /pilot-scope's job, run separately afterward. Use whenever a human wants to start a new ticket from scratch, whatever kind of work it is."
+argument-hint: "<raw need in free text> [--tech | --bug] | --resume <issue number>"
 disable-model-invocation: true
 ---
 
@@ -29,10 +29,14 @@ mechanics of running phase 1.
      whichever agent ends up drafting it, not to this skill's orchestration layer.
 2. Decide which agent drafts it:
    - `--tech` given → `pilot-architect`, `type:tech`.
-   - No flag → auto-detect from the need's content: product-facing/user-value work reads
-     as `type:feature` (`pilot-pm`); infra/CI/security/deployment/migration/optimization
-     work with no product framing reads as `type:tech` (`pilot-architect`). If it's
-     genuinely ambiguous, ask the human which it is rather than guessing silently.
+   - `--bug` given → `pilot-architect`, `type:bug`.
+   - No flag → auto-detect from the need's content: a report of already-shipped behavior
+     that's broken/regressed (an error, something that used to work and doesn't, output
+     that contradicts what's documented/agreed) reads as `type:bug` (`pilot-architect`);
+     infra/CI/security/deployment/migration/optimization work with no defect implied
+     reads as `type:tech` (`pilot-architect`); product-facing/user-value work reads as
+     `type:feature` (`pilot-pm`). If it's genuinely ambiguous between any two of the
+     three, ask the human which it is rather than guessing silently.
 3. Fetch open `type:epic` issues of the matching `type:` (title + body only,
    `mcp__github__list_issues`/`search_issues`) as candidates the agent might reuse —
    cheap, deterministic bookkeeping, not the agent's job to search for itself.
@@ -59,7 +63,7 @@ mechanics of running phase 1.
     `/pilot-story` has no `--auto`): show the human which agent picked this up and why,
     along with the drafted story/stories (and epic decision, if any) — pointing at the
     real issue number(s) from 5a, not just conversation text. This is also the point
-    where the human corrects a wrong `--tech`/auto-detect call — if they do, update the
+    where the human corrects a wrong `--tech`/`--bug`/auto-detect call — if they do, update the
     existing draft ticket's `type:` label and restart from step 2 with the other agent,
     rather than creating a second ticket. If the agent instead now decides the idea is
     out of scope, close the draft ticket(s) instead of leaving them open — nothing

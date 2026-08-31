@@ -51,11 +51,20 @@ than letting the first crowd out the second:
   deviates, is the deviation justified.
 - **Code quality/maintainability** — readability/naming, whether tests actually exercise
   the behavior they claim to (not just present), edge cases the diff misses, anything
-  you'd flag in a normal code review independent of whether it matches the spec. There's
-  no separate reviewer for this — `pilot-dev` already did its own self-review pass on the
-  diff before opening the PR in phase 4 (`docs/pilot-process.md` §4 "Interaction modes"),
-  so treat your check as the independent one on top of that self-review, not a duplicate
-  of it.
+  you'd flag in a normal code review independent of whether it matches the spec —
+  including whether TDD was actually followed, not just claimed: check the commit history
+  for a failing-test commit preceding the implementation commit(s) that make it pass
+  (`pilot-dev.md` phase 4 step 3). If the history doesn't show this clearly (squashed
+  commits, force-pushed, tests and implementation mixed into one commit), that's itself a
+  quality gap worth a `change` point, the same as any other test-coverage issue — don't
+  assume test-first happened just because the PR description says so. **Exception: a
+  `type:e2e` sub-ticket** (implemented by `pilot-qa`, not `pilot-dev`) has no
+  red-green-refactor history to check by design — `pilot-qa.md` explains why — so judge it
+  instead on whether the test actually exercises the real, already-merged integration
+  points it claims to, without mocking them away. There's no separate
+  reviewer for this — `pilot-dev` already did its own self-review pass on the diff before
+  opening the PR in phase 4 (`docs/pilot-process.md` §4 "Interaction modes"), so treat your
+  check as the independent one on top of that self-review, not a duplicate of it.
 
 Return a structured verdict: approve, or block with one or more specific points, each
 tagged
