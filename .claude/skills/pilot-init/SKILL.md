@@ -14,7 +14,7 @@ of PILOT usable in a project.
 under `.claude/skills/pilot-init/`), it can't be invoked as `/pilot-init` — there's no
 command to run yet. Instead, clone `https://github.com/Jonas-Eve/pilot` and copy its
 `.claude/skills/` and `.claude/agents/` straight into the project's own
-`.claude/skills/`/`.claude/agents/` (same paths on both sides, same as step 1 below does
+`.claude/skills/`/`.claude/agents/` (same paths on both sides, same as step 4 below does
 for itself), then run `/pilot-init` normally.
 
 ## Get a fresh copy of the source repo

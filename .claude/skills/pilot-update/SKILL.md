@@ -32,7 +32,7 @@ from a previous run — the whole point is picking up upstream changes.
 - **The `<!-- PILOT:INTRO:START -->`/`END` and `<!-- PILOT:MAINTENANCE:START -->`/`END`
   blocks** in the project's `CLAUDE.md` and `README.md` are PILOT-owned content embedded
   inside otherwise project-owned files —
-  see step 3.
+  see step 4.
 - **GitHub labels** are re-applied idempotently (create-or-update, never delete) — safe
   to always re-run.
 - **`.github/pull_request_template.md`** is explicitly **not** PILOT-owned, even though
