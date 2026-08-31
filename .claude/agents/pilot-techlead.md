@@ -58,8 +58,8 @@ than letting the first crowd out the second:
   commits, force-pushed, tests and implementation mixed into one commit), that's itself a
   quality gap worth a `change` point, the same as any other test-coverage issue — don't
   assume test-first happened just because the PR description says so. **Exception: a
-  `type:e2e` sub-ticket** (implemented by `pilot-qa`, not `pilot-dev`) has no
-  red-green-refactor history to check by design — `pilot-qa.md` explains why — so judge it
+  `type:e2e` sub-ticket** (implemented by `pilot-e2e`, not `pilot-dev`) has no
+  red-green-refactor history to check by design — `pilot-e2e.md` explains why — so judge it
   instead on whether the test actually exercises the real, already-merged integration
   points it claims to, without mocking them away. There's no separate
   reviewer for this — `pilot-dev` already did its own self-review pass on the diff before

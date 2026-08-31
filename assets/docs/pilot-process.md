@@ -134,7 +134,7 @@ phase 5. A sub-ticket produced by decomposing a `type:tech` or `type:bug` ticket
 on its own — always alongside the `type:` a sub-ticket already inherits from its root, the
 same stacking `type:epic` already uses (below). It marks an end-to-end-test sub-ticket
 created during phase 2 (see "End-to-end test sub-tickets" below) and changes only which
-agent `/pilot-dev` calls in phase 4 (`pilot-qa` instead of `pilot-dev`) — it changes
+agent `/pilot-dev` calls in phase 4 (`pilot-e2e` instead of `pilot-dev`) — it changes
 neither the phase-1 agent (an e2e ticket is never a root ticket, so this never applies) nor
 the phase-5 reviewer set (still decided from the inherited `type:` alone, §6).
 
@@ -271,11 +271,11 @@ sub-tickets only.
 Phase 3 (tech lead) for an e2e sub-ticket writes the test plan itself as the spec: which
 flow, which existing test tooling/framework this project already uses for e2e (its own
 docs/CI config, if it has one), and what its dependencies having merged now makes
-exercisable end-to-end. **Phase 4 for an e2e sub-ticket is `pilot-qa`, not `pilot-dev`** —
+exercisable end-to-end. **Phase 4 for an e2e sub-ticket is `pilot-e2e`, not `pilot-dev`** —
 `/pilot-dev` (the skill) reads the `type:e2e` label before calling `Agent` and picks the
-`pilot-qa` persona instead, precisely so the agent implementing it gets a context already
+`pilot-e2e` persona instead, precisely so the agent implementing it gets a context already
 tailored to writing a test against real, already-merged integration points rather than
-generic implementation instructions. `pilot-qa` writes the test against that already-merged
+generic implementation instructions. `pilot-e2e` writes the test against that already-merged
 behavior — the ticket cannot be marked done with a test that doesn't actually pass. If
 running it surfaces a genuine defect in that already-merged code rather than a gap in the
 e2e ticket's own scope, that's a bug discovered mid-implementation, not a workaround — see
@@ -285,7 +285,7 @@ e2e ticket's own scope, that's a bug discovered mid-implementation, not a workar
 
 Distinct from a prerequisite *tech* ticket above (a new technical need, no defect
 implied): while scoping (phase 2) or implementing/testing (phase 4) a ticket, the
-architect or dev/`pilot-qa` may instead discover a concrete **defect** in already-shipped
+architect or dev/`pilot-e2e` may instead discover a concrete **defect** in already-shipped
 code outside the ticket's own scope — not an ambiguity in what's being built (phase 4's
 own spec-deviation path, `pilot-dev.md`, still covers that), a genuine bug. Most commonly
 this happens while writing or running an end-to-end test sub-ticket (above), but isn't
@@ -305,7 +305,7 @@ enough — the gate (§4 "Blocked-by dependencies") does the rest once phase 3/4
 claim it. A ticket phase 4 is *implementing*, by contrast, is already claimed and
 mid-phase (`status:in-dev`, assigned) — the dependency gate alone won't pull an
 already-in-progress ticket out of circulation. So from phase 4 (`pilot-dev` or
-`pilot-qa`), also add `on-hold` to the ticket being implemented, with a comment naming the
+`pilot-e2e`), also add `on-hold` to the ticket being implemented, with a comment naming the
 new bug ticket, before stopping — never push a broken or partial commit in the meantime. A
 human (or the same agent) removes `on-hold` once the bug ticket reaches `status:done`, and
 only then resumes the original with `--resume`.
@@ -331,7 +331,7 @@ An end-to-end-test sub-ticket gets `type:e2e` alongside whichever of the three a
 inherits from its root (§2 "End-to-end test sub-tickets") — the same stacking `type:epic`
 uses. It's never applied on its own, never a root ticket's only `type:`, and doesn't
 affect the phase-5 reviewer set (§6) — it only changes which agent `/pilot-dev` calls in
-phase 4 (`pilot-qa` instead of `pilot-dev`).
+phase 4 (`pilot-e2e` instead of `pilot-dev`).
 
 ### `status:` — the pipeline state machine, one label at a time
 ```
