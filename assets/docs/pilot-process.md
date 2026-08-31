@@ -90,7 +90,93 @@ and are never Routine-driven at all.
 There is no single global-orchestrator command — each phase skill is invoked on its own
 (`/pilot-scope 123`, etc.), as its own isolated agent call (see §5), one phase at a time.
 
----
+### Sequence: a `type:feature` story end to end
+
+The golden path below is deliberately the richest one PILOT has — it's the only path that
+touches all six phases, a mandatory split with mixed task types, and every `status:`
+transition that isn't itself a branch (`wont-do`, `changes-requested`, `needs-human`,
+`on-hold`, a prerequisite ticket, `--resume`/reclaim) — those are listed right after the
+diagram instead, since folding them in here would make it unreadable rather than clearer.
+
+```mermaid
+sequenceDiagram
+    actor Human
+    participant PM as pilot-pm
+    participant Arch as pilot-architect
+    participant Tech as pilot-techlead
+    participant DevAgent as pilot-dev / pilot-e2e
+    participant Rev as pm + architect + techlead
+    participant QAAgent as pilot-qa
+    participant GH as GitHub (issue/PR)
+
+    rect rgb(240,240,255)
+    Note over Human,GH: Phase 1 — Plan (/pilot-story)
+    Human->>PM: raw need (type:feature auto-detected)
+    PM-->>Human: draft story + acceptance criteria (pair)
+    Human-->>PM: approve
+    PM->>GH: create issue — status:draft → status:backlog, level:story
+    end
+
+    rect rgb(240,255,240)
+    Note over Human,GH: Phase 2 — Investigate (/pilot-scope)
+    Human->>Arch: /pilot-scope #12
+    GH->>Arch: status:backlog → status:scoping (claim)
+    Note over Arch: type:feature ⇒ split is mandatory, never a judgment call
+    Arch-->>Human: proposed tasks — a mix of type:feature/type:tech, plus exactly one type:e2e
+    Human-->>Arch: approve
+    Arch->>PM: type:feature tasks only (coverage check — tech/e2e excluded)
+    PM-->>Arch: approve / block
+    Arch->>GH: parent → status:split · each task → status:spec-ready, level:task
+    end
+
+    rect rgb(255,250,230)
+    Note over Human,GH: Phases 3-5, once per level:task (reviewer set follows that task's own type:)
+    loop each level:task
+        Human->>Tech: /pilot-spec #<task>
+        GH->>Tech: status:spec-ready → status:in-spec (claim)
+        Tech-->>GH: spec written (or test plan, for type:e2e) — status:dev-ready
+        Human->>DevAgent: /pilot-dev #<task>
+        GH->>DevAgent: status:dev-ready → status:in-dev (claim; pilot-e2e if type:e2e)
+        DevAgent-->>GH: PR opened — status:in-review
+        Human->>Rev: /pilot-review #<PR>
+        Rev-->>GH: verdict — status:approved (or status:changes-requested, loops back to DevAgent)
+        Human->>GH: merge PR
+        GH-->>GH: status:done (pilot-status-on-merge.yml)
+    end
+    end
+
+    rect rgb(255,235,235)
+    Note over GH: the e2e task depends on every sibling, so it structurally closes last
+    GH-->>GH: type:feature parent: status:split → status:qa (not status:done)
+    end
+
+    rect rgb(235,245,255)
+    Note over Human,GH: Phase 6 — Human QA (/pilot-qa, type:feature only)
+    Human->>QAAgent: /pilot-qa #12
+    GH->>QAAgent: status:qa → status:in-qa (claim)
+    QAAgent-->>Human: manual test plan
+    Human-->>QAAgent: results, case by case
+    alt all confirmed
+        QAAgent->>GH: status:done + close issue
+    else one or more failures
+        QAAgent->>GH: needs-human + findings (bug-handling flow: still provisional, §7)
+    end
+    end
+```
+
+**Not shown above — already covered elsewhere in this document, not gaps in it:**
+`status:wont-do` (§2, phase 2 only, before any spec/code exists); `status:changes-requested`
+(§6, the phase-5 loop back into `/pilot-dev`); `needs-human`/`on-hold` (§3, orthogonal flags
+any phase can add at any point); a prerequisite `type:tech`/`type:bug` ticket spun out
+inline (§2); `--resume` (a paused pair session) and reclaiming a `status:changes-requested`
+ticket (§4); a `type:tech`/`type:bug` story that never splits, cascading straight to
+`status:done` with no phase 6 at all.
+
+**One open question this diagram surfaces, not yet answered elsewhere in this document:**
+what happens if `/pilot-scope` runs again on a `type:feature` story that's already
+`status:split`, after some of its tasks have already merged — does the architect add a new
+task to the existing split, and if so, does the already-`status:done` e2e task get reopened
+or superseded to add the new "Depends on #N"? Nothing here says either way yet.
 
 ## 2. Ticket Types And Levels
 
