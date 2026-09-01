@@ -31,31 +31,10 @@ the fly, and applying a label that doesn't exist fails the API call outright:
 Each phase is a Claude Code slash command, run from a session with read/write access to
 this repo's issues and PRs — nothing in PILOT triggers itself as reasoning, every phase
 runs because something sent its exact command literally, human or scheduled Routine (§4
-"Scheduled sweeps"). Bare, no-argument commands are what make the scheduled case useful:
-
-```
-/pilot-story "let a user filter search results by wheelchair accessibility"
-    → opens a type:feature issue (PM agent, auto-detected)
-
-/pilot-story "add the GitHub Actions CI workflow described in our tech-debt backlog"
-    → opens one or more type:tech issues (architect agent, auto-detected)
-
-/pilot-story --tech "..."   → skips detection, declares the need type:tech upfront
-/pilot-story --bug "clicking export on the reports page throws a 500"
-    → skips detection, declares it type:bug upfront (architect agent)
-/pilot-story --resume 12    → picks back up a status:draft ticket left mid-pair
-
-/pilot-scope 42        → scopes/decomposes existing issue #42
-/pilot-spec 42         → writes the technical spec for #42 (must be status:spec-ready)
-/pilot-dev             → claims and implements the next status:dev-ready ticket, no
-                          argument needed
-/pilot-dev 42          → claims and implements #42 specifically
-/pilot-review 57       → runs phase 5 against PR/issue #57
-/pilot-qa 61           → runs phase 6 (human QA) against story #61 (must be status:qa)
-```
-
-There's no single command that runs all six phases end to end — drive the pipeline one
-phase at a time, per ticket.
+"Scheduled sweeps"). Bare, no-argument commands are what make the scheduled case useful —
+see `docs/pilot-process-visual.md` for example invocations of each command; there's no
+single command that runs all six phases end to end, drive the pipeline one phase at a
+time, per ticket.
 
 Every phase skill also runs bare, with **no argument at all** — it then works its normal
 pool of fresh candidates (its own pre-claim `status:`) *and* its own `needs-human`/
@@ -78,8 +57,8 @@ which default to pair and need that flag to run unattended (§4 "Interaction mod
 | 5 | Test & validate | `/pilot-review` | `pilot-pm` + `pilot-architect` + `pilot-techlead` (feature/e2e) or `pilot-architect` + `pilot-techlead` (tech/bug) | A consolidated GitHub comment: `status:approved`, or blocking points (`needs-human`, plus `status:changes-requested` if code-level) — a human always does the actual merge |
 | 6 | Human QA (`type:feature` only) | `/pilot-qa` | `pilot-qa` | A human-confirmed `status:done` once every task has merged, or a `needs-human` flag with what failed (§7) |
 
-There is no single global-orchestrator command — each phase skill is invoked on its own
-(`/pilot-scope 123`, etc.), as its own isolated agent call (see §5), one phase at a time.
+Each phase skill is invoked on its own (`/pilot-scope 123`, etc.), as its own isolated
+agent call (see §5), one phase at a time.
 
 ## 2. Ticket Types And Levels
 

@@ -6,6 +6,32 @@ nothing here is authoritative: if this file and `docs/pilot-process.md` ever dis
 `docs/pilot-process.md` is right. It's PILOT-owned and kept in sync by `/pilot-update`, the
 same as `docs/pilot-process.md` itself — never hand-edit it in a project that copied PILOT.
 
+## Command quickstart
+
+Every command below is a plain example — the exact syntax and behavior for each is
+authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
+
+```
+/pilot-story "let a user filter search results by wheelchair accessibility"
+    → opens a type:feature issue (PM agent, auto-detected)
+
+/pilot-story "add the GitHub Actions CI workflow described in our tech-debt backlog"
+    → opens one or more type:tech issues (architect agent, auto-detected)
+
+/pilot-story --tech "..."   → skips detection, declares the need type:tech upfront
+/pilot-story --bug "clicking export on the reports page throws a 500"
+    → skips detection, declares it type:bug upfront (architect agent)
+/pilot-story --resume 12    → picks back up a status:draft ticket left mid-pair
+
+/pilot-scope 42        → scopes/decomposes existing issue #42
+/pilot-spec 42         → writes the technical spec for #42 (must be status:spec-ready)
+/pilot-dev             → claims and implements the next status:dev-ready ticket, no
+                          argument needed
+/pilot-dev 42          → claims and implements #42 specifically
+/pilot-review 57       → runs phase 5 against PR/issue #57
+/pilot-qa 61           → runs phase 6 (human QA) against story #61 (must be status:qa)
+```
+
 ## Example: a `type:feature` story end to end
 
 The golden path below is deliberately the richest one PILOT has — it's the only path that

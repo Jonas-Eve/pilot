@@ -20,12 +20,14 @@ forked PILOT, strip project-specific details the same way.
 ## 2. STRUCTURE
 - `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
   consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
-  sync by `/pilot-update`) — same path on both sides. All nine carry the `pilot-`
+  sync by `/pilot-update`) — same path on both sides. All ten carry the `pilot-`
   prefix a project-local skill needs to avoid colliding with the project's own — there's
   no plugin namespace to rely on instead. `pilot-init`, `pilot-init-archi`,
   `pilot-update` are this repo's own bootstrap/maintenance commands; `pilot-story`,
   `pilot-scope`, `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa` are the six PILOT
-  phases.
+  phases; `pilot-auto` is a dispatcher over the four auto-capable phase sweeps (review,
+  dev, spec, scope) — not itself a phase, adds nothing to `pilot-process.md`'s state
+  machine (see that skill's own file for its mechanics).
 - `.claude/agents/<name>.md` — the six personas (`pilot-pm`, `pilot-architect`,
   `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`) the phase skills delegate to via
   the `Agent` tool, copied into a consuming project's `.claude/agents/` the same way.

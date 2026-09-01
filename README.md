@@ -39,6 +39,13 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
     warning in `.claude/skills/pilot-update/SKILL.md`.
   - `/pilot-story`, `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
     `/pilot-qa` — the six phases themselves.
+  - `/pilot-auto` — bare-only dispatcher: tries `/pilot-review`, `/pilot-dev --auto`,
+    `/pilot-spec --auto`, `/pilot-scope --auto`, in that order, stopping at the first one
+    that finds work; takes an optional subset (e.g. `/pilot-auto spec scope`) to restrict
+    which of the four it tries, same relative order. Not a phase itself, and never invokes
+    `/pilot-story`/`/pilot-qa` (pair-only). Lets one scheduled Routine drive the whole
+    pipeline, or several Routines split it by cadence, instead of hand-rolling dispatch —
+    see `.claude/skills/pilot-auto/SKILL.md`.
 - **Agents** (`.claude/agents/`): the six personas the phase skills delegate to —
   `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 4's
   persona for an end-to-end-test task, `type:e2e`, instead of `pilot-dev`), and

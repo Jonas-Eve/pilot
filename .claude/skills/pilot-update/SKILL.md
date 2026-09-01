@@ -20,8 +20,8 @@ from a previous run — the whole point is picking up upstream changes.
 
 - **Every skill under `.claude/skills/`** whose directory name matches one that exists
   under `$PILOT_SRC/.claude/skills/` (i.e. every PILOT skill: `pilot-story`, `pilot-scope`,
-  `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa`, `pilot-init`, `pilot-init-archi`,
-  `pilot-update`) — and every agent under `.claude/agents/` matching
+  `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa`, `pilot-auto`, `pilot-init`,
+  `pilot-init-archi`, `pilot-update`) — and every agent under `.claude/agents/` matching
   `$PILOT_SRC/.claude/agents/pilot-*.md` — are PILOT-owned. This command re-copies all of them
   verbatim from `$PILOT_SRC`, **overwriting with no merge**. If a project-local skill or
   agent directory doesn't match anything under `$PILOT_SRC` (the project's own, unrelated
