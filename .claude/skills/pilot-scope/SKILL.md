@@ -16,7 +16,7 @@ mechanics of running phase 2.
 1. Determine the input:
    - `--resume <issue>`: must be `status:scoping`, assigned, **no** `needs-human`/
      `on-hold` — a ticket left mid-pair. Follow `docs/pilot-process.md` §4 "Resuming
-     a paused pair session", skipping step 2's claim (already claimed). If it
+     an orphaned claim", skipping step 2's claim (already claimed). If it
      doesn't match, report and stop.
    - No `--resume`, `status:scoping`, **no** `needs-human`/`on-hold`, but its thread
      shows a `needs-human` block later cleared → a resume, not a fresh claim. Follow

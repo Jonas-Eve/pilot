@@ -28,7 +28,9 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-dev             → claims and implements the next status:dev-ready ticket, no
                           argument needed
 /pilot-dev 42          → claims and implements #42 specifically
-/pilot-review 57       → runs phase 5 against PR/issue #57
+/pilot-review 57       → claims and runs phase 5 against PR/issue #57 (must be
+                          status:review-ready, or status:in-review resumable)
+/pilot-review 57 --resume → recovers a claim orphaned by a crashed phase-5 run
 /pilot-qa 61           → runs phase 6 (human QA) against story #61 (must be status:qa)
 ```
 
@@ -79,8 +81,9 @@ sequenceDiagram
         Tech-->>GH: spec written (or test plan, for type:e2e) — status:dev-ready
         Human->>DevAgent: /pilot-dev #<task>
         GH->>DevAgent: status:dev-ready → status:in-dev (claim; pilot-e2e if type:e2e)
-        DevAgent-->>GH: PR opened — status:in-review
+        DevAgent-->>GH: PR opened — status:review-ready
         Human->>Rev: /pilot-review #<PR>
+        GH->>Rev: status:review-ready → status:in-review (claim)
         Rev-->>GH: verdict — status:approved (or status:changes-requested, loops back to DevAgent)
         Human->>GH: merge PR
         GH-->>GH: status:done (pilot-status-on-merge.yml)

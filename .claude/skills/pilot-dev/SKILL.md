@@ -69,7 +69,7 @@ parallel instances; the claim step below prevents collisions.
    writing each approved checkpoint into the ticket right away (a comment, or a partial
    `issue_write`) rather than holding it in-conversation — this is what `--resume` picks
    back up if the session ends before final approval (`docs/pilot-process.md` §4
-   "Resuming a paused pair session"). Requires a human live in this session; a scheduled
+   "Resuming an orphaned claim"). Requires a human live in this session; a scheduled
    Routine must pass `--auto` instead. Once approved, proceed with implementation below —
    the "ask live" behavior for a genuine blocker (§3) still applies during implementation
    itself; pair mode doesn't replace it.
@@ -81,8 +81,9 @@ parallel instances; the claim step below prevents collisions.
    opening a new one — or hits a genuine blocking conflict it can't resolve alone and
    stops without a PR (or without pushing, for a reclaim).
 5. Apply the result:
-   - PR opened, or new commits pushed to an existing PR (reclaim case): set
-     `status:in-review` on the ticket.
+   - PR opened, or new commits pushed to an existing PR (reclaim case): clear the assignee
+     and set `status:review-ready` on the ticket (phase 5's own pre-claim status — never
+     `status:in-review` directly, `docs/pilot-process.md` §4 "Claim Protocol").
    - Blocking conflict: nothing further to set — the subagent already added
      `needs-human` and posted its comment itself (`status:in-dev` stays, per
      `docs/pilot-process.md` §3).
