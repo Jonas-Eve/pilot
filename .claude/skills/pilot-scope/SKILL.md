@@ -63,7 +63,8 @@ mechanics of running phase 2.
 2. **Claim** the ticket per `docs/pilot-process.md` §4: set assignee + `status:scoping`,
    re-read to confirm the claim held.
 3. Call `Agent` with `subagent_type: "pilot-architect"`, passing only what phase 2
-   needs: the ticket's current body, its parent Epic/linked tickets if any, pointers
+   needs: the ticket's current body (including, if resuming, the comment thread's
+   resolution per §4), its parent Epic/linked tickets if any, pointers
    to this project's own coding standards/security conventions and architecture docs
    (identity/tenancy/security boundaries, target system design, if documented) —
    plus, for a `status:qa`/`status:in-qa` reclaim (step 1), which existing tasks are

@@ -58,14 +58,16 @@ parallel instances; the claim step below prevents collisions.
     way.
 3. Call the `Agent` tool with the `subagent_type` chosen in step 2a, passing the ticket's
    spec and the architect's decisions — not the running conversation history or the state
-   of any other ticket being worked in parallel. **Reclaim case** (per step 1): pass the
-   phase-5 blocking comment (the `change`-tagged points to fix, plus any `decision`-tagged
-   points and their resolution) instead of a fresh spec — only more commits on the
-   existing PR. **Unless `--auto` was given** (`docs/pilot-process.md` §4 "Interaction
-   modes" — pair is the default; a fresh claim or paused-pair resume only, never combined
-   with a reclaim): first ask for a proposed implementation approach, not the finished
-   implementation — the pair-coding checkpoint. Show the human that plan as a normal
-   reply, wait for their response, feed it back to the agent, repeat until approved,
+   of any other ticket being worked in parallel. **Resume case** (per step 1, needs-human
+   cleared): also pass the original blocking comment and whatever's in the thread after it
+   (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket"). **Reclaim case** (per
+   step 1): pass the phase-5 blocking comment (the `change`-tagged points to fix, plus any
+   `decision`-tagged points and their resolution) instead of a fresh spec — only more
+   commits on the existing PR. **Unless `--auto` was given** (`docs/pilot-process.md` §4
+   "Interaction modes" — pair is the default; a fresh claim or paused-pair resume only,
+   never combined with a reclaim): first ask for a proposed implementation approach, not
+   the finished implementation — the pair-coding checkpoint. Show the human that plan as a
+   normal reply, wait for their response, feed it back to the agent, repeat until approved,
    writing each approved checkpoint into the ticket right away (a comment, or a partial
    `issue_write`) rather than holding it in-conversation — this is what `--resume` picks
    back up if the session ends before final approval (`docs/pilot-process.md` §4
