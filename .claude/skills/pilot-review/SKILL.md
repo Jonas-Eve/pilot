@@ -53,8 +53,13 @@ mechanics.
    persona — none sees another's verdict. Pass only what each needs: the PR diff/
    description plus, for the PM, the linked story's acceptance criteria (and its own spec,
    for `type:e2e`); for the architect, its recorded decisions; for the tech lead, its own
-   spec (it re-runs validation on the PR branch itself, `docs/pilot-process.md` §6). Each
-   persona (`.claude/agents/pilot-*.md`) already tags blocking points `change`/`decision`.
+   spec (it re-runs validation on the PR branch itself, `docs/pilot-process.md` §6). When
+   resuming (step 1's needs-human-resume branch), also pass the original blocking
+   comment's `decision`-tagged points and whatever's in the thread after it — a specific
+   reply, or "no reply — treat as approved as proposed" if none
+   (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket") — so reviewers don't
+   re-raise a point a human already answered. Each persona
+   (`.claude/agents/pilot-*.md`) already tags blocking points `change`/`decision`.
 6. Collect the verdicts. Aggregate into exactly **one** GitHub comment on the PR:
    - All blocking points tagged `decision` → one comment grouped by reviewer, add
      `needs-human` (`status:in-review` stays — this ticket re-enters the resumable half of
