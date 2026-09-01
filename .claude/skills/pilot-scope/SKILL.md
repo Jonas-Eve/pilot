@@ -71,9 +71,9 @@ mechanics of running phase 2.
    already `status:done` from the earlier round, including the e2e one. Not the
    conversation history.
 4. The subagent returns one of:
-   - `type:tech`: a single scoped body (no split), or a set of proposed tasks
-     (split, judgment call) each with security/architecture decisions, dependencies,
-     and a suggested priority.
+   - `type:tech`: a single scoped body (no split, with its `priority:` reconfirmed or
+     revised from phase 1), or a set of proposed tasks (split, judgment call) each with
+     security/architecture decisions, dependencies, and its own suggested priority.
    - `type:feature`: always a set of proposed tasks — one or more dev tasks (each
      its own `type:feature` or `type:tech`, whichever fits — `docs/pilot-process.md`
      §2 "`type:` is never inherited"), plus exactly one flagged as the mandatory
@@ -117,18 +117,22 @@ mechanics of running phase 2.
     one coherence read before writing.
 5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`):
    - No split (`type:tech` only — a `type:feature` story is never this case, step
-     4): update the ticket body with the decisions, set `status:spec-ready`.
+     4): update the ticket body with the decisions, set `status:spec-ready`, and write
+     the reconfirmed/revised `priority:` from step 4 (still the ticket's own — it's
+     still the one leaf, `docs/pilot-process.md` §3).
    - Split into tasks: create the sub-issues, link to the parent as native
      sub-issues, each labeled `level:task` plus its own `type:` as the architect
      assigned in step 4 (never the parent's — `docs/pilot-process.md` §2 "`type:` is
      never inherited": `type:feature`/`type:tech` for a dev task, `type:e2e` for the
-     end-to-end one), and `status:spec-ready` + `priority:P0/P1/P2`. For a recorded
-     dependency between two tasks, add a "Depends on #N" line to the dependent one's
-     body (`docs/pilot-process.md` §2 "Dependencies between tasks of the same
-     split" — also how the e2e task's dependencies on every sibling get recorded).
-     Set the parent's `status:` to `split` (its `level:` stays `level:story` —
-     `level:epic` groups *stories*, not a story's own tasks; `docs/pilot-process.md`
-     §2), leave it open and unassigned as a tracker.
+     end-to-end one), and `status:spec-ready` + its own `priority:P0/P1/P2`. For a
+     recorded dependency between two tasks, add a "Depends on #N" line to the
+     dependent one's body (`docs/pilot-process.md` §2 "Dependencies between tasks of
+     the same split" — also how the e2e task's dependencies on every sibling get
+     recorded). Set the parent's `status:` to `split` (its `level:` stays
+     `level:story` — `level:epic` groups *stories*, not a story's own tasks,
+     `docs/pilot-process.md` §2) and remove its own `priority:` label
+     (`docs/pilot-process.md` §3 — superseded by its tasks'), leave it open and
+     unassigned as a tracker.
    - Won't-do (clear-cut only): label `status:wont-do`, close the issue. If not
      clear-cut, add `needs-human` with the subagent's reasoning instead (keep
      `status:scoping`) — don't close it.

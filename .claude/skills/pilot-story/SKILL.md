@@ -53,15 +53,18 @@ mechanics of running phase 1.
     makes `--resume` possible if the session ends before final approval
     (`docs/pilot-process.md` §3 `status:draft`, §4 "Resuming an orphaned claim"):
     - Single story (`type:feature`/`type:tech`): create it, matching `type:` +
-      `level:story` + `status:draft`, assigned to this session.
+      `level:story` + `status:draft` + the agent's initial `priority:P0/P1/P2`
+      (`docs/pilot-process.md` §3), assigned to this session.
     - Several stories, reusing an existing Epic: create each story the same way
-      (`level:story`, `status:draft`, assigned), link each as that Epic's sub-issue.
+      (`level:story`, `status:draft`, its own `priority:`, assigned), link each as that
+      Epic's sub-issue.
     - Several stories, new Epic: create the Epic (`level:epic` + matching `type:`, no
-      `status:` label, unassigned — an Epic is never itself a draft) first, then each
-      story linked as its sub-issue, `level:story` + `status:draft` + assigned.
-    - `type:bug`: create it matching `type:bug` + `level:task` + `status:draft`, assigned
-      to this session — never `level:story`, and never linked to an Epic
-      (`docs/pilot-process.md` §2 "Three levels" — a bug is never grouped).
+      `status:` label, unassigned — an Epic is never itself a draft, and never carries a
+      `priority:`) first, then each story linked as its sub-issue, `level:story` +
+      `status:draft` + its own `priority:` + assigned.
+    - `type:bug`: create it matching `type:bug` + `level:task` + `status:draft` + its
+      `priority:`, assigned to this session — never `level:story`, and never linked to an
+      Epic (`docs/pilot-process.md` §2 "Three levels" — a bug is never grouped).
 5b. This phase always runs paired (`docs/pilot-process.md` §4 "Interaction modes" —
     `/pilot-story` has no `--auto`): show the human which agent picked this up and why,
     with the drafted story/stories (and epic decision, if any) — pointing at the real

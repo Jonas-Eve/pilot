@@ -33,12 +33,16 @@ dependency/splitting decisions; that's phase 2's job.
      was given in — match it).
    - Acceptance criteria as a checklist — concrete, testable statements, not vague goals.
    - Explicit out-of-scope notes for anything adjacent you're deliberately not including.
-4. Do not decompose into technical tasks, decide architecture, record dependencies, or
-   set a priority — that's the architect's job in phase 2. Do not write or suggest code.
-   An Epic is a different kind of grouping than a task split (`docs/pilot-process.md`
-   §2) — don't conflate them.
-5. Label each story `type:feature`, `level:story`, `status:backlog`, unassigned. If
-   created under an Epic, link it as that Epic's sub-issue.
+4. Do not decompose into technical tasks, decide architecture, or record dependencies —
+   that's the architect's job in phase 2. Do not write or suggest code. An Epic is a
+   different kind of grouping than a task split (`docs/pilot-process.md` §2) — don't
+   conflate them.
+5. Set the story's initial `priority:P0/P1/P2` (`docs/pilot-process.md` §3) — business
+   value/urgency to the user, not a technical-risk call (that's the architect's framing
+   for `type:tech`/`type:bug`). The architect may still revise it per task in phase 2
+   once the split is known.
+6. Label each story `type:feature`, `level:story`, `status:backlog`, the priority from
+   step 5, unassigned. If created under an Epic, link it as that Epic's sub-issue.
 
 ## Checking a `type:feature` split
 
