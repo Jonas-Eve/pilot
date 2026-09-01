@@ -13,16 +13,28 @@ mechanics.
 
 ## Steps
 
-1. Resolve the ticket per `docs/pilot-process.md` §4 "Claim Protocol"/"Picking the next
-   ticket...": given `--resume`, follow §4 "Resuming an orphaned claim" instead of step 2
-   below (already claimed). Otherwise, the given PR/issue number, or — none given — the
-   merged pool of fresh `status:review-ready` and resumable `status:in-review`
-   (`needs-human` just cleared), excluding `on-hold`. `status:changes-requested` tickets
-   are never in this pool — `/pilot-dev` reclaims those (§4).
-2. **Claim** it per `docs/pilot-process.md` §4: assignee + `status:in-review`, re-read to
-   confirm. If the assignee changed (race lost), stand down and return to step 1 for a
-   different candidate (bare pool only — report nothing to do if a specific ticket was
-   requested). Skip this step when resuming (step 1's `--resume` branch).
+1. Resolve the ticket:
+   - Given `--resume`: must be `status:in-review`, assigned, no `needs-human`/`on-hold`.
+     Follow `docs/pilot-process.md` §4 "Resuming an orphaned claim" instead of step 2 below
+     — already claimed. Mismatch → report and stop.
+   - Given (or pooled) without `--resume`, `status:in-review`, assigned, no
+     `needs-human`/`on-hold`, thread shows a `needs-human` block later cleared → resume,
+     not a fresh claim. Follow `docs/pilot-process.md` §4 "Resuming a `needs-human` ticket"
+     instead of step 2 — already claimed.
+   - Given without `--resume`, `status:in-review`, assigned, no `needs-human`/`on-hold`, no
+     `needs-human` history → looks orphaned; report and ask the human to re-run with
+     `--resume` rather than proceeding.
+   - `status:in-review` still carrying `needs-human`/`on-hold` → not resolved yet; report
+     and stop.
+   - Otherwise, or none given → per `docs/pilot-process.md` §4 "Picking the next
+     ticket...": the given ticket, or the merged pool of unclaimed `status:review-ready`
+     (fresh) and `status:in-review` with `needs-human` just cleared (resumable — handled by
+     the second bullet above, not here), excluding `on-hold`. `status:changes-requested`
+     tickets are never in this pool — `/pilot-dev` reclaims those (§4).
+2. **Claim** it (fresh case only, above) per `docs/pilot-process.md` §4: assignee +
+   `status:in-review`, re-read to confirm. If the assignee changed (race lost), stand down
+   and return to step 1 for a different candidate (bare pool only — report nothing to do if
+   a specific ticket was requested).
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's,
    `docs/pilot-process.md` §2 "`type:` is never inherited") to pick the reviewer set:
    - `type:feature` or `type:e2e` → `pilot-pm`, `pilot-architect`, `pilot-techlead`

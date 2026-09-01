@@ -15,8 +15,8 @@ this skill only covers the mechanics of running it.
 
 1. Determine the input:
    - `--resume <issue>`: must be `status:in-qa`, assigned, **no** `needs-human`/`on-hold`
-     — a session left mid-pair (`docs/pilot-process.md` §4 "Resuming a paused pair
-     session"). Read the ticket and thread to reconstruct which cases were already
+     — a session left mid-pair (`docs/pilot-process.md` §4 "Resuming an orphaned
+     claim"). Read the ticket and thread to reconstruct which cases were already
      confirmed, claim it (overwrite assignee), skip to step 5 with that state. If it
      doesn't match, report and stop.
    - Issue number without `--resume`, `status:in-qa`, **no** `needs-human`/`on-hold`,

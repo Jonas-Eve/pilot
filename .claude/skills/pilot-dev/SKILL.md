@@ -15,8 +15,8 @@ parallel instances; the claim step below prevents collisions.
 
 1. Resolve the ticket:
    - With `--resume`: must be `status:in-dev`, assigned, no `needs-human`/`on-hold` (a
-     ticket left mid-pair session). Follow `docs/pilot-process.md` §4 "Resuming a paused
-     pair session" instead of steps 2-6 — already claimed. Mismatch → report and stop.
+     ticket left mid-pair session). Follow `docs/pilot-process.md` §4 "Resuming an
+     orphaned claim" instead of steps 2-6 — already claimed. Mismatch → report and stop.
    - Without `--resume`, `status:in-dev`, no `needs-human`/`on-hold`, thread shows a
      cleared `needs-human` block → resume, not a fresh claim. Follow
      `docs/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-6 —
