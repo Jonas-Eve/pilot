@@ -12,8 +12,10 @@ claim protocol you operate under; this file covers only what's specific to your 
 You receive a raw technical need in free text (possibly with a rough back-and-forth
 already had with the human) — infra, CI, security hardening, deployment, migration,
 performance/optimization work with no product framing. Turn it into one or more
-well-formed `type:tech` GitHub issues; deciding whether it needs splitting, recording
-dependencies, or setting a priority is phase 2's job, later and separately.
+well-formed `type:tech` GitHub issues, each with your own initial `priority:P0/P1/P2`
+(`docs/pilot-process.md` §3 — the technical framing: security/correctness/safety-net);
+deciding whether it needs splitting or recording dependencies is still phase 2's job,
+later and separately.
 
 1. Decide if the need fits **one** story or genuinely needs **several** (e.g.
    "CI"/"optimization" needs often do) — don't force one sprawling story to avoid the
@@ -24,8 +26,9 @@ dependencies, or setting a priority is phase 2's job, later and separately.
    does for `type:feature` (`docs/pilot-process.md` §2).
 3. Write each story's issue body: what the need actually is and why, concrete enough
    that phase 2 can scope it without re-litigating what you meant.
-4. Label each story `type:tech`, `level:story`, `status:backlog`, unassigned. If created
-   under an Epic, link it as that Epic's sub-issue.
+4. Label each story `type:tech`, `level:story`, `status:backlog`, its own initial
+   `priority:P0/P1/P2` (above), unassigned. If created under an Epic, link it as that
+   Epic's sub-issue.
 
 ## Phase 1 — Formalizing a raw `type:bug` report
 
@@ -56,9 +59,9 @@ defer.
    root-cause diagnosis and suggested fix location, and severity/impact — the full
    content a spec-ready ticket needs, since no phase-2 pass follows.
 4. Label it `type:bug`, `level:task`, `status:spec-ready`, unassigned, with `priority:`
-   set yourself (`docs/pilot-process.md` §3 — phase 2 usually sets this, but a bug
-   skips phase 2). Never grouped under a `level:epic` — that's for `level:story`
-   tickets only, and a bug is never one.
+   set yourself (`docs/pilot-process.md` §3 — every ticket gets its initial priority at
+   phase 1; a bug's is never revisited since it has no phase 2). Never grouped under a
+   `level:epic` — that's for `level:story` tickets only, and a bug is never one.
 
 ## What "challenge" means (phase 2)
 
@@ -105,7 +108,9 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
 4. Decide the split shape — this branches by `type:` (`docs/pilot-process.md` §2
    "Three levels", "End-to-end test tasks"):
    - **`type:tech`**: splitting is still your judgment call — fine to leave it as one
-     ticket through phases 3-4. If you do split, propose one dev-sized task per unit,
+     ticket through phases 3-4, in which case reconfirm or revise the `priority:` set at
+     phase 1 (`docs/pilot-process.md` §3 — it stays the ticket's own, since it's still
+     the one leaf). If you do split, propose one dev-sized task per unit,
      along vertical slices (each a coherent, ideally independently shippable/testable
      piece) rather than by technical layer — a front-end-only or back-end-only task is
      rarely reviewable or testable alone, unless the two are genuinely decoupled (e.g.
@@ -163,12 +168,16 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
      creates), record it the same way ("Depends on #N" on the dependent one,
      `docs/pilot-process.md` §2 "Dependencies between tasks of the same split").
 6. Label every task `level:task` (never on the story itself once it's `status:split` —
-   the story keeps its own `level:story`) and its own `type:` per steps 4/4a above —
-   never copied from the story, `docs/pilot-process.md` §2 "`type:` is never
-   inherited". Set a `priority:P0/P1/P2` on each, based on this project's own priority
-   convention if it has one, or the rough default described in `docs/pilot-process.md`
-   §3: P0 closes a real security/correctness/safety-net gap, P1 is solid value but not
-   urgent, P2 is nice-to-have or conditional.
+   the story keeps its own `level:story`, but loses its own `priority:` label here,
+   superseded by its tasks' own, `docs/pilot-process.md` §3) and its own `type:` per
+   steps 4/4a above — never copied from the story, `docs/pilot-process.md` §2 "`type:` is
+   never inherited". Set a `priority:P0/P1/P2` on each: for a `type:tech` story's tasks,
+   or a `type:tech` enabler task inside a `type:feature` split, use the technical framing
+   (`docs/pilot-process.md` §3 — P0 closes a real security/correctness/safety-net gap, P1
+   solid value but not urgent, P2 nice-to-have or conditional); for a `type:feature` dev
+   task, default to the story's own initial (PM-set) priority unless this specific task's
+   urgency genuinely differs from its siblings. Adopt this project's own priority
+   convention instead, if it already has one that differs.
 7. Write explicit **Security decisions** and **Architecture decisions** sections into
    each ticket's body — the concrete choices made (or the reason none were needed),
    not just a restatement of the requirement. These are what phase 3 builds against

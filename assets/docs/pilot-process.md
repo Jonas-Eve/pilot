@@ -619,13 +619,28 @@ removed, the ticket is simply a normal candidate again. The two flags are indepe
 can coexist; clearing one has no effect on the other.
 
 ### `priority:`
-- `priority:P0` / `priority:P1` / `priority:P2` — set by the architect on each leaf/task,
-  during phase 2 — or, for a `type:bug` ticket (which never reaches phase 2, §2 "Three
-  levels"), during phase 1, when the architect creates it. Not set on `level:epic` or
-  `status:split` tracker parents. Same rough meaning as most backlog conventions: P0 closes a real gap (security,
-  correctness, a broken safety net) — do it soon; P1 is solid value, not urgent; P2 is
-  nice-to-have or conditional. Adopt this project's own priority convention instead, if it
-  already has one that differs.
+- `priority:P0` / `priority:P1` / `priority:P2` — every ticket gets an initial value at
+  phase 1, set by whichever agent creates it: the PM for `type:feature` (business
+  value/urgency to the user — the only phase-1 agent with the product context to judge
+  it), the architect for `type:tech`/`type:bug` (the technical framing below — neither
+  has a PM angle). This is what lets `/pilot-scope`'s own `status:backlog` pool (§4
+  "Picking the next ticket...") sort on something real instead of every fresh story
+  falling back to oldest-first.
+- At phase 2, the architect reconfirms or revises it: unchanged if the ticket ends up not
+  split (still the one leaf — `type:tech` only, `type:feature` always splits), or
+  replaced by each task's own priority if it splits — a task's priority doesn't have to
+  match its story's initial one (e.g. a `type:tech` enabler task inside a `type:feature`
+  split may be more or less urgent than the user-facing tasks around it). The moment a
+  story reaches `status:split`, its own `priority:` label is removed — from then on it's
+  a tracker, and its tasks are what any pool actually selects among.
+- Not set on `level:epic` (never itself a candidate in any pool) or `status:split`
+  tracker parents (superseded by its tasks' own the moment it splits, above).
+- Rough default for the *technical* framing (`type:tech`, `type:bug`, and any `type:tech`
+  task within a `type:feature` split) if this project has no priority convention of its
+  own: P0 closes a real gap (security, correctness, a broken safety net) — do it soon;
+  P1 is solid value, not urgent; P2 is nice-to-have or conditional. For `type:feature`,
+  the PM's call is about business value/urgency to the user instead. Adopt this project's
+  own priority convention in either case, if it already has one that differs.
 
 ---
 
