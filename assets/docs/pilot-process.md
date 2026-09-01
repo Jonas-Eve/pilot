@@ -24,7 +24,8 @@ the fly, and applying a label that doesn't exist fails the API call outright:
 `type:feature`, `type:tech`, `type:bug`, `type:e2e`, `level:epic`, `level:story`,
 `level:task`, `priority:P0`, `priority:P1`, `priority:P2`,
 `status:draft`, `status:backlog`, `status:scoping`, `status:spec-ready`, `status:in-spec`,
-`status:dev-ready`, `status:in-dev`, `status:in-review`, `status:changes-requested`,
+`status:dev-ready`, `status:in-dev`, `status:review-ready`, `status:in-review`,
+`status:changes-requested`,
 `status:approved`, `status:wont-do`, `status:split`, `status:qa`, `status:in-qa`,
 `status:done`, `needs-human`, `on-hold`.
 
@@ -423,7 +424,8 @@ the four fits that specific task, assigned by the architect at split time.
 
 ### `status:` — the pipeline state machine, one label at a time
 ```
-draft → backlog → scoping → spec-ready → in-spec → dev-ready → in-dev → in-review → approved → done
+draft → backlog → scoping → spec-ready → in-spec → dev-ready → in-dev → review-ready →
+  in-review → approved → done
                       ↓         ↓
                       +---- wont-do (before dev starts) ----+
 
@@ -432,9 +434,9 @@ scoping → split (tracker for tasks, reaches done only by cascade — see below
 split (type:feature only) → qa → in-qa → done (Phase 6 — Human QA, §7 — instead of
 cascading straight to done like a type:tech split does)
 
-in-review → changes-requested → in-dev → in-review (loop back through dev when phase
-5 blocks on something that needs an actual code change — see `status:changes-requested`
-below and §6)
+in-review → changes-requested → in-dev → review-ready → in-review (loop back through dev
+when phase 5 blocks on something that needs an actual code change — see
+`status:changes-requested` below and §6)
 ```
 - `status:draft` — phase 1 (`/pilot-story`) has created the ticket but the human hasn't
   given final approval yet — assigned to whoever's session created it, the moment the
@@ -455,21 +457,29 @@ below and §6)
 - `status:in-spec` — tech lead has claimed it for phase 3.
 - `status:dev-ready` — spec written, ready for phase 4.
 - `status:in-dev` — a dev has claimed it for phase 4.
-- `status:in-review` — a PR is open, phase 5 is running or about to.
+- `status:review-ready` — a PR is open, unassigned, not currently claimed by phase 5: set
+  by `/pilot-dev` when it opens a PR, or pushes a reclaim fix, in place of setting
+  `status:in-review` directly (§4 "Claim Protocol" — this is phase 5's own pre-claim
+  status, matching `status:dev-ready`'s role for phase 4).
+- `status:in-review` — phase 5 has claimed it (§4 "Claim Protocol") and is running, or
+  blocked on a `decision`-only point awaiting a human — `needs-human` sits alongside, same
+  as any other phase's in-progress status (§3 "`needs-human`" below). Never set directly by
+  `/pilot-dev`, only by phase 5's own claim.
 - `status:changes-requested` — phase 5 found at least one blocking point tagged `change`
   (§6): an actionable code-level fix, not just a question for a human to weigh in on. Set
   instead of leaving `status:in-review`, alongside `needs-human` same as any block. Once a
   human clears `needs-human`, `/pilot-dev` claims it like any other pre-claim status (§4
   "Reclaiming a `status:changes-requested` ticket") — reclaiming here is expected to find
-  an existing assignee (carried over from the original phase-4 claim) and overwrite it
-  rather than treat that as a conflict. The dev pushes new commits to the *same*
-  already-open PR (never a second PR for the same ticket) and moves the ticket back to
-  `status:in-review` when done.
+  an existing assignee (phase 5's own claiming session, §4 "Claim Protocol") and overwrite
+  it rather than treat that as a conflict. The dev pushes new commits to the *same*
+  already-open PR (never a second PR for the same ticket) and moves the ticket to
+  `status:review-ready` when done — never `status:in-review` directly, phase 5 claims it
+  fresh.
 - `status:approved` — phase 5 ran and every reviewer approved (§6) — set instead of
   leaving `status:in-review`. This is the "ready to merge, nothing outstanding" signal; a
   human still performs the actual merge, PILOT never does. There's no automatic
   re-review trigger if new commits land on the PR after this before it's actually
-  merged — re-run `/pilot-review` on it by hand, or move it back to `status:in-review`
+  merged — re-run `/pilot-review` on it by hand, or move it back to `status:review-ready`
   yourself, before merging.
 - `status:wont-do` — the architect concluded during phase 2 that this ticket shouldn't be
   built after all (out of scope, duplicate, superseded) and closed the issue instead of
@@ -621,12 +631,13 @@ can coexist; clearing one has no effect on the other.
 
 ## 4. Claim Protocol (avoiding two agents on the same ticket)
 
-Phases 2, 3, 4, and 6 each start by **claiming** the ticket before doing any real work,
-because several instances of the same phase (e.g. several devs) may run concurrently.
-Phase 1 doesn't fit this pattern the same way — there's no pre-existing ticket to claim —
-but the moment it creates the ticket (`status:draft`, §3), it assigns it the same way, and
-that assignment sticks if the pair session ends before final approval, exactly like a
-claimed ticket left mid-phase; see "Resuming a paused pair session" below.
+Phases 2, 3, 4, 5, and 6 each start by **claiming** the ticket before doing any real work,
+because several instances of the same phase (e.g. several devs, or two overlapping
+scheduled review sweeps) may run concurrently. Phase 1 doesn't fit this pattern the same
+way — there's no pre-existing ticket to claim — but the moment it creates the ticket
+(`status:draft`, §3), it assigns it the same way, and that assignment sticks if the pair
+session ends before final approval, exactly like a claimed ticket left mid-phase; see
+"Resuming an orphaned claim" below.
 
 1. Read the ticket's current `status:` and assignee.
 2. If it's not in the expected pre-claim status, or already has an assignee, stop — it's
@@ -639,8 +650,9 @@ claimed ticket left mid-phase; see "Resuming a paused pair session" below.
    cheap insurance against the common case, not a guarantee under true concurrent writes.
 5. Only after a successful claim does the phase's real work (the subagent call) start.
 
-Phase 5 does **not** claim — the three (or two) reviewers run in parallel by design, not
-in competition for the same ticket.
+Phase 5's claim only serializes separate *runs* of `/pilot-review` against the same
+ticket — the three (or two) reviewers **within** one claimed run still execute
+independently in parallel, never seeing each other's verdict (§6).
 
 ### Picking the next ticket when none is specified
 
@@ -662,10 +674,10 @@ before one that isn't, then oldest by creation date to break ties; a ticket carr
 `priority:` at all sorts last. A ticket still carrying
 `needs-human` or `on-hold` is never a candidate in any pool, and neither is one whose body
 has an unresolved "Depends on #N" reference (below, "Blocked-by dependencies") — both
-re-enter automatically once resolved, no flag to remove for the dependency case. A ticket
-left mid-pair session (already assigned, still in that phase's in-progress `status:`, but
-no `needs-human`) is likewise never a candidate in any bare pool — see "Resuming a paused
-pair session" below; it only resumes via an explicit `--resume <issue>`.
+re-enter automatically once resolved, no flag to remove for the dependency case. An
+orphaned claim (already assigned, still in that phase's in-progress `status:`, but no
+`needs-human`) is likewise never a candidate in any bare pool — see "Resuming an orphaned
+claim" below; it only resumes via an explicit `--resume <issue>`.
 
 ### Blocked-by dependencies (mechanical gate, distinct from `on-hold`)
 
@@ -726,40 +738,45 @@ in that phase's in-progress `status:` (whether picked up bare or given explicitl
    as approved as proposed" if none). The agent proceeds, corrects, or blocks again if
    that still doesn't actually resolve things.
 
-### Resuming a paused pair session (`--resume`)
+### Resuming an orphaned claim (`--resume`)
 
 Distinct from both "Resuming a `needs-human` ticket" above and "Reclaiming a
-`status:changes-requested` ticket" below: this is for a ticket left mid-**pair**
-("Interaction modes" below) — still carrying its original assignee, still in that phase's
-in-progress `status:` (`status:draft`, `status:scoping`, `status:in-spec`,
-`status:in-dev`, `status:in-qa`), with **no** `needs-human` — the pair session simply
-ended before reaching the phase's final approval. Left alone, the normal claim-protocol
-check ("already has an assignee → stop") would treat this the same as a ticket someone
-else is actively working right now, which isn't the case here. For phase 1 specifically,
-`status:draft` is what makes this possible at all.
+`status:changes-requested` ticket" below: a ticket claimed but with nobody actually still
+working it — still carrying its original assignee, still in that phase's in-progress
+`status:` (`status:draft`, `status:scoping`, `status:in-spec`, `status:in-dev`,
+`status:in-review`, `status:in-qa`), with **no** `needs-human`. Two different causes leave
+the exact same shape, indistinguishable from the ticket alone: a **pair** session
+("Interaction modes" below) that ended before reaching the phase's final approval
+(pair-capable phases only), or an `--auto` run — phase 5's only mode included — that died
+mid-work (a quota limit, a crash, a timeout) before it could either finish or flag
+`needs-human`. Left alone, the normal claim-protocol check ("already has an assignee →
+stop") would treat either the same as a ticket someone else is actively working right now,
+which isn't the case. For phase 1 specifically, `status:draft` is what makes this possible
+at all.
 
 `--resume` requires an **explicit ticket number** — it is never part of any bare/
-scheduled-sweep pool. Unlike `needs-human`, nothing on the ticket itself distinguishes an
-abandoned pair session from one genuinely still in progress elsewhere.
+scheduled-sweep pool. Nothing on the ticket itself distinguishes an orphaned claim from one
+genuinely still in progress elsewhere.
 
 To resume:
-1. Read the full ticket — body and comment thread, not just the latest checkpoint. Pair
-   mode's incremental writes ("Interaction modes" below) are exactly the state to
-   reconstruct from.
+1. Read the full ticket — body and comment thread, not just the latest checkpoint. For a
+   pair-capable phase this reconstructs pair mode's incremental checkpoint writes
+   ("Interaction modes" below); for an `--auto` run (phase 5 always) there's nothing to
+   reconstruct — this is a plain restart from the ticket's original inputs.
 2. Claim it the same way a `status:changes-requested` reclaim does (below) — an existing
    assignee doesn't count as a conflict here. Overwrite it (assignee → this session);
    `status:` stays at its current in-progress value.
-3. Pass the reconstructed state to the phase's `Agent` call as its starting context, and
-   continue the normal pair loop from wherever that leaves off.
+3. Pass whatever step 1 recovered to the phase's `Agent` call as its starting context, and
+   continue: the normal pair loop where one exists, otherwise a fresh pass.
 
-Finalization behaves exactly as any other pair run from here.
+Finalization behaves exactly as any other run of that phase from here.
 
 ### Reclaiming a `status:changes-requested` ticket (`/pilot-dev` only)
 
-Unlike "Resuming a `needs-human` ticket" or "Resuming a paused pair session" above,
+Unlike "Resuming a `needs-human` ticket" or "Resuming an orphaned claim" above,
 `status:changes-requested` is set by *phase 5* (§6), not by `/pilot-dev` itself — the
-ticket already has an open PR from the original phase-4 pass, and whatever assignee is
-still on it is whoever ran *that* pass, not necessarily whoever runs `/pilot-dev` next.
+ticket already has an open PR, and whatever assignee is still on it is phase 5's own
+claiming session (§4 "Claim Protocol"), not necessarily whoever runs `/pilot-dev` next.
 
 Reclaiming one follows the standard claim protocol above with a single, deliberate
 exception: an existing assignee doesn't count as "already claimed" for this status — the
@@ -769,8 +786,9 @@ re-reads to confirm the overwrite held.
 Once claimed, pass the subagent the phase-5 blocking comment (the `change`-tagged points
 to fix, plus any `decision`-tagged points and their resolution) instead of a fresh spec —
 the existing PR's branch is what gets more commits. The subagent pushes to that same
-branch/PR (never a second PR for the same ticket) and, once satisfied, moves the ticket
-back to `status:in-review` exactly as it would after a first-time implementation.
+branch/PR (never a second PR for the same ticket) and, once satisfied, moves the ticket to
+`status:review-ready` (unassigned) exactly as it would after a first-time implementation —
+never `status:in-review` directly, phase 5 claims it fresh.
 
 ### Scheduled sweeps
 
@@ -800,7 +818,9 @@ The six phase skills split into three groups by which modes they support:
 - **`/pilot-scope`, `/pilot-spec`, `/pilot-dev`** — default to **pair**, with `--auto` to
   opt out of it.
 - **`/pilot-review`** — **auto only**, no pair mode exists for it: reviewers run parallel
-  and isolated on purpose (§6), with no natural mid-review checkpoint to pause at.
+  and isolated on purpose (§6), with no natural mid-review checkpoint to pause at. Still
+  supports `--resume <issue>` to recover a claim orphaned by a crashed run (above) — its
+  only cause for this phase, since it never pairs.
 
 Both modes still claim (above) immediately, same as always — it's concurrency
 bookkeeping, unrelated to the content decision.
@@ -870,12 +890,16 @@ ticket number between them — never a running transcript of the prior phase's `
 
 ## 6. Phase 5 — Review Consensus
 
-0. Resolve the PR/issue: the number given, or — bare, no argument — every `status:in-review`
-   PR that either has no `needs-human` flag yet or had one and it was just removed,
-   excluding any that currently carries `on-hold` (§3). Phase 5 doesn't claim (below), so
-   there's no assignee to filter on. A ticket phase 5 previously sent to
-   `status:changes-requested` is **not** in this pool — it's `/pilot-dev`'s to reclaim
-   (§4), and only re-enters here once dev pushes it back to `status:in-review`.
+0. Resolve the PR/issue per §4 "Picking the next ticket...": the number given, or — bare,
+   no argument — the merged pool of fresh `status:review-ready` (unclaimed) and resumable
+   `status:in-review` (assigned, `needs-human` just cleared), excluding `on-hold`. A ticket
+   phase 5 previously sent to `status:changes-requested` is **not** in this pool — it's
+   `/pilot-dev`'s to reclaim (§4), and only re-enters here once dev pushes it back to
+   `status:review-ready`. **Claim** it — assignee + `status:in-review` — per §4 "Claim
+   Protocol", same mechanics as phases 2-4 (re-read to detect a race; if given explicitly
+   and already claimed with no `needs-human`/history, it's an orphaned claim, see §4
+   "Resuming an orphaned claim"). The reviewers below still run independently within one
+   claimed run, never competing with each other.
 1. Determine reviewers from **the ticket's own `type:`** (§2 "`type:` is never
    inherited" — a `level:task` under a `type:feature` story can itself be `type:tech`, and
    is reviewed as `type:tech`, not as if it inherited `type:feature` from its parent):

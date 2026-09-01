@@ -22,10 +22,12 @@ says it actually did something. Always let the invoked skill do that deciding.
 Never runs pair: this command's whole purpose is unattended dispatch, so it always drives
 `/pilot-dev`, `/pilot-spec`, and `/pilot-scope` with `--auto`. Someone wanting to pair
 through a specific ticket should call that phase's own skill directly instead. This also
-means it never passes `--resume`: that flag continues a **pair** session a live human was
-driving, which this command never runs. If a target skill's own resolution decides a given
-ticket looks like an abandoned mid-pair session, it reports that and stops, asking for
-`--resume` — relay that exactly as any other outcome, don't retry with it.
+means it never passes `--resume`: that flag recovers a claim orphaned by an abandoned pair
+session or a crashed `--auto`/phase-5 run (`docs/pilot-process.md` §4 "Resuming an orphaned
+claim") — a deliberate human call this command never makes on its own, since nothing on the
+ticket distinguishes an orphan from one genuinely still in progress elsewhere. If a target
+skill's own resolution decides a given ticket looks orphaned, it reports that and stops,
+asking for `--resume` — relay that exactly as any other outcome, don't retry with it.
 
 ## Determining the mode
 

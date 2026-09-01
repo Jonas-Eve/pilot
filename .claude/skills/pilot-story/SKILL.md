@@ -51,7 +51,7 @@ mechanics of running phase 1.
 5a. **Create the draft ticket(s) right away** (`mcp__github__issue_write`,
     `mcp__github__sub_issue_write`), before showing anything to the human — this is what
     makes `--resume` possible if the session ends before final approval
-    (`docs/pilot-process.md` §3 `status:draft`, §4 "Resuming a paused pair session"):
+    (`docs/pilot-process.md` §3 `status:draft`, §4 "Resuming an orphaned claim"):
     - Single story (`type:feature`/`type:tech`): create it, matching `type:` +
       `level:story` + `status:draft`, assigned to this session.
     - Several stories, reusing an existing Epic: create each story the same way

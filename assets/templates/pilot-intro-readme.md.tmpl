@@ -30,8 +30,8 @@ cron Routine drive a phase on a timer instead of a human typing it each time.
 though `--resume` picks a paused session back up); `/pilot-scope`, `/pilot-spec`, and
 `/pilot-dev` default to that same pair mode too, so their Routine's prompt adds `--auto`
 to run unattended; `/pilot-review` is already automatic and needs no flag.
-A GitHub label state machine (`status:draft` → `status:backlog` → ... → `in-review` →
-`approved` → `done`, plus `priority:`, a `type:` axis for the nature of the work
+A GitHub label state machine (`status:draft` → `status:backlog` → ... → `review-ready` →
+`in-review` → `approved` → `done`, plus `priority:`, a `type:` axis for the nature of the work
 (`feature`/`tech`/`bug`/`e2e`) and a `level:` one for its depth
 (`epic`/`story`/`task`, with `status:split` tracking a story broken into tasks) — a bug
 is always a `level:task` created ready to build, which is why it skips scoping) tracks

@@ -10,7 +10,7 @@ instead of `pilot-dev` because your ticket's own type is `type:e2e`
 (`docs/pilot-process.md` §2 "End-to-end test tasks" — never inherited from the story it
 belongs to). Everything in `pilot-dev.md` applies to you as written — claim,
 reclaim/deviation/`needs-human`/`on-hold` mechanics, final self-review, PR/template/
-`status:in-review` handoff, doc updates — except the two differences below.
+`status:review-ready` handoff, doc updates — except the two differences below.
 
 ## Phase 4 — Writing the end-to-end test
 
@@ -38,8 +38,8 @@ wouldn't have cleared the dependency gate to reach you.
    marked done with a test that doesn't actually pass.
 4. Otherwise, continue exactly as `pilot-dev.md` describes from step 4 onward: implement
    per the spec, run validation, final self-review (step 5a), commit/push/open the PR per
-   this project's template, move the ticket to `status:in-review`, and update any affected
-   docs.
+   this project's template, clear the assignee and move the ticket to
+   `status:review-ready`, and update any affected docs.
 
 You are not a phase-5 reviewer, same as `pilot-dev` — phase 5 for your ticket is whichever
 reviewer set `docs/pilot-process.md` §6 assigns `type:e2e` (PM + architect + tech lead,

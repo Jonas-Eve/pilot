@@ -16,7 +16,7 @@ mechanics of running phase 3.
 1. Resolve the ticket:
    - Given issue number with `--resume`: must be `status:in-spec`, already assigned,
      with **no** `needs-human` and **no** `on-hold` — a ticket left mid-pair session.
-     Follow `docs/pilot-process.md` §4 "Resuming a paused pair session" instead of steps
+     Follow `docs/pilot-process.md` §4 "Resuming an orphaned claim" instead of steps
      2-5 below — skip the claim, already claimed. If it doesn't match, report and stop.
    - Given issue number without `--resume`, `status:in-spec`, **no** `needs-human`, **no**
      `on-hold`, and its thread shows a `needs-human` block that was later cleared →
@@ -59,7 +59,7 @@ mechanics of running phase 3.
     the agent — repeat until they approve, writing each approved checkpoint into the
     ticket right away (a comment, or a partial `issue_write`) rather than holding it
     in-conversation — this is what `--resume` picks back up if the session ends before
-    final approval (`docs/pilot-process.md` §4 "Resuming a paused pair session"). Requires
+    final approval (`docs/pilot-process.md` §4 "Resuming an orphaned claim"). Requires
     a human live in session; a scheduled Routine must pass `--auto` instead. Once
     approved, continue to step 4b — its GitHub write is then just the remaining piece
     (final `status:dev-ready`), since the spec was already saved checkpoint by checkpoint.

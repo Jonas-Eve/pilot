@@ -25,7 +25,7 @@ blocking comment in place of a fresh spec).
     resolution). Address exactly those points, skipping steps 2-4 below (fresh-
     implementation only). Push new commits to that same PR's branch — never open a
     second PR for the same ticket. Still run the validation in step 5 and move to
-    `status:in-review` in step 6, same as a fresh implementation. Step 4's "ask
+    `status:review-ready` in step 6, same as a fresh implementation. Step 4's "ask
     live, otherwise flag `needs-human`" behavior still applies here too.
 2. Read the ticket's spec, the architect's security/architecture decisions, and this
    project's own coding standards/security conventions (`CLAUDE.md`, `README.md`, or
@@ -95,9 +95,10 @@ blocking comment in place of a fresh spec).
 6. Commit and push to a short-lived branch, open a pull request following this
    project's own PR template if it has one (e.g. `.github/pull_request_template.md`)
    — including a "PILOT ticket" section if the template defines one: type,
-   `Closes #<issue>`, and any spec deviation from step 4 — and move the ticket to
-   `status:in-review`. Never merge — a human always does that, even after phase 5
-   approves.
+   `Closes #<issue>`, and any spec deviation from step 4 — clear the assignee, and
+   move the ticket to `status:review-ready` (phase 5's own pre-claim status,
+   `docs/pilot-process.md` §4). Never merge — a human always does that, even after
+   phase 5 approves.
 7. Update any docs or service-level README/CLAUDE.md (or equivalent) the change
    affects, per this project's own documentation-maintenance convention, if it has
    one.
