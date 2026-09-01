@@ -22,7 +22,10 @@ this skill only covers the mechanics of running it.
    - Issue number without `--resume`, `status:in-qa`, **no** `needs-human`/`on-hold`,
      thread shows a cleared `needs-human` block → a resume, not a fresh claim
      (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket"); skip the claim in
-     step 2, it's already claimed.
+     step 2, it's already claimed. Read the ticket and thread to reconstruct which cases
+     were already confirmed and the blocking point's resolution, then skip to step 5 with
+     that state, same as the `--resume` bullet above — never restart the test plan from
+     step 3/4.
    - Issue number without `--resume`, `status:in-qa`, assigned, **no**
      `needs-human`/`on-hold`, but no `needs-human` history in its thread → looks like a
      session left mid-pair; report and ask the human to re-run with `--resume`.
