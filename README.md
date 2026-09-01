@@ -39,12 +39,13 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
     warning in `.claude/skills/pilot-update/SKILL.md`.
   - `/pilot-story`, `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
     `/pilot-qa` — the six phases themselves.
-  - `/pilot-auto` — dispatcher, two modes. Bare (or a subset like `/pilot-auto spec
-    scope`): tries `/pilot-review`, `/pilot-dev --auto`, `/pilot-spec --auto`,
-    `/pilot-scope --auto` (or just the given subset), in that order, stopping at the first
-    one that finds work. Given a single issue number instead (`/pilot-auto 48`): skips the
-    sweep and routes that one ticket straight to whichever phase its current `status:`
-    label belongs to, in `--auto` mode. Not a phase itself, and never invokes
+  - `/pilot-auto` — dispatcher: tries `/pilot-review`, `/pilot-dev --auto`,
+    `/pilot-spec --auto`, `/pilot-scope --auto`, in that order, stopping at the first one
+    that finds work. Bare (or a subset like `/pilot-auto spec scope`), each phase works its
+    own pool. Given a single issue number instead (`/pilot-auto 48`), the same four are
+    tried against that one ticket rather than a pool — each phase's own claim protocol
+    reports nothing to do when the ticket isn't currently theirs, so this command never
+    reads the ticket's `status:` itself. Not a phase itself, and never invokes
     `/pilot-story`/`/pilot-qa` (pair-only). Lets one scheduled Routine drive the whole
     pipeline, or several Routines split it by cadence, or a human/Routine hand it one
     ticket without knowing which phase it's in — see `.claude/skills/pilot-auto/SKILL.md`.
