@@ -29,7 +29,9 @@ mechanics.
    - Otherwise, or none given → per `docs/pilot-process.md` §4 "Picking the next
      ticket...": the given ticket, or the merged pool of unclaimed `status:review-ready`
      (fresh) and `status:in-review` with `needs-human` just cleared (resumable — handled by
-     the second bullet above, not here), excluding `on-hold`. `status:changes-requested`
+     the second bullet above, not here), excluding `on-hold`, ordered by highest
+     `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
+     isn't, then oldest first (`mcp__github__search_issues`). `status:changes-requested`
      tickets are never in this pool — `/pilot-dev` reclaims those (§4).
 2. **Claim** it (fresh case only, above) per `docs/pilot-process.md` §4: assignee +
    `status:in-review`, re-read to confirm. If the assignee changed (race lost), stand down
