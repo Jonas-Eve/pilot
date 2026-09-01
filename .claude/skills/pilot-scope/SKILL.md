@@ -102,8 +102,8 @@ mechanics of running phase 2.
     (and PM, if applicable) — repeat until approved. Write each approved checkpoint
     into the ticket right away (a comment, or a partial `issue_write`) rather than
     holding it in-conversation — this is what `--resume` picks back up if the
-    session ends first (`docs/pilot-process.md` §4 "Resuming a paused pair
-    session"). Requires a live human; a scheduled Routine must pass `--auto`. Once
+    session ends first (`docs/pilot-process.md` §4 "Resuming an orphaned
+    claim"). Requires a live human; a scheduled Routine must pass `--auto`. Once
     approved, continue to step 4c — its GitHub write is then just the remaining
     piece (final labels, unwritten sub-issues), since earlier checkpoints were
     already saved.

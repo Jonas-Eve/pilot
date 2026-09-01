@@ -895,11 +895,12 @@ ticket number between them — never a running transcript of the prior phase's `
    `status:in-review` (assigned, `needs-human` just cleared), excluding `on-hold`. A ticket
    phase 5 previously sent to `status:changes-requested` is **not** in this pool — it's
    `/pilot-dev`'s to reclaim (§4), and only re-enters here once dev pushes it back to
-   `status:review-ready`. **Claim** it — assignee + `status:in-review` — per §4 "Claim
-   Protocol", same mechanics as phases 2-4 (re-read to detect a race; if given explicitly
-   and already claimed with no `needs-human`/history, it's an orphaned claim, see §4
-   "Resuming an orphaned claim"). The reviewers below still run independently within one
-   claimed run, never competing with each other.
+   `status:review-ready`. **Fresh case**: claim it — assignee + `status:in-review` — per §4
+   "Claim Protocol" (re-read to detect a race). **Resumable case**: already claimed, skip
+   the claim, follow §4 "Resuming a `needs-human` ticket" instead. Given explicitly and
+   already claimed with no `needs-human`/history → an orphaned claim instead, see §4
+   "Resuming an orphaned claim" (`--resume`). The reviewers below still run independently
+   within one claimed run, never competing with each other.
 1. Determine reviewers from **the ticket's own `type:`** (§2 "`type:` is never
    inherited" — a `level:task` under a `type:feature` story can itself be `type:tech`, and
    is reviewed as `type:tech`, not as if it inherited `type:feature` from its parent):

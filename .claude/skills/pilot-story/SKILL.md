@@ -15,8 +15,8 @@ mechanics of running phase 1.
 
 1. Determine the input:
    - `--resume <issue>`: must be `status:draft`, assigned, **no** `needs-human`/`on-hold`
-     — a draft left mid-pair (`docs/pilot-process.md` §4 "Resuming a paused pair
-     session"). Read the ticket and thread (`mcp__github__issue_read` `get_comments`) to
+     — a draft left mid-pair (`docs/pilot-process.md` §4 "Resuming an orphaned
+     claim"). Read the ticket and thread (`mcp__github__issue_read` `get_comments`) to
      reconstruct what's drafted, claim it (overwrite assignee), skip to step 5b with that
      state (call the agent in step 4 again first if revising the draft, passing the
      reconstructed context instead of a blank need). If it doesn't match, report and stop.
