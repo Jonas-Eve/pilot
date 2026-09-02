@@ -70,11 +70,10 @@ See [`assets/docs/pilot-process-companion.md`](./assets/docs/pilot-process-compa
 sequence diagram of a `type:feature` story moving through all six phases — a purely
 human-facing companion to `pilot-process.md`, kept in sync the same way.
 
-`assets/docs/pilot-link-<topic>.md` files (currently `pilot-link-review-consensus.md`,
-`pilot-link-e2e-tasks.md`, and `pilot-link-bug-tickets.md`) are the third kind: operational
-like `pilot-process.md` itself but scoped to the specific two-or-more skills/agents that
-need to coordinate on something, rather than all six phases — synced the same way, as
-`docs/pilot-link-<topic>.md`.
+`assets/docs/pilot-link-<topic>.md` files are the third kind: operational like
+`pilot-process.md` itself but scoped to the specific two-or-more skills/agents that need
+to coordinate on something, rather than all six phases — synced the same way, as
+`docs/pilot-link-<topic>.md`. See `assets/docs/` for the current set.
 
 ## Installing in a project
 
@@ -99,5 +98,6 @@ asks for confirmation before overwriting anything that differs.
 
 ## Developing this repo
 
-Trunk-based development on `main`, Conventional Commits, rebase-merge PRs — see
-`CLAUDE.md` for the full set of conventions used to develop PILOT itself.
+Trunk-based development on `main`, Conventional Commits, squash-merge PRs by default
+(rebase-merge only for deliberately separate commits) — see `CLAUDE.md` for the full set
+of conventions used to develop PILOT itself.

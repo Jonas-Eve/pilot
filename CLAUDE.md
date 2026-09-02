@@ -109,11 +109,12 @@ the skill files) — never a fixed path, there is no installed location.
   content goes, not just after): zero others → single-skill; some but not all → a link doc;
   all six phases → `pilot-process.md`. Tool names and API-call-level detail belong in the
   owning `SKILL.md` regardless of tier, never in `pilot-process.md` or a link doc.
-- **Cross-reference check:** `assets/docs/pilot-process.md`, every `.claude/skills/*/SKILL.md`,
-  every `.claude/agents/pilot-*.md`, and the PILOT mentions in this file and `README.md` are
-  tightly cross-referenced. After editing any of them, `grep` the exact term(s) you
-  changed (a renamed label, a moved section heading) across that whole family and fix
-  what turns up, rather than re-reading every file end to end.
+- **Cross-reference check:** `assets/docs/pilot-process.md`, every `assets/docs/pilot-link-*.md`
+  and `pilot-process-*.md`, every `.claude/skills/*/SKILL.md`, every `.claude/agents/pilot-*.md`,
+  and the PILOT mentions in this file and `README.md` are tightly cross-referenced. After
+  editing any of them, `grep` the exact term(s) you changed (a renamed label, a moved
+  section heading, a link doc's filename) across that whole family and fix what turns up,
+  rather than re-reading every file end to end.
 - **Renaming or removing a skill/agent:** `/pilot-update` handles this by diffing a
   project's locally-copied skills/agents against this repo's current `.claude/skills/`/
   `.claude/agents/` and flagging anything that no longer matches anything upstream as

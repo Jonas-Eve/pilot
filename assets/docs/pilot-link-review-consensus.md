@@ -9,7 +9,7 @@ this builds on.
 
 ## Reviewer set
 
-Decided by **the ticket's own `type:`** (`pilot-process.md` §2 "`type:` is never
+Decided by **the ticket's own `type:`** (`docs/pilot-process.md` §2 "`type:` is never
 inherited" — a `level:task` under a `type:feature` story can itself be `type:tech`, and is
 reviewed as `type:tech`, never as if it inherited `type:feature` from its parent):
 - `type:feature`/`type:e2e` → `pilot-pm` + `pilot-architect` + `pilot-techlead`
@@ -19,7 +19,7 @@ Three distinct, non-overlapping lenses — product fit/e2e-flow validation, conf
 the security/architecture decisions recorded at scope time, spec conformance and code
 quality/maintainability — deliberately not split into a fourth reviewer, since
 `pilot-dev`/`pilot-e2e` already self-reviewed the diff before opening the PR
-(`pilot-process.md` §4 "Interaction modes"). All reviewers run **in parallel, fully
+(`docs/pilot-process.md` §4 "Interaction modes"). All reviewers run **in parallel, fully
 independent of each other** — none sees another's verdict — in both pair and `--auto`;
 nothing later in the run reopens that isolation, not even the one pair checkpoint.
 
@@ -37,12 +37,12 @@ Each reviewer returns a verdict: approve, or block with one or more points tagge
 call with no fix to propose until a human weighs in. Default to `change` whenever a fix can
 be named. Once every reviewer's verdict is in, the tags decide the outcome, each submitted
 as its own GitHub PR review event — never a plain issue comment for this:
-- All approve → an approval; `status:approved` (`pilot-process.md` §3).
+- All approve → an approval; `status:approved` (`docs/pilot-process.md` §3).
 - Any point tagged `change` (a validation/CI failure above always counts) → a request for
-  changes; `needs-human` added, `status:changes-requested` (`pilot-process.md` §3) —
+  changes; `needs-human` added, `status:changes-requested` (`docs/pilot-process.md` §3) —
   `/pilot-dev` reclaims once cleared, reading the `change`-tagged points back off the
   submitted PR review (not a plain issue comment).
 - Every blocking point tagged `decision`, none `change` → a plain comment (nothing
   code-level to request, and not an approval either); `needs-human` added,
-  `status:in-review` stays (`pilot-process.md` §3) — this ticket re-enters phase 5's own
-  pool once cleared, unless resolved live first (`pilot-review/SKILL.md`).
+  `status:in-review` stays (`docs/pilot-process.md` §3) — this ticket re-enters phase 5's
+  own pool once cleared, unless resolved live first (`pilot-review/SKILL.md`).
