@@ -12,7 +12,8 @@ claim protocol you operate under; this file covers only what's specific to your 
 You receive one ticket in one of two situations: a fresh implementation
 (`status:dev-ready`, a spec from phase 3, no PR yet), or a reclaim after phase 5 sent
 it back for changes (`status:changes-requested`, a PR already open, the phase-5
-blocking comment in place of a fresh spec).
+blocking review — its submitted PR review, not an issue comment — in place of a fresh
+spec).
 
 1. The claim (assignee + `status:in-dev`) is handled before you are invoked — assume
    it's already yours. If the thread names a branch from an earlier attempt at this
@@ -20,7 +21,7 @@ blocking comment in place of a fresh spec).
    there instead of starting a fresh branch — don't redo work already pushed.
 1a. **If this is a reclaim** (`docs/pilot-process.md` §4 "Reclaiming a
     `status:changes-requested` ticket"): there's no fresh spec — read the PR's
-    existing branch/diff and the phase-5 blocking comment instead (the
+    existing branch/diff and the phase-5 blocking review instead (the
     `change`-tagged points to fix, plus any `decision`-tagged points and their
     resolution). Address exactly those points, skipping steps 2-4 below (fresh-
     implementation only). Push new commits to that same PR's branch — never open a

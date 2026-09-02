@@ -61,8 +61,10 @@ mode — without it, this skill never merges.
    for `type:e2e`); for the architect, its recorded decisions; for the tech lead, its own
    spec (it re-runs validation on the PR branch itself, `docs/pilot-process.md` §6). When
    resuming (step 1's needs-human-resume branch), also pass the original blocking
-   comment's `decision`-tagged points and whatever's in the thread after it — a specific
-   reply, or "no reply — treat as approved as proposed" if none
+   review's `decision`-tagged points — the submitted PR review from the run that raised
+   the block, fetched via `mcp__github__pull_request_read` method `get_reviews` (its body
+   holds the points, not a plain issue comment, §6) — and whatever's in the PR's comment
+   thread after it: a specific reply, or "no reply — treat as approved as proposed" if none
    (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket") — so reviewers don't
    re-raise a point a human already answered. Each persona
    (`.claude/agents/pilot-*.md`) already tags blocking points `change`/`decision`.

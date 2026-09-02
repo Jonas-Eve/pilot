@@ -30,7 +30,7 @@ parallel instances; the claim step below prevents collisions.
      `docs/pilot-process.md` §4 "Reclaiming a `status:changes-requested` ticket" instead
      of steps 2-6 — claim per that section (an existing assignee doesn't block this claim,
      unlike step 2's normal rule) and skip straight to step 3, passing the phase-5
-     blocking comment instead of a fresh spec.
+     blocking review instead of a fresh spec.
    - `status:changes-requested` still carrying `needs-human` or `on-hold` → unresolved;
      report and stop.
    - `status:dev-ready`, unclaimed, body carries an open "Depends on #N" → not ready yet;
@@ -60,9 +60,11 @@ parallel instances; the claim step below prevents collisions.
    of any other ticket being worked in parallel. **Resume case** (per step 1, needs-human
    cleared): also pass the original blocking comment and whatever's in the thread after it
    (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket"). **Reclaim case** (per
-   step 1): pass the phase-5 blocking comment (the `change`-tagged points to fix, plus any
-   `decision`-tagged points and their resolution) instead of a fresh spec — only more
-   commits on the existing PR. **Unless `--auto` was given** (`docs/pilot-process.md` §4
+   step 1): pass the phase-5 blocking review — its submitted PR review, fetched via
+   `mcp__github__pull_request_read` method `get_reviews` (the body holds the points, not a
+   plain issue comment, `docs/pilot-process.md` §6) — with its `change`-tagged points to
+   fix, plus any `decision`-tagged points and their resolution, instead of a fresh spec —
+   only more commits on the existing PR. **Unless `--auto` was given** (`docs/pilot-process.md` §4
    "Interaction modes" — pair is the default; a fresh claim or paused-pair resume only,
    never combined with a reclaim): first ask for a proposed implementation approach, not
    the finished implementation — the pair-coding checkpoint. Show the human that plan as a
@@ -78,7 +80,7 @@ parallel instances; the claim step below prevents collisions.
    pull request following this project's own PR template if it has one (e.g.
    `.github/pull_request_template.md`) — including a "PILOT ticket" section if the
    template defines one: type, `Closes #<issue>`, spec deviations — or, for a reclaim,
-   pushes new commits addressing the blocking comment to that same existing PR instead of
+   pushes new commits addressing the blocking review to that same existing PR instead of
    opening a new one — or hits a genuine blocking conflict it can't resolve alone and
    stops without a PR (or without pushing, for a reclaim).
 5. Apply the result:

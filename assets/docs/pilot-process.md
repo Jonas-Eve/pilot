@@ -767,8 +767,10 @@ being alive.
 
 A phase skill treats a ticket as **resuming**, not a fresh claim, whenever it's already
 in that phase's in-progress `status:` (whether picked up bare or given explicitly):
-1. Read the full comment thread, not just the ticket body — the blocking comment and
-   everything posted after it.
+1. Read the full blocking context, not just the ticket body — the blocking comment and
+   everything posted after it, for every phase except 5. Phase 5's own block is a
+   submitted PR review, not a comment (§6) — fetch it via `mcp__github__pull_request_read`
+   method `get_reviews`, plus the PR's comment thread for whatever's posted after it.
 2. If `needs-human` is still present, it isn't resolved yet — report that and stop (this
    only matters when a ticket number was given explicitly; the bare pool above already
    excludes these).
@@ -823,9 +825,11 @@ exception: an existing assignee doesn't count as "already claimed" for this stat
 claiming session simply overwrites it (assignee → itself, `status:` → `in-dev`) and
 re-reads to confirm the overwrite held.
 
-Once claimed, pass the subagent the phase-5 blocking comment (the `change`-tagged points
-to fix, plus any `decision`-tagged points and their resolution) instead of a fresh spec —
-the existing PR's branch is what gets more commits. The subagent pushes to that same
+Once claimed, pass the subagent the phase-5 blocking review — its submitted PR review,
+fetched via `mcp__github__pull_request_read` method `get_reviews` rather than read off the
+issue's comment thread (§6) — with its `change`-tagged points to fix, plus any
+`decision`-tagged points and their resolution, instead of a fresh spec — the existing PR's
+branch is what gets more commits. The subagent pushes to that same
 branch/PR (never a second PR for the same ticket) and, once satisfied, moves the ticket to
 `status:review-ready` (unassigned) exactly as it would after a first-time implementation —
 never `status:in-review` directly, phase 5 claims it fresh.
