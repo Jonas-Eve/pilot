@@ -33,7 +33,7 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
     mobile, TypeScript throughout), generate each app's docs, and scaffold its skeleton
     pinned to the latest compatible dependency versions.
   - `/pilot-update` — re-sync everything PILOT-owned (skills, agents,
-    `docs/pilot-process.md` and `docs/pilot-process-visual.md`, the GitHub Actions
+    `docs/pilot-process.md` and `docs/pilot-process-companion.md`, the GitHub Actions
     workflow, the `PILOT:INTRO` blocks in `CLAUDE.md`/`README.md`, the GitHub labels)
     from a fresh clone of this repo into your project. Overwrites, no merge — see the
     warning in `.claude/skills/pilot-update/SKILL.md`.
@@ -59,7 +59,7 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
   `.pilot/state.json` (`lastLabelsSyncAt`) when run from that project's root.
 - **Templates** (`assets/templates/`): the doc skeletons `/pilot-init` fills in.
 
-See [`assets/docs/pilot-process-visual.md`](./assets/docs/pilot-process-visual.md) for a
+See [`assets/docs/pilot-process-companion.md`](./assets/docs/pilot-process-companion.md) for a
 sequence diagram of a `type:feature` story moving through all six phases — a purely
 human-facing companion to `pilot-process.md`, kept in sync the same way.
 

@@ -95,8 +95,8 @@ see `.claude/skills/pilot-update/SKILL.md`.
    their template placeholder text — `/pilot-init-archi` fills those in later.
 
 6. **Copy the process docs.** Copy `$PILOT_SRC/assets/docs/pilot-process.md` to
-   `docs/pilot-process.md`, and `$PILOT_SRC/assets/docs/pilot-process-visual.md` to
-   `docs/pilot-process-visual.md`, both at the project root, creating `docs/` if needed.
+   `docs/pilot-process.md`, and `$PILOT_SRC/assets/docs/pilot-process-companion.md` to
+   `docs/pilot-process-companion.md`, both at the project root, creating `docs/` if needed.
    The first is the operational spec every phase skill reads; the second is a purely
    human-facing companion (a sequence diagram) no skill or agent needs — copy both
    regardless. Both are PILOT-owned from here on — never hand-edit either; `/pilot-update`

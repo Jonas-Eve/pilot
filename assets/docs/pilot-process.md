@@ -33,7 +33,7 @@ Each phase is a Claude Code slash command, run from a session with read/write ac
 this repo's issues and PRs — nothing in PILOT triggers itself as reasoning, every phase
 runs because something sent its exact command literally, human or scheduled Routine (§4
 "Scheduled sweeps"). Bare, no-argument commands are what make the scheduled case useful —
-see `docs/pilot-process-visual.md` for example invocations of each command; there's no
+see `docs/pilot-process-companion.md` for example invocations of each command; there's no
 single command that runs all six phases end to end, drive the pipeline one phase at a
 time, per ticket.
 

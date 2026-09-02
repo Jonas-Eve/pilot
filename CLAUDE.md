@@ -35,7 +35,7 @@ forked PILOT, strip project-specific details the same way.
   consuming project as `docs/pilot-process.md` by `/pilot-init` and re-synced by
   `/pilot-update`. Contains only what a skill or agent needs to operate — no purely
   illustrative material (a diagram, a worked example) belongs here.
-- `assets/docs/pilot-process-visual.md` — a purely human-facing companion to the above
+- `assets/docs/pilot-process-companion.md` — a purely human-facing companion to the above
   (currently a sequence diagram), synced the same way, for a human getting oriented; no
   skill or agent reads it. Anything added to help a human understand the process, rather
   than something a skill/agent needs to run it, goes here instead of bloating
@@ -70,11 +70,13 @@ the skill files) — never a fixed path, there is no installed location.
   correctly. No meta-commentary, platform-quirk explanations, maintainer rationale, or
   historical notes about why something is the way it is. If something is worth writing down
   for a human but doesn't change what an agent does, it belongs in a doc no skill or agent
-  reads instead, never padded into the file an LLM actually loads — `assets/docs/pilot-process-visual.md`
+  reads instead, never padded into the file an LLM actually loads — `assets/docs/pilot-process-companion.md`
   is the existing example for `pilot-process.md` (§2), but nothing requires reusing it or any
   other existing doc: pick whichever already-existing human-only doc actually fits the
   information, or create a new one next to the skill/agent/doc it explains, whichever the
-  content itself calls for.
+  content itself calls for. Renaming or retiring one of these human-only docs is a rename
+  like any other — `/pilot-update` must actually delete the old file in an already-initialized
+  project, not just add the new one (see its own `SKILL.md`).
 - **Cross-reference check:** `assets/docs/pilot-process.md`, every `.claude/skills/*/SKILL.md`,
   every `.claude/agents/pilot-*.md`, and the PILOT mentions in this file and `README.md` are
   tightly cross-referenced. After editing any of them, `grep` the exact term(s) you
