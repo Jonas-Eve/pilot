@@ -124,7 +124,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
    `docs/PULL_REQUEST_TEMPLATE.md` already exist in the project, copy
    `$PILOT_SRC/assets/github/pull_request_template.md` to
    `.github/pull_request_template.md`, creating `.github/` if needed — this is what
-   `pilot-dev`'s "PILOT ticket" section (`.claude/agents/pilot-dev.md`,
+   `pilot-dev`'s "PILOT ticket" section (`docs/pilot-task-implement.md`,
    `.claude/skills/pilot-dev/SKILL.md`) fills in when opening a PR. If one of those paths
    already exists, treat it like step 3 — show the human what would be added and ask
    before overwriting, or leave it alone if they'd rather merge the PILOT ticket section
