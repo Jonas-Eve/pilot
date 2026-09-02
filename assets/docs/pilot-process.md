@@ -991,30 +991,20 @@ ticket number between them — never a running transcript of the prior phase's `
      before applying it, since a `--merge` or a `changes-requested` is worth a beat to
      confirm, but proceeds on that confirmation rather than reopening the reviewers'
      verdicts (§6 step 3's isolation still holds — no re-running a reviewer from here).
-6. Apply the outcome from step 4 (as possibly resolved by step 5) — exactly **one**
-   submitted GitHub PR review (`mcp__github__pull_request_review_write`, method `create`)
-   plus the matching label, never a plain issue comment for this:
-   - All approved → `event: APPROVE`; body states all agents approve and, per step 8,
-     whether this run also merges or a human still needs to; `status:approved`.
-   - Any blocking point tagged `change` → `event: REQUEST_CHANGES`; body lists every point,
-     both `change` and `decision`, marked which is which; `needs-human` added;
-     `status:changes-requested`.
-   - Blocking points all `decision`, unresolved (nobody answered live, or `--auto`) →
-     `event: COMMENT` (nothing code-level to request changes on, and not an approval
-     either); body lists every point grouped by reviewer; `needs-human` added;
-     `status:in-review` stays.
-   - Blocking points all `decision`, resolved live in step 5 → apply the resolved outcome
-     instead (typically `APPROVE`) with the resolution folded into the same review body —
-     one submitted review covering both the block and its live resolution, not the usual
-     two-comment async pattern, since both happened in the same pass.
+6. Apply the outcome from step 4 (as possibly resolved by step 5) as exactly **one**
+   submitted GitHub PR review, never a plain issue comment for this — the event matches the
+   outcome (an approval, a request for changes, or a plain comment when nothing code-level
+   is being asked for), body and label per the same three buckets as step 4, with a
+   resolved decision-only block (step 5) folded into that one review rather than posted as
+   a later, second comment.
 7. Never submit more than one PR review per run — the aggregation step (4-6) is what keeps
    this from turning into review-bot noise, the same principle as one consolidated comment
    would have been.
 8. **Merge, only with `--merge`:** if step 6's outcome is `status:approved` and `--merge`
-   was passed, merge the PR now (`mcp__github__merge_pull_request`, the repository's normal
-   merge method) — this is what lets `pilot-status-on-merge.yml` (step 9) fire exactly as
-   it would after a human merge. Without `--merge`, or on any outcome other than
-   `status:approved`, never merge — a human merges by hand, same as always.
+   was passed, merge the PR now, using the repository's normal merge method — this is what
+   lets `pilot-status-on-merge.yml` (step 9) fire exactly as it would after a human merge.
+   Without `--merge`, or on any outcome other than `status:approved`, never merge — a human
+   merges by hand, same as always.
 9. **After the PR is merged** (by a human, or by step 8), the
    `.github/workflows/pilot-status-on-merge.yml`
    GitHub Actions workflow (triggered on `pull_request: closed`, gated on
