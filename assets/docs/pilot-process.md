@@ -835,9 +835,9 @@ re-reads to confirm the overwrite held.
 Once claimed, pass the subagent the phase-5 blocking review — its submitted PR review,
 read from the PR's reviews rather than the issue's comment thread (§6) — with its
 `change`-tagged points to fix, plus any `decision`-tagged points and their resolution,
-instead of a fresh spec — the existing PR's
-branch is what gets more commits. The subagent pushes to that same
-branch/PR (never a second PR for the same ticket) and, once satisfied, moves the ticket to
+instead of a fresh spec — the existing PR's branch is what gets more commits. The subagent
+pushes to that same branch/PR (never a second PR for the same ticket) and, once satisfied,
+moves the ticket to
 `status:review-ready` (unassigned) exactly as it would after a first-time implementation —
 never `status:in-review` directly, phase 5 claims it fresh.
 
@@ -871,14 +871,18 @@ The six phase skills split into three groups by which modes they support:
 - **`/pilot-review`** — default to **pair** too, with `--auto` to opt out of it. Unlike the
   three above, its reviewers always run fully parallel and isolated from each other
   regardless of mode (§6) — there's no natural mid-review checkpoint while they're working.
-  Its one pair checkpoint sits right after aggregation (§6 "Pair (default) vs `--auto`"):
-  once the reviewers' verdicts are collected into the single outcome that would otherwise
-  be applied straight away, pair mode shows it to the human first — a last look before an
-  approval (and any `--merge`) or a `changes-requested` goes out, and, when the only
-  blocking points are `decision`-tagged, a chance to resolve them live instead of leaving
-  them for the usual async `needs-human` wait (§3 "A human is live in the same session").
-  `--auto` applies the outcome straight away, no pause. Also supports `--merge` (§6 "Merge,
-  only with `--merge`") — orthogonal to pair/`--auto`, combinable with either — to merge
+  Once their verdicts are collected into a single outcome, where pair mode's value kicks in
+  depends on which outcome it is (§6 "Checkpoint the outcome as a pending review", "Pair
+  (default) vs `--auto`"): a decision-only outcome always submits immediately, in both
+  modes — §3's `needs-human` rule requires the block to reach GitHub before any resolution,
+  even a live one — and pair's value applies only *after* that, as a live human resolving
+  it right there instead of leaving it for the usual async `needs-human` wait (§3 "A human
+  is live in the same session"), submitted as a second, corrected review. For the
+  all-approve and any-`change` outcomes, by contrast, pair mode pauses *before* submitting —
+  a last look before an approval (and any `--merge`) or a `changes-requested` goes out, no
+  live judgment call to make there. `--auto` skips every pause and submits every outcome
+  straight away. Also supports `--merge` (§6 "Merge, only with `--merge`") — orthogonal to
+  pair/`--auto`, combinable with either — to merge
   the PR itself once every reviewer approves instead of leaving it for a human; without it,
   phase 5 never merges. Still supports `--resume <issue>` to recover a claim orphaned by a
   crashed run (above).
