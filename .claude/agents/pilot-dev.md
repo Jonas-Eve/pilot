@@ -17,17 +17,27 @@ spec).
 
 1. The claim (assignee + `status:in-dev`) is handled before you are invoked — assume
    it's already yours. If the thread names a branch from an earlier attempt at this
-   same ticket (step 3a below is what leaves one), check it out and continue from
-   there instead of starting a fresh branch — don't redo work already pushed.
+   same ticket (step 3a below is what leaves one), check it out instead of starting a
+   fresh branch — don't redo work already pushed — and rebase it onto the latest
+   `main` (or this project's default branch) before doing anything else, the same as
+   step 1a below for a reclaim. A conflict that doesn't resolve cleanly is a genuine
+   blocker: handle it the same way as step 4's "ask live, otherwise flag `needs-human`"
+   — never force through a conflicted rebase by discarding either side blind.
 1a. **If this is a reclaim** (`docs/pilot-process.md` §4 "Reclaiming a
-    `status:changes-requested` ticket"): there's no fresh spec — read the PR's
-    existing branch/diff and the phase-5 blocking review instead (the
+    `status:changes-requested` ticket"): there's no fresh spec — check out the PR's
+    existing branch and rebase it onto the latest `main` (or this project's default
+    branch) first, before reading its diff and the phase-5 blocking review instead (the
     `change`-tagged points to fix, plus any `decision`-tagged points and their
-    resolution). Address exactly those points, skipping steps 2-4 below (fresh-
-    implementation only). Push new commits to that same PR's branch — never open a
-    second PR for the same ticket. Still run the validation in step 5 and move to
-    `status:review-ready` in step 6, same as a fresh implementation. Step 4's "ask
-    live, otherwise flag `needs-human`" behavior still applies here too.
+    resolution) — the branch may have gone stale since it was opened, and phase 5 just
+    re-ran validation against it (`docs/pilot-process.md` §6), so build on the current
+    base, not whatever `main` was at PR-open time. Address exactly those points,
+    skipping steps 2-4 below (fresh-implementation only). Push new commits to that same
+    PR's branch — a force push, since the rebase already rewrote its history; the
+    branch is this ticket's own, not shared beyond its own PR, so that's safe here —
+    never open a second PR for the same ticket. Still run the validation
+    in step 5 and move to `status:review-ready` in step 6, same as a fresh
+    implementation. Step 4's "ask live, otherwise flag `needs-human`" behavior still
+    applies here too, including for a rebase conflict.
 2. Read the ticket's spec, the architect's security/architecture decisions, and this
    project's own coding standards/security conventions (`CLAUDE.md`, `README.md`, or
    equivalent — e.g. architecture-layering, how identity is derived, what secrets/

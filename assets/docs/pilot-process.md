@@ -58,7 +58,7 @@ to pair and need that flag to run unattended (§4 "Interaction modes").
 | 2 | Investigate | `/pilot-scope` | `pilot-architect` — plus `pilot-pm` when a `type:feature` story is split | The story scoped as-is or split into dev-sized tasks — mandatory for `type:feature`, a size judgment call for `type:tech`; `type:bug` never reaches this phase at all (§2 "Three levels") |
 | 3 | Lay out | `/pilot-spec` | `pilot-techlead` | A technical spec written into the ticket (the test plan itself, for an e2e task) |
 | 4 | Operate | `/pilot-dev` | `pilot-dev`, or `pilot-e2e` instead for a `type:e2e` task | An implementation + pull request (following `.github/pull_request_template.md`) |
-| 5 | Test & validate | `/pilot-review` | `pilot-pm` + `pilot-architect` + `pilot-techlead` (feature/e2e) or `pilot-architect` + `pilot-techlead` (tech/bug) | One submitted GitHub PR review (Approve/Request changes/Comment): `status:approved`, or blocking points (`needs-human`, plus `status:changes-requested` if code-level) — merges only with `--merge`, otherwise a human merges by hand |
+| 5 | Test & validate | `/pilot-review` | `pilot-pm` + `pilot-architect` + `pilot-techlead` (feature/e2e) or `pilot-architect` + `pilot-techlead` (tech/bug) | A submitted GitHub PR review (Approve/Request changes/Comment): `status:approved`, or blocking points (`needs-human`, plus `status:changes-requested` if code-level) — merges only with `--merge`, otherwise a human merges by hand |
 | 6 | Human QA (`type:feature` only) | `/pilot-qa` | `pilot-qa` | A human-confirmed `status:done` once every task has merged, or a `needs-human` flag with what failed (§7) |
 
 Each phase skill is invoked on its own (`/pilot-scope 123`, etc.), as its own isolated
@@ -581,7 +581,8 @@ happens *next*:
   **second** comment summarizing what was actually decided — *then* **removes
   `needs-human` itself**. It never removes it silently: the ticket's GitHub history must
   show both the block and its resolution even when the conversation that resolved it never
-  touched GitHub at all — a blocking comment followed by a resolution comment, whether the
+  touched GitHub at all — a blocking comment followed by a resolution comment (or, for
+  phase 5, a blocking review followed by a second, corrected review, §6), whether the
   gap between them was seconds (live) or days (async).
 
 #### Cascading completion
@@ -985,18 +986,32 @@ tags decide the outcome:
   `status:in-review` stays (§3) — this ticket re-enters phase 5's own pool once cleared,
   unless resolved live first (below).
 
-**Pair (default) vs `--auto`** (§4 "Interaction modes") — the one live checkpoint in the
-run, and it sits after the outcome above, never mid-review (the reviewers already ran fully
-isolated by the time it's reached). `--auto` applies the outcome immediately. Pair shows it
-to the human first: a decision-only outcome is the one case with something for them to
-actually decide, resolved live the same way any other phase resolves a live `needs-human`
-block (§3 "A human is live in the same session") when they answer on the spot; the other
-two outcomes have nothing left to decide, but still get a beat to confirm before an
-approval (and any `--merge`, below) or a `changes-requested` goes out.
+**Pair (default) vs `--auto`** (§4 "Interaction modes") — never mid-review (the reviewers
+already ran fully isolated by the time this is reached), and never for the decision-only
+outcome either: §3's `needs-human` rule requires the block itself to reach GitHub before
+any resolution, even a live one ("one path, not two... it never removes it silently") — so
+that outcome is submitted immediately regardless of mode, exactly as `--auto` would. Only
+once it's submitted does pair mode's live value apply: if a human is live and answers right
+there, resolve it the same way any other phase resolves a live `needs-human` block (§3 "A
+human is live in the same session") — apply their answer, determine the now-corrected
+outcome (approved, still blocked with `change` points, or the `decision` block genuinely
+stands as originally raised), and submit **one more** review reflecting it (below) — this
+keeps GitHub's own review status honest, not just the ticket's label. No answer on the
+spot → the ticket waits async like any other unresolved `needs-human`, one review standing
+until a later run resolves it. The all-approve and any-`change` outcomes are where the pair
+checkpoint actually applies instead — nothing for a human to decide there (an approval or a
+code-level fix isn't a judgment call), but still worth a last look before an approval (and
+any `--merge`, below) or a `changes-requested` goes out; `--auto` skips this pause and
+submits immediately.
 
-The outcome (as possibly resolved live) is applied as exactly **one** submitted GitHub PR
-review — never a plain issue comment — its event matching the outcome; never more than one
-review submitted per run, the same principle one consolidated comment used to serve.
+Each outcome is applied as a submitted GitHub PR review — never a plain issue comment for
+this — its event matching the outcome (all-approve → an approval; any-`change` → a request
+for changes; decision-only → a plain comment, since there's nothing code-level to request
+and it isn't an approval either). Exactly **one** review per run, except the one case above
+where a live resolution submits a second, corrected review right after the first — never
+more than that, and never one review per reviewer; the aggregation step is what keeps this
+from turning into review-bot noise, the same principle one consolidated comment used to
+serve.
 
 **Merge, only with `--merge`:** an all-approved outcome merges the PR itself, using the
 repository's normal merge method, only when `/pilot-review` was run with `--merge`;
