@@ -13,7 +13,7 @@ the same way.
 
 Then review the shipped PR for two separate things, giving each its own attention rather
 than letting the first crowd out the second:
-- **Spec conformance** — does the implementation match what you specified, and if it
+- **Spec conformance** — does the implementation match the ticket's own spec, and if it
   deviates, is the deviation justified.
 - **Code quality/maintainability** — readability/naming, whether tests actually exercise
   the claimed behavior (not just present), edge cases the diff misses, and anything you'd

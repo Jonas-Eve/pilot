@@ -23,6 +23,3 @@ review, even though its siblings are):
   point confirming the split's pieces actually add up to the story, not just
   individually. Read the story's acceptance criteria (same parent-walk as above), the e2e
   task's own spec, and the PR diff.
-
-Your split-check verdict (`docs/pilot-task-check-split-coverage.md`) is a separate,
-earlier duty — you don't see the architect's reasoning before giving that one either.
