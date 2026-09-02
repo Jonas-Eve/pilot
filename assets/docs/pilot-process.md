@@ -879,9 +879,10 @@ ticket number between them — never a running transcript of the prior phase's `
 Claim/pool mechanics are the ordinary claim protocol (§4) — nothing phase-5-specific there
 beyond its own pre-claim/in-progress pair, `status:review-ready`/`status:in-review` (§3).
 How phase 5 reaches a verdict — the reviewer set and the `change`/`decision` tags — is
-`docs/pilot-link-review-consensus.md`, not here: it's read only by
-`pilot-review/SKILL.md`, the three reviewer personas, and `pilot-dev`/`pilot-e2e` (for
-their reclaim), not every phase. Pair (default) vs `--auto` for phase 5 specializes the
+`docs/pilot-link-review-consensus.md`, not here: `pilot-review/SKILL.md` reads it in full
+for its own orchestration and injects only its tags section into each reviewer's task-doc
+prompt; `pilot-dev`/`pilot-e2e`'s task docs read that same section back on reclaim. Not
+every phase needs it. Pair (default) vs `--auto` for phase 5 specializes the
 generic contract (§4 "Interaction modes") — `pilot-review/SKILL.md` has the full
 mechanics, including how it checkpoints and recovers via `--resume`. Merge behavior
 (`--merge`) is §3 "`status:approved`"/"`status:done`" — nothing phase-5-specific beyond

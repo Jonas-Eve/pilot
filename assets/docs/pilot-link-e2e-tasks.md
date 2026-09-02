@@ -1,10 +1,12 @@
 # PILOT link — End-to-end test tasks
 
-Read by `.claude/skills/pilot-scope/SKILL.md` and `.claude/agents/pilot-architect.md`/
-`pilot-pm.md` (phase 2, produces the task) and `.claude/agents/pilot-dev.md`/`pilot-e2e.md`
-(phase 4, implements it) — no other skill/agent needs it. See `docs/pilot-process.md`
-§2/§3/§4/§7 for the generic ticket types, labels, claim protocol, and phase-6 trigger this
-builds on.
+Cited by `docs/pilot-task-scope-story.md`/`-check-split-coverage.md` (phase 2, propose and
+check the task) and `docs/pilot-task-implement.md`/`-implement-e2e.md` (phase 4, implement
+it) — each has the agent read it on demand; never by `.claude/agents/pilot-*.md`, which
+carry only identity now. Their owning skills (`pilot-scope`/`pilot-dev`) cite it too,
+narratively, for the same mechanic — no other skill/agent/task doc needs it. See
+`docs/pilot-process.md` §2/§3/§4/§7 for the generic ticket types, labels, claim protocol,
+and phase-6 trigger this builds on.
 
 **Mandatory for every `type:feature` story, never for `type:tech`/`type:bug`.** A story is
 one feature — one integrated flow a human can exercise — so every `type:feature` story

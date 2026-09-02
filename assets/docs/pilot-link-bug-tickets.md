@@ -1,11 +1,13 @@
 # PILOT link — Prerequisite bug tickets (phase 2, phase 4, phase 6)
 
-Read by `.claude/skills/pilot-scope/SKILL.md` and `.claude/agents/pilot-architect.md`
-(phase 2), `.claude/agents/pilot-dev.md`/`pilot-e2e.md` (phase 4), and
-`.claude/skills/pilot-qa/SKILL.md`/`.claude/agents/pilot-qa.md` (phase 6) — the three
-phases that can originate one of these; no other skill/agent needs it. See
-`docs/pilot-process.md` §2/§3/§4 for the generic ticket types, labels, and claim
-protocol this builds on.
+Cited by `docs/pilot-task-scope-story.md` (phase 2), `docs/pilot-task-implement.md`/
+`-implement-e2e.md` (phase 4), and `docs/pilot-task-human-qa.md` (phase 6) — each has the
+agent read it on demand when it runs into something that looks like a bug outside its own
+ticket's scope, the three duties that can originate one of these; never by
+`.claude/agents/pilot-*.md`, which carry only identity now. Their owning skills
+(`pilot-scope`/`pilot-dev`/`pilot-qa`) cite it too, narratively, for the same mechanic — no
+other skill/agent/task doc needs it. See `docs/pilot-process.md` §2/§3/§4 for the generic
+ticket types, labels, and claim protocol this builds on.
 
 Distinct from a prerequisite *tech* ticket (`docs/pilot-process.md` §2 "Prerequisite tech
 tickets" — a new technical need, no defect implied): while scoping (phase 2),

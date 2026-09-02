@@ -67,11 +67,12 @@ mode — without it, this skill never merges.
    block (step 6). Until then, this is a no-op and the tech lead's own re-run in step 5 is
    the only safety net.
 5. Call the `Agent` tool once per reviewer, **in parallel**, `subagent_type` set to that
-   persona — none sees another's verdict. Pass every reviewer the same
-   `docs/pilot-link-review-consensus.md` content already read in step 3 — the shared
-   verdict format and `change`/`decision` tagging rule, identical for all three, one
-   canonical statement instead of restated per persona — plus the matching task doc for
-   what's specific to that persona: `docs/pilot-task-review-product-fit.md` (PM),
+   persona — none sees another's verdict. Pass every reviewer only the
+   `docs/pilot-link-review-consensus.md` "`change`/`decision` tags" section (not "Reviewer
+   set" above it — that's this step's own orchestration concern, not a reviewer's) — the
+   shared verdict format and tagging rule, identical for all three, one canonical
+   statement instead of restated per persona — plus the matching task doc for what's
+   specific to that persona: `docs/pilot-task-review-product-fit.md` (PM),
    `docs/pilot-task-review-architecture.md` (architect),
    `docs/pilot-task-review-spec-conformance.md` (tech lead) — the persona file itself
    (`.claude/agents/pilot-*.md`) carries only identity now, these two together are what
