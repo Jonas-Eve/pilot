@@ -76,18 +76,17 @@ mechanics of running phase 2.
    - `type:feature`: always a set of proposed tasks — one or more dev tasks (each
      its own `type:feature` or `type:tech`, whichever fits — `docs/pilot-process.md`
      §2 "`type:` is never inherited"), plus exactly one flagged as the mandatory
-     end-to-end-test task, its own `type:e2e` (`docs/pilot-process.md` §2
-     "End-to-end test tasks"), dependent on every other task in the set. Never a
+     end-to-end-test task, its own `type:e2e` (`docs/pilot-link-e2e-tasks.md`),
+     dependent on every other task in the set. Never a
      single unsplit body.
    - Or, for either: a verdict that it shouldn't be built at all.
    Independently, it may also flag one or more **prerequisite** needs — `type:tech`
    (`docs/pilot-process.md` §2 "Prerequisite tech tickets") or `type:bug`
-   (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or phase
-   6)") — and whether each is a hard blocker.
+   (`docs/pilot-link-bug-tickets.md`) — and whether each is a hard blocker.
 4a. **If `type:feature`** (always split, step 4): call `Agent` again with
     `subagent_type: "pilot-pm"`, passing the story's acceptance criteria and
     **only the `type:feature` tasks** — excluding `type:tech`/`type:e2e`
-    (`docs/pilot-process.md` §2 "End-to-end test tasks" — neither covers a
+    (`docs/pilot-link-e2e-tasks.md` — neither covers a
     criterion: a tech task is an enabler, the e2e task verifies what its
     `type:feature` siblings already cover) — for a coverage check
     (`docs/pilot-process.md` §2 "Three levels" — the PM checks split coverage, not

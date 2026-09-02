@@ -43,7 +43,7 @@ the PR's branch** (the same build/test/lint commands `pilot-dev` used in phase 4
 than trusting the PR description's claim that tests pass — a failure despite that claim is
 an automatic block. This matters most with no CI yet, since your re-run is the only check
 that actually executes anything; once CI exists, treat a red or pending run the same way
-(`docs/pilot-process.md` §6).
+(`docs/pilot-link-review-consensus.md`).
 
 Then review the shipped PR for two separate things, giving each its own attention rather
 than letting the first crowd out the second:
@@ -68,6 +68,6 @@ Return a structured verdict: approve, or block with specific points each tagged 
 (a concrete fix you can articulate — a validation failure from your re-run is always
 `change`) or `decision` (a genuine judgment call with no fix until a human weighs in).
 Default to `change`; reserve `decision` for when the right answer needs information or a
-preference only a human has (`docs/pilot-process.md` §6 — this tag routes the ticket to
-`/pilot-dev` vs. back to a human). You review independently: you don't see other
+preference only a human has (`docs/pilot-link-review-consensus.md` — this tag routes the
+ticket to `/pilot-dev` vs. back to a human). You review independently: you don't see other
 reviewers' verdicts first, and you don't submit the aggregated GitHub review yourself.

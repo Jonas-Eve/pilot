@@ -19,6 +19,11 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
 `/pilot-init` copies it into your project as `docs/pilot-process.md`, and
 `/pilot-update` keeps it in sync.
 
+Each skill reads three layers, not just its own file: `pilot-process.md` for what every
+phase shares, a `pilot-link-<topic>.md` doc (below) for what it coordinates with a couple
+of other skills on, and its own `SKILL.md`/agent file for everything specific to that one
+phase.
+
 ## What this repo ships
 
 - **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, plus the six
@@ -33,10 +38,11 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
     mobile, TypeScript throughout), generate each app's docs, and scaffold its skeleton
     pinned to the latest compatible dependency versions.
   - `/pilot-update` — re-sync everything PILOT-owned (skills, agents,
-    `docs/pilot-process.md` and `docs/pilot-process-companion.md`, the GitHub Actions
-    workflow, the `PILOT:INTRO` blocks in `CLAUDE.md`/`README.md`, the GitHub labels)
-    from a fresh clone of this repo into your project. Overwrites, no merge — see the
-    warning in `.claude/skills/pilot-update/SKILL.md`.
+    `docs/pilot-process.md`, its `docs/pilot-process-*.md` companion(s) and
+    `docs/pilot-link-*.md` cross-skill link doc(s), the GitHub Actions workflow, the
+    `PILOT:INTRO` blocks in `CLAUDE.md`/`README.md`, the GitHub labels) from a fresh
+    clone of this repo into your project. Overwrites, no merge — see the warning in
+    `.claude/skills/pilot-update/SKILL.md`.
   - `/pilot-story`, `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
     `/pilot-qa` — the six phases themselves.
   - `/pilot-auto` — dispatcher: tries `/pilot-review --auto`, `/pilot-dev --auto`,
@@ -64,6 +70,11 @@ See [`assets/docs/pilot-process-companion.md`](./assets/docs/pilot-process-compa
 sequence diagram of a `type:feature` story moving through all six phases — a purely
 human-facing companion to `pilot-process.md`, kept in sync the same way.
 
+`assets/docs/pilot-link-<topic>.md` files are the third kind: operational like
+`pilot-process.md` itself but scoped to the specific two-or-more skills/agents that need
+to coordinate on something, rather than all six phases — synced the same way, as
+`docs/pilot-link-<topic>.md`. See `assets/docs/` for the current set.
+
 ## Installing in a project
 
 There's no install command to run — a brand-new project has no PILOT skill available
@@ -87,5 +98,6 @@ asks for confirmation before overwriting anything that differs.
 
 ## Developing this repo
 
-Trunk-based development on `main`, Conventional Commits, rebase-merge PRs — see
-`CLAUDE.md` for the full set of conventions used to develop PILOT itself.
+Trunk-based development on `main`, Conventional Commits, squash-merge PRs by default
+(rebase-merge only for deliberately separate commits) — see `CLAUDE.md` for the full set
+of conventions used to develop PILOT itself.

@@ -95,12 +95,17 @@ see `.claude/skills/pilot-update/SKILL.md`.
    their template placeholder text — `/pilot-init-archi` fills those in later.
 
 6. **Copy the process docs.** Copy `$PILOT_SRC/assets/docs/pilot-process.md` to
-   `docs/pilot-process.md`, and `$PILOT_SRC/assets/docs/pilot-process-companion.md` to
-   `docs/pilot-process-companion.md`, both at the project root, creating `docs/` if needed.
-   The first is the operational spec every phase skill reads; the second is a purely
-   human-facing companion (a sequence diagram) no skill or agent needs — copy both
-   regardless. Both are PILOT-owned from here on — never hand-edit either; `/pilot-update`
-   overwrites them from a fresh `$PILOT_SRC`.
+   `docs/pilot-process.md`; every `$PILOT_SRC/assets/docs/pilot-process-*.md` companion
+   (currently just `pilot-process-companion.md`) to the matching `docs/` path; and every
+   `$PILOT_SRC/assets/docs/pilot-link-*.md` to the matching `docs/` path — all at the
+   project root, creating `docs/` if needed. `pilot-process.md` is the generic operational
+   spec every phase skill reads; each `pilot-process-*.md` companion is purely human-facing
+   (a sequence diagram, currently) — no skill or agent needs it; each `pilot-link-*.md` is
+   the opposite of a companion — operational like `pilot-process.md` itself, but scoped to
+   the specific two-or-more skills/agents it names, read only by those, not by every phase.
+   Copy all three kinds regardless of how many exist right now — all are PILOT-owned from
+   here on, never hand-edit any of them; `/pilot-update` overwrites them from a fresh
+   `$PILOT_SRC`.
 
 7. **Copy the status-cascade workflow.** Copy
    `$PILOT_SRC/assets/github/workflows/pilot-status-on-merge.yml` to

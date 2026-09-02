@@ -24,12 +24,12 @@ nobody has yet confirmed it behaves as intended for a real user.
    them. Go case by case rather than dumping the whole plan for one verdict: have them run
    a case, report what happened, move to the next — this surfaces exactly which case
    failed, if any, instead of one pass/fail over the whole feature.
-3. Once every case is reported, classify any failure (`docs/pilot-process.md` §2
-   "Prerequisite bug tickets (phase 2, phase 4, or phase 6)"): a genuine code defect against
-   something already agreed on, or actually a new/different need that was never really a
-   bug (a product question, an edge case nobody settled, ambiguous intent). Default: if you
-   can say plainly what's wrong, it's a bug. Whenever you genuinely can't tell, that's a
-   `needs-human` situation like any other (`docs/pilot-process.md` §3): add the label and
+3. Once every case is reported, classify any failure (`docs/pilot-link-bug-tickets.md`): a
+   genuine code defect against something already agreed on, or actually a new/different
+   need that was never really a bug (a product question, an edge case nobody settled,
+   ambiguous intent). Default: if you can say plainly what's wrong, it's a bug. Whenever
+   you genuinely can't tell, that's a `needs-human` situation like any other
+   (`docs/pilot-process.md` §3): add the label and
    post the why/what's-needed comment immediately, every time, even with a human live —
    never skip straight to a resolution. *Then* get their answer, post a follow-up comment
    summarizing what was decided, and remove `needs-human` yourself in the same turn — same

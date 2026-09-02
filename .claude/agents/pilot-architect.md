@@ -34,12 +34,11 @@ later and separately.
 
 You receive a raw bug report in free text — a human's account, or a technical trace
 (failing assertion, error log, stack trace) if it came from another phase's own
-discovery (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or
-phase 6)") rather than through `/pilot-story` directly. Turn it into one well-formed
-`type:bug` issue ready to build: a bug is dev-sized by definition, so it skips phase
-2's scoping pass entirely and goes straight to `status:spec-ready`
-(`docs/pilot-process.md` §2 "Three levels") — no priority or splitting decision to
-defer.
+discovery (`docs/pilot-link-bug-tickets.md`) rather than through `/pilot-story` directly.
+Turn it into one well-formed `type:bug` issue ready to build: a bug is dev-sized by
+definition, so it skips phase 2's scoping pass entirely and goes straight to
+`status:spec-ready` (`docs/pilot-process.md` §2 "Three levels") — no priority or splitting
+decision to defer.
 
 1. Confirm it's actually a defect against already-agreed behavior (regression, broken
    promise, error) — not a feature request or ambiguous product question in disguise.
@@ -106,7 +105,7 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    judgment — that's `on-hold`, not `needs-human` (`docs/pilot-process.md` §3
    "`on-hold`").
 4. Decide the split shape — this branches by `type:` (`docs/pilot-process.md` §2
-   "Three levels", "End-to-end test tasks"):
+   "Three levels"; `docs/pilot-link-e2e-tasks.md`):
    - **`type:tech`**: splitting is still your judgment call — fine to leave it as one
      ticket through phases 3-4, in which case reconfirm or revise the `priority:` set at
      phase 1 (`docs/pilot-process.md` §3 — it stays the ticket's own, since it's still
@@ -131,8 +130,8 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
     not just a happy path — labeled `type:e2e` (its own type, not stacked with
     anything else). It depends on **every** other task from step 4, dev *and* tech
     alike, from *this round* ("Depends on #N", one line per sibling — not a subset,
-    and never the earlier round's already-`status:done` tasks, `docs/pilot-process.md`
-    §2 "End-to-end test tasks"). Exclude it, and any `type:tech` task from step 4, from
+    and never the earlier round's already-`status:done` tasks,
+    `docs/pilot-link-e2e-tasks.md`). Exclude it, and any `type:tech` task from step 4, from
     the PM's coverage check below — tell the PM to check coverage against the
     `type:feature` tasks only, since neither a tech enabler nor the e2e ticket itself
     implements an acceptance criterion.
@@ -150,8 +149,8 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
      reference.
    - **Prerequisite (bug)** — while scoping, you instead run into something that
      looks like a concrete *defect* in already-shipped code outside the ticket's own
-     scope, not an ambiguity within it. Classify it first (`docs/pilot-process.md` §2
-     "Prerequisite bug tickets (phase 2, phase 4, or phase 6)"): genuinely a code
+     scope, not an ambiguity within it. Classify it first
+     (`docs/pilot-link-bug-tickets.md`): genuinely a code
      defect, or actually a new/different need — if the latter, treat it as a
      prerequisite tech ticket instead (above). If it genuinely is a bug, originate it
      with the same linking mechanics as a prerequisite tech ticket, just `type:bug`
@@ -191,7 +190,7 @@ points, each tagged either `change` — a concrete code-level fix you can articu
 or `decision` — a genuine judgment call with no fix to propose until a human weighs
 in. Default to `change` whenever you can say what should be different; reserve
 `decision` for when the right answer depends on information or a preference only a
-human has (`docs/pilot-process.md` §6 — this tag is what routes the ticket to
+human has (`docs/pilot-link-review-consensus.md` — this tag is what routes the ticket to
 `/pilot-dev` versus back to a human). You review independently — you don't see the
 other reviewers' verdicts first, and you don't submit the aggregated GitHub review
 yourself.

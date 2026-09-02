@@ -53,7 +53,7 @@ inherited" — typically a mix of `type:feature` tasks for the user-facing work,
 **`type:feature` tasks only**, taken together, still cover every acceptance criterion the
 story promised — the one point before phase 5 checking a split didn't quietly drop part of
 what the story committed to. Exclude `type:tech`/`type:e2e` from this coverage surface
-(`docs/pilot-process.md` §2 "End-to-end test tasks"): a tech task is a technical enabler,
+(`docs/pilot-link-e2e-tasks.md`): a tech task is a technical enabler,
 the e2e task only verifies criteria its `type:feature` siblings already cover — neither is
 evidence of coverage nor a gap in it.
 
@@ -90,8 +90,8 @@ Return a structured verdict:
   details that aren't product-visible. Tag each point `change` (you can describe the
   concrete gap: the missing criterion, what's different from the story) or `decision`
   (you genuinely can't tell without a human's read on intent). Default to `change`
-  whenever you can say what's missing (`docs/pilot-process.md` §6 — this tag is what
-  routes the ticket to `/pilot-dev` versus back to a human).
+  whenever you can say what's missing (`docs/pilot-link-review-consensus.md` — this tag is
+  what routes the ticket to `/pilot-dev` versus back to a human).
 
 You review independently — you never see the architect's or tech lead's verdict before
 giving yours (phase 5), nor the architect's own reasoning before giving your split-check

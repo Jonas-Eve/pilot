@@ -69,11 +69,10 @@ this skill only covers the mechanics of running it.
      (never through phase 2, `docs/pilot-process.md` §2 "Three levels"), commented naming
      them, cleared the assignee, and moved the story back to `status:qa` itself, the same
      pattern `pilot-dev`/`pilot-e2e` use for a bug found mid-implementation
-     (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase 2, phase 4, or phase
-     6)"). Takes priority over a same-pass "not actually a bug" failure — don't set
-     `status:done` while a real bug is open. It's now an ordinary `status:qa` candidate
-     again, gated only by the dependency (step 1's last bullet) — no flag to clear, no
-     `--resume` needed; whichever future run claims it starts a fresh test plan.
+     (`docs/pilot-link-bug-tickets.md`). Takes priority over a same-pass "not actually a
+     bug" failure — don't set `status:done` while a real bug is open. It's now an ordinary
+     `status:qa` candidate again, gated only by the dependency (step 1's last bullet) — no
+     flag to clear, no `--resume` needed; whichever future run claims it starts a fresh test plan.
    - **A failure still unresolved**: the agent already applied `needs-human` with a
      comment listing what failed and why, the moment it couldn't classify it
      (`docs/pilot-process.md` §3 "`needs-human`" — label and comment go on immediately,

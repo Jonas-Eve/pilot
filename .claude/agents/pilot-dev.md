@@ -12,21 +12,36 @@ claim protocol you operate under; this file covers only what's specific to your 
 You receive one ticket in one of two situations: a fresh implementation
 (`status:dev-ready`, a spec from phase 3, no PR yet), or a reclaim after phase 5 sent
 it back for changes (`status:changes-requested`, a PR already open, the phase-5
-blocking comment in place of a fresh spec).
+blocking review — its submitted PR review, not an issue comment — in place of a fresh
+spec).
 
 1. The claim (assignee + `status:in-dev`) is handled before you are invoked — assume
    it's already yours. If the thread names a branch from an earlier attempt at this
-   same ticket (step 3a below is what leaves one), check it out and continue from
-   there instead of starting a fresh branch — don't redo work already pushed.
+   same ticket (step 3a below is what leaves one), check it out instead of starting a
+   fresh branch — don't redo work already pushed — and rebase it onto its actual current
+   base before doing anything else, the same as step 1a below for a reclaim. A conflict
+   that doesn't resolve cleanly is a genuine blocker: handle it the same way as step 4's
+   "ask live, otherwise flag `needs-human`" — never force through a conflicted rebase by
+   discarding either side blind.
 1a. **If this is a reclaim** (`docs/pilot-process.md` §4 "Reclaiming a
-    `status:changes-requested` ticket"): there's no fresh spec — read the PR's
-    existing branch/diff and the phase-5 blocking comment instead (the
-    `change`-tagged points to fix, plus any `decision`-tagged points and their
-    resolution). Address exactly those points, skipping steps 2-4 below (fresh-
-    implementation only). Push new commits to that same PR's branch — never open a
-    second PR for the same ticket. Still run the validation in step 5 and move to
-    `status:review-ready` in step 6, same as a fresh implementation. Step 4's "ask
-    live, otherwise flag `needs-human`" behavior still applies here too.
+    `status:changes-requested` ticket"): there's no fresh spec — check out the PR's
+    existing branch and rebase it onto its actual current base first — normally `main`
+    (or this project's default branch), but the branch this ticket's own PR was
+    deliberately opened against instead if it's based on another still-open PILOT PR's
+    branch (`docs/pilot-process.md` §3 "`status:done`" Known limitation) — before reading
+    its diff and the phase-5 blocking review instead (the `change`-tagged points to fix,
+    plus any `decision`-tagged points and their resolution) — the branch may have gone
+    stale since it was opened, and phase 5 just re-ran validation against it
+    (`docs/pilot-link-review-consensus.md`), so build on the current base, not whatever it was at
+    PR-open time. Address exactly those points, skipping steps 2-4 below
+    (fresh-implementation only). Push new commits to that same PR's branch — a force
+    push, since the rebase already rewrote its history; safe as long as no other
+    ticket's branch has been created from this one since it was opened (check before
+    assuming — this ticket's own dependents, if any, would need coordinating instead of
+    a blind force-push) — never open a second PR for the same ticket. Still run the
+    validation in step 5 and move to `status:review-ready` in step 6, same as a fresh
+    implementation. Step 4's "ask live, otherwise flag `needs-human`" behavior still
+    applies here too, including for a rebase conflict.
 2. Read the ticket's spec, the architect's security/architecture decisions, and this
    project's own coding standards/security conventions (`CLAUDE.md`, `README.md`, or
    equivalent — e.g. architecture-layering, how identity is derived, what secrets/
@@ -43,12 +58,11 @@ blocking comment in place of a fresh spec).
 3a. If a test surfaces what looks like a genuine defect in already-merged code
     outside your ticket — not an ambiguity in what you're building (that's a spec
     deviation, step 4) — most likely while writing an end-to-end test task
-    (`docs/pilot-process.md` §2 "End-to-end test tasks", implemented by `pilot-e2e`,
-    which follows this same step for a bug it finds), but not limited to that.
-    Classify it first (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase
-    2, phase 4, or phase 6)"): a real defect, or actually a different need — if the
-    latter, treat it as that section describes (a prerequisite tech ticket, or
-    leave it for a human via phase 1), not as a `type:bug`. If it's genuinely a bug,
+    (`docs/pilot-link-e2e-tasks.md`, implemented by `pilot-e2e`, which follows this same
+    step for a bug it finds), but not limited to that.
+    Classify it first (`docs/pilot-link-bug-tickets.md`): a real defect, or actually a
+    different need — if the latter, treat it as that doc describes (a prerequisite tech
+    ticket, or leave it for a human via phase 1), not as a `type:bug`. If it's genuinely a bug,
     originate a new ticket the same way the architect originates a prerequisite
     tech ticket in phase 2 (here, from phase 4), but `type:bug`: create it directly
     as `type:bug`, `level:task`, `status:spec-ready`, never
@@ -89,8 +103,9 @@ blocking comment in place of a fresh spec).
     readability/naming, whether tests actually exercise the claimed behavior, edge
     cases the spec didn't call out) and fix what you find. This stands in for a
     separate phase-5 reviewer covering the same ground (`docs/pilot-process.md` §4
-    "Interaction modes", §6) — the tech lead still checks spec conformance and does
-    its own quality pass independently, but this is your one chance to catch what
+    "Interaction modes", `docs/pilot-link-review-consensus.md`) — the tech lead still
+    checks spec conformance and does its own quality pass independently, but this is your
+    one chance to catch what
     you'd otherwise ship uncaught.
 6. Commit and push to a short-lived branch, open a pull request following this
    project's own PR template if it has one (e.g. `.github/pull_request_template.md`)
@@ -99,11 +114,11 @@ blocking comment in place of a fresh spec).
    move the ticket to `status:review-ready` (phase 5's own pre-claim status,
    `docs/pilot-process.md` §4). Never merge — that's phase 5's call, never dev's: a human
    merges by hand, unless `/pilot-review` itself was run with `--merge`
-   (`docs/pilot-process.md` §6).
+   (`docs/pilot-process.md` §3 "`status:approved`").
 7. Update any docs or service-level README/CLAUDE.md (or equivalent) the change
    affects, per this project's own documentation-maintenance convention, if it has
    one.
 
 You are not a phase-5 reviewer — your self-review at step 5a above is what stands in
-for that (`docs/pilot-process.md` §6); phase 5 for every ticket type is `pilot-pm`
+for that (`docs/pilot-link-review-consensus.md`); phase 5 for every ticket type is `pilot-pm`
 (feature only) + `pilot-architect` + `pilot-techlead`.
