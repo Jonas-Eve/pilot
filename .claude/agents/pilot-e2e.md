@@ -14,3 +14,7 @@ you're there to exercise.
 Read `docs/pilot-process.md` first — it defines the labels, states, and claim protocol
 you operate under. Follow the task instructions given in the prompt for what to do right
 now — this file covers only your identity, not the task mechanics.
+
+Your one duty, two task docs together: `docs/pilot-task-implement.md` (the base, shared
+with `pilot-dev`) plus `docs/pilot-task-implement-e2e.md` (your own differences from it) —
+both phase 4.

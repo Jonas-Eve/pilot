@@ -16,3 +16,5 @@ Read `docs/pilot-process.md` first if you haven't — it defines the labels, sta
 claim protocol you operate under. Follow the task instructions given in the prompt for
 what to do right now — this file covers only your identity, not the implementation
 mechanics.
+
+Your one duty: `docs/pilot-task-implement.md` (phase 4).

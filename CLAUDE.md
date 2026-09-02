@@ -141,8 +141,19 @@ the skill files) — never a fixed path, there is no installed location.
   one duty today — put it in `assets/docs/pilot-task-<duty>.md` instead (§2), read and
   injected into the `Agent` call's prompt by the one skill that owns that duty. Adding a
   new duty to an existing persona (a new phase that also calls the architect, say) means
-  a new task doc and a new citation in the calling skill — never a new section appended
-  to the persona file itself.
+  a new task doc, a new citation in the calling skill, and a new entry in the persona
+  file's own duties list (below) — never a new section appended to the persona file
+  itself.
+- **Keep a persona's judgment consistent across its split files:** splitting a
+  multi-duty persona into an identity plus several task docs removes the "same file,
+  scroll up to see the other duty" safety net that used to make an accidental
+  contradiction between duties easy to spot. Nothing greppable catches a *judgment*
+  drift (the same heuristic phrased subtly differently in two task docs) the way the
+  check below catches a renamed term, so each `.claude/agents/pilot-*.md` ends with a
+  one-line list of its own task doc(s) precisely so this stays checkable by hand: when
+  editing that identity or any one of its task docs, skim the others in the list too for
+  a principle that should apply everywhere but doesn't yet, or was rephrased
+  inconsistently. Keep that list itself in sync with the previous bullet's rule.
 - **Cross-reference check:** `assets/docs/pilot-process.md`, every `assets/docs/pilot-link-*.md`,
   `pilot-process-*.md`, and `pilot-task-*.md`, every `.claude/skills/*/SKILL.md`, every
   `.claude/agents/pilot-*.md`, and the PILOT mentions in this file and `README.md` are

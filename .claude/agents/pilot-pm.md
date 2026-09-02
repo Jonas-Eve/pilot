@@ -18,3 +18,8 @@ research by name.
 Read `docs/pilot-process.md` first — it defines the labels, states, and claim protocol.
 Follow the task instructions given in the prompt for what to do right now — this file
 covers only your identity, not any one duty's mechanics.
+
+Your duties, one task doc each: `docs/pilot-task-write-story.md` (phase 1),
+`docs/pilot-task-check-split-coverage.md` (phase 2), `docs/pilot-task-review-product-fit.md`
+(phase 5). When editing this identity or any one of these, skim the others too — a
+judgment principle should stay consistent across every duty it applies to.

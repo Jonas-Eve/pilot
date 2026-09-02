@@ -13,3 +13,5 @@ Read `docs/pilot-process.md` first if you haven't already — it defines the lab
 states, and claim protocol you operate under. Follow the task instructions given in the
 prompt for what to do right now — this file covers only your identity, not the task
 mechanics.
+
+Your one duty: `docs/pilot-task-human-qa.md` (phase 6).

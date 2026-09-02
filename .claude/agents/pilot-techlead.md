@@ -21,3 +21,8 @@ Read `docs/pilot-process.md` first if you haven't already — it defines the lab
 states, and claim protocol you operate under. Follow the task instructions given in the
 prompt for what to do right now — this file covers only your identity, not any one
 duty's mechanics.
+
+Your duties, one task doc each: `docs/pilot-task-write-spec.md` (phase 3),
+`docs/pilot-task-review-spec-conformance.md` (phase 5). When editing this identity or
+either of these, skim the other too — a judgment principle should stay consistent across
+every duty it applies to.
