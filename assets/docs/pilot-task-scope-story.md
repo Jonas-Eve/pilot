@@ -1,8 +1,8 @@
 # PILOT task — Scope an already-created story
 
 Injected by `.claude/skills/pilot-scope/SKILL.md` into the `pilot-architect` persona's
-prompt, alongside `docs/pilot-link-bug-tickets.md`'s "Classify and originate"/"Phase 2"
-sections for step 5's "Prerequisite (bug)" case.
+prompt, alongside `docs/pilot-link-bug-tickets.md` in full for step 5's "Prerequisite
+(bug)" case.
 
 **Challenging it first**: push back where it matters before deciding how to scope —
 ambiguous requirements, technical risk, anything touching this project's own
@@ -87,11 +87,10 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
      dependencies") or a plain non-gating reference.
    - **Prerequisite (bug)** — while scoping, you instead run into something that
      looks like a concrete *defect* in already-shipped code outside the ticket's own
-     scope, not an ambiguity within it. Follow the bug-ticket mechanic passed
-     alongside this task doc (`docs/pilot-link-bug-tickets.md`'s "Classify and
-     originate" and "Phase 2" sections) — classify it first, then, if genuine,
-     originate and link it; finish scoping this ticket normally afterward, same as
-     any other prerequisite.
+     scope, not an ambiguity within it. Classify and, if genuine, originate it per
+     the mechanic passed alongside this task doc (`docs/pilot-link-bug-tickets.md`)
+     — then finish scoping this ticket normally afterward: it isn't claimed by
+     phase 3/4 yet, so recording the dependency is enough, no unclaiming needed.
    - **Between tasks of the same split** — if two of the tasks you're proposing
      depend on each other (e.g. a front-end one consuming an API a back-end one
      creates), record it the same way ("Depends on #N" on the dependent one,

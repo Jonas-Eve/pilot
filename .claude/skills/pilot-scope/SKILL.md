@@ -62,11 +62,10 @@ mechanics of running phase 2.
 2. **Claim** the ticket per `docs/pilot-process.md` §4: set assignee + `status:scoping`,
    re-read to confirm the claim held.
 3. Call `Agent` with `subagent_type: "pilot-architect"`. Read `docs/pilot-task-scope-story.md`
-   and pass its content as part of the prompt, plus `docs/pilot-link-bug-tickets.md`'s
-   "Classify and originate" and "Phase 2" sections only (never its "Phase 4"/"Phase 6"
-   ones) — the mechanic for originating a prerequisite bug ticket mid-scoping, the task doc
-   no longer restates it — plus only what phase 2 needs beyond that: the ticket's current
-   body (including, if resuming, the comment thread's
+   and pass its content as part of the prompt, plus `docs/pilot-link-bug-tickets.md` in
+   full (the classify/originate mechanic for step 5's "Prerequisite (bug)" case — the task
+   doc covers the phase-2-specific delta itself) — plus only what phase 2 needs beyond
+   that: the ticket's current body (including, if resuming, the comment thread's
    resolution per §4), its parent Epic/linked tickets if any, pointers
    to this project's own coding standards/security conventions and architecture docs
    (identity/tenancy/security boundaries, target system design, if documented) —

@@ -1,8 +1,7 @@
 # PILOT task — Human QA
 
 Injected by `.claude/skills/pilot-qa/SKILL.md` into the `pilot-qa` persona's prompt,
-alongside `docs/pilot-link-bug-tickets.md`'s "Classify and originate"/"Phase 6" sections
-for step 3's "real-bug failures" case.
+alongside `docs/pilot-link-bug-tickets.md` in full for step 3's "real-bug failures" case.
 
 You receive one `type:feature` story, already claimed (`status:in-qa`): its acceptance
 criteria and the spec + PR of each merged dev/e2e task. Everything is built and integrated;
@@ -35,11 +34,13 @@ nobody has yet confirmed it behaves as intended for a real user.
      issue from here; you don't touch GitHub yourself and never create that new ticket.
    - **One or more real-bug failures** → for each one (or each shared root cause, if
      several failures trace to one), originate a `type:bug` ticket yourself — don't guess
-     at a fix, downplay it, or hand off to the skill. Follow the bug-ticket mechanic passed
-     alongside this task doc (`docs/pilot-link-bug-tickets.md`'s "Classify and originate"
-     and "Phase 6" sections) — originate, link, and unclaim the story yourself instead of
-     leaving it stuck `in-qa`. Takes priority over a same-pass "not actually a bug" failure
-     — report those too, but don't set `status:done` while a real bug is open.
+     at a fix, downplay it, or hand off to the skill. Originate it per the mechanic
+     passed alongside this task doc (`docs/pilot-link-bug-tickets.md`). Then, since the
+     story is already claimed and mid-phase, unclaim it yourself instead of leaving it
+     stuck `in-qa` — no branch/commit involved here, unlike phase 4: comment naming the
+     new ticket(s), clear the assignee, move it back to `status:qa`. Takes priority over a
+     same-pass "not actually a bug" failure — report those too, but don't set
+     `status:done` while a real bug is open.
    - **A failure still unresolved** (nobody answered on the spot — rare, since
      `/pilot-qa` is always pair) → leave `needs-human` and its comment exactly as posted,
      hand it back to the skill as-is; `status:in-qa` stays and a human resolves it later,

@@ -1,8 +1,7 @@
 # PILOT task — Implement a spec'd ticket
 
 Injected by `.claude/skills/pilot-dev/SKILL.md` into the `pilot-dev` persona's prompt,
-alongside `docs/pilot-link-bug-tickets.md`'s "Classify and originate"/"Phase 4" sections
-for step 3a.
+alongside `docs/pilot-link-bug-tickets.md` in full for step 3a.
 
 You receive one ticket in one of two situations: a fresh implementation
 (`status:dev-ready`, a spec from phase 3, no PR yet), or a reclaim after phase 5 sent
@@ -54,13 +53,16 @@ spec).
     outside your ticket — not an ambiguity in what you're building (that's a spec
     deviation, step 4) — most likely while writing an end-to-end test task
     (`docs/pilot-link-e2e-tasks.md`, implemented by `pilot-e2e`, which follows this same
-    step for a bug it finds), but not limited to that. Follow the bug-ticket mechanic
-    passed alongside this task doc (`docs/pilot-link-bug-tickets.md`'s "Classify and
-    originate" and "Phase 4" sections) — classify it first, then, if genuine, originate,
-    link, and unclaim yourself before stopping. The dependency gate does the
-    rest from there: whichever agent next claims this ticket picks up your branch per
-    step 1 above, automatically, the moment the new ticket reaches `status:done` — no
-    `on-hold`, no `--resume` to remember.
+    step for a bug it finds), but not limited to that. Classify and, if genuine,
+    originate it per the mechanic passed alongside this task doc
+    (`docs/pilot-link-bug-tickets.md`). Then, unlike a prerequisite found during scoping,
+    this ticket is already claimed and mid-phase, so unclaim yourself instead of leaving
+    it stuck: push whatever you already have to a branch (create one now if you haven't
+    pushed yet — never a broken/partial commit), comment on the ticket naming that
+    branch, clear the assignee, and move it back to `status:dev-ready`. The dependency
+    gate does the rest from there: whichever agent next claims this ticket picks up your
+    branch per step 1 above, automatically, the moment the new ticket reaches
+    `status:done` — no `on-hold`, no `--resume` to remember.
 4. Implement exactly what the spec calls for. A deviation that changes behavior or
    architecture needs a comment on the ticket explaining why, for phase 5 to see —
    but if you can justify and proceed with it yourself, that's not a block. Reserve
