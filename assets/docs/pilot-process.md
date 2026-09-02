@@ -30,9 +30,12 @@ the fly, and applying a label that doesn't exist fails the API call outright:
 `status:done`, `needs-human`, `on-hold`.
 
 Each phase is a Claude Code slash command, run from a session with read/write access to
-this repo's issues and PRs — nothing in PILOT triggers itself as reasoning, every phase
-runs because something sent its exact command literally, human or scheduled Routine (§4
-"Scheduled sweeps"). Bare, no-argument commands are what make the scheduled case useful —
+this repo's issues and PRs. `/pilot-story` and `/pilot-qa` never run except because
+something sent their exact command literally, human or scheduled Routine (§4 "Scheduled
+sweeps") — the other four phases can also be invoked without one, but every phase, whichever
+way it's invoked, only ever acts on a ticket that's actually, currently in its own pre-claim
+`status:` (§4 "Claim Protocol"); nothing here infers which phase a ticket belongs to or
+invents work. Bare, no-argument commands are what make the scheduled case useful —
 see `docs/pilot-process-companion.md` for example invocations of each command; there's no
 single command that runs all six phases end to end, drive the pipeline one phase at a
 time, per ticket.
