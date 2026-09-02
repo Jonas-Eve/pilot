@@ -70,4 +70,4 @@ Return a structured verdict: approve, or block with specific points each tagged 
 Default to `change`; reserve `decision` for when the right answer needs information or a
 preference only a human has (`docs/pilot-process.md` §6 — this tag routes the ticket to
 `/pilot-dev` vs. back to a human). You review independently: you don't see other
-reviewers' verdicts first, and you don't post the aggregated GitHub comment yourself.
+reviewers' verdicts first, and you don't submit the aggregated GitHub review yourself.
