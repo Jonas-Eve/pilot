@@ -40,6 +40,14 @@ forked PILOT, strip project-specific details the same way.
   skill or agent reads it. Anything added to help a human understand the process, rather
   than something a skill/agent needs to run it, goes here instead of bloating
   `pilot-process.md`.
+- `assets/docs/pilot-link-<topic>.md` — a cross-skill link doc: operational like
+  `pilot-process.md` itself (a skill/agent reads it to run), but scoped to the specific
+  two-or-more skills/agents it names rather than all of them — the opposite of a
+  companion, which is human-only and read by none. Copied verbatim into a consuming
+  project as `docs/pilot-link-<topic>.md` the same way as `pilot-process.md`. Holds
+  content that connects a subset of skills (e.g. how phase 5's reviewers and phase 4's
+  reclaim need to agree on something) — see §3 below for when content belongs here
+  instead of `pilot-process.md` or a single `SKILL.md`.
 - `assets/templates/*.tmpl` — doc skeletons `/pilot-init` renders with `{{PLACEHOLDER}}`
   substitution. `pilot-intro-claude.md.tmpl` / `pilot-intro-readme.md.tmpl` and
   `pilot-maintenance-claude.md.tmpl` are canonical marked-block contents (`PILOT:INTRO`,
@@ -77,15 +85,22 @@ the skill files) — never a fixed path, there is no installed location.
   content itself calls for. Renaming or retiring one of these human-only docs is a rename
   like any other — `/pilot-update` must actually delete the old file in an already-initialized
   project, not just add the new one (see its own `SKILL.md`).
-- **`pilot-process.md` stays shared-only; a skill's own procedure lives in its `SKILL.md`:**
-  before adding anything to `pilot-process.md`, check whether it's genuinely something more
-  than one skill/agent needs — the label taxonomy, claim protocol, and state-machine
-  transitions are; how one specific phase claims, what it does mid-run, and how it wraps up
-  are not, even when that phase is the one you're currently changing. `grep` for whether any
-  *other* file would actually cite it (the check below already asks you to grep after
-  editing — run it *before* deciding where new content goes, not just after) before adding it
-  here rather than to the one `SKILL.md` that owns it; tool names and API-call-level detail
-  belong in that `SKILL.md` doubly so, never in `pilot-process.md` at all.
+- **Three tiers, not two — generic, link, or single-skill:** before adding anything
+  anywhere, decide which of three tiers it actually belongs to. Generic — genuinely needed
+  by *every* phase skill/agent (the label taxonomy, claim protocol, state-machine
+  transitions, the pair/`--auto` contract) — goes in `pilot-process.md`, and only there.
+  Link — needed by *two or more but not all* skills/agents to coordinate with each other
+  (e.g. how phase 5's submitted review and phase 4's reclaim must read the same tags) —
+  goes in its own `assets/docs/pilot-link-<topic>.md` (§2), never bloating
+  `pilot-process.md` with something most phases never read. Single-skill — everything else,
+  including how one specific phase claims, what it does mid-run, and how it wraps up, even
+  when that phase is the one you're currently changing — stays in that skill's own
+  `SKILL.md`/agent file, never promoted up a tier just because it's the thing you're
+  focused on right now. `grep` for which other files would actually need to cite it (the
+  check below already asks you to grep after editing — run it *before* deciding where new
+  content goes, not just after): zero others → single-skill; some but not all → a link doc;
+  all six phases → `pilot-process.md`. Tool names and API-call-level detail belong in the
+  owning `SKILL.md` regardless of tier, never in `pilot-process.md` or a link doc.
 - **Cross-reference check:** `assets/docs/pilot-process.md`, every `.claude/skills/*/SKILL.md`,
   every `.claude/agents/pilot-*.md`, and the PILOT mentions in this file and `README.md` are
   tightly cross-referenced. After editing any of them, `grep` the exact term(s) you

@@ -1,6 +1,6 @@
 ---
 name: pilot-update
-description: "Re-syncs everything PILOT-owned in a project from a fresh clone of github.com/Jonas-Eve/pilot — every skill under .claude/skills/ and agent under .claude/agents/, docs/pilot-process.md and its human-facing companion doc(s) (docs/pilot-process-*.md), the status-cascade GitHub Actions workflow, the PILOT:INTRO/PILOT:MAINTENANCE marked blocks in CLAUDE.md/README.md, and the GitHub labels. Overwrites, with no merge: any local edits to a PILOT-owned file are lost, so it diffs and confirms before overwriting each one, and flags any locally-copied skill/agent or docs/pilot-process-*.md file no longer existing upstream (renamed or removed) for removal. Use periodically, or whenever you suspect PILOT's own skills/docs/labels have changed upstream, to pick up those changes in the project."
+description: "Re-syncs everything PILOT-owned in a project from a fresh clone of github.com/Jonas-Eve/pilot — every skill under .claude/skills/ and agent under .claude/agents/, docs/pilot-process.md, its human-facing companion doc(s) (docs/pilot-process-*.md), its cross-skill link doc(s) (docs/pilot-link-*.md), the status-cascade GitHub Actions workflow, the PILOT:INTRO/PILOT:MAINTENANCE marked blocks in CLAUDE.md/README.md, and the GitHub labels. Overwrites, with no merge: any local edits to a PILOT-owned file are lost, so it diffs and confirms before overwriting each one, and flags any locally-copied skill/agent, docs/pilot-process-*.md, or docs/pilot-link-*.md file no longer existing upstream (renamed or removed) for removal. Use periodically, or whenever you suspect PILOT's own skills/docs/labels have changed upstream, to pick up those changes in the project."
 disable-model-invocation: true
 ---
 
@@ -28,7 +28,9 @@ from a previous run — the whole point is picking up upstream changes.
   skill), leave it alone — touch only what's actually PILOT's.
 - **`docs/pilot-process.md`**, every **`docs/pilot-process-*.md`** human-facing companion
   (currently just `docs/pilot-process-companion.md` — no skill or agent reads any of
-  these), and **`.github/workflows/pilot-status-on-merge.yml`** are the same kind of
+  these), every **`docs/pilot-link-*.md`** cross-skill link doc (the opposite of a
+  companion — read by the specific skills/agents it names, not every phase, not a human
+  audience), and **`.github/workflows/pilot-status-on-merge.yml`** are the same kind of
   PILOT-owned file, made by `pilot-init` from `$PILOT_SRC`.
 - **The `<!-- PILOT:INTRO:START -->`/`END` and `<!-- PILOT:MAINTENANCE:START -->`/`END`
   blocks** in the project's `CLAUDE.md` and `README.md` are PILOT-owned content embedded
@@ -62,21 +64,21 @@ from a previous run — the whole point is picking up upstream changes.
    if the human knows what it was renamed to, let them say so.
 
 3. **Diff the PILOT-owned root files.** Compare the project's `docs/pilot-process.md`,
-   every `docs/pilot-process-*.md` the project has, and
-   `.github/workflows/pilot-status-on-merge.yml` against `$PILOT_SRC`'s copies (for
-   `docs/pilot-process-*.md`, that means every such file currently under
-   `$PILOT_SRC/assets/docs/` — there's exactly one today, but treat it as a set, not a
-   fixed name). For each one that differs, show a diff and ask for confirmation before
-   overwriting. A file identical to `$PILOT_SRC`'s needs no confirmation. If the project
-   has no matching `docs/pilot-process-*.md` yet, it's new upstream — copy it in and
+   every `docs/pilot-process-*.md` and `docs/pilot-link-*.md` the project has, and
+   `.github/workflows/pilot-status-on-merge.yml` against `$PILOT_SRC`'s copies (for the two
+   glob sets, that means every such file currently under `$PILOT_SRC/assets/docs/` — treat
+   each as its own set, not a fixed list of names, however many exist today). For each one
+   that differs, show a diff and ask for confirmation before overwriting. A file identical
+   to `$PILOT_SRC`'s needs no confirmation. If the project has no matching
+   `docs/pilot-process-*.md`/`docs/pilot-link-*.md` yet, it's new upstream — copy it in and
    mention it in the report as newly added. On confirmation, copy `$PILOT_SRC`'s version
    over the project's; on decline, leave it untouched and say so — a decline on one file
    must never block overwriting another, or block steps 2, 4, or 5.
    Then check the reverse direction, same as step 2: for every `docs/pilot-process-*.md`
-   the project has, if nothing matching that name exists under `$PILOT_SRC/assets/docs/`
-   any more (renamed or removed upstream), flag it to the human as orphaned and ask before
-   deleting — don't delete silently, and don't guess at a replacement name; if the human
-   knows what it was renamed to, let them say so.
+   and `docs/pilot-link-*.md` the project has, if nothing matching that name exists under
+   `$PILOT_SRC/assets/docs/` any more (renamed or removed upstream), flag it to the human
+   as orphaned and ask before deleting — don't delete silently, and don't guess at a
+   replacement name; if the human knows what it was renamed to, let them say so.
 
 4. **Diff the marked blocks.** For each `(file, marker, canonical snippet)` triple —
    `(CLAUDE.md, PILOT:INTRO, pilot-intro-claude.md.tmpl)`,
