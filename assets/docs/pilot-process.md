@@ -803,15 +803,12 @@ To resume:
 1. Read the full ticket — body and comment thread, not just the latest checkpoint. For
    `/pilot-scope`, `/pilot-spec`, and `/pilot-dev`'s pair sessions this reconstructs pair
    mode's incremental checkpoint writes ("Interaction modes" below). `/pilot-review`'s own
-   checkpoint is a pending GitHub PR review instead of a ticket comment (§6 "Checkpoint the
-   outcome as a pending review") — check for one under this run's own identity: if it
-   exists and is still pinned to the PR's current head commit, that's the recovered
-   outcome — skip re-running the reviewers and proceed straight to submitting or confirming
-   it per the current mode. If its commit no longer matches (new commits landed since it
-   was created), or none exists, discard any stale one and restart the reviewers fresh —
-   the tech lead's re-validation has to run against the actual current code either way. For
-   an `--auto` run of any other phase, there's nothing to reconstruct — a plain restart from
-   the ticket's original inputs.
+   checkpoint is a pending GitHub PR review instead of a ticket comment (§6, `SKILL.md` has
+   the mechanics) — still pinned to the PR's current head commit → that's the recovered
+   outcome, skip re-running the reviewers; stale or absent → discard any stale one and
+   restart the reviewers fresh, the tech lead's re-validation needs the actual current code
+   regardless. For an `--auto` run of any other phase, there's nothing to reconstruct — a
+   plain restart from the ticket's original inputs.
 2. Claim it the same way a `status:changes-requested` reclaim does (below) — an existing
    assignee doesn't count as a conflict here. Overwrite it (assignee → this session);
    `status:` stays at its current in-progress value.
@@ -872,8 +869,8 @@ The six phase skills split into three groups by which modes they support:
   three above, its reviewers always run fully parallel and isolated from each other
   regardless of mode (§6) — there's no natural mid-review checkpoint while they're working.
   Once their verdicts are collected into a single outcome, where pair mode's value kicks in
-  depends on which outcome it is (§6 "Checkpoint the outcome as a pending review", "Pair
-  (default) vs `--auto`"): a decision-only outcome always submits immediately, in both
+  depends on which outcome it is (§6 "Pair (default) vs `--auto`"): a decision-only
+  outcome always submits immediately, in both
   modes — §3's `needs-human` rule requires the block to reach GitHub before any resolution,
   even a live one — and pair's value applies only *after* that, as a live human resolving
   it right there instead of leaving it for the usual async `needs-human` wait (§3 "A human
@@ -988,45 +985,27 @@ net.
 or more points tagged either `change` — a concrete fix the reviewer can articulate — or
 `decision` — a genuine judgment call with no fix to propose until a human weighs in.
 Default to `change` whenever a fix can be named. Once every reviewer's verdict is in, the
-tags decide the outcome — approve, `change`-tagged, or `decision`-tagged only — which in
-turn decides the review event below and, for a block, whether it's `status:changes-requested`
-or `status:in-review` stays (§3); either way `needs-human` is added.
+tags decide the outcome, each submitted as its own GitHub PR review event — never a plain
+issue comment for this:
+- All approve → an approval; `status:approved` (§3).
+- Any point tagged `change` (a validation/CI failure above always counts) → a request for
+  changes; `needs-human` added, `status:changes-requested` (§3) — `/pilot-dev` reclaims
+  once cleared.
+- Every blocking point tagged `decision`, none `change` → a plain comment (nothing
+  code-level to request, and not an approval either); `needs-human` added,
+  `status:in-review` stays (§3) — this ticket re-enters phase 5's own pool once cleared,
+  unless resolved live first (below).
 
-**Checkpoint the outcome as a pending review** — the moment the outcome above is decided,
-before anything else: create a GitHub PR review with no event, pinned to the PR's current
-head commit — a draft, visible only to this run's own identity, with the body already
-written out in full. This is phase 5's version of the incremental checkpoint writes every
-other pair-capable phase makes (§4 "Interaction modes") — durable the instant it exists, so
-an orphaned run (§4 "Resuming an orphaned claim") can recover it instead of re-running the
-reviewers.
-
-**Pair (default) vs `--auto`** (§4 "Interaction modes") — never mid-review (the reviewers
-already ran fully isolated by the time this is reached), and never for the decision-only
-outcome either: §3's `needs-human` rule requires the block itself to reach GitHub before
-any resolution, even a live one ("one path, not two... it never removes it silently") — so
-that pending review is submitted immediately regardless of mode, exactly as `--auto` would.
-Only once it's submitted does pair mode's live value apply: if a human is live and answers
-right there, resolve it the same way any other phase resolves a live `needs-human` block
-(§3 "A human is live in the same session") — apply their answer, determine the
-now-corrected outcome (approved, still blocked with `change` points, or the `decision`
-block genuinely stands as originally raised), and submit **one more** review reflecting it
-(below) — this keeps GitHub's own review status honest, not just the ticket's label. No
-answer on the spot → the ticket waits async like any other unresolved `needs-human`, one
-review standing until a later run resolves it. The all-approve and any-`change` outcomes
-are where the pair checkpoint actually applies instead — nothing for a human to decide
-there (an approval or a code-level fix isn't a judgment call), but still worth a last look
-before the pending review is submitted: an approval (and any `--merge`, below) or a
-`changes-requested` goes out only once confirmed; `--auto` skips this pause and submits
-immediately.
-
-Submitting means turning that pending review into a real one — never a plain issue comment
-for this — its event matching the outcome (all-approve → an approval; any-`change` → a
-request for changes; decision-only → a plain comment, since there's nothing code-level to
-request and it isn't an approval either). Exactly **one** submitted review per run, except
-the one case above where a live resolution submits a second, corrected review right after
-the first — never more than that, and never one review per reviewer; the aggregation step
-is what keeps this from turning into review-bot noise, the same principle one consolidated
-comment used to serve.
+**Pair (default) vs `--auto`** decides *when* each outcome above is submitted — full
+mechanics in §4 "Interaction modes"; in short, a decision-only outcome always submits
+immediately in both modes (§3's `needs-human` rule requires the block to reach GitHub
+before any resolution, even a live one), while the all-approve/`change` outcomes get a
+pair-mode pause first. A live resolution of a submitted decision-only block goes out as a
+second, corrected review — never more than two submitted reviews in one run, never one per
+reviewer, the same principle one consolidated comment used to serve. `pilot-review`'s own
+`SKILL.md` covers the mechanics: checkpointing the outcome as a pending GitHub review the
+moment it's decided (recoverable by an orphaned `--resume`, §4 "Resuming an orphaned
+claim"), then submitting it.
 
 **Merge, only with `--merge`:** an all-approved outcome merges the PR itself, using the
 repository's normal merge method, only when `/pilot-review` was run with `--merge`;
