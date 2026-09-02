@@ -1,31 +1,10 @@
 # PILOT link — Phase 5 review consensus
 
-`pilot-review/SKILL.md` reads this in full for its own orchestration (step 3's reviewer
-set, step 5's tag contract) but injects only the "`change`/`decision` tags" section into
-each reviewer's task-doc prompt — a reviewer needs the shared verdict format, never the
-orchestration logic that picked it. `docs/pilot-task-implement.md`/`-implement-e2e.md`
-cite "Reviewer set" for which personas cover a reclaimed ticket, and read a
-`change`-tagged verdict back off "`change`/`decision` tags" on reclaim. Not read directly
-by any other skill, and never by `.claude/agents/pilot-*.md` — those carry only identity
-now. See `docs/pilot-process.md` §2/§3/§4 for the generic labels, states, and claim
-protocol this builds on.
-
-## Reviewer set
-
-Decided by **the ticket's own `type:`** (`docs/pilot-process.md` §2 "`type:` is never
-inherited" — a `level:task` under a `type:feature` story can itself be `type:tech`, and is
-reviewed as `type:tech`, never as if it inherited `type:feature` from its parent):
-- `type:feature`/`type:e2e` → `pilot-pm` + `pilot-architect` + `pilot-techlead`
-- `type:tech`/`type:bug` → `pilot-architect` + `pilot-techlead` only (no PM)
-
-All reviewers run **in parallel, fully independent of each other** — none sees another's
-verdict — in both pair and `--auto`; nothing later in the run reopens that isolation, not
-even the one pair checkpoint. This section is read by `pilot-review/SKILL.md` for its own
-step 3, and cited by `docs/pilot-task-implement.md`/`-implement-e2e.md` for which personas
-cover a reclaimed ticket — never injected into a reviewer's own prompt, which only needs
-its own task doc for that.
-
-## `change`/`decision` tags
+Injected whole by `pilot-review/SKILL.md` into each reviewer's prompt, and by
+`pilot-dev`/`pilot-e2e`'s task docs on reclaim. The reviewer set itself is
+`pilot-review/SKILL.md`'s own step 3, not here. Never by `.claude/agents/pilot-*.md`,
+which carry only identity now. See `docs/pilot-process.md` §2/§3/§4 for the generic
+labels, states, and claim protocol this builds on.
 
 Each reviewer returns a verdict: approve, or block with one or more points tagged either
 `change` — a concrete fix the reviewer can articulate — or `decision` — a genuine judgment

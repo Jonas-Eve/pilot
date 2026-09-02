@@ -34,7 +34,7 @@ wouldn't have cleared the dependency gate to reach you.
    the ticket to `status:review-ready`, and update any affected docs.
 
 You are not a phase-5 reviewer, same as `pilot-dev` — phase 5 for your ticket is whichever
-reviewer set `docs/pilot-link-review-consensus.md` assigns `type:e2e` (PM + architect +
+reviewer set `pilot-review/SKILL.md` assigns `type:e2e` (PM + architect +
 tech lead, same as `type:feature`; the PM reads your test to confirm the split validates
 the story's real flow). You also have no role in phase 6, the separate human QA gate
 (`docs/pilot-process.md` §7) — that's `pilot-qa`'s job, on the story ticket, once every

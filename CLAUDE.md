@@ -132,6 +132,25 @@ the skill files) — never a fixed path, there is no installed location.
   goes, not just after): zero others → single-skill; some but not all → a link doc; all
   six phases → `pilot-process.md`. Tool names and API-call-level detail belong in the
   owning `SKILL.md` regardless of tier, never in `pilot-process.md` or a link doc.
+- **A link doc's own content must be identical across every consumer, not just topically
+  adjacent:** the test is whether every consuming duty reads the *exact same text*, not
+  whether the topic is related. A per-duty delta that only one duty ever reads stays in
+  that duty's own task doc, even sitting right next to genuinely shared content on the
+  same subject — promoting it into the link doc "for tidy organization" smuggles
+  single-skill content back into the link tier the rule above already excludes it from.
+  (Caught mid-edit once: `pilot-link-bug-tickets.md`'s classify/originate mechanic is
+  genuinely identical across phase 2/4/6, but each phase's own unclaiming delta, drafted
+  right next to it, was actually read by only one of the three — moved back to that
+  phase's own task doc.)
+- **Inject a link doc whole, never by asking a skill to pick sections per caller:** when a
+  `SKILL.md` passes a link doc's content into an `Agent` call, pass the entire file rather
+  than an instruction like "only section X, not Y" — that kind of selective-extraction
+  instruction is fragile and has already caused a real bug: `pilot-link-review-consensus.md`'s
+  orchestration-only "Reviewer set" section got passed into every reviewer's context
+  anyway, because "pass the content already read" never actually said to leave part of it
+  out. Needing both always-shared content and something only one duty reads is the
+  previous bullet's case — move the single-duty part into that duty's task doc — not a
+  reason to keep both in the link doc behind a selective read.
 - **Persona files carry only identity; duty instructions are task docs:** this tiering
   decides where a *skill's own* content goes — a persona's content is a different split
   again. `.claude/agents/pilot-*.md` holds only the stable trait every one of that

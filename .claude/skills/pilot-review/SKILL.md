@@ -7,8 +7,9 @@ argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if om
 # PILOT — Phase 5: Test & Validate
 
 Read `docs/pilot-process.md` first — source of truth for labels, states, and the claim
-protocol (§4) — and `docs/pilot-link-review-consensus.md` for the reviewer set and
-`change`/`decision` tags; this skill covers only phase 5's mechanics.
+protocol (§4) — and `docs/pilot-link-review-consensus.md` for the shared `change`/`decision`
+tags contract; this skill covers only phase 5's mechanics, including how it picks the
+reviewer set (step 3).
 
 Mode: pair by default. Every outcome is checkpointed as a pending GitHub PR review the
 moment it's decided (step 7), the same durable-immediately discipline every other
@@ -57,22 +58,23 @@ mode — without it, this skill never merges.
    - `type:feature` or `type:e2e` → `pilot-pm`, `pilot-architect`, `pilot-techlead`
    - `type:tech` or `type:bug` → `pilot-architect`, `pilot-techlead` (no PM)
 
-   Together these cover every dimension phase 5 checks (`docs/pilot-link-review-consensus.md`):
-   PM — product fit / e2e-flow validation; architect — conformance to recorded
-   security/architecture decisions; tech lead — spec conformance and code quality. If a
-   future edit changes what any agent's file checks, re-verify this still adds up to full
-   coverage.
+   Together these cover every dimension phase 5 checks: PM — product fit / e2e-flow
+   validation; architect — conformance to recorded security/architecture decisions; tech
+   lead — spec conformance and code quality. If a future edit changes what any agent's
+   file checks, re-verify this still adds up to full coverage. All reviewers run **in
+   parallel, fully independent of each other** — none sees another's verdict — in both
+   pair and `--auto`; nothing later in the run reopens that isolation, not even the one
+   pair checkpoint.
 4. Once this project has a CI workflow covering the affected area, check it's green on the
    PR's head commit before proceeding — red/pending CI is an automatic `change`-tagged
    block (step 6). Until then, this is a no-op and the tech lead's own re-run in step 5 is
    the only safety net.
 5. Call the `Agent` tool once per reviewer, **in parallel**, `subagent_type` set to that
-   persona — none sees another's verdict. Pass every reviewer only the
-   `docs/pilot-link-review-consensus.md` "`change`/`decision` tags" section (not "Reviewer
-   set" above it — that's this step's own orchestration concern, not a reviewer's) — the
-   shared verdict format and tagging rule, identical for all three, one canonical
-   statement instead of restated per persona — plus the matching task doc for what's
-   specific to that persona: `docs/pilot-task-review-product-fit.md` (PM),
+   persona (per step 3's independence guarantee). Pass every reviewer
+   `docs/pilot-link-review-consensus.md` in full — the shared verdict format and tagging
+   rule, identical for all three, one canonical statement instead of restated per persona
+   — plus the matching task doc for what's specific to that persona:
+   `docs/pilot-task-review-product-fit.md` (PM),
    `docs/pilot-task-review-architecture.md` (architect),
    `docs/pilot-task-review-spec-conformance.md` (tech lead) — the persona file itself
    (`.claude/agents/pilot-*.md`) carries only identity now, these two together are what
