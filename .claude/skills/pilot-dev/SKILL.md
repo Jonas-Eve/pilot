@@ -50,12 +50,15 @@ parallel instances; the claim step below prevents collisions.
 2. **Claim** it per `docs/pilot-process.md` §4: set assignee + `status:in-dev`, then
    re-read the ticket. If the assignee changed (another instance won the race), stand
    down and return to step 1 for a different ticket.
-2a. **Pick the persona**: ticket's own `type:e2e` (`docs/pilot-process.md` §2 "End-to-end
-    test tasks" — never inherited, read off the ticket, not its story) →
+2a. **Pick the persona**: ticket's own `type:e2e` (`docs/pilot-link-e2e-tasks.md` — never
+    inherited, read off the ticket, not its story) →
     `subagent_type: "pilot-e2e"`; otherwise `"pilot-dev"`. The only thing `type:e2e`
     changes here — claim, pool selection, and everything below apply identically either
     way.
-3. Call the `Agent` tool with the `subagent_type` chosen in step 2a, passing the ticket's
+3. Call the `Agent` tool with the `subagent_type` chosen in step 2a. Read
+   `docs/pilot-task-implement.md` and pass its content as part of the prompt — for
+   `pilot-e2e`, also read and pass `docs/pilot-task-implement-e2e.md` alongside it, since
+   it only documents that persona's differences from the base task. Pass the ticket's
    spec and the architect's decisions — not the running conversation history or the state
    of any other ticket being worked in parallel. **Resume case** (per step 1, needs-human
    cleared): also pass the original blocking comment and whatever's in the thread after it
@@ -98,7 +101,7 @@ parallel instances; the claim step below prevents collisions.
      cleared the assignee, and moved the ticket back to `status:dev-ready` itself. It's
      now an ordinary `status:dev-ready` candidate again, gated only by the dependency
      (step 1's "Depends on #N" bullet) — no flag to clear, no `--resume` needed;
-     whichever future run claims it picks up that branch per the persona's own claim-time
-     check (`pilot-dev.md`/`pilot-e2e.md`).
+     whichever future run claims it picks up that branch per step 1's own claim-time
+     check (`docs/pilot-task-implement.md` step 1).
 6. Report the PR URL, or the blocking summary, back to the human. Never merge as part of
    this skill.

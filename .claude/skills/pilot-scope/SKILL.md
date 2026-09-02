@@ -61,8 +61,9 @@ mechanics of running phase 2.
      (`docs/pilot-process.md` §4 "Scheduled sweeps").
 2. **Claim** the ticket per `docs/pilot-process.md` §4: set assignee + `status:scoping`,
    re-read to confirm the claim held.
-3. Call `Agent` with `subagent_type: "pilot-architect"`, passing only what phase 2
-   needs: the ticket's current body (including, if resuming, the comment thread's
+3. Call `Agent` with `subagent_type: "pilot-architect"`. Read `docs/pilot-task-scope-story.md`
+   and pass its content as part of the prompt, plus only what phase 2 needs beyond it:
+   the ticket's current body (including, if resuming, the comment thread's
    resolution per §4), its parent Epic/linked tickets if any, pointers
    to this project's own coding standards/security conventions and architecture docs
    (identity/tenancy/security boundaries, target system design, if documented) —
@@ -84,13 +85,12 @@ mechanics of running phase 2.
    (`docs/pilot-process.md` §2 "Prerequisite tech tickets") or `type:bug`
    (`docs/pilot-link-bug-tickets.md`) — and whether each is a hard blocker.
 4a. **If `type:feature`** (always split, step 4): call `Agent` again with
-    `subagent_type: "pilot-pm"`, passing the story's acceptance criteria and
+    `subagent_type: "pilot-pm"`. Read `docs/pilot-task-check-split-coverage.md` and
+    pass its content as part of the prompt, plus the story's acceptance criteria and
     **only the `type:feature` tasks** — excluding `type:tech`/`type:e2e`
     (`docs/pilot-link-e2e-tasks.md` — neither covers a
     criterion: a tech task is an enabler, the e2e task verifies what its
-    `type:feature` siblings already cover) — for a coverage check
-    (`docs/pilot-process.md` §2 "Three levels" — the PM checks split coverage, not
-    the architect's technical decisions). If the PM blocks with a gap, feed it back
+    `type:feature` siblings already cover). If the PM blocks with a gap, feed it back
     to the architect and repeat until approved, before step 4b. Runs regardless of
     `--auto`/pair — a validation step, not a human checkpoint.
 4b. **Unless `--auto`** (`docs/pilot-process.md` §4 "Interaction modes" — pair is

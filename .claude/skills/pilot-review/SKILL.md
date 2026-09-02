@@ -67,18 +67,22 @@ mode — without it, this skill never merges.
    block (step 6). Until then, this is a no-op and the tech lead's own re-run in step 5 is
    the only safety net.
 5. Call the `Agent` tool once per reviewer, **in parallel**, `subagent_type` set to that
-   persona — none sees another's verdict. Pass only what each needs: the PR diff/
-   description plus, for the PM, the linked story's acceptance criteria (and its own spec,
-   for `type:e2e`); for the architect, its recorded decisions; for the tech lead, its own
-   spec (it re-runs validation on the PR branch itself, `docs/pilot-link-review-consensus.md`).
-   When resuming (step 1's needs-human-resume branch), also pass the original blocking
-   review's `decision`-tagged points — the submitted PR review from the run that raised
-   the block, fetched via `mcp__github__pull_request_read` method `get_reviews` (its body
-   holds the points, not a plain issue comment) — and whatever's in the PR's comment
-   thread after it: a specific reply, or "no reply — treat as approved as proposed" if none
-   (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket") — so reviewers don't
-   re-raise a point a human already answered. Each persona
-   (`.claude/agents/pilot-*.md`) already tags blocking points `change`/`decision`.
+   persona — none sees another's verdict. Read the matching task doc for each and pass
+   its content as part of that reviewer's prompt: `docs/pilot-task-review-product-fit.md`
+   (PM), `docs/pilot-task-review-architecture.md` (architect),
+   `docs/pilot-task-review-spec-conformance.md` (tech lead) — the persona file itself
+   (`.claude/agents/pilot-*.md`) carries only identity now, this is what tells each
+   reviewer what to check and how to tag a blocking point `change`/`decision`. Pass only
+   what each needs beyond that: the PR diff/description plus, for the PM, the linked
+   story's acceptance criteria (and its own spec, for `type:e2e`); for the architect, its
+   recorded decisions; for the tech lead, its own spec (it re-runs validation on the PR
+   branch itself). When resuming (step 1's needs-human-resume branch), also pass the
+   original blocking review's `decision`-tagged points — the submitted PR review from the
+   run that raised the block, fetched via `mcp__github__pull_request_read` method
+   `get_reviews` (its body holds the points, not a plain issue comment) — and whatever's
+   in the PR's comment thread after it: a specific reply, or "no reply — treat as approved
+   as proposed" if none (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket") —
+   so reviewers don't re-raise a point a human already answered.
 6. Collect the verdicts. Aggregate into exactly **one** outcome:
    - All blocking points tagged `decision` → every point, grouped by reviewer,
      `needs-human` added (`status:in-review` stays — this ticket re-enters the resumable

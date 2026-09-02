@@ -21,8 +21,11 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
 
 Each skill reads three layers, not just its own file: `pilot-process.md` for what every
 phase shares, a `pilot-link-<topic>.md` doc (below) for what it coordinates with a couple
-of other skills on, and its own `SKILL.md`/agent file for everything specific to that one
-phase.
+of other skills on, and its own `SKILL.md` for everything specific to that one phase. The
+actual judgment work happens in a separate `Agent` call to one of the six personas below,
+each carrying only a small, stable identity — the skill reads a `pilot-task-<duty>.md`
+doc (below) and passes it into that call, so a persona is told what to do fresh each
+time instead of carrying every one of its duties' instructions on every invocation.
 
 ## What this repo ships
 
@@ -38,10 +41,11 @@ phase.
     mobile, TypeScript throughout), generate each app's docs, and scaffold its skeleton
     pinned to the latest compatible dependency versions.
   - `/pilot-update` — re-sync everything PILOT-owned (skills, agents,
-    `docs/pilot-process.md`, its `docs/pilot-process-*.md` companion(s) and
-    `docs/pilot-link-*.md` cross-skill link doc(s), the GitHub Actions workflow, the
-    `PILOT:INTRO` blocks in `CLAUDE.md`/`README.md`, the GitHub labels) from a fresh
-    clone of this repo into your project. Overwrites, no merge — see the warning in
+    `docs/pilot-process.md`, its `docs/pilot-process-*.md` companion(s),
+    `docs/pilot-link-*.md` cross-skill link doc(s), `docs/pilot-task-*.md` per-duty task
+    doc(s), the GitHub Actions workflow, the `PILOT:INTRO` blocks in
+    `CLAUDE.md`/`README.md`, the GitHub labels) from a fresh clone of this repo into
+    your project. Overwrites, no merge — see the warning in
     `.claude/skills/pilot-update/SKILL.md`.
   - `/pilot-story`, `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
     `/pilot-qa` — the six phases themselves.
@@ -60,7 +64,9 @@ phase.
   `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 4's
   persona for an end-to-end-test task, `type:e2e`, instead of `pilot-dev`), and
   `pilot-qa` (phase 6's persona, a human-paired manual QA gate for every `type:feature`
-  story once its tasks are all done).
+  story once its tasks are all done). Each file is just that persona's identity — its
+  duty instructions (how it scopes, how it reviews, ...) live in `pilot-task-<duty>.md`
+  instead, below.
 - **Scripts** (`scripts/`): `setup-github-labels.sh`, idempotent creation/update of every
   label the state machine uses — also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) when run from that project's root.
@@ -74,6 +80,11 @@ human-facing companion to `pilot-process.md`, kept in sync the same way.
 `pilot-process.md` itself but scoped to the specific two-or-more skills/agents that need
 to coordinate on something, rather than all six phases — synced the same way, as
 `docs/pilot-link-<topic>.md`. See `assets/docs/` for the current set.
+
+`assets/docs/pilot-task-<duty>.md` files are the fourth: one persona's instructions for
+one specific duty, never read by the persona itself but injected into the `Agent` call's
+prompt by the one skill that owns that duty — synced the same way, as
+`docs/pilot-task-<duty>.md`.
 
 ## Installing in a project
 
