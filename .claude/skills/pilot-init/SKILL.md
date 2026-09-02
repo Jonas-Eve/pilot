@@ -8,14 +8,8 @@ disable-model-invocation: true
 # PILOT bootstrap — `pilot-init`
 
 This is not one of the six PILOT phases — it's the one-time setup that makes the rest
-of PILOT usable in a project.
-
-**Bootstrapping into a brand-new project**: if this skill isn't available yet (nothing
-under `.claude/skills/pilot-init/`), it can't be invoked as `/pilot-init` — there's no
-command to run yet. Instead, clone `https://github.com/Jonas-Eve/pilot` and copy its
-`.claude/skills/` and `.claude/agents/` straight into the project's own
-`.claude/skills/`/`.claude/agents/` (same paths on both sides, same as step 4 below does
-for itself), then run `/pilot-init` normally.
+of PILOT usable in a project. For bootstrapping into a brand-new project where this
+skill isn't available yet, see `README.md`'s "Installing in a project" section.
 
 ## Get a fresh copy of the source repo
 
