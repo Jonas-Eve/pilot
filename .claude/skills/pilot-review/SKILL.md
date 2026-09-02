@@ -2,7 +2,6 @@
 name: pilot-review
 description: "Phase 5 of PILOT (see docs/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, docs/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+architect+tech lead for type:feature/type:e2e, architect+tech lead only for type:tech/type:bug) in parallel, and posts one consolidated GitHub comment — a joint go-ahead (status:approved), blocking points that are pure judgment calls (needs-human added, status:in-review stays), or blocking points needing actual code changes (needs-human added, moved to status:changes-requested for /pilot-dev). Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. from a scheduled cron Routine), skipping any on-hold. A human always does the actual merge — PILOT never merges. Use once /pilot-dev has opened a PR ready for review."
 argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> | <issue number> --resume"
-disable-model-invocation: true
 ---
 
 # PILOT — Phase 5: Test & Validate
