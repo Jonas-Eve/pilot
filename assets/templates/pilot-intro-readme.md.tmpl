@@ -16,7 +16,7 @@ Six phases, each with its own Claude Code skill and agent persona:
 | 2. Investigate | `/pilot-scope` | Architect (+ PM when a feature story is split) | Scoped ticket (tech) or tasks with security/architecture decisions — mandatory for a feature story: dev task(s) plus one end-to-end-test task. A bug never comes through here |
 | 3. Lay out | `/pilot-spec` | Tech Lead | A technical implementation spec (or a test plan, for the e2e task) |
 | 4. Operate | `/pilot-dev` | Senior Dev, or the e2e persona for the end-to-end-test task | Code + an open pull request |
-| 5. Test & validate | `/pilot-review` | PM + Architect + Tech Lead (feature) or Architect + Tech Lead (tech/bug) | A consolidated go/no-go GitHub comment |
+| 5. Test & validate | `/pilot-review` | PM + Architect + Tech Lead (feature) or Architect + Tech Lead (tech/bug) | A submitted GitHub PR review (approve/request changes) — merges too, only with `--merge` |
 | 6. Human QA (feature stories only) | `/pilot-qa` | QA persona, paired with a human | A human-confirmed done, once every task has merged |
 
 Every ticket goes through phase 1 first, whether it's a functional feature, a purely
@@ -27,9 +27,9 @@ command that runs all six phases end to end — each phase is driven on its own,
 time — and each also runs bare, with no argument at all, which is what lets a scheduled
 cron Routine drive a phase on a timer instead of a human typing it each time.
 `/pilot-story` and `/pilot-qa` always run paired with a human (no Routine for either,
-though `--resume` picks a paused session back up); `/pilot-scope`, `/pilot-spec`, and
-`/pilot-dev` default to that same pair mode too, so their Routine's prompt adds `--auto`
-to run unattended; `/pilot-review` is already automatic and needs no flag.
+though `--resume` picks a paused session back up); `/pilot-scope`, `/pilot-spec`,
+`/pilot-dev`, and `/pilot-review` default to that same pair mode too, so their Routine's
+prompt adds `--auto` to run unattended.
 A GitHub label state machine (`status:draft` → `status:backlog` → ... → `review-ready` →
 `in-review` → `approved` → `done`, plus `priority:`, a `type:` axis for the nature of the work
 (`feature`/`tech`/`bug`/`e2e`) and a `level:` one for its depth
@@ -44,8 +44,9 @@ that state machine, each
 cleared by a human once resolved: `needs-human` is what a phase adds when it hits
 something only a person can decide right now; `on-hold` instead pauses a ticket for
 something bigger in flight elsewhere (a restructuring, a dependency on other work) with
-no immediate decision needed. Agents can propose a merge is ready, but a human always
-performs the actual merge.
+no immediate decision needed. Agents can propose a merge is ready (`status:approved`); a
+human performs the actual merge by default, unless `/pilot-review` was run with `--merge`,
+in which case phase 5 merges the PR itself once every reviewer approves.
 
 Each phase is a Claude Code slash command (`/pilot-story "..."`, `/pilot-scope 42`,
 `/pilot-dev 42`, ...) — see [docs/pilot-process.md](docs/pilot-process.md) §0 for the

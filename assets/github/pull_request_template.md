@@ -18,6 +18,6 @@ Closes #
 
 ## Review
 
-<!-- Left for phase 5 (`/pilot-review`) to fill in on PILOT tickets — one
-     consolidated comment, not this section. Human reviewers use their own
+<!-- Left for phase 5 (`/pilot-review`) to fill in on PILOT tickets — a
+     submitted GitHub review, not this section. Human reviewers use their own
      GitHub review as usual. -->

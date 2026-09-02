@@ -193,5 +193,5 @@ in. Default to `change` whenever you can say what should be different; reserve
 `decision` for when the right answer depends on information or a preference only a
 human has (`docs/pilot-process.md` §6 — this tag is what routes the ticket to
 `/pilot-dev` versus back to a human). You review independently — you don't see the
-other reviewers' verdicts first, and you don't post the aggregated GitHub comment
+other reviewers' verdicts first, and you don't submit the aggregated GitHub review
 yourself.

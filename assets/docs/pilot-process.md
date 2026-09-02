@@ -43,9 +43,9 @@ time, per ticket.
 Every phase skill also runs bare, with **no argument at all** — it then works its normal
 pool of fresh candidates (its own pre-claim `status:`) *and* its own `needs-human`/
 `on-hold` tickets whose flag has since been cleared (§4 "Picking the next ticket..." and
-"Scheduled sweeps"). This is what a cron Routine calls on a timer — literally bare for
-`/pilot-review`; with `--auto` added for `/pilot-scope`, `/pilot-spec`, and `/pilot-dev`,
-which default to pair and need that flag to run unattended (§4 "Interaction modes").
+"Scheduled sweeps"). This is what a cron Routine calls on a timer — with `--auto` added for
+`/pilot-scope`, `/pilot-spec`, `/pilot-dev`, and `/pilot-review`, all four of which default
+to pair and need that flag to run unattended (§4 "Interaction modes").
 `/pilot-story` and `/pilot-qa` are pair-only and are never Routine-driven at all.
 
 ---
@@ -58,7 +58,7 @@ which default to pair and need that flag to run unattended (§4 "Interaction mod
 | 2 | Investigate | `/pilot-scope` | `pilot-architect` — plus `pilot-pm` when a `type:feature` story is split | The story scoped as-is or split into dev-sized tasks — mandatory for `type:feature`, a size judgment call for `type:tech`; `type:bug` never reaches this phase at all (§2 "Three levels") |
 | 3 | Lay out | `/pilot-spec` | `pilot-techlead` | A technical spec written into the ticket (the test plan itself, for an e2e task) |
 | 4 | Operate | `/pilot-dev` | `pilot-dev`, or `pilot-e2e` instead for a `type:e2e` task | An implementation + pull request (following `.github/pull_request_template.md`) |
-| 5 | Test & validate | `/pilot-review` | `pilot-pm` + `pilot-architect` + `pilot-techlead` (feature/e2e) or `pilot-architect` + `pilot-techlead` (tech/bug) | A consolidated GitHub comment: `status:approved`, or blocking points (`needs-human`, plus `status:changes-requested` if code-level) — a human always does the actual merge |
+| 5 | Test & validate | `/pilot-review` | `pilot-pm` + `pilot-architect` + `pilot-techlead` (feature/e2e) or `pilot-architect` + `pilot-techlead` (tech/bug) | One submitted GitHub PR review (Approve/Request changes/Comment): `status:approved`, or blocking points (`needs-human`, plus `status:changes-requested` if code-level) — merges only with `--merge`, otherwise a human merges by hand |
 | 6 | Human QA (`type:feature` only) | `/pilot-qa` | `pilot-qa` | A human-confirmed `status:done` once every task has merged, or a `needs-human` flag with what failed (§7) |
 
 Each phase skill is invoked on its own (`/pilot-scope 123`, etc.), as its own isolated
@@ -479,11 +479,14 @@ when phase 5 blocks on something that needs an actual code change — see
   `status:review-ready` when done — never `status:in-review` directly, phase 5 claims it
   fresh.
 - `status:approved` — phase 5 ran and every reviewer approved (§6) — set instead of
-  leaving `status:in-review`. This is the "ready to merge, nothing outstanding" signal; a
-  human still performs the actual merge, PILOT never does. There's no automatic
-  re-review trigger if new commits land on the PR after this before it's actually
-  merged — re-run `/pilot-review` on it by hand, or move it back to `status:review-ready`
-  yourself, before merging.
+  leaving `status:in-review`. This is the "ready to merge, nothing outstanding" signal.
+  Without `--merge`, a human still performs the actual merge — PILOT's default is never to
+  merge on its own. Given `--merge` (§4 "Interaction modes", §6 step 8), the same run
+  merges the PR itself right after submitting the review, using the repository's normal
+  merge method; the ticket then reaches `status:done` via `pilot-status-on-merge.yml`
+  exactly as it would after a human merge. There's no automatic re-review trigger if new
+  commits land on the PR after this before it's actually merged — re-run `/pilot-review`
+  on it by hand, or move it back to `status:review-ready` yourself, before merging.
 - `status:wont-do` — the architect concluded during phase 2 that this ticket shouldn't be
   built after all (out of scope, duplicate, superseded) and closed the issue instead of
   scoping it. Only settable from phase 2, before any spec or code has been written —
@@ -765,22 +768,23 @@ working it — still carrying its original assignee, still in that phase's in-pr
 `status:in-review`, `status:in-qa`), with **no** `needs-human`. Two different causes leave
 the exact same shape, indistinguishable from the ticket alone: a **pair** session
 ("Interaction modes" below) that ended before reaching the phase's final approval
-(pair-capable phases only), or an `--auto` run — phase 5's only mode included — that died
-mid-work (a quota limit, a crash, a timeout) before it could either finish or flag
-`needs-human`. Left alone, the normal claim-protocol check ("already has an assignee →
-stop") would treat either the same as a ticket someone else is actively working right now,
-which isn't the case. For phase 1 specifically, `status:draft` is what makes this possible
-at all.
+(pair-capable phases only), or an `--auto` run that died mid-work (a quota limit, a crash,
+a timeout) before it could either finish or flag `needs-human`. Left alone, the normal
+claim-protocol check ("already has an assignee → stop") would treat either the same as a
+ticket someone else is actively working right now, which isn't the case. For phase 1
+specifically, `status:draft` is what makes this possible at all.
 
 `--resume` requires an **explicit ticket number** — it is never part of any bare/
 scheduled-sweep pool. Nothing on the ticket itself distinguishes an orphaned claim from one
 genuinely still in progress elsewhere.
 
 To resume:
-1. Read the full ticket — body and comment thread, not just the latest checkpoint. For a
-   pair-capable phase this reconstructs pair mode's incremental checkpoint writes
-   ("Interaction modes" below); for an `--auto` run (phase 5 always) there's nothing to
-   reconstruct — this is a plain restart from the ticket's original inputs.
+1. Read the full ticket — body and comment thread, not just the latest checkpoint. For
+   `/pilot-scope`, `/pilot-spec`, and `/pilot-dev`'s pair sessions this reconstructs pair
+   mode's incremental checkpoint writes ("Interaction modes" below); for an `--auto` run,
+   or for `/pilot-review` in either mode (its one checkpoint sits right before finalizing,
+   §6 step 5 — nothing earlier to reconstruct either way), there's nothing to reconstruct —
+   this is a plain restart from the ticket's original inputs.
 2. Claim it the same way a `status:changes-requested` reclaim does (below) — an existing
    assignee doesn't count as a conflict here. Overwrite it (assignee → this session);
    `status:` stays at its current in-progress value.
@@ -811,17 +815,17 @@ never `status:in-review` directly, phase 5 claims it fresh.
 ### Scheduled sweeps
 
 Each phase skill is meant to also run **bare, on a timer** — a Routine whose prompt is
-nothing but the literal command. For `/pilot-scope`, `/pilot-spec`, and `/pilot-dev` —
-which default to pair mode ("Interaction modes" below) — that literal command must
-include `--auto` (still no ticket number computed by the routine itself), since pair
-requires a human live in the session and a Routine has none. `/pilot-review` needs no
-flag either way, it's already auto-only. `/pilot-story` and `/pilot-qa` are pair-only with
-no `--auto` and are therefore never driven by a Routine at all. Beyond that flag, this
-works without any special-casing because "picking the next ticket when none is specified"
-(above) already covers both fresh and resumed work identically. Four independent
-Routines — one each for `/pilot-scope --auto`, `/pilot-spec --auto`, `/pilot-dev --auto`,
-and `/pilot-review` — each on its own schedule, so a slow or failing phase never delays
-the others.
+nothing but the literal command. For `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, and
+`/pilot-review` — all four default to pair mode ("Interaction modes" below) — that literal
+command must include `--auto` (still no ticket number computed by the routine itself),
+since pair requires a human live in the session and a Routine has none. `/pilot-story` and
+`/pilot-qa` are pair-only with no `--auto` and are therefore never driven by a Routine at
+all. Beyond that flag, this works without any special-casing because "picking the next
+ticket when none is specified" (above) already covers both fresh and resumed work
+identically. Four independent Routines — one each for `/pilot-scope --auto`, `/pilot-spec
+--auto`, `/pilot-dev --auto`, and `/pilot-review --auto` (add `--merge` too if the Routine
+should also merge once every reviewer approves, §6 step 8) — each on its own schedule, so
+a slow or failing phase never delays the others.
 
 ### Interaction modes: pair (default) and `--auto`
 
@@ -835,10 +839,19 @@ The six phase skills split into three groups by which modes they support:
   `--resume <issue>` for a ticket left mid-pair.
 - **`/pilot-scope`, `/pilot-spec`, `/pilot-dev`** — default to **pair**, with `--auto` to
   opt out of it.
-- **`/pilot-review`** — **auto only**, no pair mode exists for it: reviewers run parallel
-  and isolated on purpose (§6), with no natural mid-review checkpoint to pause at. Still
-  supports `--resume <issue>` to recover a claim orphaned by a crashed run (above) — its
-  only cause for this phase, since it never pairs.
+- **`/pilot-review`** — default to **pair** too, with `--auto` to opt out of it. Unlike the
+  three above, its reviewers always run fully parallel and isolated from each other
+  regardless of mode (§6) — there's no natural mid-review checkpoint while they're working.
+  Its one pair checkpoint sits right after aggregation (§6 step 5): once the reviewers'
+  verdicts are collected into the single outcome that would otherwise be applied straight
+  away, pair mode shows it to the human first — a last look before an approval (and any
+  `--merge`) or a `changes-requested` goes out, and, when the only blocking points are
+  `decision`-tagged, a chance to resolve them live instead of leaving them for the usual
+  async `needs-human` wait (§3 "A human is live in the same session"). `--auto` applies the
+  outcome straight away, no pause. Also supports `--merge` (§6 step 8) — orthogonal to
+  pair/`--auto`, combinable with either — to merge the PR itself once every reviewer
+  approves instead of leaving it for a human; without it, phase 5 never merges. Still
+  supports `--resume <issue>` to recover a claim orphaned by a crashed run (above).
 
 Both modes still claim (above) immediately, same as always — it's concurrency
 bookkeeping, unrelated to the content decision.
@@ -873,12 +886,13 @@ checking the same thing again in phase 5 (§6), not an addition to it.
 **`--auto`** is the old default, before pair mode existed: the agent decides everything
 and the skill applies the finished result straight to GitHub in one pass, no human
 checkpoint. This is what a scheduled Routine must use for `/pilot-scope`, `/pilot-spec`,
-or `/pilot-dev` (above, "Scheduled sweeps") — pair requires a live human. `/pilot-story`
-has no `--auto` and is therefore never Routine-driven; `/pilot-review` needs no flag
-either way, it's already auto-only.
+`/pilot-dev`, or `/pilot-review` (above, "Scheduled sweeps") — pair requires a live human.
+`/pilot-story` has no `--auto` and is therefore never Routine-driven.
 
 `--auto` and `--resume` are mutually exclusive with each other and with pair mode itself —
-pick exactly one per run.
+pick exactly one per run. `--merge` (phase 5 only, §6 step 8) is a separate, orthogonal
+flag: it controls only whether an all-approve outcome also merges the PR itself, and
+combines with either pair or `--auto`.
 
 This is unrelated to the "ask live" behavior in §3 ("`needs-human` — an orthogonal
 flag") — that one fires for a genuine blocker the agent can't resolve alone, whether or
@@ -941,28 +955,68 @@ ticket number between them — never a running transcript of the prior phase's `
    approval — red or pending CI is likewise an automatic, `change`-tagged block; skip
    straight to step 4. Until CI exists, this local re-run is the only safety net PILOT has.
 3. Run all reviewers **in parallel, independently** — none sees another's verdict before
-   giving its own. Each reviewer returns a structured verdict: approve, or block with one
-   or more specific, actionable points, each tagged either `change` — a concrete
-   code-level fix the reviewer can articulate — or `decision` — a genuine judgment call
-   with no fix to propose until a human weighs in. Reviewers default to `change` whenever
-   they can say what should be different; `decision` is reserved for when the right answer
-   depends on information or a preference only a human has.
-4. Aggregate into exactly **one** GitHub comment on the PR:
-   - Every blocking point across all reviewers is tagged `decision` → one consolidated
-     comment listing every point, grouped by reviewer, and add `needs-human`
-     (`status:in-review` stays as-is). This ticket re-enters phase 5's own bare pool (step
-     0 above) once the flag is cleared.
+   giving its own, regardless of pair or `--auto` (§4 "Interaction modes" — only the
+   aggregated outcome below gets a pair checkpoint, never the reviewers themselves). Each
+   reviewer returns a structured verdict: approve, or block with one or more specific,
+   actionable points, each tagged either `change` — a concrete code-level fix the reviewer
+   can articulate — or `decision` — a genuine judgment call with no fix to propose until a
+   human weighs in. Reviewers default to `change` whenever they can say what should be
+   different; `decision` is reserved for when the right answer depends on information or a
+   preference only a human has.
+4. Aggregate into exactly **one** outcome:
+   - Every blocking point across all reviewers is tagged `decision` → every point, grouped
+     by reviewer, `needs-human` added (`status:in-review` stays as-is). This ticket
+     re-enters phase 5's own bare pool (step 0 above) once the flag is cleared, unless step
+     5 resolves it live first.
    - Any blocking point is tagged `change` (a CI/validation failure from step 2 always
-     counts) → one consolidated comment listing every point — both `change` and
-     `decision` ones, marked which is which — add `needs-human`, and move the ticket to
-     `status:changes-requested` instead of leaving `status:in-review`. `/pilot-dev`, not
-     this skill, picks this back up once the flag is cleared.
-   - All reviewers approve → one comment stating all agents approve and that merge is
-     still a human action; move the ticket to `status:approved` instead of leaving
+     counts) → every point — both `change` and `decision` ones, marked which is which —
+     `needs-human` added, ticket moves to `status:changes-requested` instead of leaving
+     `status:in-review`. `/pilot-dev`, not this skill, picks this back up once the flag is
+     cleared.
+   - All reviewers approve → ticket moves to `status:approved` instead of leaving
      `status:in-review` — no `needs-human` to add, this isn't a block.
-5. Never post one comment per reviewer — the aggregation step is what keeps this from
-   turning into review-bot noise.
-6. **After a human merges the PR**, the `.github/workflows/pilot-status-on-merge.yml`
+5. **Pair (default) vs `--auto`** (§4 "Interaction modes"): `--auto` applies step 4's
+   outcome immediately — skip to step 6. Pair shows the human the outcome from step 4
+   first, one last look before it goes to GitHub:
+   - The decision-only bucket is the one case with something for a live human to actually
+     decide: engage them the same way any other phase resolves a live `needs-human` block
+     (§3 "A human is live in the same session") — post the block, and if they answer right
+     there, fold that answer into the outcome (typically resolving it to approved, or
+     leaving the block standing if their answer doesn't actually clear it) before step 6,
+     posting the resolution as part of the same review rather than a later second comment.
+     No answer on the spot → proceed to step 6 with the block exactly as step 4 left it, a
+     genuine async wait like any other unresolved `needs-human`.
+   - The all-approve and any-`change` outcomes have nothing left for a human to decide (an
+     approval or a code-level fix isn't a judgment call) — pair still shows the outcome
+     before applying it, since a `--merge` or a `changes-requested` is worth a beat to
+     confirm, but proceeds on that confirmation rather than reopening the reviewers'
+     verdicts (§6 step 3's isolation still holds — no re-running a reviewer from here).
+6. Apply the outcome from step 4 (as possibly resolved by step 5) — exactly **one**
+   submitted GitHub PR review (`mcp__github__pull_request_review_write`, method `create`)
+   plus the matching label, never a plain issue comment for this:
+   - All approved → `event: APPROVE`; body states all agents approve and, per step 8,
+     whether this run also merges or a human still needs to; `status:approved`.
+   - Any blocking point tagged `change` → `event: REQUEST_CHANGES`; body lists every point,
+     both `change` and `decision`, marked which is which; `needs-human` added;
+     `status:changes-requested`.
+   - Blocking points all `decision`, unresolved (nobody answered live, or `--auto`) →
+     `event: COMMENT` (nothing code-level to request changes on, and not an approval
+     either); body lists every point grouped by reviewer; `needs-human` added;
+     `status:in-review` stays.
+   - Blocking points all `decision`, resolved live in step 5 → apply the resolved outcome
+     instead (typically `APPROVE`) with the resolution folded into the same review body —
+     one submitted review covering both the block and its live resolution, not the usual
+     two-comment async pattern, since both happened in the same pass.
+7. Never submit more than one PR review per run — the aggregation step (4-6) is what keeps
+   this from turning into review-bot noise, the same principle as one consolidated comment
+   would have been.
+8. **Merge, only with `--merge`:** if step 6's outcome is `status:approved` and `--merge`
+   was passed, merge the PR now (`mcp__github__merge_pull_request`, the repository's normal
+   merge method) — this is what lets `pilot-status-on-merge.yml` (step 9) fire exactly as
+   it would after a human merge. Without `--merge`, or on any outcome other than
+   `status:approved`, never merge — a human merges by hand, same as always.
+9. **After the PR is merged** (by a human, or by step 8), the
+   `.github/workflows/pilot-status-on-merge.yml`
    GitHub Actions workflow (triggered on `pull_request: closed`, gated on
    `merged == true`) resolves the issue(s) the merge closes via
    `PullRequest.closingIssuesReferences`, sets `status:done` on each, and, for any that's

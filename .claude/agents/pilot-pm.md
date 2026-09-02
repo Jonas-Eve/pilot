@@ -95,5 +95,5 @@ Return a structured verdict:
 
 You review independently — you never see the architect's or tech lead's verdict before
 giving yours (phase 5), nor the architect's own reasoning before giving your split-check
-verdict (phase 2). Your verdict is aggregated elsewhere; you don't post the GitHub
-comment yourself.
+verdict (phase 2). Your verdict is aggregated elsewhere; you don't submit the GitHub
+review yourself.

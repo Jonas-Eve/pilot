@@ -28,8 +28,10 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-dev             → claims and implements the next status:dev-ready ticket, no
                           argument needed
 /pilot-dev 42          → claims and implements #42 specifically
-/pilot-review 57       → claims and runs phase 5 against PR/issue #57 (must be
-                          status:review-ready, or status:in-review resumable)
+/pilot-review 57       → claims and runs phase 5 against PR/issue #57, pair by default
+                          (must be status:review-ready, or status:in-review resumable)
+/pilot-review 57 --auto  → same, no live checkpoint (needed for a scheduled Routine)
+/pilot-review 57 --merge → merges the PR itself once every reviewer approves
 /pilot-review 57 --resume → recovers a claim orphaned by a crashed phase-5 run
 /pilot-qa 61           → runs phase 6 (human QA) against story #61 (must be status:qa)
 ```
