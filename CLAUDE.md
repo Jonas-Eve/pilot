@@ -163,6 +163,16 @@ the skill files) — never a fixed path, there is no installed location.
   a new task doc, a new citation in the calling skill, and a new entry in the persona
   file's own duties list (below) — never a new section appended to the persona file
   itself.
+- **A task doc never assumes this invocation remembers an earlier one:** each `Agent` call
+  is its own isolated context (`assets/docs/pilot-process.md` §5) — even a persona
+  reviewing a ticket it scoped earlier isn't guaranteed to be the same run, or even the
+  same architect/PM/tech lead. A task doc phrased as "the decisions you recorded" or "what
+  you specified" assumes false continuity — beyond being inaccurate, it risks a reviewer
+  applying less rigor to work it's told is its own; write it as reading the project's own
+  recorded output instead ("the recorded decisions", "the ticket's own spec"). This is a
+  trait of the *persona*, not any one duty, so it belongs once in the identity file (see
+  the architect/PM/tech lead's own "every duty below runs..." paragraph) — never restated,
+  or risked, per task doc.
 - **Keep a persona's judgment consistent across its split files:** splitting a
   multi-duty persona into an identity plus several task docs removes the "same file,
   scroll up to see the other duty" safety net that used to make an accidental
