@@ -891,16 +891,20 @@ human, instead of holding it in-conversation. Either way, the very last thing pa
 does — setting the phase's completion `status:` — is the same end-state `--auto` reaches
 in one pass, for the phases that have an `--auto` (phase 1 doesn't, below).
 
-**Final consolidation pass, every phase, right before setting the completion `status:`.**
-Writing progress checkpoint by checkpoint means the ticket (or, for phase 4, the diff) was
-assembled incrementally, round by round of the pair conversation — nothing guarantees a
-decision from an early round still squares with one added several rounds later. Once the
-human gives final approval, before applying the completion label, the agent re-reads the
-whole thing as it now stands — the full ticket body, not just the latest round's delta;
-the full diff, not just the last commit, for phase 4 — and fixes anything incoherent or
-incomplete it finds. This is also what `pilot-dev` uses in phase 4 as its own self-review
-of the implementation before opening the PR — a substitute for a separate reviewer
-checking the same thing again in phase 5 (§6), not an addition to it.
+**Final consolidation pass, every phase with incremental checkpoints, right before setting
+the completion `status:`.** Writing progress checkpoint by checkpoint means the ticket (or,
+for phase 4, the diff) was assembled incrementally, round by round of the pair
+conversation — nothing guarantees a decision from an early round still squares with one
+added several rounds later. Once the human gives final approval, before applying the
+completion label, the agent re-reads the whole thing as it now stands — the full ticket
+body, not just the latest round's delta; the full diff, not just the last commit, for
+phase 4 — and fixes anything incoherent or incomplete it finds. This is also what
+`pilot-dev` uses in phase 4 as its own self-review of the implementation before opening
+the PR — a substitute for a separate reviewer checking the same thing again in phase 5
+(§6), not an addition to it. Phase 5 has no incremental assembly to reconcile this way —
+its own aggregation (§6) already collapses every reviewer's one-shot verdict into a single
+outcome before its one pair checkpoint is ever reached, so there's nothing earlier to
+re-read against.
 
 **`--auto`** is the old default, before pair mode existed: the agent decides everything
 and the skill applies the finished result straight to GitHub in one pass, no human

@@ -105,9 +105,9 @@ see `.claude/skills/pilot-update/SKILL.md`.
 7. **Copy the status-cascade workflow.** Copy
    `$PILOT_SRC/assets/github/workflows/pilot-status-on-merge.yml` to
    `.github/workflows/pilot-status-on-merge.yml` at the project root, creating
-   `.github/workflows/` if needed. `docs/pilot-process.md` §6 depends on this workflow —
-   without it, merged PRs and closed issues never cascade to `status:done`. It's
-   PILOT-owned like the process doc: never hand-edit it; `/pilot-update` overwrites it
+   `.github/workflows/` if needed. `docs/pilot-process.md` §3 "`status:done`" depends on
+   this workflow — without it, merged PRs and closed issues never cascade to `status:done`.
+   It's PILOT-owned like the process doc: never hand-edit it; `/pilot-update` overwrites it
    from a fresh `$PILOT_SRC`. If a workflow file of that name already exists and differs,
    treat it like step 3 — show the human what would change and ask before overwriting.
 

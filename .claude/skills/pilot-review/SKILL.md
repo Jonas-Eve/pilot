@@ -12,7 +12,7 @@ mechanics.
 
 Mode: pair by default — step 7 below is the one live checkpoint, right after aggregation;
 pass `--auto` to skip it (required for a scheduled Routine, `docs/pilot-process.md` §4
-"Scheduled sweeps"). `--merge` is a separate, orthogonal flag (step 9) usable with either
+"Scheduled sweeps"). `--merge` is a separate, orthogonal flag (step 10) usable with either
 mode — without it, this skill never merges.
 
 ## Steps
@@ -92,7 +92,7 @@ mode — without it, this skill never merges.
 8. Apply the outcome from step 6 (as possibly resolved by step 7) — exactly **one**
    submitted GitHub PR review (`mcp__github__pull_request_review_write`, method `create`)
    plus the matching label, never a plain issue comment for this:
-   - All approved → `event: APPROVE`; body states all agents approve and, per step 9,
+   - All approved → `event: APPROVE`; body states all agents approve and, per step 10,
      whether this run also merges or a human still needs to; `status:approved`.
    - Any blocking point tagged `change` → `event: REQUEST_CHANGES`; body lists every point
      (marked which is which); `needs-human` added; `status:changes-requested`.
