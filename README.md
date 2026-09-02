@@ -91,13 +91,14 @@ prompt by the one skill that owns that duty — synced the same way, as
 There's no install command to run — a brand-new project has no PILOT skill available
 yet to invoke one. Instead:
 
-1. Clone this repo somewhere accessible: `git clone https://github.com/Jonas-Eve/pilot`.
-2. Copy its `.claude/skills/` and `.claude/agents/` straight into your project's own
-   `.claude/skills/`/`.claude/agents/` (verbatim, same paths — this is exactly what
-   `/pilot-init` does for itself when re-run later, so this manual first copy and every
-   subsequent `/pilot-update` end up identical).
-3. Run `/pilot-init` in your project. It takes care of everything else (docs, labels,
-   the status-cascade workflow).
+1. Download just the `pilot-init` skill file into your project's own
+   `.claude/skills/pilot-init/SKILL.md` (same path, no need to clone the whole repo for
+   one file), e.g.:
+   `curl -o SKILL.md https://raw.githubusercontent.com/Jonas-Eve/pilot/main/.claude/skills/pilot-init/SKILL.md`
+   — that's the only piece that needs manual seeding, since `/pilot-init` copies every
+   skill and agent (itself included) from a fresh clone in step 2.
+2. Run `/pilot-init` in your project. It takes care of everything else (skills, agents,
+   docs, labels, the status-cascade workflow).
 
 ## Updating
 
