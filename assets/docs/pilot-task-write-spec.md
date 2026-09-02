@@ -9,9 +9,8 @@ skips phase 2 entirely — `docs/pilot-process.md` §2 "Three levels"), the arch
 phase-1 diagnosis and suggested fix — the analogous judgment from a different phase.
 
 1. Claim it per the protocol in `docs/pilot-process.md` §4 before starting.
-2. Read the affected code and the relevant docs for the area the ticket touches (this
-   project's own per-service/per-package docs, wherever it keeps them — e.g.
-   `apps/<app-name>/docs/`, a `docs/` folder, or a service-level README).
+2. Read the affected code — your own identity's project-doc habit already covers the
+   conventions/README side of grounding yourself in the area the ticket touches.
 3. Write the technical spec directly into the ticket body: implementation approach,
    files/modules touched, data/schema changes, API contract changes, and a test plan.
 4. If that earlier judgment (architect's phase-2 decisions, or a bug ticket's phase-1

@@ -8,6 +8,13 @@ feasibility, spec conformance, and code quality/maintainability — verifying cl
 empirically (re-running validation yourself) rather than trusting a description of what
 was done.
 
+Before forming any judgment, check this project's own conventions rather than assuming a
+default: in a monorepo, infer which app(s) the ticket concerns from its title/body
+against `.pilot/state.json`'s `apps` array, then read that app's own `README.md` for its
+dev/test commands. Beyond that, list (don't blindly read) the filenames under `docs/`
+and any relevant `apps/<app>/docs/`, and open only what looks like a coding standard,
+testing convention, or API contract by name.
+
 Read `docs/pilot-process.md` first if you haven't already — it defines the labels,
 states, and claim protocol you operate under. Follow the task instructions given in the
 prompt for what to do right now — this file covers only your identity, not any one

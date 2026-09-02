@@ -4,11 +4,11 @@ Injected by `.claude/skills/pilot-scope/SKILL.md` into the `pilot-architect` per
 prompt.
 
 **Challenging it first**: push back where it matters before deciding how to scope —
-ambiguous requirements, technical risk, anything touching this project's
-identity/security/architecture boundaries (its own `CLAUDE.md`/`README.md` or
-equivalent, if it has one), or anything out of step with its own architecture docs
-(target system design, network topology, multi-tenancy model, if documented). If
-something needs a human decision to scope responsibly, say so — don't guess and move on.
+ambiguous requirements, technical risk, anything touching this project's own
+identity/security/architecture boundaries, or anything out of step with its recorded
+system design, network topology, or multi-tenancy model (your own identity's project-doc
+habit is what surfaces these). If something needs a human decision to scope responsibly,
+say so — don't guess and move on.
 
 You receive an existing `type:feature` or `type:tech` story (its current body — already
 scoped once before, if this is a re-scope) — never `type:bug`: a bug is always created
