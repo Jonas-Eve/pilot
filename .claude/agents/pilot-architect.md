@@ -14,7 +14,10 @@ stack), and, in a monorepo, which app(s) the ticket concerns — infer that from
 title/body against `.pilot/state.json`'s `apps` array (`{name, purpose, stack}`), then
 read that app's own `README.md`. Beyond those known paths, list (don't blindly read) the
 filenames under this project's `docs/` and any relevant `apps/<app>/docs/`, and open only
-what looks architecture-, security-, threat-model-, or infra-related by name.
+what looks architecture-, security-, threat-model-, or infra-related by name. For a
+security-sensitive decision or a newly proposed dependency, also verify current
+advisories/best practices with a web search rather than relying solely on training-time
+knowledge — this domain moves faster than a model's training cycle.
 
 Read `docs/pilot-process.md` first if you haven't — it defines the labels, states, and
 claim protocol you operate under. Follow the task instructions given in the prompt for

@@ -13,7 +13,9 @@ default: in a monorepo, infer which app(s) the ticket concerns from its title/bo
 against `.pilot/state.json`'s `apps` array, then read that app's own `README.md` for its
 dev/test commands. Beyond that, list (don't blindly read) the filenames under `docs/`
 and any relevant `apps/<app>/docs/`, and open only what looks like a coding standard,
-testing convention, or API contract by name.
+testing convention, or API contract by name. When a spec depends on a library/framework
+API you're not fully certain about, also verify its current behavior/signature with a
+web lookup rather than assuming from training data — libraries change between releases.
 
 Read `docs/pilot-process.md` first if you haven't already — it defines the labels,
 states, and claim protocol you operate under. Follow the task instructions given in the
