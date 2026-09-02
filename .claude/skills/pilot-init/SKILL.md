@@ -96,16 +96,19 @@ see `.claude/skills/pilot-update/SKILL.md`.
 
 6. **Copy the process docs.** Copy `$PILOT_SRC/assets/docs/pilot-process.md` to
    `docs/pilot-process.md`; every `$PILOT_SRC/assets/docs/pilot-process-*.md` companion
-   (currently just `pilot-process-companion.md`) to the matching `docs/` path; and every
-   `$PILOT_SRC/assets/docs/pilot-link-*.md` to the matching `docs/` path — all at the
+   (currently just `pilot-process-companion.md`) to the matching `docs/` path; every
+   `$PILOT_SRC/assets/docs/pilot-link-*.md` to the matching `docs/` path; and every
+   `$PILOT_SRC/assets/docs/pilot-task-*.md` to the matching `docs/` path — all at the
    project root, creating `docs/` if needed. `pilot-process.md` is the generic operational
    spec every phase skill reads; each `pilot-process-*.md` companion is purely human-facing
    (a sequence diagram, currently) — no skill or agent needs it; each `pilot-link-*.md` is
    the opposite of a companion — operational like `pilot-process.md` itself, but scoped to
-   the specific two-or-more skills/agents it names, read only by those, not by every phase.
-   Copy all three kinds regardless of how many exist right now — all are PILOT-owned from
-   here on, never hand-edit any of them; `/pilot-update` overwrites them from a fresh
-   `$PILOT_SRC`.
+   the specific two-or-more skills/agents it names, read only by those, not by every phase;
+   each `pilot-task-*.md` is what a phase skill reads and passes into an `Agent` call's
+   prompt for one specific persona duty — the `.claude/agents/pilot-*.md` files carry only
+   identity now, never a duty's mechanics. Copy all four kinds regardless of how many exist
+   right now — all are PILOT-owned from here on, never hand-edit any of them;
+   `/pilot-update` overwrites them from a fresh `$PILOT_SRC`.
 
 7. **Copy the status-cascade workflow.** Copy
    `$PILOT_SRC/assets/github/workflows/pilot-status-on-merge.yml` to
@@ -121,7 +124,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
    `docs/PULL_REQUEST_TEMPLATE.md` already exist in the project, copy
    `$PILOT_SRC/assets/github/pull_request_template.md` to
    `.github/pull_request_template.md`, creating `.github/` if needed — this is what
-   `pilot-dev`'s "PILOT ticket" section (`.claude/agents/pilot-dev.md`,
+   `pilot-dev`'s "PILOT ticket" section (`docs/pilot-task-implement.md`,
    `.claude/skills/pilot-dev/SKILL.md`) fills in when opening a PR. If one of those paths
    already exists, treat it like step 3 — show the human what would be added and ask
    before overwriting, or leave it alone if they'd rather merge the PILOT ticket section

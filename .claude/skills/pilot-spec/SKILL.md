@@ -44,12 +44,13 @@ mechanics of running phase 3.
      sweeps").
 2. **Claim** it per `docs/pilot-process.md` §4: set assignee + `status:in-spec`, re-read
    to confirm the claim held.
-3. Call the `Agent` tool with `subagent_type: "pilot-techlead"`, passing only the
-   ticket's current body (including the architect's decisions, and, if resuming, the
-   comment thread's resolution per §4) and pointers to the relevant docs for the area it
-   touches (this project's own per-service/per-package docs, wherever it keeps them —
-   e.g. `apps/<app-name>/docs/`, a `docs/` folder, or a service-level README) — not the
-   running conversation history.
+3. Call the `Agent` tool with `subagent_type: "pilot-techlead"`. Read
+   `docs/pilot-task-write-spec.md` and pass its content as part of the prompt, plus
+   only the ticket's current body (including the architect's decisions, and, if
+   resuming, the comment thread's resolution per §4) and pointers to the relevant
+   docs for the area it touches (this project's own per-service/per-package docs,
+   wherever it keeps them — e.g. `apps/<app-name>/docs/`, a `docs/` folder, or a
+   service-level README) — not the running conversation history.
 4. The subagent returns either: a technical spec to append to the ticket, or a
    blocking conflict with the architect's decisions that needs a human.
 4a. **Unless `--auto` was given** (`docs/pilot-process.md` §4 "Interaction modes" — pair

@@ -135,7 +135,7 @@ infra) — free to block the feature tasks the ordinary way ("Dependencies betwe
 the same split" below) — and always exactly one `type:e2e` task
 (`docs/pilot-link-e2e-tasks.md`). A purely technical enabler task shouldn't get a
 PM review it has nothing useful to say about
-(`docs/pilot-link-review-consensus.md` "Reviewer set"), and a task's own `type:` is
+(`pilot-review/SKILL.md` step 3), and a task's own `type:` is
 what routes that review — not which story it happens to sit under.
 
 ### Three levels: `level:epic` → `level:story` → `level:task`
@@ -878,10 +878,11 @@ ticket number between them — never a running transcript of the prior phase's `
 
 Claim/pool mechanics are the ordinary claim protocol (§4) — nothing phase-5-specific there
 beyond its own pre-claim/in-progress pair, `status:review-ready`/`status:in-review` (§3).
-How phase 5 reaches a verdict — the reviewer set and the `change`/`decision` tags — is
-`docs/pilot-link-review-consensus.md`, not here: it's read only by
-`pilot-review/SKILL.md`, the three reviewer personas, and `pilot-dev`/`pilot-e2e` (for
-their reclaim), not every phase. Pair (default) vs `--auto` for phase 5 specializes the
+How phase 5 reaches a verdict is split in two: the reviewer set is `pilot-review/SKILL.md`'s
+own step 3, and the `change`/`decision` tags contract is `docs/pilot-link-review-consensus.md`
+— injected whole into each reviewer's task-doc prompt, and read the same way by
+`pilot-dev`/`pilot-e2e`'s task docs on reclaim. Not every phase needs either. Pair (default)
+vs `--auto` for phase 5 specializes the
 generic contract (§4 "Interaction modes") — `pilot-review/SKILL.md` has the full
 mechanics, including how it checkpoints and recovers via `--resume`. Merge behavior
 (`--merge`) is §3 "`status:approved`"/"`status:done`" — nothing phase-5-specific beyond

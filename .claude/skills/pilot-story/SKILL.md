@@ -35,9 +35,14 @@ mechanics of running phase 1.
 3. Fetch open `level:epic` issues of the matching `type:` (title + body only,
    `mcp__github__list_issues`/`search_issues`) as candidates the agent might reuse —
    cheap, deterministic bookkeeping, not the agent's job to search for itself.
-4. Call the `Agent` tool with the subagent chosen in step 2, passing the raw need and the
+4. Call the `Agent` tool with the subagent chosen in step 2. Read the task doc matching
+   what step 2 picked — `docs/pilot-task-write-story.md` (PM), `docs/pilot-task-formalize-tech-need.md`
+   (architect, `--tech`), or `docs/pilot-task-formalize-bug-report.md` (architect,
+   `--bug`) — and pass its content as part of the prompt, along with the raw need and the
    candidate Epic list — nothing else from this conversation's history, so the subagent
    gets a clean, scoped context, not the running transcript (`docs/pilot-process.md` §5).
+   The persona file itself (`.claude/agents/pilot-*.md`) carries only identity now, not
+   this duty's mechanics — the task doc is what tells it what to actually do.
 5. The subagent returns one of: out of scope (per this project's functional-scope doc, if
    it has one, `type:feature` only — stop, report, create nothing); a single story;
    several stories plus an existing Epic to reuse or a new Epic to create; or, for a

@@ -21,9 +21,19 @@ At runtime, a phase skill reads up to three layers, not just its own file:
 `pilot-process.md` for the generic mechanics every phase shares (labels, claim protocol,
 pair/`--auto`), whichever `pilot-link-<topic>.md` doc(s) it's named in for coordinating
 with the specific other skills/agents it hands off to or reads from, and its own
-`SKILL.md`/agent `.md` for everything that's genuinely its own. §3 below ("Three tiers")
-is the mirror image of this for writing new content — decide the tier, then add it to the
-matching layer instead of the file you happen to already be editing.
+`SKILL.md` for its own orchestration mechanics. §3 below ("Three tiers") is the mirror
+image of this for writing new content — decide the tier, then add it to the matching
+layer instead of the file you happen to already be editing.
+
+The actual judgment work happens in an isolated `Agent` call to one of the six personas
+(`.claude/agents/pilot-*.md`). Each of those carries only that persona's stable
+identity — never any duty's specific instructions, even for a persona with several
+duties (the architect formalizes, scopes, *and* reviews). What to actually do arrives in
+the prompt: the calling skill reads the matching `assets/docs/pilot-task-<duty>.md` and
+passes its content as part of the `Agent` call, so a persona never carries — or loads —
+instructions for a duty it isn't performing right now. §3 below ("Task docs") covers
+when new persona-facing content belongs in one of these instead of the persona file
+itself.
 
 ## 2. STRUCTURE
 - `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
@@ -39,6 +49,10 @@ matching layer instead of the file you happen to already be editing.
 - `.claude/agents/<name>.md` — the six personas (`pilot-pm`, `pilot-architect`,
   `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`) the phase skills delegate to via
   the `Agent` tool, copied into a consuming project's `.claude/agents/` the same way.
+  Each file carries only that persona's identity (who it is, what judgment it brings) —
+  never a duty's mechanics, even for a persona with several duties. Duty instructions
+  live in `assets/docs/pilot-task-<duty>.md` instead (below), injected into the `Agent`
+  call's prompt by whichever skill owns that duty.
 - `assets/docs/pilot-process.md` — canonical process spec, copied verbatim into a
   consuming project as `docs/pilot-process.md` by `/pilot-init` and re-synced by
   `/pilot-update`. Contains only what a skill or agent needs to operate — no purely
@@ -56,6 +70,14 @@ matching layer instead of the file you happen to already be editing.
   content that connects a subset of skills (e.g. how phase 5's reviewers and phase 4's
   reclaim need to agree on something) — see §3 below for when content belongs here
   instead of `pilot-process.md` or a single `SKILL.md`.
+- `assets/docs/pilot-task-<duty>.md` — one persona's instructions for one specific duty
+  (e.g. the architect scoping a story, vs. the architect reviewing a PR) — never read by
+  the persona itself via its own `Read`, but injected into the `Agent` call's prompt by
+  the one skill that owns that duty. Copied verbatim into a consuming project as
+  `docs/pilot-task-<duty>.md` the same way as `pilot-process.md`. This is what keeps
+  `.claude/agents/pilot-*.md` down to pure identity: a persona with several duties (the
+  architect, the PM, the tech lead) gets one task doc per duty, never all of them bundled
+  into the persona file where every invocation would load them regardless of relevance.
 - `assets/templates/*.tmpl` — doc skeletons `/pilot-init` renders with `{{PLACEHOLDER}}`
   substitution. `pilot-intro-claude.md.tmpl` / `pilot-intro-readme.md.tmpl` and
   `pilot-maintenance-claude.md.tmpl` are canonical marked-block contents (`PILOT:INTRO`,
@@ -81,9 +103,10 @@ the skill files) — never a fixed path, there is no installed location.
   change them casually; a mechanism change here affects every project that has copied
   from this repo, not just one.
 - **Token discipline — LLM-read files stay essential-only:** `.claude/skills/*/SKILL.md`,
-  `.claude/agents/*.md`, and `assets/docs/pilot-process.md` load into an agent's context on
-  every run they take part in — keep them to only what a skill or agent needs to operate
-  correctly. No meta-commentary, platform-quirk explanations, maintainer rationale, or
+  `.claude/agents/*.md`, `assets/docs/pilot-process.md`, every `pilot-link-*.md`, and
+  every `pilot-task-*.md` load into an agent's context on every run they take part in —
+  keep them to only what a skill or agent needs to operate correctly. No meta-commentary,
+  platform-quirk explanations, maintainer rationale, or
   historical notes about why something is the way it is. If something is worth writing down
   for a human but doesn't change what an agent does, it belongs in a doc no skill or agent
   reads instead, never padded into the file an LLM actually loads — `assets/docs/pilot-process-companion.md`
@@ -103,18 +126,69 @@ the skill files) — never a fixed path, there is no installed location.
   `pilot-process.md` with something most phases never read. Single-skill — everything else,
   including how one specific phase claims, what it does mid-run, and how it wraps up, even
   when that phase is the one you're currently changing — stays in that skill's own
-  `SKILL.md`/agent file, never promoted up a tier just because it's the thing you're
-  focused on right now. `grep` for which other files would actually need to cite it (the
-  check below already asks you to grep after editing — run it *before* deciding where new
-  content goes, not just after): zero others → single-skill; some but not all → a link doc;
-  all six phases → `pilot-process.md`. Tool names and API-call-level detail belong in the
+  `SKILL.md`, never promoted up a tier just because it's the thing you're focused on right
+  now. `grep` for which other files would actually need to cite it (the check below
+  already asks you to grep after editing — run it *before* deciding where new content
+  goes, not just after): zero others → single-skill; some but not all → a link doc; all
+  six phases → `pilot-process.md`. Tool names and API-call-level detail belong in the
   owning `SKILL.md` regardless of tier, never in `pilot-process.md` or a link doc.
-- **Cross-reference check:** `assets/docs/pilot-process.md`, every `assets/docs/pilot-link-*.md`
-  and `pilot-process-*.md`, every `.claude/skills/*/SKILL.md`, every `.claude/agents/pilot-*.md`,
-  and the PILOT mentions in this file and `README.md` are tightly cross-referenced. After
-  editing any of them, `grep` the exact term(s) you changed (a renamed label, a moved
-  section heading, a link doc's filename) across that whole family and fix what turns up,
-  rather than re-reading every file end to end.
+- **A link doc's own content must be identical across every consumer, not just topically
+  adjacent:** the test is whether every consuming duty reads the *exact same text*, not
+  whether the topic is related. A per-duty delta that only one duty ever reads stays in
+  that duty's own task doc, even sitting right next to genuinely shared content on the
+  same subject — promoting it into the link doc "for tidy organization" smuggles
+  single-skill content back into the link tier the rule above already excludes it from.
+  (Caught mid-edit once: `pilot-link-bug-tickets.md`'s classify/originate mechanic is
+  genuinely identical across phase 2/4/6, but each phase's own unclaiming delta, drafted
+  right next to it, was actually read by only one of the three — moved back to that
+  phase's own task doc.)
+- **Inject a link doc whole, never by asking a skill to pick sections per caller:** when a
+  `SKILL.md` passes a link doc's content into an `Agent` call, pass the entire file rather
+  than an instruction like "only section X, not Y" — that kind of selective-extraction
+  instruction is fragile and has already caused a real bug: `pilot-link-review-consensus.md`'s
+  orchestration-only "Reviewer set" section got passed into every reviewer's context
+  anyway, because "pass the content already read" never actually said to leave part of it
+  out. Needing both always-shared content and something only one duty reads is the
+  previous bullet's case — move the single-duty part into that duty's task doc — not a
+  reason to keep both in the link doc behind a selective read.
+- **Persona files carry only identity; duty instructions are task docs:** this tiering
+  decides where a *skill's own* content goes — a persona's content is a different split
+  again. `.claude/agents/pilot-*.md` holds only the stable trait every one of that
+  persona's duties shares (what kind of judgment it brings); it's loaded in full on
+  *every* invocation of that persona, so anything specific to one duty (how to scope,
+  how to review, how to write a spec) never belongs there, even for a persona with only
+  one duty today — put it in `assets/docs/pilot-task-<duty>.md` instead (§2), read and
+  injected into the `Agent` call's prompt by the one skill that owns that duty. Adding a
+  new duty to an existing persona (a new phase that also calls the architect, say) means
+  a new task doc, a new citation in the calling skill, and a new entry in the persona
+  file's own duties list (below) — never a new section appended to the persona file
+  itself.
+- **A task doc never assumes this invocation remembers an earlier one:** each `Agent` call
+  is its own isolated context (`assets/docs/pilot-process.md` §5) — even a persona
+  reviewing a ticket it scoped earlier isn't guaranteed to be the same run, or even the
+  same architect/PM/tech lead. A task doc phrased as "the decisions you recorded" or "what
+  you specified" assumes false continuity — beyond being inaccurate, it risks a reviewer
+  applying less rigor to work it's told is its own; write it as reading the project's own
+  recorded output instead ("the recorded decisions", "the ticket's own spec"). This is a
+  trait of the *persona*, not any one duty, so it belongs once in the identity file (see
+  the architect/PM/tech lead's own "every duty below runs..." paragraph) — never restated,
+  or risked, per task doc.
+- **Keep a persona's judgment consistent across its split files:** splitting a
+  multi-duty persona into an identity plus several task docs removes the "same file,
+  scroll up to see the other duty" safety net that used to make an accidental
+  contradiction between duties easy to spot. Nothing greppable catches a *judgment*
+  drift (the same heuristic phrased subtly differently in two task docs) the way the
+  check below catches a renamed term, so each `.claude/agents/pilot-*.md` ends with a
+  one-line list of its own task doc(s) precisely so this stays checkable by hand: when
+  editing that identity or any one of its task docs, skim the others in the list too for
+  a principle that should apply everywhere but doesn't yet, or was rephrased
+  inconsistently. Keep that list itself in sync with the previous bullet's rule.
+- **Cross-reference check:** `assets/docs/pilot-process.md`, every `assets/docs/pilot-link-*.md`,
+  `pilot-process-*.md`, and `pilot-task-*.md`, every `.claude/skills/*/SKILL.md`, every
+  `.claude/agents/pilot-*.md`, and the PILOT mentions in this file and `README.md` are
+  tightly cross-referenced. After editing any of them, `grep` the exact term(s) you
+  changed (a renamed label, a moved section heading, a link/task doc's filename) across
+  that whole family and fix what turns up, rather than re-reading every file end to end.
 - **Renaming or removing a skill/agent:** `/pilot-update` handles this by diffing a
   project's locally-copied skills/agents against this repo's current `.claude/skills/`/
   `.claude/agents/` and flagging anything that no longer matches anything upstream as
