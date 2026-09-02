@@ -52,22 +52,10 @@ spec).
     outside your ticket — not an ambiguity in what you're building (that's a spec
     deviation, step 4) — most likely while writing an end-to-end test task
     (`docs/pilot-link-e2e-tasks.md`, implemented by `pilot-e2e`, which follows this same
-    step for a bug it finds), but not limited to that.
-    Classify it first (`docs/pilot-link-bug-tickets.md`): a real defect, or actually a
-    different need — if the latter, treat it as that doc describes (a prerequisite tech
-    ticket, or leave it for a human via phase 1), not as a `type:bug`. If it's genuinely
-    a bug, originate a new ticket the same way the architect originates a prerequisite
-    tech ticket in phase 2 (here, from phase 4), but `type:bug`: create it directly
-    as `type:bug`, `level:task`, `status:spec-ready`, never
-    `level:story`/`status:backlog` (`docs/pilot-process.md` §2 "Three levels" — a
-    bug skips phase 2 entirely). Body: what's broken, how you observed it, root
-    cause/suggested fix if known — never as a sub-issue of your own ticket. Add
-    "Blocks #M" on the new ticket pointing back at yours, and "Depends on #N" in
-    your own body (always a hard blocker here). Then unclaim yours instead of
-    leaving it stuck mid-phase (`docs/pilot-link-bug-tickets.md`): push whatever you
-    already have to a branch (create one now if you haven't pushed yet — never a
-    broken/partial commit), comment on the ticket naming that branch, clear the
-    assignee, and move it back to `status:dev-ready`. The dependency gate does the
+    step for a bug it finds), but not limited to that. Follow the bug-ticket mechanic
+    passed alongside this task doc (`docs/pilot-link-bug-tickets.md`'s "Classify and
+    originate" and "Phase 4" sections) — classify it first, then, if genuine, originate,
+    link, and unclaim yourself before stopping. The dependency gate does the
     rest from there: whichever agent next claims this ticket picks up your branch per
     step 1 above, automatically, the moment the new ticket reaches `status:done` — no
     `on-hold`, no `--resume` to remember.

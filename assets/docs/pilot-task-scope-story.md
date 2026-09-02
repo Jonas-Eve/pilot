@@ -86,19 +86,11 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
      dependencies") or a plain non-gating reference.
    - **Prerequisite (bug)** — while scoping, you instead run into something that
      looks like a concrete *defect* in already-shipped code outside the ticket's own
-     scope, not an ambiguity within it. Classify it first
-     (`docs/pilot-link-bug-tickets.md`): genuinely a code
-     defect, or actually a new/different need — if the latter, treat it as a
-     prerequisite tech ticket instead (above). If it genuinely is a bug, originate it
-     with the same linking mechanics as a prerequisite tech ticket, just `type:bug`
-     instead of `type:tech` — with one difference: create it directly as `type:bug`,
-     `level:task`, `status:spec-ready`, never `level:story`/`status:backlog`
-     (`docs/pilot-process.md` §2 "Three levels" — a bug never goes through your own
-     phase-2 pass). Same hard-blocker phrasing rule for the "Depends on #N"/"Blocks
-     #M" link; finish scoping this ticket normally afterward — you don't need to
-     unclaim anything here, unlike a dev/`pilot-e2e`/`pilot-qa` discovering the same
-     thing mid-phase-4/6, because this ticket isn't claimed by phase 3/4 yet; the
-     dependency gate alone is enough.
+     scope, not an ambiguity within it. Follow the bug-ticket mechanic passed
+     alongside this task doc (`docs/pilot-link-bug-tickets.md`'s "Classify and
+     originate" and "Phase 2" sections) — classify it first, then, if genuine,
+     originate and link it; finish scoping this ticket normally afterward, same as
+     any other prerequisite.
    - **Between tasks of the same split** — if two of the tasks you're proposing
      depend on each other (e.g. a front-end one consuming an API a back-end one
      creates), record it the same way ("Depends on #N" on the dependent one,

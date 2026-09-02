@@ -58,7 +58,10 @@ parallel instances; the claim step below prevents collisions.
 3. Call the `Agent` tool with the `subagent_type` chosen in step 2a. Read
    `docs/pilot-task-implement.md` and pass its content as part of the prompt — for
    `pilot-e2e`, also read and pass `docs/pilot-task-implement-e2e.md` alongside it, since
-   it only documents that persona's differences from the base task. Pass the ticket's
+   it only documents that persona's differences from the base task. Also pass
+   `docs/pilot-link-bug-tickets.md`'s "Classify and originate" and "Phase 4" sections only
+   (never its "Phase 2"/"Phase 6" ones) — either persona may hit this mid-implementation,
+   and neither task doc restates the mechanic any more. Pass the ticket's
    spec and the architect's decisions — not the running conversation history or the state
    of any other ticket being worked in parallel. **Resume case** (per step 1, needs-human
    cleared): also pass the original blocking comment and whatever's in the thread after it

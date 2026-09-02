@@ -49,8 +49,10 @@ this skill only covers the mechanics of running it.
    e2e tasks, the spec (phase 3) and the merged PR (`mcp__github__issue_read`,
    `mcp__github__pull_request_read`) — not the running conversation history.
 4. Call the `Agent` tool with `subagent_type: "pilot-qa"`. Read `docs/pilot-task-human-qa.md`
-   and pass its content as part of the prompt, along with that context. The agent
-   returns a manual test plan: concrete cases and how to test each.
+   and pass its content as part of the prompt, plus `docs/pilot-link-bug-tickets.md`'s
+   "Classify and originate" and "Phase 6" sections only (never its "Phase 2"/"Phase 4"
+   ones) — the task doc no longer restates that mechanic — along with that context. The
+   agent returns a manual test plan: concrete cases and how to test each.
 5. Walk the human through it (pair, always — no `--auto`): show the plan, then go case by
    case — ask them to run one, report what happened, feed that back to the agent, move to
    the next — until every case is reported. Write progress into the ticket as you go (a
