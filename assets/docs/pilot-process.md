@@ -361,7 +361,7 @@ actually a new/different need in disguise. If it's not a bug, don't create a `ty
 ticket at all: treat it as a prerequisite *tech* ticket instead (above) if it's a new
 technical need, or, if it needs an actual product/judgment decision, leave it for a human
 to take through phase 1 themselves rather than originating anything — §7 "Phase 6 — Human
-QA" step 6 covers the phase-6 version of this specifically.
+QA" covers the phase-6 version of this specifically.
 
 If it genuinely is a bug, originate a new ticket for it using the same linking mechanics as
 a prerequisite tech ticket, just `type:bug` instead of `type:tech` — with one difference:
@@ -1035,31 +1035,12 @@ the pool `/pilot-qa` picks from.
 
 ### Running it
 
-`/pilot-qa` is **pair-only** — no `--auto`, never Routine-driven — same as `/pilot-story`.
-It claims the story (§4 "Claim Protocol": `status:qa` → `status:in-qa`), builds a manual
-test plan from its acceptance criteria and each task's spec/PR, and walks the human through
-it case by case until every case is confirmed or a failure surfaces. Each failure is
-classified the same way a raw bug report is (§2 "Prerequisite bug tickets (phase 2, phase
-4, or phase 6)"): a genuine defect, or actually a different/new need in disguise. Whenever
-it genuinely can't tell on its own, that's a live `needs-human` block like any other (§3) —
-labeled and commented immediately even with the human right there, then resolved and
-cleared in the same turn once they answer (§3 "A human is live in the same session").
-
-Applying the result:
-- **All confirmed, or every failure resolves to "not actually a bug"** → `status:done`,
-  issue closed — the one place a phase skill sets `status:done` directly, since there's no
-  PR merge here for `pilot-status-on-merge.yml` to react to. Report any "not actually a
-  bug" finding to the human so they raise it via phase 1 themselves.
-- **One or more real-bug failures** → a `type:bug` ticket per failure, originated directly
-  as `level:task`/`status:spec-ready` (§2 "Three levels" — never through phase 2), then the
-  story itself unclaimed (`status:in-qa` → `status:qa`) with a comment naming the new
-  ticket(s) — same mechanics as a bug found mid-implementation in phase 4 (§2 "Prerequisite
-  bug tickets"). Takes priority over a same-pass "not actually a bug" failure — the story
-  can't be done while a real defect is still open.
-- **A failure still unresolved** (nobody answered on the spot — should be rare, pair-only)
-  → the `needs-human` label and comment stand, `status:in-qa` stays, resolved later like
-  any other `needs-human` ticket.
-
-Never invokes `pilot-e2e`/`pilot-dev` — an originated `type:bug` ticket goes straight to
-`status:spec-ready` for `/pilot-spec` to pick up next, never handed to phase 4 directly
-from here.
+`/pilot-qa` is **pair-only** (§4 "Interaction modes"). It claims the story (§4 "Claim
+Protocol": `status:qa` → `status:in-qa`), builds a manual test plan, and walks the human
+through it case by case. A failure is classified and handled exactly as §2 "Prerequisite
+bug tickets (phase 2, phase 4, or phase 6)" describes — a genuine defect gets its own
+`type:bug` ticket and unclaims the story back to `status:qa`; a non-bug failure is reported
+for the human to raise via phase 1 themselves; anything unclassifiable is a live
+`needs-human` block (§3 "A human is live in the same session"). Confirmed, or every
+failure resolved to "not actually a bug" → `status:done`, the one direct exception §3
+"`status:done`" already notes. `pilot-qa/SKILL.md` covers the rest of the mechanics.
