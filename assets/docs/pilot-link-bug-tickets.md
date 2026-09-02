@@ -1,13 +1,16 @@
 # PILOT link — Prerequisite bug tickets (phase 2, phase 4, phase 6)
 
-Cited by `docs/pilot-task-scope-story.md` (phase 2), `docs/pilot-task-implement.md`/
-`-implement-e2e.md` (phase 4), and `docs/pilot-task-human-qa.md` (phase 6) — each has the
-agent read it on demand when it runs into something that looks like a bug outside its own
-ticket's scope, the three duties that can originate one of these; never by
-`.claude/agents/pilot-*.md`, which carry only identity now. Their owning skills
-(`pilot-scope`/`pilot-dev`/`pilot-qa`) cite it too, narratively, for the same mechanic — no
-other skill/agent/task doc needs it. See `docs/pilot-process.md` §2/§3/§4 for the generic
-ticket types, labels, and claim protocol this builds on.
+Canonical version of this mechanic — `docs/pilot-task-scope-story.md` (phase 2),
+`docs/pilot-task-implement.md` (phase 4, `-implement-e2e.md`'s own step 3 just follows that
+one's step 3a rather than repeating it), and `docs/pilot-task-human-qa.md` (phase 6) — the
+three duties that can originate one of these — restate it inline rather than read it live
+(no task doc ever instructs a `Read` of this file), so keep those three in sync by hand
+whenever this changes (`CLAUDE.md`'s cross-reference-check rule). Also cited, without
+restating it, by `docs/pilot-process.md`'s own generic text,
+`docs/pilot-task-formalize-bug-report.md`, and
+`.github/workflows/pilot-status-on-merge.yml`. Never by `.claude/agents/pilot-*.md`, which
+carry only identity now. See `docs/pilot-process.md` §2/§3/§4 for the generic ticket
+types, labels, and claim protocol this builds on.
 
 Distinct from a prerequisite *tech* ticket (`docs/pilot-process.md` §2 "Prerequisite tech
 tickets" — a new technical need, no defect implied): while scoping (phase 2),
