@@ -23,9 +23,10 @@ quality/maintainability — deliberately not split into a fourth reviewer, since
 independent of each other** — none sees another's verdict — in both pair and `--auto`;
 nothing later in the run reopens that isolation, not even the one pair checkpoint.
 
-Before voting, each reviewer re-runs this project's own build/test/lint commands directly
+Before voting, the tech lead re-runs this project's own build/test/lint commands directly
 against the PR's branch rather than trusting the PR description's claim that they pass — a
-mismatch is an automatic block, always tagged `change` (below). Once this project has a CI
+mismatch is an automatic block, always tagged `change` (below); the other reviewers don't
+duplicate this, it's the tech lead's own check alone. Once this project has a CI
 workflow covering the affected area, a red or pending check on the PR's head commit is the
 same kind of automatic `change` block. Until CI exists, this re-run is PILOT's only safety
 net.
