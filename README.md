@@ -19,6 +19,11 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
 `/pilot-init` copies it into your project as `docs/pilot-process.md`, and
 `/pilot-update` keeps it in sync.
 
+Each skill reads three layers, not just its own file: `pilot-process.md` for what every
+phase shares, a `pilot-link-<topic>.md` doc (below) for what it coordinates with a couple
+of other skills on, and its own `SKILL.md`/agent file for everything specific to that one
+phase.
+
 ## What this repo ships
 
 - **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, plus the six

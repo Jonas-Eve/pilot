@@ -17,6 +17,14 @@ those files must never drift from what it describes. It is genericized on purpos
 references to any one consuming project); when porting a change from a project that
 forked PILOT, strip project-specific details the same way.
 
+At runtime, a phase skill reads up to three layers, not just its own file:
+`pilot-process.md` for the generic mechanics every phase shares (labels, claim protocol,
+pair/`--auto`), whichever `pilot-link-<topic>.md` doc(s) it's named in for coordinating
+with the specific other skills/agents it hands off to or reads from, and its own
+`SKILL.md`/agent `.md` for everything that's genuinely its own. §3 below ("Three tiers")
+is the mirror image of this for writing new content — decide the tier, then add it to the
+matching layer instead of the file you happen to already be editing.
+
 ## 2. STRUCTURE
 - `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
   consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
