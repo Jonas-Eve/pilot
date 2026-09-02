@@ -770,8 +770,8 @@ A phase skill treats a ticket as **resuming**, not a fresh claim, whenever it's 
 in that phase's in-progress `status:` (whether picked up bare or given explicitly):
 1. Read the full blocking context, not just the ticket body — the blocking comment and
    everything posted after it, for every phase except 5. Phase 5's own block is a
-   submitted PR review, not a comment (§6) — fetch it via `mcp__github__pull_request_read`
-   method `get_reviews`, plus the PR's comment thread for whatever's posted after it.
+   submitted PR review, not a comment (§6) — read that, plus the PR's comment thread for
+   whatever's posted after it.
 2. If `needs-human` is still present, it isn't resolved yet — report that and stop (this
    only matters when a ticket number was given explicitly; the bare pool above already
    excludes these).
@@ -804,15 +804,14 @@ To resume:
    `/pilot-scope`, `/pilot-spec`, and `/pilot-dev`'s pair sessions this reconstructs pair
    mode's incremental checkpoint writes ("Interaction modes" below). `/pilot-review`'s own
    checkpoint is a pending GitHub PR review instead of a ticket comment (§6 "Checkpoint the
-   outcome as a pending review") — check for one under this run's own identity
-   (`mcp__github__pull_request_read` method `get_reviews`): if it exists and is still pinned
-   to the PR's current head commit, that's the recovered outcome — skip re-running the
-   reviewers and proceed straight to submitting or confirming it per the current mode. If
-   its commit no longer matches (new commits landed since it was created), or none exists,
-   discard any stale one (`mcp__github__pull_request_review_write` method `delete_pending`)
-   and restart the reviewers fresh — the tech lead's re-validation has to run against the
-   actual current code either way. For an `--auto` run of any other phase, there's nothing
-   to reconstruct — a plain restart from the ticket's original inputs.
+   outcome as a pending review") — check for one under this run's own identity: if it
+   exists and is still pinned to the PR's current head commit, that's the recovered
+   outcome — skip re-running the reviewers and proceed straight to submitting or confirming
+   it per the current mode. If its commit no longer matches (new commits landed since it
+   was created), or none exists, discard any stale one and restart the reviewers fresh —
+   the tech lead's re-validation has to run against the actual current code either way. For
+   an `--auto` run of any other phase, there's nothing to reconstruct — a plain restart from
+   the ticket's original inputs.
 2. Claim it the same way a `status:changes-requested` reclaim does (below) — an existing
    assignee doesn't count as a conflict here. Overwrite it (assignee → this session);
    `status:` stays at its current in-progress value.
@@ -834,9 +833,9 @@ claiming session simply overwrites it (assignee → itself, `status:` → `in-de
 re-reads to confirm the overwrite held.
 
 Once claimed, pass the subagent the phase-5 blocking review — its submitted PR review,
-fetched via `mcp__github__pull_request_read` method `get_reviews` rather than read off the
-issue's comment thread (§6) — with its `change`-tagged points to fix, plus any
-`decision`-tagged points and their resolution, instead of a fresh spec — the existing PR's
+read from the PR's reviews rather than the issue's comment thread (§6) — with its
+`change`-tagged points to fix, plus any `decision`-tagged points and their resolution,
+instead of a fresh spec — the existing PR's
 branch is what gets more commits. The subagent pushes to that same
 branch/PR (never a second PR for the same ticket) and, once satisfied, moves the ticket to
 `status:review-ready` (unassigned) exactly as it would after a first-time implementation —
@@ -990,12 +989,12 @@ turn decides the review event below and, for a block, whether it's `status:chang
 or `status:in-review` stays (§3); either way `needs-human` is added.
 
 **Checkpoint the outcome as a pending review** — the moment the outcome above is decided,
-before anything else: create a GitHub PR review with no `event` (`mcp__github__pull_request_review_write`,
-method `create`, pinned via `commitID` to the PR's current head commit) — a draft, visible
-only to this run's own identity, with the body already written out in full. This is phase
-5's version of the incremental checkpoint writes every other pair-capable phase makes (§4
-"Interaction modes") — durable the instant it exists, so an orphaned run (§4 "Resuming an
-orphaned claim") can recover it instead of re-running the reviewers.
+before anything else: create a GitHub PR review with no event, pinned to the PR's current
+head commit — a draft, visible only to this run's own identity, with the body already
+written out in full. This is phase 5's version of the incremental checkpoint writes every
+other pair-capable phase makes (§4 "Interaction modes") — durable the instant it exists, so
+an orphaned run (§4 "Resuming an orphaned claim") can recover it instead of re-running the
+reviewers.
 
 **Pair (default) vs `--auto`** (§4 "Interaction modes") — never mid-review (the reviewers
 already ran fully isolated by the time this is reached), and never for the decision-only
@@ -1016,14 +1015,14 @@ before the pending review is submitted: an approval (and any `--merge`, below) o
 `changes-requested` goes out only once confirmed; `--auto` skips this pause and submits
 immediately.
 
-Submitting means `method: submit_pending` — never a plain issue comment for this — its
-`event` matching the outcome (all-approve → an approval; any-`change` → a request for
-changes; decision-only → a plain comment, since there's nothing code-level to request and
-it isn't an approval either). Exactly **one** submitted review per run, except the one case
-above where a live resolution submits a second, corrected review right after the first —
-never more than that, and never one review per reviewer; the aggregation step is what keeps
-this from turning into review-bot noise, the same principle one consolidated comment used
-to serve.
+Submitting means turning that pending review into a real one — never a plain issue comment
+for this — its event matching the outcome (all-approve → an approval; any-`change` → a
+request for changes; decision-only → a plain comment, since there's nothing code-level to
+request and it isn't an approval either). Exactly **one** submitted review per run, except
+the one case above where a live resolution submits a second, corrected review right after
+the first — never more than that, and never one review per reviewer; the aggregation step
+is what keeps this from turning into review-bot noise, the same principle one consolidated
+comment used to serve.
 
 **Merge, only with `--merge`:** an all-approved outcome merges the PR itself, using the
 repository's normal merge method, only when `/pilot-review` was run with `--merge`;

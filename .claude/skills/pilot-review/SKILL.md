@@ -29,10 +29,9 @@ mode — without it, this skill never merges.
      (`mcp__github__pull_request_read` method `get_reviews`): still pinned to the PR's
      current head commit → skip straight to step 8 with its already-computed outcome
      (step 8 itself routes on/around the pair pause exactly as it would for a fresh run) —
-     no need to re-run reviewers. Stale (commit no longer
-     matches) or none found → discard any stale one
-     (`mcp__github__pull_request_review_write` method `delete_pending`) and resume normally
-     from step 3. Mismatch → report and stop.
+     no need to re-run reviewers. Stale (commit no longer matches) or none found → discard
+     any stale one (`mcp__github__pull_request_review_write` method `delete_pending`) and
+     resume normally from step 3. Mismatch → report and stop.
    - Given (or pooled) without `--resume`, `status:in-review`, assigned, no
      `needs-human`/`on-hold`, thread shows a `needs-human` block later cleared → resume,
      not a fresh claim. Follow `docs/pilot-process.md` §4 "Resuming a `needs-human` ticket"
