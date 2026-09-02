@@ -481,9 +481,9 @@ when phase 5 blocks on something that needs an actual code change — see
 - `status:approved` — phase 5 ran and every reviewer approved (§6) — set instead of
   leaving `status:in-review`. This is the "ready to merge, nothing outstanding" signal.
   Without `--merge`, a human still performs the actual merge — PILOT's default is never to
-  merge on its own. Given `--merge` (§4 "Interaction modes", §6 "Merge, only with
-  `--merge`"), the same run merges the PR itself right after submitting the review, using
-  the repository's normal merge method; the ticket then reaches `status:done` via
+  merge on its own. Given `--merge` (§4 "Interaction modes"), the same run merges the PR
+  itself right after submitting the review, using the repository's normal merge method; the
+  ticket then reaches `status:done` via
   `pilot-status-on-merge.yml` exactly as it would after a human merge. There's no automatic
   re-review trigger if new commits land on the PR after this before it's actually merged —
   re-run `/pilot-review` on it by hand, or move it back to `status:review-ready` yourself,
@@ -508,8 +508,8 @@ when phase 5 blocks on something that needs an actual code change — see
 - `status:done` — merged (or, for a `status:split` story, completed by cascade or, for a
   `type:feature` one, by phase 6 — see below and §7). Not set by any phase skill directly
   for an actionable ticket coming out of a merge (merge is always a human action or, for
-  phase 5, an explicit `--merge` run, §6 "Merge, only with `--merge`" — either way outside
-  PILOT's control at the moment it happens) — set instead by the
+  phase 5, an explicit `--merge` run, `status:approved` above — either way outside PILOT's
+  control at the moment it happens) — set instead by the
   `.github/workflows/pilot-status-on-merge.yml` GitHub Actions workflow, independent of any
   agent session being alive:
   - Triggered on `pull_request: closed` (gated on `merged == true`): resolves the issue(s)
@@ -850,12 +850,16 @@ all. Beyond that flag, this works without any special-casing because "picking th
 ticket when none is specified" (above) already covers both fresh and resumed work
 identically. Four independent Routines — one each for `/pilot-scope --auto`, `/pilot-spec
 --auto`, `/pilot-dev --auto`, and `/pilot-review --auto` (add `--merge` too if the Routine
-should also merge once every reviewer approves, §6 "Merge, only with `--merge`") — each on
-its own schedule, so a slow or failing phase never delays the others.
+should also merge once every reviewer approves, §3 "`status:approved`") — each on its own
+schedule, so a slow or failing phase never delays the others.
 
 ### Interaction modes: pair (default) and `--auto`
 
-The six phase skills split into three groups by which modes they support:
+The generic contract below — pair pauses at natural checkpoints and writes progress
+immediately, `--auto` skips straight to the finished result — is what each phase's own
+`SKILL.md` follows by default; a phase is free to specialize it for its own mechanics
+(phase 5 does, having no natural mid-work checkpoint the other three share). The six phase
+skills split into three groups by which modes they support:
 
 - **`/pilot-story`, `/pilot-qa`** — **pair only**, no `--auto` exists for either. Turning a
   raw idea into a story or a technical need into a ticket is a conversation between the
@@ -870,18 +874,18 @@ The six phase skills split into three groups by which modes they support:
   regardless of mode (§6) — there's no natural mid-review checkpoint while they're working.
   Once their verdicts are collected into a single outcome, where pair mode's value kicks in
   depends on which outcome it is (§6 "Pair (default) vs `--auto`"): a decision-only
-  outcome always submits immediately, in both
-  modes — §3's `needs-human` rule requires the block to reach GitHub before any resolution,
-  even a live one — and pair's value applies only *after* that, as a live human resolving
+  outcome always submits immediately, in both modes — §3's `needs-human` rule requires the
+  block to reach GitHub before any resolution, even a live one — and pair's value applies
+  only *after* that, as a live human resolving
   it right there instead of leaving it for the usual async `needs-human` wait (§3 "A human
   is live in the same session"), submitted as a second, corrected review. For the
   all-approve and any-`change` outcomes, by contrast, pair mode pauses *before* submitting —
   a last look before an approval (and any `--merge`) or a `changes-requested` goes out, no
   live judgment call to make there. `--auto` skips every pause and submits every outcome
-  straight away. Also supports `--merge` (§6 "Merge, only with `--merge`") — orthogonal to
-  pair/`--auto`, combinable with either — to merge
-  the PR itself once every reviewer approves instead of leaving it for a human; without it,
-  phase 5 never merges. Still supports `--resume <issue>` to recover a claim orphaned by a
+  straight away. Also supports `--merge` (§3 "`status:approved`") — orthogonal to
+  pair/`--auto`, combinable with either — to merge the PR itself once every reviewer
+  approves instead of leaving it for a human; without it, phase 5 never merges. Still
+  supports `--resume <issue>` to recover a claim orphaned by a
   crashed run (above).
 
 Both modes still claim (above) immediately, same as always — it's concurrency
@@ -925,9 +929,9 @@ checkpoint. This is what a scheduled Routine must use for `/pilot-scope`, `/pilo
 `/pilot-story` has no `--auto` and is therefore never Routine-driven.
 
 `--auto` and `--resume` are mutually exclusive with each other and with pair mode itself —
-pick exactly one per run. `--merge` (phase 5 only, §6 "Merge, only with `--merge`") is a
-separate, orthogonal flag: it controls only whether an all-approve outcome also merges the
-PR itself, and combines with either pair or `--auto`.
+pick exactly one per run. `--merge` (phase 5 only, §3 "`status:approved`") is a separate,
+orthogonal flag: it controls only whether an all-approve outcome also merges the PR itself,
+and combines with either pair or `--auto`.
 
 This is unrelated to the "ask live" behavior in §3 ("`needs-human` — an orthogonal
 flag") — that one fires for a genuine blocker the agent can't resolve alone, whether or
@@ -996,22 +1000,13 @@ issue comment for this:
   `status:in-review` stays (§3) — this ticket re-enters phase 5's own pool once cleared,
   unless resolved live first (below).
 
-**Pair (default) vs `--auto`** decides *when* each outcome above is submitted — full
-mechanics in §4 "Interaction modes"; in short, a decision-only outcome always submits
-immediately in both modes (§3's `needs-human` rule requires the block to reach GitHub
-before any resolution, even a live one), while the all-approve/`change` outcomes get a
-pair-mode pause first. A live resolution of a submitted decision-only block goes out as a
-second, corrected review — never more than two submitted reviews in one run, never one per
-reviewer, the same principle one consolidated comment used to serve. `pilot-review`'s own
-`SKILL.md` covers the mechanics: checkpointing the outcome as a pending GitHub review the
-moment it's decided (recoverable by an orphaned `--resume`, §4 "Resuming an orphaned
-claim"), then submitting it.
-
-**Merge, only with `--merge`:** an all-approved outcome merges the PR itself, using the
-repository's normal merge method, only when `/pilot-review` was run with `--merge`;
-otherwise, or on any other outcome, phase 5 never merges — a human merges by hand, same as
-always. Either way, `status:done` and the cascading-completion check follow from the merge
-exactly as described in §3 "`status:done`".
+**Pair (default) vs `--auto`** decides *when* each outcome above is submitted — the generic
+contract is §4 "Interaction modes"; phase 5 specializes it (no natural mid-review
+checkpoint to pause at, so the pause moves to right after aggregation, and a decision-only
+outcome never pauses at all, per §3's `needs-human` rule). `pilot-review/SKILL.md` has the
+full mechanics, including how it checkpoints and recovers via `--resume`. Merge behavior
+(`--merge`) is §3 "`status:approved`"/"`status:done`" — nothing phase-5-specific beyond
+what's already there.
 
 ---
 
