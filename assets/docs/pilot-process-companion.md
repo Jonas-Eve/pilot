@@ -23,18 +23,59 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
     → skips detection, declares it type:bug upfront (architect agent)
 /pilot-story --resume 12    → picks back up a status:draft ticket left mid-pair
 
-/pilot-scope 42        → scopes/decomposes existing issue #42
-/pilot-spec 42         → writes the technical spec for #42 (must be status:spec-ready)
-/pilot-dev             → claims and implements the next status:dev-ready ticket, no
-                          argument needed
-/pilot-dev 42          → claims and implements #42 specifically
-/pilot-review 57       → claims and runs phase 5 against PR/issue #57, pair by default
+/pilot-scope             → sweeps the next fresh/resumable status:backlog ticket, no
+                           argument needed
+/pilot-scope 42          → scopes/decomposes existing issue #42, pair by default
+/pilot-scope 42 --auto   → same, no live checkpoint (needed for a scheduled Routine)
+/pilot-scope 42 --resume → picks back up a mid-pair session, or a cleared needs-human
+                           flag, on #42
+/pilot-scope 12          → also re-scopes a type:feature story already at
+                           status:qa/status:in-qa, for a new split round
+
+/pilot-spec              → sweeps the next spec-ready/resumable ticket, no argument
+                           needed
+/pilot-spec 42           → writes the technical spec for #42 (must be status:spec-ready)
+/pilot-spec 42 --auto    → same, no live checkpoint (needed for a scheduled Routine)
+/pilot-spec 42 --resume  → picks back up a mid-pair session, or a cleared needs-human
+                           flag, on #42
+
+/pilot-dev               → claims and implements the next status:dev-ready ticket, no
+                           argument needed
+/pilot-dev 42            → claims and implements #42 specifically, pair by default
+/pilot-dev 42 --auto     → same, no live checkpoint (needed for a scheduled Routine)
+/pilot-dev 42 --resume   → picks back up a mid-pair session, or recovers a crashed
+                           run's orphaned claim, on #42
+
+/pilot-review            → sweeps every status:review-ready/resumable PR, no argument
+                           needed, pair by default
+/pilot-review 57         → claims and runs phase 5 against PR/issue #57, pair by default
                           (must be status:review-ready, or status:in-review resumable)
 /pilot-review 57 --auto  → same, no live checkpoint (needed for a scheduled Routine)
 /pilot-review 57 --merge → merges the PR itself once every reviewer approves
 /pilot-review 57 --resume → recovers a claim orphaned by a crashed phase-5 run
-/pilot-qa 61           → runs phase 6 (human QA) against story #61 (must be status:qa)
+
+/pilot-qa                → sweeps the next fresh status:qa or resumable status:in-qa
+                           ticket, no argument needed
+/pilot-qa 61             → runs phase 6 (human QA) against story #61 (must be status:qa)
+/pilot-qa --resume 61    → picks back up a mid-pair session on #61
+
+/pilot-auto             → sweep mode: tries review→dev→spec→scope, in that fixed order,
+                          against their own pools, stopping at the first with work to do
+/pilot-auto --merge     → same, merging review's PR itself if that's the phase that runs
+                          and its verdict is all-approve
+/pilot-auto dev spec    → same, restricted to that subset (still tried in fixed order)
+/pilot-auto 48          → tries the same four phases against ticket #48 specifically,
+                          stopping at whichever one currently claims it
+/pilot-auto 48 --merge  → same, and merges #48's PR itself once review's verdict is
+                          all-approve
 ```
+
+Pairing `/pilot-auto <ticket> [--merge]` with Claude Code's own `/loop` skill (e.g.
+`/loop /pilot-auto 48 --merge`) re-invokes it repeatedly — each call advances the ticket
+by one phase — until a call reports nothing left to do (merged, `needs-human`, or
+`status:done`). `/loop` is a general Claude Code capability, not a PILOT skill; see its
+own documentation for availability across surfaces (e.g. it needs a live session or a
+cloud Routine to run unattended — a closed IDE window stops it).
 
 ## Example: a `type:feature` story end to end
 

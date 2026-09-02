@@ -1,7 +1,7 @@
 ---
 name: pilot-qa
 description: "Phase 6 of PILOT (see docs/pilot-process.md): human QA for a type:feature story once every task — including its mandatory e2e one — has merged (status:qa). Builds a manual test plan from the story's acceptance criteria and merged tasks, walks a human through testing it live, and reports the verdict. Pair-only, no --auto, never Routine-driven. On a full pass, or once every failure resolves to not-a-bug, sets status:done and closes the issue (reports any not-a-bug finding to the human to raise via phase 1). On a genuine defect, originates a type:bug ticket directly as spec-ready and unclaims the story itself (back to status:qa) — same mechanics as a bug found mid-implementation in phase 4. An unclassifiable failure gets the standard needs-human flow (label + comment posted immediately, per docs/pilot-process.md §3 — resolved and cleared live in the same turn when the human answers right there, since this phase is always pair). Also resumes a ticket left mid-pair with --resume <issue number>, and bare (no argument) picks up the next status:qa (fresh) or resumable needs-human-cleared status:in-qa ticket, skipping anything on-hold. Use once a type:feature story's tasks have all merged and it's ready for a human to confirm the shipped behavior."
-argument-hint: "<issue number> | --resume <issue number>"
+argument-hint: "<issue number, optional — picks the next fresh status:qa or resumable status:in-qa ticket if omitted> | --resume <issue number>"
 disable-model-invocation: true
 ---
 
