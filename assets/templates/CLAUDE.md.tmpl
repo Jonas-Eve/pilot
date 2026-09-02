@@ -74,5 +74,8 @@ At the end of any task that modifies architecture, endpoints, folder structures,
   (e.g. `fix(backend): resolve null pointer in session lookup`). Common types: `feat`,
   `fix`, `docs`, `refactor`, `test`, `style`, `chore`. `scope` is typically the affected
   app, or omitted for repo-wide changes.
-- **Rebase Merge Only:** PRs merge into `main` via **rebase merge** — never a merge
-  commit. Never force-push `main` to fix a past merge commit.
+- **Squash Merge By Default, Rebase Merge For Deliberately Separate Commits:** squash a PR
+  into `main` as one commit unless it carries multiple commits that are each independently
+  meaningful on purpose (not fixups of an earlier commit in the same PR — those should have
+  been amended per the rule above) — rebase-merge those instead, to keep them distinct in
+  `main`'s history. Never a merge commit either way, and never force-push `main`.

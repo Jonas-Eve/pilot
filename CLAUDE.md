@@ -113,5 +113,8 @@ the skill files) — never a fixed path, there is no installed location.
   `feat(skills): add pilot-init-archi scaffold for Expo mobile`). `scope` is typically the
   affected top-level dir (`skills`, `agents`, `scripts`, `docs`) or omitted for
   repo-wide changes.
-- **Rebase Merge Only:** PRs merge into `main` via rebase merge, keeping history linear.
-  Never force-push `main`.
+- **Squash Merge By Default, Rebase Merge For Deliberately Separate Commits:** squash a PR
+  into `main` as one commit unless it carries multiple commits that are each independently
+  meaningful on purpose (not fixups of an earlier commit in the same PR — those should have
+  been amended per the rule above) — rebase-merge those instead, to keep them distinct in
+  `main`'s history. Never force-push `main`, and never a merge commit either way.
