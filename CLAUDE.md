@@ -64,6 +64,17 @@ the skill files) — never a fixed path, there is no installed location.
   skill-to-agent mapping in `assets/docs/pilot-process.md` are the actual product. Don't
   change them casually; a mechanism change here affects every project that has copied
   from this repo, not just one.
+- **Token discipline — LLM-read files stay essential-only:** `.claude/skills/*/SKILL.md`,
+  `.claude/agents/*.md`, and `assets/docs/pilot-process.md` load into an agent's context on
+  every run they take part in — keep them to only what a skill or agent needs to operate
+  correctly. No meta-commentary, platform-quirk explanations, maintainer rationale, or
+  historical notes about why something is the way it is. If something is worth writing down
+  for a human but doesn't change what an agent does, it belongs in a doc no skill or agent
+  reads instead, never padded into the file an LLM actually loads — `assets/docs/pilot-process-visual.md`
+  is the existing example for `pilot-process.md` (§2), but nothing requires reusing it or any
+  other existing doc: pick whichever already-existing human-only doc actually fits the
+  information, or create a new one next to the skill/agent/doc it explains, whichever the
+  content itself calls for.
 - **Cross-reference check:** `assets/docs/pilot-process.md`, every `.claude/skills/*/SKILL.md`,
   every `.claude/agents/pilot-*.md`, and the PILOT mentions in this file and `README.md` are
   tightly cross-referenced. After editing any of them, `grep` the exact term(s) you
