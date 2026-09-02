@@ -62,9 +62,10 @@ parallel instances; the claim step below prevents collisions.
    (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket"). **Reclaim case** (per
    step 1): pass the phase-5 blocking review — its submitted PR review, fetched via
    `mcp__github__pull_request_read` method `get_reviews` (the body holds the points, not a
-   plain issue comment, `docs/pilot-process.md` §6) — with its `change`-tagged points to
-   fix, plus any `decision`-tagged points and their resolution, instead of a fresh spec —
-   only more commits on the existing PR. **Unless `--auto` was given** (`docs/pilot-process.md` §4
+   plain issue comment, `docs/pilot-link-review-consensus.md`) — with its `change`-tagged
+   points to fix, plus any `decision`-tagged points and their resolution, instead of a
+   fresh spec — only more commits on the existing PR. **Unless `--auto` was given**
+   (`docs/pilot-process.md` §4
    "Interaction modes" — pair is the default; a fresh claim or paused-pair resume only,
    never combined with a reclaim): first ask for a proposed implementation approach, not
    the finished implementation — the pair-coding checkpoint. Show the human that plan as a

@@ -6,9 +6,9 @@ argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if om
 
 # PILOT — Phase 5: Test & Validate
 
-Read `docs/pilot-process.md` first — source of truth for labels, states, the claim
-protocol, and the review-consensus mechanics (§4, §6); this skill covers only phase 5's
-mechanics.
+Read `docs/pilot-process.md` first — source of truth for labels, states, and the claim
+protocol (§4) — and `docs/pilot-link-review-consensus.md` for the reviewer set and
+`change`/`decision` tags; this skill covers only phase 5's mechanics.
 
 Mode: pair by default. Every outcome is checkpointed as a pending GitHub PR review the
 moment it's decided (step 7), the same durable-immediately discipline every other
@@ -57,8 +57,8 @@ mode — without it, this skill never merges.
    - `type:feature` or `type:e2e` → `pilot-pm`, `pilot-architect`, `pilot-techlead`
    - `type:tech` or `type:bug` → `pilot-architect`, `pilot-techlead` (no PM)
 
-   Together these cover every dimension phase 5 checks (`docs/pilot-process.md` §6): PM —
-   product fit / e2e-flow validation; architect — conformance to recorded
+   Together these cover every dimension phase 5 checks (`docs/pilot-link-review-consensus.md`):
+   PM — product fit / e2e-flow validation; architect — conformance to recorded
    security/architecture decisions; tech lead — spec conformance and code quality. If a
    future edit changes what any agent's file checks, re-verify this still adds up to full
    coverage.
@@ -70,11 +70,11 @@ mode — without it, this skill never merges.
    persona — none sees another's verdict. Pass only what each needs: the PR diff/
    description plus, for the PM, the linked story's acceptance criteria (and its own spec,
    for `type:e2e`); for the architect, its recorded decisions; for the tech lead, its own
-   spec (it re-runs validation on the PR branch itself, `docs/pilot-process.md` §6). When
-   resuming (step 1's needs-human-resume branch), also pass the original blocking
+   spec (it re-runs validation on the PR branch itself, `docs/pilot-link-review-consensus.md`).
+   When resuming (step 1's needs-human-resume branch), also pass the original blocking
    review's `decision`-tagged points — the submitted PR review from the run that raised
    the block, fetched via `mcp__github__pull_request_read` method `get_reviews` (its body
-   holds the points, not a plain issue comment, §6) — and whatever's in the PR's comment
+   holds the points, not a plain issue comment) — and whatever's in the PR's comment
    thread after it: a specific reply, or "no reply — treat as approved as proposed" if none
    (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket") — so reviewers don't
    re-raise a point a human already answered. Each persona
@@ -127,6 +127,6 @@ mode — without it, this skill never merges.
     before.
 13. Report the outcome, including whether this run merged the PR itself. Once the PR is
     merged (by a human, or by step 12), `.github/workflows/pilot-status-on-merge.yml` sets
-    `status:done` and runs the cascading-completion check (`docs/pilot-process.md` §3, §6)
+    `status:done` and runs the cascading-completion check (`docs/pilot-process.md` §3)
     — this skill's own job ends at the submitted review(s) (plus, when `--merge` applied,
     the merge itself).

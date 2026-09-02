@@ -32,7 +32,7 @@ spec).
     its diff and the phase-5 blocking review instead (the `change`-tagged points to fix,
     plus any `decision`-tagged points and their resolution) — the branch may have gone
     stale since it was opened, and phase 5 just re-ran validation against it
-    (`docs/pilot-process.md` §6), so build on the current base, not whatever it was at
+    (`docs/pilot-link-review-consensus.md`), so build on the current base, not whatever it was at
     PR-open time. Address exactly those points, skipping steps 2-4 below
     (fresh-implementation only). Push new commits to that same PR's branch — a force
     push, since the rebase already rewrote its history; safe as long as no other
@@ -58,12 +58,11 @@ spec).
 3a. If a test surfaces what looks like a genuine defect in already-merged code
     outside your ticket — not an ambiguity in what you're building (that's a spec
     deviation, step 4) — most likely while writing an end-to-end test task
-    (`docs/pilot-process.md` §2 "End-to-end test tasks", implemented by `pilot-e2e`,
-    which follows this same step for a bug it finds), but not limited to that.
-    Classify it first (`docs/pilot-process.md` §2 "Prerequisite bug tickets (phase
-    2, phase 4, or phase 6)"): a real defect, or actually a different need — if the
-    latter, treat it as that section describes (a prerequisite tech ticket, or
-    leave it for a human via phase 1), not as a `type:bug`. If it's genuinely a bug,
+    (`docs/pilot-link-e2e-tasks.md`, implemented by `pilot-e2e`, which follows this same
+    step for a bug it finds), but not limited to that.
+    Classify it first (`docs/pilot-link-bug-tickets.md`): a real defect, or actually a
+    different need — if the latter, treat it as that doc describes (a prerequisite tech
+    ticket, or leave it for a human via phase 1), not as a `type:bug`. If it's genuinely a bug,
     originate a new ticket the same way the architect originates a prerequisite
     tech ticket in phase 2 (here, from phase 4), but `type:bug`: create it directly
     as `type:bug`, `level:task`, `status:spec-ready`, never
@@ -104,8 +103,9 @@ spec).
     readability/naming, whether tests actually exercise the claimed behavior, edge
     cases the spec didn't call out) and fix what you find. This stands in for a
     separate phase-5 reviewer covering the same ground (`docs/pilot-process.md` §4
-    "Interaction modes", §6) — the tech lead still checks spec conformance and does
-    its own quality pass independently, but this is your one chance to catch what
+    "Interaction modes", `docs/pilot-link-review-consensus.md`) — the tech lead still
+    checks spec conformance and does its own quality pass independently, but this is your
+    one chance to catch what
     you'd otherwise ship uncaught.
 6. Commit and push to a short-lived branch, open a pull request following this
    project's own PR template if it has one (e.g. `.github/pull_request_template.md`)
@@ -114,11 +114,11 @@ spec).
    move the ticket to `status:review-ready` (phase 5's own pre-claim status,
    `docs/pilot-process.md` §4). Never merge — that's phase 5's call, never dev's: a human
    merges by hand, unless `/pilot-review` itself was run with `--merge`
-   (`docs/pilot-process.md` §6).
+   (`docs/pilot-process.md` §3 "`status:approved`").
 7. Update any docs or service-level README/CLAUDE.md (or equivalent) the change
    affects, per this project's own documentation-maintenance convention, if it has
    one.
 
 You are not a phase-5 reviewer — your self-review at step 5a above is what stands in
-for that (`docs/pilot-process.md` §6); phase 5 for every ticket type is `pilot-pm`
+for that (`docs/pilot-link-review-consensus.md`); phase 5 for every ticket type is `pilot-pm`
 (feature only) + `pilot-architect` + `pilot-techlead`.
