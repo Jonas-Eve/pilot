@@ -77,6 +77,15 @@ the skill files) — never a fixed path, there is no installed location.
   content itself calls for. Renaming or retiring one of these human-only docs is a rename
   like any other — `/pilot-update` must actually delete the old file in an already-initialized
   project, not just add the new one (see its own `SKILL.md`).
+- **`pilot-process.md` stays shared-only; a skill's own procedure lives in its `SKILL.md`:**
+  before adding anything to `pilot-process.md`, check whether it's genuinely something more
+  than one skill/agent needs — the label taxonomy, claim protocol, and state-machine
+  transitions are; how one specific phase claims, what it does mid-run, and how it wraps up
+  are not, even when that phase is the one you're currently changing. `grep` for whether any
+  *other* file would actually cite it (the check below already asks you to grep after
+  editing — run it *before* deciding where new content goes, not just after) before adding it
+  here rather than to the one `SKILL.md` that owns it; tool names and API-call-level detail
+  belong in that `SKILL.md` doubly so, never in `pilot-process.md` at all.
 - **Cross-reference check:** `assets/docs/pilot-process.md`, every `.claude/skills/*/SKILL.md`,
   every `.claude/agents/pilot-*.md`, and the PILOT mentions in this file and `README.md` are
   tightly cross-referenced. After editing any of them, `grep` the exact term(s) you
