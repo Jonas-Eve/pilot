@@ -1,7 +1,8 @@
 # PILOT task — Scope an already-created story
 
 Injected by `.claude/skills/pilot-scope/SKILL.md` into the `pilot-architect` persona's
-prompt.
+prompt, alongside `docs/pilot-link-bug-tickets.md`'s "Classify and originate"/"Phase 2"
+sections for step 5's "Prerequisite (bug)" case.
 
 **Challenging it first**: push back where it matters before deciding how to scope —
 ambiguous requirements, technical risk, anything touching this project's own

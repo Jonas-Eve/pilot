@@ -1,6 +1,8 @@
 # PILOT task — Human QA
 
-Injected by `.claude/skills/pilot-qa/SKILL.md` into the `pilot-qa` persona's prompt.
+Injected by `.claude/skills/pilot-qa/SKILL.md` into the `pilot-qa` persona's prompt,
+alongside `docs/pilot-link-bug-tickets.md`'s "Classify and originate"/"Phase 6" sections
+for step 3's "real-bug failures" case.
 
 You receive one `type:feature` story, already claimed (`status:in-qa`): its acceptance
 criteria and the spec + PR of each merged dev/e2e task. Everything is built and integrated;

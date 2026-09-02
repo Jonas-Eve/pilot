@@ -1,6 +1,8 @@
 # PILOT task — Implement a spec'd ticket
 
-Injected by `.claude/skills/pilot-dev/SKILL.md` into the `pilot-dev` persona's prompt.
+Injected by `.claude/skills/pilot-dev/SKILL.md` into the `pilot-dev` persona's prompt,
+alongside `docs/pilot-link-bug-tickets.md`'s "Classify and originate"/"Phase 4" sections
+for step 3a.
 
 You receive one ticket in one of two situations: a fresh implementation
 (`status:dev-ready`, a spec from phase 3, no PR yet), or a reclaim after phase 5 sent
