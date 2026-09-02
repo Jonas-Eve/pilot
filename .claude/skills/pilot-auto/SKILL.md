@@ -86,7 +86,7 @@ that actually does something:
    (`--merge` appended the same way). `--auto` is required here now that this phase
    defaults to pair (`docs/pilot-process.md` §4 "Interaction modes") — unattended dispatch
    is this command's whole point. Either way, let it resolve and process exactly as it
-   would standalone (`docs/pilot-process.md` §6 step 0).
+   would standalone (`docs/pilot-process.md` §4 "Picking the next ticket...").
    - Nothing to review (empty pool, or — given a ticket — it isn't a PR/doesn't currently
      belong to phase 5) → continue to the next phase.
    - Otherwise (it reviewed the PR/pool, whatever the verdict) → stop here; this run's result
