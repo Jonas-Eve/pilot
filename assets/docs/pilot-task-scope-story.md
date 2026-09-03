@@ -20,7 +20,7 @@ sibling story under the same Epic, something referenced via "Blocks #M"/"Depends
 #N") — e.g. to avoid proposing a prerequisite a sibling ticket already covers.
 
 **If this is a re-scope of a story whose split already finished once** (the skill
-claimed it from `status:qa`/`status:in-qa` into `status:scoping` before calling you —
+claimed it from `status:qa`/`status:in-qa` into `status:in-scope` before calling you —
 the one deliberate backward transition in the state machine, `docs/pilot-process.md`
 §2 "Re-scoping a `type:feature` story after its split is done") — you're also given
 which tasks from the earlier round(s) are already `status:done`, including the
