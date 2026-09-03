@@ -23,7 +23,7 @@ the fly, and applying a label that doesn't exist fails the API call outright:
 
 `type:feature`, `type:tech`, `type:bug`, `type:e2e`, `level:epic`, `level:story`,
 `level:task`, `priority:P0`, `priority:P1`, `priority:P2`,
-`status:draft`, `status:backlog`, `status:scoping`, `status:spec-ready`, `status:in-spec`,
+`status:draft`, `status:backlog`, `status:in-scope`, `status:spec-ready`, `status:in-spec`,
 `status:dev-ready`, `status:in-dev`, `status:review-ready`, `status:in-review`,
 `status:changes-requested`,
 `status:approved`, `status:wont-do`, `status:split`, `status:qa`, `status:in-qa`,
@@ -225,6 +225,14 @@ the two directions with a plain issue reference: a comment on the new ticket ("B
 pointing back, and a line in the body of the ticket being scoped naming it. Never
 `sub_issue_write` for this relationship.
 
+If the ticket being scoped itself belongs to a `level:epic`, also comment on that Epic
+naming the blocking relationship (e.g. "Story #<scoped> is blocked by prerequisite #<new>")
+— the sub-issue list only shows the epic's own stories, never an external prerequisite, so
+without this an epic's own view never reveals that one of its stories is waiting on
+something outside it. Skip this when the scoped ticket has no parent Epic. Same for a
+prerequisite *bug* ticket (`docs/pilot-link-bug-tickets.md`), which reuses this linking
+mechanic wholesale.
+
 Whether the prerequisite is a **hard blocker** — the ticket genuinely can't be spec'd or
 built until it lands — decides the exact wording of that line, because §4 "Blocked-by
 dependencies" below mechanically gates a ticket on the literal phrase, not on a label:
@@ -276,7 +284,7 @@ an already-once-split `level:story` differently depending on exactly how finishe
   number in either status is a valid, explicit `/pilot-scope` entry point (never part of a
   bare pool) — an existing `status:in-qa` assignee doesn't block this claim, the
   architect's claim simply overwrites it. Post a comment explaining why, then claim it
-  into `status:scoping` — the one deliberate, phase-2-only backward transition in the
+  into `status:in-scope` — the one deliberate, phase-2-only backward transition in the
   whole state machine. From here it's an ordinary phase-2 pass, just with extra context
   (which tasks, including the original e2e one, are already `status:done` from the
   earlier round):
@@ -338,12 +346,12 @@ the four fits that specific task, assigned by the architect at split time.
 
 ### `status:` — the pipeline state machine, one label at a time
 ```
-draft → backlog → scoping → spec-ready → in-spec → dev-ready → in-dev → review-ready →
+draft → backlog → in-scope → spec-ready → in-spec → dev-ready → in-dev → review-ready →
   in-review → approved → done
                       ↓         ↓
                       +---- wont-do (before dev starts) ----+
 
-scoping → split (tracker for tasks, reaches done only by cascade — see below)
+in-scope → split (tracker for tasks, reaches done only by cascade — see below)
 
 split (type:feature only) → qa → in-qa → done (Phase 6 — Human QA, §7 — instead of
 cascading straight to done like a type:tech split does)
@@ -357,9 +365,12 @@ when phase 5 blocks on something that needs an actual code change — see
   agent's first draft exists (§4 "Interaction modes"). Excluded from every phase's
   candidate pools, never picked up bare, only reachable by an explicit `--resume <issue>`
   or once a cleared `needs-human` flag makes it resumable. Becomes `status:backlog`
-  (story) or `status:spec-ready` (bug), unassigned, once the human gives final approval.
+  (story) or `status:spec-ready` (bug), unassigned, once the human gives final approval —
+  or, if rejected as out of scope instead, `status:wont-do` for a `type:feature`/`type:tech`
+  draft, or `needs-human` (still `status:draft`) for a `type:bug` one (`status:wont-do`
+  below).
 - `status:backlog` — ticket exists, phase 2 hasn't started.
-- `status:scoping` — architect has claimed it for phase 2.
+- `status:in-scope` — architect has claimed it for phase 2.
 - `status:spec-ready` — ready for phase 3: an unsplit `type:tech` story, a freshly split
   task (already scoped as part of the split), or a `type:bug` ticket skipping phase 2
   entirely.
@@ -401,15 +412,18 @@ when phase 5 blocks on something that needs an actual code change — see
   re-review trigger if new commits land on the PR after this before it's actually merged —
   re-run `/pilot-review` on it by hand, or move it back to `status:review-ready` yourself,
   before merging.
-- `status:wont-do` — the architect concluded during phase 2 that this ticket shouldn't be
-  built after all (out of scope, duplicate, superseded) and closed the issue instead of
-  scoping it. Only settable from phase 2, before any spec or code has been written —
-  once a ticket has reached `status:in-spec` or later, killing it is a human call: flag
-  `needs-human` with the reasoning instead and let a human close it. A `type:bug` ticket
-  therefore never carries this label at all: it has no phase 2 (§2 "Three levels"), so an
-  invalid report is caught in phase 1 by creating nothing in the first place, and a bug
-  that only turns out to be invalid after creation goes the `needs-human` route like any
-  other post-phase-2 ticket.
+- `status:wont-do` — the concluding agent decided this ticket shouldn't be built after all
+  (out of scope, duplicate, superseded) and closed the issue instead of continuing it.
+  Settable in two places, both before any spec or code has been written: phase 1
+  (`/pilot-story`), replacing `status:draft` when a `type:feature`/`type:tech` draft is
+  rejected instead of leaving a closed issue still labeled `status:draft`; or phase 2, in
+  place of scoping the ticket. Once a ticket has reached `status:in-spec` or later, killing
+  it is a human call instead: flag `needs-human` with the reasoning and let a human close
+  it. A `type:bug` ticket never carries this label at all, in phase 1 or phase 2: it has no
+  phase 2 (§2 "Three levels"), an invalid report caught before its ticket even exists is
+  simply never created, and a bug draft that only turns out invalid after its ticket
+  already exists (or any bug found invalid post-creation) goes the `needs-human` route
+  instead of a direct close.
 - `status:qa` — a `type:feature` `status:split` story whose e2e task (and therefore
   every dev task it depends on) has reached `status:done` — set by
   `.github/workflows/pilot-status-on-merge.yml` in place of the ordinary cascade straight
@@ -703,7 +717,7 @@ in that phase's in-progress `status:` (whether picked up bare or given explicitl
 Distinct from both "Resuming a `needs-human` ticket" above and "Reclaiming a
 `status:changes-requested` ticket" below: a ticket claimed but with nobody actually still
 working it — still carrying its original assignee, still in that phase's in-progress
-`status:` (`status:draft`, `status:scoping`, `status:in-spec`, `status:in-dev`,
+`status:` (`status:draft`, `status:in-scope`, `status:in-spec`, `status:in-dev`,
 `status:in-review`, `status:in-qa`), with **no** `needs-human`. Two different causes leave
 the exact same shape, indistinguishable from the ticket alone: a **pair** session
 ("Interaction modes" below) that ended before reaching the phase's final approval

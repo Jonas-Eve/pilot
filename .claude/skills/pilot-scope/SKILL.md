@@ -1,6 +1,6 @@
 ---
 name: pilot-scope
-description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature or type:tech only — type:bug never reaches this phase, always created directly as a spec-ready task) and, in one pass, challenges it, then scopes it as-is or splits it into dev-sized tasks (level:task, each its own independent type: — never inherited) — judgment call for type:tech, mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler) plus exactly one type:e2e task depending on every other task in the split. Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. For type:feature, the PM agent also checks the proposed type:feature tasks (excluding type:tech/type:e2e siblings) against the story's acceptance criteria before finalizing. Defaults to pair mode (walks the decomposition with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human). Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:scoping then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. Use for scoping/decomposing an already-created type:feature/type:tech ticket — not for formalizing a new need (that's /pilot-story)."
+description: "Phase 2 of PILOT (see docs/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature or type:tech only — type:bug never reaches this phase, always created directly as a spec-ready task) and, in one pass, challenges it, then scopes it as-is or splits it into dev-sized tasks (level:task, each its own independent type: — never inherited) — judgment call for type:tech, mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler) plus exactly one type:e2e task depending on every other task in the split. Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. For type:feature, the PM agent also checks the proposed type:feature tasks (excluding type:tech/type:e2e siblings) against the story's acceptance criteria before finalizing. Defaults to pair mode (walks the decomposition with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human). Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:in-scope then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. Use for scoping/decomposing an already-created type:feature/type:tech ticket — not for formalizing a new need (that's /pilot-story)."
 argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto] | <issue number> --resume"
 ---
 
@@ -13,18 +13,18 @@ mechanics of running phase 2.
 ## Steps
 
 1. Determine the input:
-   - `--resume <issue>`: must be `status:scoping`, assigned, **no** `needs-human`/
+   - `--resume <issue>`: must be `status:in-scope`, assigned, **no** `needs-human`/
      `on-hold` — a ticket left mid-pair. Follow `docs/pilot-process.md` §4 "Resuming
      an orphaned claim", skipping step 2's claim (already claimed). If it
      doesn't match, report and stop.
-   - No `--resume`, `status:scoping`, **no** `needs-human`/`on-hold`, but its thread
+   - No `--resume`, `status:in-scope`, **no** `needs-human`/`on-hold`, but its thread
      shows a `needs-human` block later cleared → a resume, not a fresh claim. Follow
      `docs/pilot-process.md` §4 "Resuming a `needs-human` ticket", skipping step 2's
      claim.
-   - No `--resume`, `status:scoping`, assigned, **no** `needs-human`/`on-hold`, and
+   - No `--resume`, `status:in-scope`, assigned, **no** `needs-human`/`on-hold`, and
      no `needs-human` history in its thread → looks like a ticket left mid-pair.
      Report and ask the human to re-run with `--resume`.
-   - `status:scoping` still carrying `needs-human` or `on-hold` → not resolved yet,
+   - `status:in-scope` still carrying `needs-human` or `on-hold` → not resolved yet,
      report and stop.
    - `level:task` → phase 2 only scopes `level:story` tickets, never a task (a task
      is the *output* of scoping, §2 "Three levels"). Report and point at the task's
@@ -45,7 +45,7 @@ mechanics of running phase 2.
      and tasks (which are `status:done`, including the original e2e task) for
      context, comment why (new scope found; any `status:in-qa` session set aside),
      then claim it — overwrite the assignee if any (same non-conflict exception a
-     `status:changes-requested` reclaim gets, below) and set `status:scoping` —
+     `status:changes-requested` reclaim gets, below) and set `status:in-scope` —
      before continuing to step 3, passing that extra context alongside the ticket
      body. Skip step 2, already claimed here.
    - Otherwise → an existing, open `level:story` (`type:feature`/`type:tech`) being
@@ -54,12 +54,12 @@ mechanics of running phase 2.
      relationship, as context. If `level:epic`, there's nothing to scope on the epic
      itself — stop and point at its stories.
    - No argument → per `docs/pilot-process.md` §4 "Picking the next ticket...": the
-     merged pool of unclaimed `status:backlog` (fresh) and `status:scoping` with
+     merged pool of unclaimed `status:backlog` (fresh) and `status:in-scope` with
      `needs-human`/`on-hold` just cleared (resumable — a mid-pair ticket is never in
      this pool, only reachable via `--resume <issue>`), highest `priority:` then
      oldest first. What a scheduled cron Routine drives with `--auto`
      (`docs/pilot-process.md` §4 "Scheduled sweeps").
-2. **Claim** the ticket per `docs/pilot-process.md` §4: set assignee + `status:scoping`,
+2. **Claim** the ticket per `docs/pilot-process.md` §4: set assignee + `status:in-scope`,
    re-read to confirm the claim held.
 3. Call `Agent` with `subagent_type: "pilot-architect"`. Read `docs/pilot-task-scope-story.md`
    and pass its content as part of the prompt, plus `docs/pilot-link-bug-tickets.md` in
@@ -135,7 +135,7 @@ mechanics of running phase 2.
      unassigned as a tracker.
    - Won't-do (clear-cut only): label `status:wont-do`, close the issue. If not
      clear-cut, add `needs-human` with the subagent's reasoning instead (keep
-     `status:scoping`) — don't close it.
+     `status:in-scope`) — don't close it.
    - Prerequisite tech ticket(s) flagged (alongside whichever of the above
      applies): create each the way a fresh `type:tech` need is created
      (`docs/pilot-process.md` §2), its own `level:story` — **never** a sub-issue of
@@ -153,5 +153,9 @@ mechanics of running phase 2.
      bug tickets (phase 2, phase 4, or phase 6)") — same linking rules, always a
      hard blocker here (the discovering ticket can't finish until the bug is
      fixed).
+   - Either prerequisite case above, when step 1 found a parent Epic for the ticket
+     being scoped: also `mcp__github__add_issue_comment` on that Epic naming the
+     blocking relationship (`docs/pilot-process.md` §2 "Prerequisite tech tickets")
+     — skip this when the scoped ticket has no parent Epic.
 6. Report the outcome (ticket(s) scoped/split, dependencies recorded, prerequisite
    ticket(s) spun out, or closed as won't-do) back to the human.

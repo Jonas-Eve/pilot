@@ -44,7 +44,7 @@ LABELS=(
   "priority:P2|FBCA04|PILOT: lowest priority, initial value at phase 1 (PM/architect), revised at phase 2"
   "status:draft|C5DEF5|PILOT: phase 1 has created the ticket, awaiting final human approval in pair mode"
   "status:backlog|BFD4F2|PILOT: ticket exists, phase 2 hasn't started"
-  "status:scoping|C5DEF5|PILOT: architect has claimed it for phase 2"
+  "status:in-scope|C5DEF5|PILOT: architect has claimed it for phase 2"
   "status:spec-ready|BFD4F2|PILOT: scoped-and-not-split, or a type:bug ticket skipping phase 2 entirely; ready for phase 3"
   "status:in-spec|C5DEF5|PILOT: tech lead has claimed it for phase 3"
   "status:dev-ready|BFD4F2|PILOT: spec written, ready for phase 4"

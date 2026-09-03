@@ -107,7 +107,7 @@ sequenceDiagram
     rect rgb(240,255,240)
     Note over Human,GH: Phase 2 — Investigate (/pilot-scope)
     Human->>Arch: /pilot-scope #12
-    GH->>Arch: status:backlog → status:scoping (claim)
+    GH->>Arch: status:backlog → status:in-scope (claim)
     Note over Arch: type:feature ⇒ split is mandatory, never a judgment call
     Arch-->>Human: proposed tasks — a mix of type:feature/type:tech, plus exactly one type:e2e
     Human-->>Arch: approve

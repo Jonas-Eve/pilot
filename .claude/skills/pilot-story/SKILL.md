@@ -76,9 +76,14 @@ mechanics of running phase 1.
     issue number(s) from 5a, not just conversation text. This is also where the human
     corrects a wrong `--tech`/`--bug`/auto-detect call — if they do, update the draft
     ticket's `type:` label and restart from step 2 with the other agent, rather than
-    creating a second ticket. If the agent now decides the idea is out of scope, close
-    the draft ticket(s) instead of leaving them open — nothing proceeds to
-    `status:backlog`. Otherwise, feed the human's response back to the agent, writing
+    creating a second ticket. If the agent now decides the idea is out of scope: for a
+    `type:feature`/`type:tech` draft, set `status:wont-do` and close the draft ticket(s)
+    instead of leaving a closed issue still labeled `status:draft`
+    (`docs/pilot-process.md` §3 `status:wont-do`) — nothing proceeds to `status:backlog`.
+    For a `type:bug` draft, never close it directly — a bug never carries `status:wont-do`
+    (`docs/pilot-process.md` §3 `status:wont-do`): add `needs-human` with the reasoning
+    instead, leave `status:draft`, and let a human close it if they agree. Otherwise, feed
+    the human's response back to the agent, writing
     each round's changes into the draft ticket(s) (`issue_write`) as agreed — repeat until
     they approve. Requires a human live; never run from a scheduled sweep. Once approved,
     continue to step 5c.
