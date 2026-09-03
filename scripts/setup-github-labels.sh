@@ -53,7 +53,7 @@ LABELS=(
   "status:in-review|C5DEF5|PILOT: phase 5 has claimed it and is running (or blocked)"
   "status:changes-requested|F9D0C4|PILOT: phase 5 found at least one blocking, code-level point"
   "status:approved|0E8A16|PILOT: phase 5 ran, every reviewer approved, ready to merge"
-  "status:wont-do|E4E669|PILOT: architect concluded during phase 2 this ticket shouldn't be built"
+  "status:wont-do|E4E669|PILOT: concluded (phase 1 or phase 2) this ticket shouldn't be built"
   "status:split|D4C5F9|PILOT: split into tasks (mandatory for type:feature, judgment call for type:tech); tracks its tasks"
   "status:qa|FBCA04|PILOT: type:feature story whose tasks are all done; ready for phase 6 human QA"
   "status:in-qa|C5DEF5|PILOT: pilot-qa has claimed it for phase 6"

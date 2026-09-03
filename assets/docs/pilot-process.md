@@ -229,9 +229,12 @@ If the ticket being scoped itself belongs to a `level:epic`, also comment on tha
 naming the blocking relationship (e.g. "Story #<scoped> is blocked by prerequisite #<new>")
 — the sub-issue list only shows the epic's own stories, never an external prerequisite, so
 without this an epic's own view never reveals that one of its stories is waiting on
-something outside it. Skip this when the scoped ticket has no parent Epic. Same for a
-prerequisite *bug* ticket (`docs/pilot-link-bug-tickets.md`), which reuses this linking
-mechanic wholesale.
+something outside it. Skip this when the scoped ticket has no parent Epic. This applies to
+a prerequisite *bug* ticket the same way when phase 2 is the one originating it — a bug
+prerequisite reuses this linking mechanic wholesale (`docs/pilot-link-bug-tickets.md`) —
+but not when phase 4 or phase 6 originates one instead: there the discovering ticket is
+itself a `level:task`, never a direct Epic member (only a `level:story` is), so there is no
+epic of its own to comment on.
 
 Whether the prerequisite is a **hard blocker** — the ticket genuinely can't be spec'd or
 built until it lands — decides the exact wording of that line, because §4 "Blocked-by

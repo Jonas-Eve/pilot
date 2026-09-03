@@ -41,9 +41,10 @@ mechanics of running phase 2.
      distinguishes them from this.
    - `status:qa` (unclaimed) or `status:in-qa` (assigned, any owner) → a valid
      re-scope entry point, not an ordinary claim (`docs/pilot-process.md` §2
-     "Re-scoping a `type:feature` story after its split is done"). Read the ticket
-     and tasks (which are `status:done`, including the original e2e task) for
-     context, comment why (new scope found; any `status:in-qa` session set aside),
+     "Re-scoping a `type:feature` story after its split is done"). Read the ticket,
+     its parent Epic (if linked), and its tasks (which are `status:done`, including
+     the original e2e task) for context, comment why (new scope found; any
+     `status:in-qa` session set aside),
      then claim it — overwrite the assignee if any (same non-conflict exception a
      `status:changes-requested` reclaim gets, below) and set `status:in-scope` —
      before continuing to step 3, passing that extra context alongside the ticket
