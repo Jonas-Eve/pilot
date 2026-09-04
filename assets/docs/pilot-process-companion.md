@@ -123,7 +123,7 @@ sequenceDiagram
         GH->>Tech: status:spec-ready → status:in-spec (claim)
         Tech-->>GH: spec written (or test plan, for type:e2e) — status:dev-ready
         Human->>DevAgent: /pilot-dev #<task>
-        GH->>DevAgent: status:dev-ready → status:in-dev (claim; pilot-e2e if type:e2e)
+        GH->>DevAgent: status:dev-ready → status:in-dev (claim, pilot-e2e if type:e2e)
         DevAgent-->>GH: PR opened — status:review-ready
         Human->>Rev: /pilot-review #<PR>
         GH->>Rev: status:review-ready → status:in-review (claim)
