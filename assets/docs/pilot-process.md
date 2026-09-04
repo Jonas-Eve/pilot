@@ -640,8 +640,12 @@ explicit `--resume <issue>`). When any other phase skill is invoked without an e
 ticket number, it builds its candidate pool from **two** queries, not one:
 1. **Fresh work** — tickets in its own pre-claim `status:`, no assignee.
 2. **Resumable work** — tickets already in its own *in-progress* `status:`, still carrying
-   the assignee from when they were originally claimed, but **no longer** carrying
-   `needs-human` — see "Resuming a `needs-human` ticket" below.
+   the assignee from when they were originally claimed, whose thread shows `needs-human`
+   was applied and has since been removed — see "Resuming a `needs-human` ticket" below.
+   Current labels alone can't tell this apart from an orphaned claim (below): both read as
+   "assigned, in-progress, no `needs-human`" right now. Check each in-progress candidate's
+   own comment thread for that history before including it in this pool — a candidate with
+   no `needs-human` history at all is an orphaned claim, never a bare-pool candidate.
 
 `/pilot-dev` alone has a **third** pool: tickets in `status:changes-requested` with
 `needs-human` no longer present — phase 5 sent these back for an actual code fix
