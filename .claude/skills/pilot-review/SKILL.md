@@ -82,9 +82,10 @@ merges.
    (`.claude/agents/pilot-*.md`) carries only identity now, these two together are what
    tell each reviewer what to check and how to report it. Pass only
    what each needs beyond that: the PR diff/description plus, for the PM, the linked
-   story's acceptance criteria (and its own spec, for `type:e2e`); for the architect, its
-   recorded decisions; for the tech lead, its own spec (it re-runs validation on the PR
-   branch itself). When resuming (step 1's needs-human-resume branch), also pass the
+   story's acceptance criteria and any UI/UX description or attached mockup (and its own
+   spec, for `type:e2e`); for the architect, its recorded decisions; for the tech lead,
+   its own spec (it re-runs validation on the PR branch itself). When resuming (step 1's
+   needs-human-resume branch), also pass the
    original blocking review's `decision`-tagged points — the submitted PR review from the
    run that raised the block, fetched via `mcp__github__pull_request_read` method
    `get_reviews` (its body holds the points, not a plain issue comment) — and whatever's

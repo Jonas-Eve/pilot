@@ -65,7 +65,8 @@ parallel instances; the claim step below prevents collisions.
    `docs/pilot-link-bug-tickets.md` in full — either persona may hit step 3a's bug case
    mid-implementation, and the task doc covers only the phase-4-specific delta itself, not
    the classify/originate mechanic. Pass the ticket's
-   spec and the architect's decisions — not the running conversation history or the state
+   spec and the architect's decisions, including any UI/UX description carried into it
+   (`docs/pilot-task-scope-story.md`) — not the running conversation history or the state
    of any other ticket being worked in parallel. **Resume case** (per step 1, needs-human
    cleared): also pass the original blocking comment and whatever's in the thread after it
    (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket"). **Reclaim case** (per

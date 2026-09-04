@@ -12,7 +12,9 @@ phase-1 diagnosis and suggested fix — the analogous judgment from a different 
 2. Read the affected code — your own identity's project-doc habit already covers the
    conventions/README side of grounding yourself in the area the ticket touches.
 3. Write the technical spec directly into the ticket body: implementation approach,
-   files/modules touched, data/schema changes, API contract changes, and a test plan.
+   files/modules touched, data/schema changes, API contract changes, and a test plan. If
+   the ticket carries a UI/UX description, the implementation approach must account for
+   it — components/screens touched, how they map to what's described.
 4. If that earlier judgment (architect's phase-2 decisions, or a bug ticket's phase-1
    diagnosis/suggested fix) conflicts with the real code — not a style preference; for a
    bug this includes finding it's not reproducible or already fixed — don't override it

@@ -25,6 +25,17 @@ dependency/splitting decisions; that's phase 2's job.
    - "As a ... I want ... so that ..." (or the equivalent in whatever language the idea
      was given in — match it).
    - Acceptance criteria as a checklist — concrete, testable statements, not vague goals.
+   - If the story involves user-facing UI, a **UI/UX description**. If a mockup was
+     attached to the ticket as a comment, or an existing mockup/wireframe already covers
+     it, link to it directly instead of writing a competing description — if you can
+     inspect the image, name what it shows in a short caption, but don't invent one if
+     you can't; either way, still add in prose anything a static image can't capture
+     (interaction states, edge cases). Otherwise, describe it yourself in
+     prose — layout, key elements, states, and flow — grounded in this project's own
+     design system/style guide if it has one (your own identity's habit of checking
+     `docs/`): reuse its components, patterns, and terminology instead of inventing a
+     look disconnected from the rest of the product. Don't reach for a design tool to
+     produce a mockup; scoping and implementation shouldn't be left guessing either way.
    - Explicit out-of-scope notes for anything adjacent you're deliberately not including.
 4. Do not decompose into technical tasks, decide architecture, or record dependencies —
    that's the architect's job in phase 2. Do not write or suggest code. An Epic is a

@@ -73,9 +73,19 @@ mechanics of running phase 1.
 5b. This phase always runs paired (`docs/pilot-process.md` §4 "Interaction modes" —
     `/pilot-story` has no `--auto`): show the human which agent picked this up and why,
     with the drafted story/stories (and epic decision, if any) — pointing at the real
-    issue number(s) from 5a, not just conversation text. This is also where the human
-    corrects a wrong `--tech`/`--bug`/auto-detect call — if they do, update the draft
-    ticket's `type:` label and restart from step 2 with the other agent, rather than
+    issue number(s) from 5a, not just conversation text. For each `type:feature` draft
+    involving user-facing UI, also ask once whether the human has an existing mockup,
+    wants to sketch one live (e.g. the `design` skill, if available), or is fine with the
+    PM's own prose description. No tool here can upload an image to a GitHub comment the
+    way the web UI's drag-and-drop does, so either way ask the human to attach it to the
+    ticket themselves as a comment — not necessarily this same round, e.g. a live
+    co-design session takes a few of its own turns first; before each round from here on,
+    check the ticket's comments (`mcp__github__issue_read` `get_comments`) and, once
+    something's attached, pass a link to it into the agent's prompt so it references it
+    instead of writing a competing description. Neither offered → the agent's own prose
+    description stands. This is also where the human corrects a wrong
+    `--tech`/`--bug`/auto-detect call — if they do, update the
+    draft ticket's `type:` label and restart from step 2 with the other agent, rather than
     creating a second ticket. If the agent now decides the idea is out of scope: for a
     `type:feature`/`type:tech` draft, set `status:wont-do` and close the draft ticket(s)
     instead of leaving a closed issue still labeled `status:draft`
