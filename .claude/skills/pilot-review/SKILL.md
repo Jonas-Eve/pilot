@@ -1,6 +1,6 @@
 ---
 name: pilot-review
-description: "Phase 5 of PILOT (see docs/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, docs/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+architect+tech lead for type:feature/type:e2e, architect+tech lead only for type:tech/type:bug) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved, blocking judgment calls (needs-human added, status:in-review stays), or blocking code-level points (needs-human added, moved to status:changes-requested for /pilot-dev). Defaults to pair mode: an all-approve or blocking-code-level verdict gets a live human's last look before it's submitted; a pure-judgment-call verdict always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. Use once /pilot-dev has opened a PR ready for review."
+description: "Phase 5 of PILOT (see docs/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, docs/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+architect+tech lead for type:feature/type:e2e, architect+tech lead only for type:tech/type:bug) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved; a pure code-level verdict moves straight to status:changes-requested with no needs-human, so /pilot-dev can reclaim it immediately; a verdict blocking on any judgment call (alone or alongside code-level points) adds needs-human too (status:in-review stays for a pure judgment call, status:changes-requested for a mixed one), gating /pilot-dev's reclaim on a human clearing it. Defaults to pair mode: an all-approve or pure-code-level verdict gets a live human's last look before it's submitted; a verdict carrying any judgment call always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. Use once /pilot-dev has opened a PR ready for review."
 argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto] [--merge] | <issue number> --resume [--merge]"
 ---
 
@@ -13,13 +13,15 @@ reviewer set (step 3).
 
 Mode: pair by default. Every outcome is checkpointed as a pending GitHub PR review the
 moment it's decided (step 7), the same durable-immediately discipline every other
-pair-capable phase applies to its own ticket writes. For an all-approve or any-`change`
-outcome, step 8 is then a pre-submission checkpoint; for a decision-only outcome, that
-outcome always submits immediately (step 9) and pair's value comes after, in step 10's live
-resolution. `--auto` skips step 8's pause and step 10's live engagement, applying every
-outcome straight through (required for a scheduled Routine, `docs/pilot-process.md` §4
-"Scheduled sweeps"). `--merge` is a separate, orthogonal flag (step 12) usable with either
-mode — without it, this skill never merges.
+pair-capable phase applies to its own ticket writes. For an all-approve or a pure-`change`
+outcome (no `decision` point at all — nothing here needs a human, so no `needs-human`
+either), step 8 is then a pre-submission checkpoint; for an outcome carrying `needs-human`
+(decision-only, or mixed `change`+`decision`), that outcome always submits immediately
+(step 9) and pair's value comes after, in step 10's live resolution. `--auto` skips step
+8's pause and step 10's live engagement, applying every outcome straight through (required
+for a scheduled Routine, `docs/pilot-process.md` §4 "Scheduled sweeps"). `--merge` is a
+separate, orthogonal flag (step 12) usable with either mode — without it, this skill never
+merges.
 
 ## Steps
 
@@ -89,45 +91,59 @@ mode — without it, this skill never merges.
    in the PR's comment thread after it: a specific reply, or "no reply — treat as approved
    as proposed" if none (`docs/pilot-process.md` §4 "Resuming a `needs-human` ticket") —
    so reviewers don't re-raise a point a human already answered.
-6. Collect the verdicts. Aggregate into exactly **one** outcome:
-   - All blocking points tagged `decision` → every point, grouped by reviewer,
-     `needs-human` added (`status:in-review` stays — this ticket re-enters the resumable
-     half of step 1's pool once cleared, unless step 10 resolves it live first).
-   - Any blocking point tagged `change` (a step-4 CI/validation failure always counts) →
-     every point (marked which is which), `needs-human` added, move to
-     `status:changes-requested` (`/pilot-dev` reclaims once cleared).
+6. Collect the verdicts. Aggregate into exactly **one** outcome
+   (`docs/pilot-link-review-consensus.md`):
+   - All blocking points tagged `decision`, none `change` → every point, grouped by
+     reviewer, `needs-human` added (`status:in-review` stays — this ticket re-enters the
+     resumable half of step 1's pool once cleared, unless step 10 resolves it live first).
+   - At least one blocking point tagged `change` (a step-4 CI/validation failure always
+     counts) and at least one tagged `decision` → every point (marked which is which),
+     `needs-human` added, move to `status:changes-requested` (`/pilot-dev` reclaims once
+     cleared — the `decision` point(s) are what it's waiting on).
+   - At least one blocking point tagged `change`, none tagged `decision` → every point,
+     move to `status:changes-requested`, **no** `needs-human` — nothing here needs a
+     human, so `/pilot-dev` may reclaim it immediately.
    - All approved → move to `status:approved`.
 7. **Checkpoint it**: create a pending GitHub PR review with the outcome's full body
    already written, no `event` yet (`mcp__github__pull_request_review_write`, method
    `create`, `commitID` pinned to the PR's current head) — durable immediately, so an
    orphaned run recovers it (step 1) instead of redoing steps 3-6.
-8. **Pair (default) vs `--auto`** — never for the decision-only outcome: `docs/pilot-process.md`
-   §3's `needs-human` rule requires the block to reach GitHub before any resolution, even a
-   live one, so a decision-only outcome always proceeds straight to step 9, same as `--auto`.
-   For the all-approve or any-`change` outcomes, pair mode pauses here — nothing for a human
-   to decide (an approval or a code-level fix isn't a judgment call), but still worth a last
-   look before it goes to GitHub: show the outcome from step 6, wait for confirmation, then
-   proceed to step 9. `--auto` skips this pause and proceeds immediately either way.
+8. **Pair (default) vs `--auto`** — never for an outcome that carries `needs-human`
+   (decision-only, or mixed `change`+`decision`): `docs/pilot-process.md` §3's
+   `needs-human` rule requires the block to reach GitHub before any resolution, even a live
+   one, so either of those always proceeds straight to step 9, same as `--auto`. For the
+   all-approve outcome or a pure-`change` outcome (no `decision` point at all), pair mode
+   pauses here — nothing for a human to decide (an approval or a code-level fix isn't a
+   judgment call), but still worth a last look before it goes to GitHub: show the outcome
+   from step 6, wait for confirmation, then proceed to step 9. `--auto` skips this pause and
+   proceeds immediately either way.
 9. Submit step 7's pending review (`mcp__github__pull_request_review_write`, method
-   `submit_pending`) plus the matching label — the outcome's `event`:
+   `submit_pending`) plus the matching label — the outcome's `event`
+   (`docs/pilot-link-review-consensus.md`):
    - All approved → `event: APPROVE`; body states all agents approve and, per step 12,
      whether this run also merges or a human still needs to; `status:approved`.
-   - Any blocking point tagged `change` → `event: REQUEST_CHANGES`; body lists every point
-     (marked which is which); `needs-human` added; `status:changes-requested`.
+   - At least one blocking point tagged `change`, none tagged `decision` → `event:
+     REQUEST_CHANGES`; body lists every point; **no** `needs-human`; `status:changes-requested`
+     — `/pilot-dev` may reclaim it right away, no human step needed.
+   - At least one point of each tag → `event: REQUEST_CHANGES`; body lists every point
+     (marked which is which); `needs-human` added; `status:changes-requested` — `/pilot-dev`
+     reclaims once the `decision` point(s) are cleared.
    - Blocking points all `decision` → `event: COMMENT`; body lists every point grouped by
      reviewer; `needs-human` added; `status:in-review` stays.
-10. **Live resolution of a submitted decision-only block** (pair mode only, right after
-    step 9 submits it): engage the human live the same way any other phase resolves a live
+10. **Live resolution of a submitted `needs-human` block** (pair mode only, right after
+    step 9 submits it; applies to both the decision-only and the mixed `change`+`decision`
+    outcome — never the pure-`change` outcome, which never carries `needs-human` to
+    resolve): engage the human live the same way any other phase resolves a live
     `needs-human` block (`docs/pilot-process.md` §3 "A human is live in the same session").
     If they answer right there and it changes the outcome, determine the corrected outcome
-    (approved, or `change`-tagged points instead) and submit **one more** review — a fresh
-    `create` with `event` set this time, no separate pending step needed for a decision made
-    in the same breath — reflecting it, same event mapping as step 9, plus the matching
-    label. This keeps GitHub's own review status honest, not just the ticket's label; never
-    fold it into step 9's review, that one already went out. If their answer doesn't
-    actually clear the block, or `--auto` was given, or nobody answers on the spot: leave
-    step 9's review and `needs-human` standing — a genuine async wait like any other
-    unresolved `needs-human`, resolved by a later run of this skill.
+    (approved, or the remaining `change`-tagged points instead) and submit **one more**
+    review — a fresh `create` with `event` set this time, no separate pending step needed
+    for a decision made in the same breath — reflecting it, same event mapping as step 9,
+    plus the matching label. This keeps GitHub's own review status honest, not just the
+    ticket's label; never fold it into step 9's review, that one already went out. If their
+    answer doesn't actually clear the block, or `--auto` was given, or nobody answers on the
+    spot: leave step 9's review and `needs-human` standing — a genuine async wait like any
+    other unresolved `needs-human`, resolved by a later run of this skill.
 11. Never submit more than two reviews in one run — step 9's, plus step 10's
     live-resolution correction when it applies — and never one review per reviewer.
 12. **Merge, only with `--merge`:** if the final outcome (step 9, or step 10's correction) is

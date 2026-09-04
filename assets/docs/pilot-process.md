@@ -395,15 +395,18 @@ when phase 5 blocks on something that needs an actual code change — see
   `/pilot-dev`, only by phase 5's own claim.
 - `status:changes-requested` — phase 5 found at least one blocking point tagged `change`
   (`docs/pilot-link-review-consensus.md`): an actionable code-level fix, not just a
-  question for a human to weigh in on. Set instead of leaving `status:in-review`, alongside
-  `needs-human` same as any block. Once a
-  human clears `needs-human`, `/pilot-dev` claims it like any other pre-claim status (§4
-  "Reclaiming a `status:changes-requested` ticket") — reclaiming here is expected to find
-  an existing assignee (phase 5's own claiming session, §4 "Claim Protocol") and overwrite
-  it rather than treat that as a conflict. The dev pushes new commits to the *same*
-  already-open PR (never a second PR for the same ticket) and moves the ticket to
-  `status:review-ready` when done — never `status:in-review` directly, phase 5 claims it
-  fresh.
+  question for a human to weigh in on. Set instead of leaving `status:in-review`.
+  `needs-human` accompanies it only when the same review also carries at least one
+  `decision`-tagged point still awaiting a human — a block made entirely of `change`
+  points needs no human decision, so it skips `needs-human` altogether and
+  `/pilot-dev` may claim it right away, same as any other pre-claim status. When
+  `needs-human` is present (a mixed review), `/pilot-dev` claims it only once a human
+  clears that flag (§4 "Reclaiming a `status:changes-requested` ticket") — reclaiming
+  either way is expected to find an existing assignee (phase 5's own claiming session, §4
+  "Claim Protocol") and overwrite it rather than treat that as a conflict. The dev pushes
+  new commits to the *same* already-open PR (never a second PR for the same ticket) and
+  moves the ticket to `status:review-ready` when done — never `status:in-review` directly,
+  phase 5 claims it fresh.
 - `status:approved` — phase 5 ran and every reviewer approved
   (`docs/pilot-link-review-consensus.md`) — set instead of
   leaving `status:in-review`. This is the "ready to merge, nothing outstanding" signal.
@@ -487,11 +490,14 @@ one that only restates "needs a human" without saying why or what for, is not a 
 of this flag — whoever reads it next has to be able to act from the comment alone.
 
 **Phase 5 is the one exception to "`status:` stays exactly where it was."** A phase-5
-block tagged `change` (`docs/pilot-link-review-consensus.md`) is different: the
-answer is already known regardless of what a human says about it — the ticket needs code,
-so it moves straight to
-`status:changes-requested` (above) as part of applying the block, not just `needs-human`
-on an unchanged `status:in-review`.
+block that's entirely `change`-tagged (`docs/pilot-link-review-consensus.md`) has nothing
+for a human to decide, so it skips `needs-human` same as this section's rule requires — but
+still moves to `status:changes-requested` instead of leaving `status:in-review`, since the
+ticket needs code regardless of any human input, and `/pilot-dev` may reclaim it right
+away. A block that also carries a `decision`-tagged point keeps `needs-human` as usual,
+still alongside `status:changes-requested` — the flag gates `/pilot-dev`'s reclaim until
+the `decision` point(s) are resolved, even though the `change` point(s) in the same review
+are already actionable.
 
 A human resolves it by **removing the `needs-human` label** once they've responded (a
 reply comment) or decided there's nothing more to add — the label's absence is the whole
@@ -776,6 +782,13 @@ moves the ticket to
 `status:review-ready` (unassigned) exactly as it would after a first-time implementation —
 never `status:in-review` directly, phase 5 claims it fresh.
 
+Since the blocking points themselves live only in the PR review, not on the issue
+(`docs/pilot-link-review-consensus.md`), and a pure-`change` reclaim (above) never has a
+human look at the ticket before this, the subagent also posts one comment on the issue
+itself when it pushes the fix — a short summary of what changed in response to the review,
+so the ticket's own history stays coherent with the code without duplicating the review's
+full detail (`docs/pilot-task-implement.md`).
+
 ### Scheduled sweeps
 
 Each phase skill is meant to also run **bare, on a timer** — a Routine whose prompt is
@@ -810,15 +823,17 @@ skills split into three groups by which modes they support:
 - **`/pilot-review`** — default to **pair** too, with `--auto` to opt out of it, but
   specialized further: its reviewers always run fully parallel and isolated from each
   other regardless of mode — there's no natural mid-review checkpoint while they're
-  working, so where pair mode's pause falls depends on the aggregated outcome instead. A
-  decision-only outcome always submits immediately, in both modes — §3's `needs-human` rule
-  requires the block to reach GitHub before any resolution, even a live one — with pair's
-  value applying only *after*, as a live human resolving it right there (§3 "A human is
-  live in the same session") instead of the usual async wait. An all-approve or any-`change`
-  outcome instead pauses *before* submitting, for a last look. `--auto` skips every pause.
-  Also supports `--merge` (§3 "`status:approved`") — orthogonal to pair/`--auto` — and
-  `--resume <issue>` to recover an orphaned claim (above). `pilot-review/SKILL.md` has the
-  full mechanics.
+  working, so where pair mode's pause falls depends on the aggregated outcome instead. Any
+  outcome carrying `needs-human` (a decision-only block, or a mixed `change`+`decision`
+  one, `docs/pilot-link-review-consensus.md`) always submits immediately, in both modes —
+  §3's `needs-human` rule requires the block to reach GitHub before any resolution, even a
+  live one — with pair's value applying only *after*, as a live human resolving it right
+  there (§3 "A human is live in the same session") instead of the usual async wait. An
+  all-approve outcome, or a pure-`change` outcome (no `decision` point, so no
+  `needs-human`), instead pauses *before* submitting, for a last look. `--auto` skips every
+  pause. Also supports `--merge` (§3 "`status:approved`") — orthogonal to pair/`--auto` —
+  and `--resume <issue>` to recover an orphaned claim (above). `pilot-review/SKILL.md` has
+  the full mechanics.
 
 Both modes still claim (above) immediately, same as always — it's concurrency
 bookkeeping, unrelated to the content decision.
