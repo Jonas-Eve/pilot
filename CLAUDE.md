@@ -54,7 +54,7 @@ itself.
   live in `assets/docs/pilot-task-<duty>.md` instead (below), injected into the `Agent`
   call's prompt by whichever skill owns that duty.
 - `assets/docs/pilot-process.md` — canonical process spec, copied verbatim into a
-  consuming project as `docs/pilot-process.md` by `/pilot-init` and re-synced by
+  consuming project as `.pilot/pilot-process.md` by `/pilot-init` and re-synced by
   `/pilot-update`. Contains only what a skill or agent needs to operate — no purely
   illustrative material (a diagram, a worked example) belongs here.
 - `assets/docs/pilot-process-companion.md` — a purely human-facing companion to the above
@@ -66,7 +66,7 @@ itself.
   `pilot-process.md` itself (a skill/agent reads it to run), but scoped to the specific
   two-or-more skills/agents it names rather than all of them — the opposite of a
   companion, which is human-only and read by none. Copied verbatim into a consuming
-  project as `docs/pilot-link-<topic>.md` the same way as `pilot-process.md`. Holds
+  project as `.pilot/pilot-link-<topic>.md` the same way as `pilot-process.md`. Holds
   content that connects a subset of skills (e.g. how phase 5's reviewers and phase 4's
   reclaim need to agree on something) — see §3 below for when content belongs here
   instead of `pilot-process.md` or a single `SKILL.md`.
@@ -74,7 +74,7 @@ itself.
   (e.g. the architect scoping a story, vs. the architect reviewing a PR) — never read by
   the persona itself via its own `Read`, but injected into the `Agent` call's prompt by
   the one skill that owns that duty. Copied verbatim into a consuming project as
-  `docs/pilot-task-<duty>.md` the same way as `pilot-process.md`. This is what keeps
+  `.pilot/pilot-task-<duty>.md` the same way as `pilot-process.md`. This is what keeps
   `.claude/agents/pilot-*.md` down to pure identity: a persona with several duties (the
   architect, the PM, the tech lead) gets one task doc per duty, never all of them bundled
   into the persona file where every invocation would load them regardless of relevance.

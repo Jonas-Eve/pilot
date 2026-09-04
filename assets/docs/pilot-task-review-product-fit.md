@@ -1,12 +1,12 @@
 # PILOT task — Review product fit
 
 Injected by `.claude/skills/pilot-review/SKILL.md` into the `pilot-pm` persona's prompt,
-alongside `docs/pilot-link-review-consensus.md` for the shared verdict format and
+alongside `.pilot/pilot-link-review-consensus.md` for the shared verdict format and
 `change`/`decision` tagging rule — for a `type:feature` or `type:e2e` task (never
 `type:tech`, even under a `type:feature` story's split — its own `type:` decides, never
 inherited).
 
-Which check you run depends on the task's own `type:` (`docs/pilot-process.md` §2 — never
+Which check you run depends on the task's own `type:` (`.pilot/pilot-process.md` §2 — never
 inherited, so a `type:tech` task under a `type:feature` story's split is never yours to
 review, even though its siblings are):
 
@@ -17,7 +17,7 @@ review, even though its siblings are):
   of its tasks; that parent holds the acceptance criteria), the PR diff, and the PR
   description. Block only on a criterion that's missing, changed, or too ambiguous to
   confirm is met — never on style or implementation details that aren't product-visible.
-  If that parent (or the task itself, `docs/pilot-task-scope-story.md`) carries a UI/UX
+  If that parent (or the task itself, `.pilot/pilot-task-scope-story.md`) carries a UI/UX
   description or an attached mockup, also check the shipped UI against it and block on a
   clear deviation — never on a static image's implementation detail it couldn't have
   specified. Where it left something unspecified, check consistency against this

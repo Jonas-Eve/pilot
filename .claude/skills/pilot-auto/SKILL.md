@@ -1,15 +1,15 @@
 ---
 name: pilot-auto
-description: "Convenience dispatcher over PILOT's four auto-capable phase sweeps (see docs/pilot-process.md): tries /pilot-review --auto, then /pilot-dev --auto, then /pilot-spec --auto, then /pilot-scope --auto, in that order, stopping at the first one that actually finds and processes at least one candidate. Takes an optional subset (review/dev/spec/scope, any combination, any order) to restrict which phases it tries this run, e.g. 'spec scope' to dispatch only those two — still evaluated finish-before-start, just narrowed to the given ones; omit for all four. An optional --merge, combined with review being in scope, is forwarded only to /pilot-review (the other three have no such flag), merging an approved PR itself instead of leaving it for a human. Given a single issue number instead, tries that same fixed order against that one ticket instead of a pool — each phase's own claim protocol reports nothing to do when the ticket isn't currently in that phase's pre-claim status, so this command never inspects the ticket's status: itself, it just tries each phase in turn and stops at the first that claims it. Lets a scheduled Routine (or a human) fire one bare command instead of picking which phase needs attention, or hand it one ticket without knowing which phase it's currently in. Never invokes /pilot-story or /pilot-qa — both are pair-only, no bare/--auto mode exists for either, and neither is ever a valid subset token or dispatch target. Adds no phase, claim, or label mechanic of its own: each invoked skill still resolves and processes its own candidate (pool or given ticket) exactly as it would standalone."
+description: "Convenience dispatcher over PILOT's four auto-capable phase sweeps (see .pilot/pilot-process.md): tries /pilot-review --auto, then /pilot-dev --auto, then /pilot-spec --auto, then /pilot-scope --auto, in that order, stopping at the first one that actually finds and processes at least one candidate. Takes an optional subset (review/dev/spec/scope, any combination, any order) to restrict which phases it tries this run, e.g. 'spec scope' to dispatch only those two — still evaluated finish-before-start, just narrowed to the given ones; omit for all four. An optional --merge, combined with review being in scope, is forwarded only to /pilot-review (the other three have no such flag), merging an approved PR itself instead of leaving it for a human. Given a single issue number instead, tries that same fixed order against that one ticket instead of a pool — each phase's own claim protocol reports nothing to do when the ticket isn't currently in that phase's pre-claim status, so this command never inspects the ticket's status: itself, it just tries each phase in turn and stops at the first that claims it. Lets a scheduled Routine (or a human) fire one bare command instead of picking which phase needs attention, or hand it one ticket without knowing which phase it's currently in. Never invokes /pilot-story or /pilot-qa — both are pair-only, no bare/--auto mode exists for either, and neither is ever a valid subset token or dispatch target. Adds no phase, claim, or label mechanic of its own: each invoked skill still resolves and processes its own candidate (pool or given ticket) exactly as it would standalone."
 argument-hint: "[review] [dev] [spec] [scope] [--merge] — any subset, any order, space-separated; omit subset for all four, --merge forwards to /pilot-review only | <issue number> [--merge] — try that one ticket against each phase in the same order, in --auto mode"
 disable-model-invocation: true
 ---
 
 # PILOT — Auto Dispatch
 
-Read `docs/pilot-process.md` first if you haven't — this skill adds nothing to the state
+Read `.pilot/pilot-process.md` first if you haven't — this skill adds nothing to the state
 machine, claim protocol, or labels described there. It only sequences four already-existing
-bare/`--auto` sweeps (`docs/pilot-process.md` §4 "Scheduled sweeps"), each of which already
+bare/`--auto` sweeps (`.pilot/pilot-process.md` §4 "Scheduled sweeps"), each of which already
 knows how to build and process its own candidate pool — or, given a single ticket instead of
 a pool, already knows how to resolve that one explicit ticket, including cleanly reporting
 nothing to do when it isn't currently in that phase's own territory (§4 "Claim Protocol",
@@ -24,7 +24,7 @@ Never runs pair: this command's whole purpose is unattended dispatch, so it alwa
 wanting to pair through a specific ticket should call that phase's own skill directly
 instead. This also
 means it never passes `--resume`: that flag recovers a claim orphaned by an abandoned pair
-session or a crashed `--auto`/phase-5 run (`docs/pilot-process.md` §4 "Resuming an orphaned
+session or a crashed `--auto`/phase-5 run (`.pilot/pilot-process.md` §4 "Resuming an orphaned
 claim") — a deliberate human call this command never makes on its own, since nothing on the
 ticket distinguishes an orphan from one genuinely still in progress elsewhere. If a target
 skill's own resolution decides a given ticket looks orphaned, it reports that and stops,
@@ -69,7 +69,7 @@ along the pipeline needs attention this run. A restricted subset keeps this same
 order, just narrowed — it never reorders the four.
 
 For a single ticket in dispatch mode, this ordering doesn't change correctness — a ticket
-carries exactly one `status:` label at a time (`docs/pilot-process.md` §3), so at most one of
+carries exactly one `status:` label at a time (`.pilot/pilot-process.md` §3), so at most one of
 the four phases will ever actually claim it, whichever order they're tried in. The fixed
 order is kept anyway, purely for consistency with sweep mode and because it costs nothing:
 each phase that isn't the ticket's own bails out at its own claim check, before spinning up
@@ -84,16 +84,16 @@ that actually does something:
 1. `/pilot-review` (`Skill` tool). Sweep mode: `args: "--auto"` (append `--merge` if given,
    above), resolving its own pool. Ticket-dispatch mode: `args: "<issue number> --auto"`
    (`--merge` appended the same way). `--auto` is required here now that this phase
-   defaults to pair (`docs/pilot-process.md` §4 "Interaction modes") — unattended dispatch
+   defaults to pair (`.pilot/pilot-process.md` §4 "Interaction modes") — unattended dispatch
    is this command's whole point. Either way, let it resolve and process exactly as it
-   would standalone (`docs/pilot-process.md` §4 "Picking the next ticket...").
+   would standalone (`.pilot/pilot-process.md` §4 "Picking the next ticket...").
    - Nothing to review (empty pool, or — given a ticket — it isn't a PR/doesn't currently
      belong to phase 5) → continue to the next phase.
    - Otherwise (it reviewed the PR/pool, whatever the verdict) → stop here; this run's result
      is exactly what it reported. Don't run anything after it.
 2. `/pilot-dev` (`Skill` tool). Sweep mode: `args: "--auto"`, resolving its own pool — fresh
    `status:dev-ready`, resumable, or reclaimable `status:changes-requested`
-   (`docs/pilot-process.md` §4 "Picking the next ticket..."). Ticket-dispatch mode: `args:
+   (`.pilot/pilot-process.md` §4 "Picking the next ticket..."). Ticket-dispatch mode: `args:
    "<issue number> --auto"`.
    - Nothing to do (empty pool, or the given ticket isn't currently phase 4's) → continue to
      the next phase.
@@ -108,7 +108,7 @@ that actually does something:
 
 Never invoke `/pilot-story` or `/pilot-qa` at any point, regardless of mode — both are
 pair-only, with no `--auto` or bare/explicit-ticket candidate resolution
-(`docs/pilot-process.md` §4 "Interaction modes"), so neither can ever be a valid subset token
+(`.pilot/pilot-process.md` §4 "Interaction modes"), so neither can ever be a valid subset token
 or dispatch target. A ticket that's actually `status:draft` (phase 1) or a phase-6 candidate
 (`status:qa`/`status:in-qa` picked up by `/pilot-qa` rather than the phase-2 re-scope path)
 simply gets "nothing to do" from all four tried phases — report that, don't guess why.

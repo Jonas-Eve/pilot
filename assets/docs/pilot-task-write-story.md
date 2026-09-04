@@ -10,7 +10,7 @@ dependency/splitting decisions; that's phase 2's job.
    Clearly out of scope → say so and stop, nothing created. Genuinely unsure (not clearly
    out) with a human live in this session → ask directly instead of declining — the one
    point in phase 1 where this applies, since no ticket exists yet for a `needs-human`
-   label to attach to (unlike phases 2-4, `docs/pilot-process.md` §3 "needs-human — an
+   label to attach to (unlike phases 2-4, `.pilot/pilot-process.md` §3 "needs-human — an
    orthogonal flag"). No human available → say you're unsure and stop, same as
    out-of-scope. No functional-scope doc at all → judge from the project's
    README/CLAUDE.md and existing issues, leaning toward asking over guessing when
@@ -39,9 +39,9 @@ dependency/splitting decisions; that's phase 2's job.
    - Explicit out-of-scope notes for anything adjacent you're deliberately not including.
 4. Do not decompose into technical tasks, decide architecture, or record dependencies —
    that's the architect's job in phase 2. Do not write or suggest code. An Epic is a
-   different kind of grouping than a task split (`docs/pilot-process.md` §2) — don't
+   different kind of grouping than a task split (`.pilot/pilot-process.md` §2) — don't
    conflate them.
-5. Set the story's initial `priority:P0/P1/P2` (`docs/pilot-process.md` §3) — business
+5. Set the story's initial `priority:P0/P1/P2` (`.pilot/pilot-process.md` §3) — business
    value/urgency to the user, not a technical-risk call (that's the architect's framing
    for `type:tech`/`type:bug`). The architect may still revise it per task in phase 2
    once the split is known.

@@ -95,7 +95,7 @@ jobs:
               }
 
               // A type:feature story always splits into dev task(s) plus exactly
-              // one e2e task depending on all of them (docs/pilot-link-e2e-tasks.md),
+              // one e2e task depending on all of them (.pilot/pilot-link-e2e-tasks.md),
               // so "all done" here is the same moment the
               // e2e task itself just finished. That story goes to status:qa for a
               // human to confirm (§7 "Phase 6 — Human QA") instead of straight to

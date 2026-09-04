@@ -16,7 +16,7 @@ surface, because that's exactly how any other project-local skill works.
 
 See [`assets/docs/pilot-process.md`](./assets/docs/pilot-process.md) for the full state
 machine, label taxonomy, and claim protocol — it's the canonical copy;
-`/pilot-init` copies it into your project as `docs/pilot-process.md`, and
+`/pilot-init` copies it into your project as `.pilot/pilot-process.md`, and
 `/pilot-update` keeps it in sync.
 
 Each skill reads three layers, not just its own file: `pilot-process.md` for what every
@@ -41,8 +41,8 @@ time instead of carrying every one of its duties' instructions on every invocati
     mobile, TypeScript throughout), generate each app's docs, and scaffold its skeleton
     pinned to the latest compatible dependency versions.
   - `/pilot-update` — re-sync everything PILOT-owned (skills, agents,
-    `docs/pilot-process.md`, its `docs/pilot-process-*.md` companion(s),
-    `docs/pilot-link-*.md` cross-skill link doc(s), `docs/pilot-task-*.md` per-duty task
+    `.pilot/pilot-process.md`, its `.pilot/pilot-process-*.md` companion(s),
+    `.pilot/pilot-link-*.md` cross-skill link doc(s), `.pilot/pilot-task-*.md` per-duty task
     doc(s), the GitHub Actions workflow, the `PILOT:INTRO` blocks in
     `CLAUDE.md`/`README.md`, the GitHub labels) from a fresh clone of this repo into
     your project. Overwrites, no merge — see the warning in
@@ -79,12 +79,12 @@ human-facing companion to `pilot-process.md`, kept in sync the same way.
 `assets/docs/pilot-link-<topic>.md` files are the third kind: operational like
 `pilot-process.md` itself but scoped to the specific two-or-more skills/agents that need
 to coordinate on something, rather than all six phases — synced the same way, as
-`docs/pilot-link-<topic>.md`. See `assets/docs/` for the current set.
+`.pilot/pilot-link-<topic>.md`. See `assets/docs/` for the current set.
 
 `assets/docs/pilot-task-<duty>.md` files are the fourth: one persona's instructions for
 one specific duty, never read by the persona itself but injected into the `Agent` call's
 prompt by the one skill that owns that duty — synced the same way, as
-`docs/pilot-task-<duty>.md`.
+`.pilot/pilot-task-<duty>.md`.
 
 ## Installing in a project
 

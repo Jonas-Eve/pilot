@@ -89,11 +89,12 @@ see `.claude/skills/pilot-update/SKILL.md`.
    their template placeholder text — `/pilot-init-archi` fills those in later.
 
 6. **Copy the process docs.** Copy `$PILOT_SRC/assets/docs/pilot-process.md` to
-   `docs/pilot-process.md`; every `$PILOT_SRC/assets/docs/pilot-process-*.md` companion
-   (currently just `pilot-process-companion.md`) to the matching `docs/` path; every
-   `$PILOT_SRC/assets/docs/pilot-link-*.md` to the matching `docs/` path; and every
-   `$PILOT_SRC/assets/docs/pilot-task-*.md` to the matching `docs/` path — all at the
-   project root, creating `docs/` if needed. `pilot-process.md` is the generic operational
+   `.pilot/pilot-process.md`; every `$PILOT_SRC/assets/docs/pilot-process-*.md` companion
+   (currently just `pilot-process-companion.md`) to the matching `.pilot/` path; every
+   `$PILOT_SRC/assets/docs/pilot-link-*.md` to the matching `.pilot/` path; and every
+   `$PILOT_SRC/assets/docs/pilot-task-*.md` to the matching `.pilot/` path — all at the
+   project root, creating `.pilot/` if needed, kept separate from the project's own
+   `docs/`. `pilot-process.md` is the generic operational
    spec every phase skill reads; each `pilot-process-*.md` companion is purely human-facing
    (a sequence diagram, currently) — no skill or agent needs it; each `pilot-link-*.md` is
    the opposite of a companion — operational like `pilot-process.md` itself, but scoped to
@@ -107,7 +108,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
 7. **Copy the status-cascade workflow.** Copy
    `$PILOT_SRC/assets/github/workflows/pilot-status-on-merge.yml` to
    `.github/workflows/pilot-status-on-merge.yml` at the project root, creating
-   `.github/workflows/` if needed. `docs/pilot-process.md` §3 "`status:done`" depends on
+   `.github/workflows/` if needed. `.pilot/pilot-process.md` §3 "`status:done`" depends on
    this workflow — without it, merged PRs and closed issues never cascade to `status:done`.
    It's PILOT-owned like the process doc: never hand-edit it; `/pilot-update` overwrites it
    from a fresh `$PILOT_SRC`. If a workflow file of that name already exists and differs,
@@ -118,7 +119,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
    `docs/PULL_REQUEST_TEMPLATE.md` already exist in the project, copy
    `$PILOT_SRC/assets/github/pull_request_template.md` to
    `.github/pull_request_template.md`, creating `.github/` if needed — this is what
-   `pilot-dev`'s "PILOT ticket" section (`docs/pilot-task-implement.md`,
+   `pilot-dev`'s "PILOT ticket" section (`.pilot/pilot-task-implement.md`,
    `.claude/skills/pilot-dev/SKILL.md`) fills in when opening a PR. If one of those paths
    already exists, treat it like step 3 — show the human what would be added and ask
    before overwriting, or leave it alone if they'd rather merge the PILOT ticket section
