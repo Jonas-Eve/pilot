@@ -1,10 +1,10 @@
 # PILOT — Visual Reference
 
-This is a companion to `docs/pilot-process.md`, not a replacement for it. It exists purely
+This is a companion to `.pilot/pilot-process.md`, not a replacement for it. It exists purely
 to help a **human** get oriented — nothing here is read by any phase skill or agent, and
-nothing here is authoritative: if this file and `docs/pilot-process.md` ever disagree,
-`docs/pilot-process.md` is right. It's PILOT-owned and kept in sync by `/pilot-update`, the
-same as `docs/pilot-process.md` itself — never hand-edit it in a project that copied PILOT.
+nothing here is authoritative: if this file and `.pilot/pilot-process.md` ever disagree,
+`.pilot/pilot-process.md` is right. It's PILOT-owned and kept in sync by `/pilot-update`, the
+same as `.pilot/pilot-process.md` itself — never hand-edit it in a project that copied PILOT.
 
 ## Command quickstart
 
@@ -83,7 +83,7 @@ The golden path below is deliberately the richest one PILOT has — it's the onl
 touches all six phases, a mandatory split with mixed task types, and every `status:`
 transition that isn't itself a branch (`wont-do`, `changes-requested`, `needs-human`,
 `on-hold`, a prerequisite ticket, `--resume`/reclaim, or re-scoping a story whose split is
-already done) — those are covered in `docs/pilot-process.md` instead.
+already done) — those are covered in `.pilot/pilot-process.md` instead.
 
 ```mermaid
 sequenceDiagram

@@ -5,7 +5,7 @@
 ## PILOT ticket
 
 <!-- Leave this whole section out if this PR isn't tied to a PILOT ticket
-     (docs/pilot-process.md) — not every PR goes through PILOT. -->
+     (.pilot/pilot-process.md) — not every PR goes through PILOT. -->
 
 Closes #
 

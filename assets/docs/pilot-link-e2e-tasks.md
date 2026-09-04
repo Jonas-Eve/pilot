@@ -1,13 +1,13 @@
 # PILOT link — End-to-end test tasks
 
-Canonical version of this mechanic — `docs/pilot-task-scope-story.md` (phase 2, the one
+Canonical version of this mechanic — `.pilot/pilot-task-scope-story.md` (phase 2, the one
 duty that actually proposes the task) restates it inline rather than read it live (no task
 doc ever instructs a `Read` of this file), so keep it in sync by hand whenever this changes
-(`CLAUDE.md`'s cross-reference-check rule). `docs/pilot-task-check-split-coverage.md`
+(`CLAUDE.md`'s cross-reference-check rule). `.pilot/pilot-task-check-split-coverage.md`
 (phase 2) restates only the one fact it needs — excluded from the coverage surface — not
-the rest. `docs/pilot-task-implement.md`/`-implement-e2e.md` (phase 4) just cite it in
+the rest. `.pilot/pilot-task-implement.md`/`-implement-e2e.md` (phase 4) just cite it in
 passing, no restatement. Never by `.claude/agents/pilot-*.md`, which carry only identity
-now. See `docs/pilot-process.md` §2/§3/§4/§7 for the generic ticket types, labels, claim
+now. See `.pilot/pilot-process.md` §2/§3/§4/§7 for the generic ticket types, labels, claim
 protocol, and phase-6 trigger this builds on.
 
 **Mandatory for every `type:feature` story, never for `type:tech`/`type:bug`.** A story is
@@ -20,7 +20,7 @@ this way.
 
 Title convention: "E2E: <story summary>". A dev-sized ticket like any other, `level:task`
 under the story, going through phases 2-5 exactly like its siblings, labeled `type:e2e` —
-its own type, never stacked with anything else (`docs/pilot-process.md` §2 intro). No new
+its own type, never stacked with anything else (`.pilot/pilot-process.md` §2 intro). No new
 `status:` on the ticket itself.
 
 It depends on **every** other task in the same split, dev and tech alike — not a
@@ -28,15 +28,15 @@ judgment-selected subset: one "Depends on #N" line per sibling, so it naturally 
 claimable by phase 3/4 until all of them have merged, and structurally can never be the
 ticket that finishes the split before its siblings.
 
-**Excluded from the PM's split-coverage check** (`docs/pilot-process.md` §2 "Three
+**Excluded from the PM's split-coverage check** (`.pilot/pilot-process.md` §2 "Three
 levels"): neither the e2e task nor any `type:tech` sibling implements a criterion — the
 e2e task verifies criteria the `type:feature` tasks already cover, and a `type:tech` task
 is an enabler, not a delivered piece of product behavior.
 
 **Once the e2e task reaches `status:done`, the whole split is structurally finished**
 (every dev sibling necessarily already is, per the dependency above) — this is what
-triggers `docs/pilot-process.md` §7 "Phase 6 — Human QA" instead of the ordinary cascade
-straight to `status:done` (`docs/pilot-process.md` §3 "Cascading completion").
+triggers `.pilot/pilot-process.md` §7 "Phase 6 — Human QA" instead of the ordinary cascade
+straight to `status:done` (`.pilot/pilot-process.md` §3 "Cascading completion").
 
 Phase 3 (tech lead) for an e2e task writes the test plan itself as the spec: which flow,
 which existing test tooling/framework this project already uses for e2e, and what its
@@ -48,4 +48,4 @@ already-merged integration points rather than generic implementation instruction
 `pilot-e2e` writes the test against that already-merged behavior — the ticket cannot be
 marked done with a test that doesn't actually pass. If running it surfaces a genuine
 defect in that already-merged code rather than a gap in the e2e ticket's own scope, that's
-a bug discovered mid-implementation — see `docs/pilot-link-bug-tickets.md`.
+a bug discovered mid-implementation — see `.pilot/pilot-link-bug-tickets.md`.

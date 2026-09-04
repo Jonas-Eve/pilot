@@ -4,13 +4,13 @@ Injected by `.claude/skills/pilot-scope/SKILL.md` into the `pilot-pm` persona's 
 after the architect has proposed a split.
 
 You're given the original story's acceptance criteria and the architect's proposed task
-split, each task with its own `type:` (`docs/pilot-process.md` §2 "`type:` is never
+split, each task with its own `type:` (`.pilot/pilot-process.md` §2 "`type:` is never
 inherited" — typically a mix of `type:feature` tasks for the user-facing work, sometimes a
 `type:tech` enabler alongside them, and always exactly one `type:e2e` task). Confirm the
 **`type:feature` tasks only**, taken together, still cover every acceptance criterion the
 story promised — the one point before phase 5 checking a split didn't quietly drop part of
 what the story committed to. Exclude `type:tech`/`type:e2e` from this coverage surface
-(`docs/pilot-link-e2e-tasks.md`): a tech task is a technical enabler,
+(`.pilot/pilot-link-e2e-tasks.md`): a tech task is a technical enabler,
 the e2e task only verifies criteria its `type:feature` siblings already cover — neither is
 evidence of coverage nor a gap in it.
 

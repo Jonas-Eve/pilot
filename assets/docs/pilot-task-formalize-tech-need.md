@@ -7,7 +7,7 @@ You receive a raw technical need in free text (possibly with a rough back-and-fo
 already had with the human) — infra, CI, security hardening, deployment, migration,
 performance/optimization work with no product framing. Turn it into one or more
 well-formed `type:tech` GitHub issues, each with your own initial `priority:P0/P1/P2`
-(`docs/pilot-process.md` §3 — the technical framing: security/correctness/safety-net);
+(`.pilot/pilot-process.md` §3 — the technical framing: security/correctness/safety-net);
 deciding whether it needs splitting or recording dependencies is still phase 2's job,
 later and separately.
 
@@ -17,7 +17,7 @@ later and separately.
 2. If several: reuse an existing open `level:epic` + `type:tech` issue that fits by
    theme (new stories become its sub-issues), else create a new tech Epic
    (`level:epic` + `type:tech`, no `status:` label, open, unassigned) — same as the PM
-   does for `type:feature` (`docs/pilot-process.md` §2).
+   does for `type:feature` (`.pilot/pilot-process.md` §2).
 3. Write each story's issue body: what the need actually is and why, concrete enough
    that phase 2 can scope it without re-litigating what you meant.
 4. Label each story `type:tech`, `level:story`, `status:backlog`, its own initial

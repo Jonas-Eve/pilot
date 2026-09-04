@@ -1,13 +1,13 @@
 ---
 name: pilot-story
-description: "Phase 1 of PILOT (see docs/pilot-process.md): turn a raw need into a formalized GitHub issue — a type:feature story or type:tech need (PM/architect agent, level:story, finalizing to status:backlog for /pilot-scope), or a genuine type:bug defect (architect agent, which also classifies whether it's really a bug) created directly as level:task, finalizing straight to status:spec-ready — a bug is dev-sized by definition and skips /pilot-scope entirely. Type is auto-detected, or declared upfront with --tech/--bug. A type:feature/type:tech need spanning several stories groups into a new/reused level:epic (type:bug is never grouped). Always pair mode: drafts live with a human, creating the ticket as status:draft as soon as a first draft exists and refining it in place — a wrong detection is corrected live, never silent. No --auto, never Routine-driven; --resume <issue number> picks back up a status:draft ticket left mid-pair. Only formalizes what the need is — dependencies, prerequisites, and splitting are entirely /pilot-scope's job, run separately afterward. Use whenever a human wants to start a new ticket, whatever kind of work it is."
+description: "Phase 1 of PILOT (see .pilot/pilot-process.md): turn a raw need into a formalized GitHub issue — a type:feature story or type:tech need (PM/architect agent, level:story, finalizing to status:backlog for /pilot-scope), or a genuine type:bug defect (architect agent, which also classifies whether it's really a bug) created directly as level:task, finalizing straight to status:spec-ready — a bug is dev-sized by definition and skips /pilot-scope entirely. Type is auto-detected, or declared upfront with --tech/--bug. A type:feature/type:tech need spanning several stories groups into a new/reused level:epic (type:bug is never grouped). Always pair mode: drafts live with a human, creating the ticket as status:draft as soon as a first draft exists and refining it in place — a wrong detection is corrected live, never silent. No --auto, never Routine-driven; --resume <issue number> picks back up a status:draft ticket left mid-pair. Only formalizes what the need is — dependencies, prerequisites, and splitting are entirely /pilot-scope's job, run separately afterward. Use whenever a human wants to start a new ticket, whatever kind of work it is."
 argument-hint: "<raw need in free text> [--tech | --bug] | --resume <issue number>"
 disable-model-invocation: true
 ---
 
 # PILOT — Phase 1: Plan
 
-Read `docs/pilot-process.md` before running this if you haven't already — it's the
+Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
 source of truth for labels, states, and the claim protocol; this skill only covers the
 mechanics of running phase 1.
 
@@ -15,7 +15,7 @@ mechanics of running phase 1.
 
 1. Determine the input:
    - `--resume <issue>`: must be `status:draft`, assigned, **no** `needs-human`/`on-hold`
-     — a draft left mid-pair (`docs/pilot-process.md` §4 "Resuming an orphaned
+     — a draft left mid-pair (`.pilot/pilot-process.md` §4 "Resuming an orphaned
      claim"). Read the ticket and thread (`mcp__github__issue_read` `get_comments`) to
      reconstruct what's drafted, claim it (overwrite assignee), skip to step 5b with that
      state (call the agent in step 4 again first if revising the draft, passing the
@@ -36,11 +36,11 @@ mechanics of running phase 1.
    `mcp__github__list_issues`/`search_issues`) as candidates the agent might reuse —
    cheap, deterministic bookkeeping, not the agent's job to search for itself.
 4. Call the `Agent` tool with the subagent chosen in step 2. Read the task doc matching
-   what step 2 picked — `docs/pilot-task-write-story.md` (PM), `docs/pilot-task-formalize-tech-need.md`
-   (architect, `--tech`), or `docs/pilot-task-formalize-bug-report.md` (architect,
+   what step 2 picked — `.pilot/pilot-task-write-story.md` (PM), `.pilot/pilot-task-formalize-tech-need.md`
+   (architect, `--tech`), or `.pilot/pilot-task-formalize-bug-report.md` (architect,
    `--bug`) — and pass its content as part of the prompt, along with the raw need and the
    candidate Epic list — nothing else from this conversation's history, so the subagent
-   gets a clean, scoped context, not the running transcript (`docs/pilot-process.md` §5).
+   gets a clean, scoped context, not the running transcript (`.pilot/pilot-process.md` §5).
    The persona file itself (`.claude/agents/pilot-*.md`) carries only identity now, not
    this duty's mechanics — the task doc is what tells it what to actually do.
 5. The subagent returns one of: out of scope (per this project's functional-scope doc, if
@@ -56,10 +56,10 @@ mechanics of running phase 1.
 5a. **Create the draft ticket(s) right away** (`mcp__github__issue_write`,
     `mcp__github__sub_issue_write`), before showing anything to the human — this is what
     makes `--resume` possible if the session ends before final approval
-    (`docs/pilot-process.md` §3 `status:draft`, §4 "Resuming an orphaned claim"):
+    (`.pilot/pilot-process.md` §3 `status:draft`, §4 "Resuming an orphaned claim"):
     - Single story (`type:feature`/`type:tech`): create it, matching `type:` +
       `level:story` + `status:draft` + the agent's initial `priority:P0/P1/P2`
-      (`docs/pilot-process.md` §3), assigned to this session.
+      (`.pilot/pilot-process.md` §3), assigned to this session.
     - Several stories, reusing an existing Epic: create each story the same way
       (`level:story`, `status:draft`, its own `priority:`, assigned), link each as that
       Epic's sub-issue.
@@ -69,8 +69,8 @@ mechanics of running phase 1.
       `status:draft` + its own `priority:` + assigned.
     - `type:bug`: create it matching `type:bug` + `level:task` + `status:draft` + its
       `priority:`, assigned to this session — never `level:story`, and never linked to an
-      Epic (`docs/pilot-process.md` §2 "Three levels" — a bug is never grouped).
-5b. This phase always runs paired (`docs/pilot-process.md` §4 "Interaction modes" —
+      Epic (`.pilot/pilot-process.md` §2 "Three levels" — a bug is never grouped).
+5b. This phase always runs paired (`.pilot/pilot-process.md` §4 "Interaction modes" —
     `/pilot-story` has no `--auto`): show the human which agent picked this up and why,
     with the drafted story/stories (and epic decision, if any) — pointing at the real
     issue number(s) from 5a, not just conversation text. For each `type:feature` draft
@@ -89,15 +89,15 @@ mechanics of running phase 1.
     creating a second ticket. If the agent now decides the idea is out of scope: for a
     `type:feature`/`type:tech` draft, set `status:wont-do` and close the draft ticket(s)
     instead of leaving a closed issue still labeled `status:draft`
-    (`docs/pilot-process.md` §3 `status:wont-do`) — nothing proceeds to `status:backlog`.
+    (`.pilot/pilot-process.md` §3 `status:wont-do`) — nothing proceeds to `status:backlog`.
     For a `type:bug` draft, never close it directly — a bug never carries `status:wont-do`
-    (`docs/pilot-process.md` §3 `status:wont-do`): add `needs-human` with the reasoning
+    (`.pilot/pilot-process.md` §3 `status:wont-do`): add `needs-human` with the reasoning
     instead, leave `status:draft`, and let a human close it if they agree. Otherwise, feed
     the human's response back to the agent, writing
     each round's changes into the draft ticket(s) (`issue_write`) as agreed — repeat until
     they approve. Requires a human live; never run from a scheduled sweep. Once approved,
     continue to step 5c.
-5c. **Final consolidation pass** (`docs/pilot-process.md` §4 "Interaction modes"): before
+5c. **Final consolidation pass** (`.pilot/pilot-process.md` §4 "Interaction modes"): before
     finalizing, have the agent re-read each draft ticket's body as a whole — not just the
     latest round's delta — and fix anything that no longer holds together across rounds
     (an out-of-scope note from an early round that no longer matches an acceptance
@@ -105,7 +105,7 @@ mechanics of running phase 1.
 6. Finalize (`mcp__github__issue_write`): flip each `type:feature`/`type:tech` story from
    `status:draft` to `status:backlog`, unassigned. For a `type:bug` ticket, flip it from
    `status:draft` straight to `status:spec-ready` instead, unassigned — never
-   `status:backlog`, it skips phase 2 entirely (`docs/pilot-process.md` §2 "Three levels").
+   `status:backlog`, it skips phase 2 entirely (`.pilot/pilot-process.md` §2 "Three levels").
 7. Report the issue number(s)/URL(s) back to the human.
 
 Do not decide whether a story needs splitting, record any dependency, or start phase 2

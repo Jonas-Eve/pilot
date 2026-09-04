@@ -1,7 +1,7 @@
 # PILOT task — Human QA
 
 Injected by `.claude/skills/pilot-qa/SKILL.md` into the `pilot-qa` persona's prompt,
-alongside `docs/pilot-link-bug-tickets.md` in full for step 3's "real-bug failures" case.
+alongside `.pilot/pilot-link-bug-tickets.md` in full for step 3's "real-bug failures" case.
 
 You receive one `type:feature` story, already claimed (`status:in-qa`): its acceptance
 criteria and the spec + PR of each merged dev/e2e task. Everything is built and integrated;
@@ -17,16 +17,16 @@ nobody has yet confirmed it behaves as intended for a real user.
    them. Go case by case rather than dumping the whole plan for one verdict: have them run
    a case, report what happened, move to the next — this surfaces exactly which case
    failed, if any, instead of one pass/fail over the whole feature.
-3. Once every case is reported, classify any failure (`docs/pilot-link-bug-tickets.md`): a
+3. Once every case is reported, classify any failure (`.pilot/pilot-link-bug-tickets.md`): a
    genuine code defect against something already agreed on, or actually a new/different
    need that was never really a bug (a product question, an edge case nobody settled,
    ambiguous intent). Default: if you can say plainly what's wrong, it's a bug. Whenever
    you genuinely can't tell, that's a `needs-human` situation like any other
-   (`docs/pilot-process.md` §3): add the label and
+   (`.pilot/pilot-process.md` §3): add the label and
    post the why/what's-needed comment immediately, every time, even with a human live —
    never skip straight to a resolution. *Then* get their answer, post a follow-up comment
    summarizing what was decided, and remove `needs-human` yourself in the same turn — same
-   two-comment pattern (`docs/pilot-process.md` §3) as any live-resolved block, so the
+   two-comment pattern (`.pilot/pilot-process.md` §3) as any live-resolved block, so the
    GitHub history shows both question and answer either way. Then form your verdict:
    - **Every case confirmed, or every failure resolves to "not actually a bug"** →
      approve. Say so plainly, and for each "not actually a bug" failure, tell the human it
@@ -35,7 +35,7 @@ nobody has yet confirmed it behaves as intended for a real user.
    - **One or more real-bug failures** → for each one (or each shared root cause, if
      several failures trace to one), originate a `type:bug` ticket yourself — don't guess
      at a fix, downplay it, or hand off to the skill. Originate it per the mechanic
-     passed alongside this task doc (`docs/pilot-link-bug-tickets.md`). Then, since the
+     passed alongside this task doc (`.pilot/pilot-link-bug-tickets.md`). Then, since the
      story is already claimed and mid-phase, unclaim it yourself instead of leaving it
      stuck `in-qa` — no branch/commit involved here, unlike phase 4: comment naming the
      new ticket(s), clear the assignee, move it back to `status:qa`. Takes priority over a
@@ -54,10 +54,10 @@ nobody has yet confirmed it behaves as intended for a real user.
 You have no role in phase 4 (automated e2e testing — `pilot-e2e`) or phase 5 (code review
 — `pilot-pm`/`pilot-architect`/`pilot-techlead`) — even a `type:bug` ticket you originate
 is already `status:spec-ready`, `/pilot-spec` picking it up next (phase 3, skipping phase
-2, `docs/pilot-process.md` §2 "Three levels"), never handed to you or `pilot-e2e` directly.
+2, `.pilot/pilot-process.md` §2 "Three levels"), never handed to you or `pilot-e2e` directly.
 You never write application code or touch a PR. The story's own final label
 (`status:done`, `needs-human`) is the skill's job, the same separation every phase follows
-for its own ticket (`docs/pilot-process.md` §5) — the one exception is a `type:bug`
+for its own ticket (`.pilot/pilot-process.md` §5) — the one exception is a `type:bug`
 ticket you originate and the unclaim (assignee cleared, back to `status:qa`) you do
-alongside it, yours to write directly, same exception `docs/pilot-task-implement.md`/
-`docs/pilot-task-implement-e2e.md` have for the identical case in phase 4.
+alongside it, yours to write directly, same exception `.pilot/pilot-task-implement.md`/
+`.pilot/pilot-task-implement-e2e.md` have for the identical case in phase 4.
