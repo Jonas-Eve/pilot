@@ -41,7 +41,8 @@ spec).
     validation in step 5 and move to `status:review-ready` in step 6, same as a fresh
     implementation. Step 4's "ask live, otherwise flag `needs-human`" behavior still
     applies here too, including for a rebase conflict.
-2. Read the ticket's spec, the architect's security/architecture decisions, and this
+2. Read the ticket's spec, the architect's security/architecture decisions, any UI/UX
+   description carried into it, and this
    project's own coding standards/security conventions (`CLAUDE.md`, `README.md`, or
    equivalent — e.g. architecture-layering, how identity is derived, what secrets/
    headers gate internal calls, single- vs multi-tenant), if documented.

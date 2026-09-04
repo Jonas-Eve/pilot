@@ -110,3 +110,7 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    each ticket's body — the concrete choices made (or the reason none were needed),
    not just a restatement of the requirement. These are what phase 3 builds against
    and what you check conformance against in phase 5 (`docs/pilot-task-review-architecture.md`).
+   If the story carries a UI/UX description or a mockup attached as a comment
+   (`docs/pilot-task-write-story.md`), also carry the relevant part into each task that
+   actually implements that UI — phases 3-4 read only the task's own body, not the
+   parent story, so it goes stale the moment you don't.
