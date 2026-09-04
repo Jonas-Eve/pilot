@@ -32,7 +32,12 @@ spec).
     push, since the rebase already rewrote its history; safe as long as no other
     ticket's branch has been created from this one since it was opened (check before
     assuming — this ticket's own dependents, if any, would need coordinating instead of
-    a blind force-push) — never open a second PR for the same ticket. Still run the
+    a blind force-push) — never open a second PR for the same ticket. Before moving on,
+    post one comment on the issue itself summarizing what you changed and why — the
+    blocking points live only in the PR review, not the issue
+    (`docs/pilot-link-review-consensus.md`), and a `change`-only reclaim reaches you
+    without any human ever having looked at the ticket, so this is what keeps the
+    ticket's own history coherent with the code. Still run the
     validation in step 5 and move to `status:review-ready` in step 6, same as a fresh
     implementation. Step 4's "ask live, otherwise flag `needs-human`" behavior still
     applies here too, including for a rebase conflict.
