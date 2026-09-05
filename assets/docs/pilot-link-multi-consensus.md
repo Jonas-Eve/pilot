@@ -8,14 +8,15 @@ both are pair-only, human-conversation phases this ensemble shape doesn't fit.
 
 ## What it changes
 
-`--multi <N>` (a positive integer; omitted or `1` is today's unchanged behavior) runs
+`--multi <N>` (a positive integer) runs
 **N independent instances of the same persona on the same claimed ticket**, instead of
 one, to increase the odds a genuinely better proposal surfaces or a real gap gets caught —
-not N different tickets, and not N different personas. **`--multi` given with no value, or
-a non-positive-integer value, is invalid** — a required argument is missing/malformed,
-same posture as any other malformed invocation in this repo (e.g. `pilot-auto/SKILL.md`'s
-"Determining the mode"): report exactly that and stop, never guess a default N. This is
-orthogonal to which ticket
+not N different tickets, and not N different personas. Omitted entirely is today's
+unchanged behavior (a single instance, no ensemble). **`--multi` given with no value
+defaults to `N=2`** — the smallest ensemble that still has something to reconcile. A
+malformed value instead (not a positive integer — `0`, negative, non-numeric) is invalid:
+report exactly that and stop, same posture as any other malformed invocation in this repo
+(e.g. `pilot-auto/SKILL.md`'s "Determining the mode"). This is orthogonal to which ticket
 gets claimed: the ordinary claim protocol and pool-picking (`.pilot/pilot-process.md` §4)
 are completely unaffected — still exactly one ticket claimed per invocation. It's also
 orthogonal to pair vs `--auto` (`.pilot/pilot-process.md` §4 "Interaction modes"): the
