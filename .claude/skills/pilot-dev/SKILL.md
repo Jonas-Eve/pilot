@@ -15,11 +15,16 @@ parallel instances; the claim step below prevents collisions.
 1. Resolve the ticket:
    - With `--resume`: must be `status:in-dev`, assigned, no `needs-human`/`on-hold` (a
      ticket left mid-pair session). Follow `.pilot/pilot-process.md` §4 "Resuming an
-     orphaned claim" instead of steps 2-6 — already claimed. Mismatch → report and stop.
+     orphaned claim" instead of steps 2-6 — already claimed; its own "the phase's `Agent`
+     call" is this skill's own step 3, invoked with the recovered context as input
+     (`--multi` invalid here, per `.pilot/pilot-link-multi-consensus.md`). Mismatch →
+     report and stop.
    - Without `--resume`, `status:in-dev`, no `needs-human`/`on-hold`, carrying
      `can-resume` → resume, not a fresh claim. Follow
      `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-6 —
-     already claimed.
+     already claimed; its own "the phase's `Agent` call" is this skill's own step 3
+     (including `--multi`, same as a fresh claim), invoked with the original blocking
+     context as input.
    - Without `--resume`, `status:in-dev`, assigned, no `needs-human`/`on-hold`, no
      `can-resume` → likely mid-pair-session; report and ask the human to re-run
      with `--resume`, or add `can-resume` themselves.
@@ -91,13 +96,16 @@ parallel instances; the claim step below prevents collisions.
      neither pair nor `--multi` in play, skips straight to implementation in this one call.
    - **With `--multi <N>`** (fresh claim only): N instances run in parallel, **each asked
      for a proposed implementation approach only, not the finished implementation** — same
-     content as the pair-coding checkpoint above, never code. A reconciliation pass then
-     settles on one approach (`.pilot/pilot-link-multi-consensus.md`): every substantive
-     point agrees → adopt it; genuine disagreement → one retry round with the disagreement
-     in context; still unresolved → stop here, add `needs-human` quoting every round's
-     differing approaches verbatim — nothing was implemented yet, so nothing to push or
-     clean up. Once an approach is settled, **unless `--auto`**, show it to the human as
-     the normal pair-coding checkpoint above (repeat until approved, same checkpoint
+     content as the pair-coding checkpoint above, never code. One further reconciliation
+     call, reading the same `.pilot/pilot-task-implement.md` (its own "Reconciling an
+     ensemble" section is what tells it this is a comparison, not a fresh proposal) plus
+     all N raw approaches, settles on one (`.pilot/pilot-link-multi-consensus.md`): every
+     substantive point agrees → adopt it; genuine disagreement → one retry round with the
+     disagreement in context (same task doc, plus that summary); still unresolved → stop
+     here, add `needs-human` quoting every round's differing approaches verbatim —
+     nothing was implemented yet, so nothing to push or clean up. Once an approach is
+     settled, **unless `--auto`**, show it to the human as the normal pair-coding
+     checkpoint above (repeat until approved, same checkpoint
      discipline) — then, whether via pair approval or `--auto` straight through, make
      **one further, single** `Agent` call (never N again — the ensemble's job ends at the
      approach) with that approach as its explicit plan, to actually implement it.

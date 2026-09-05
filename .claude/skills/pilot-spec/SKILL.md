@@ -16,11 +16,16 @@ mechanics of running phase 3.
    - Given issue number with `--resume`: must be `status:in-spec`, already assigned,
      with **no** `needs-human` and **no** `on-hold` — a ticket left mid-pair session.
      Follow `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" instead of steps
-     2-5 below — skip the claim, already claimed. If it doesn't match, report and stop.
+     2-5 below — skip the claim, already claimed; its own "the phase's `Agent` call" is
+     this skill's own step 3, invoked with the recovered context as input (`--multi`
+     invalid here, per `.pilot/pilot-link-multi-consensus.md`). If it doesn't match,
+     report and stop.
    - Given issue number without `--resume`, `status:in-spec`, **no** `needs-human`, **no**
      `on-hold`, carrying `can-resume` → resume, not a fresh claim. Follow
      `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-5
-     below — skip the claim, already claimed.
+     below — skip the claim, already claimed; its own "the phase's `Agent` call" is this
+     skill's own step 3 (including `--multi`, same as a fresh claim), invoked with the
+     original blocking context as input.
    - Given issue number without `--resume`, `status:in-spec`, already assigned, **no**
      `needs-human`, **no** `on-hold`, no `can-resume` → looks like a ticket left mid-pair
      session. Report that and ask the human to re-run with `--resume`, or add
@@ -45,8 +50,11 @@ mechanics of running phase 3.
 2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-spec`, re-read
    to confirm the claim held.
 3. Call the `Agent` tool with `subagent_type: "pilot-techlead"` — once, or, with
-   `--multi <N>`, N times in parallel plus a reconciliation pass
-   (`.pilot/pilot-link-multi-consensus.md` — invalid combined with `--resume`). Read
+   `--multi <N>`, N times in parallel plus one further reconciliation call
+   (`.pilot/pilot-link-multi-consensus.md` — invalid combined with `--resume`) that reads
+   the same `.pilot/pilot-task-write-spec.md` (its own "Reconciling an ensemble" section is
+   what tells it this is a comparison, not a fresh spec) plus all N raw specs, and, on a
+   retry round, the prior round's disagreement summary too. Read
    `.pilot/pilot-task-write-spec.md` and pass its content as part of the prompt, plus
    only the ticket's current body (including the architect's decisions, and, if
    resuming, the comment thread's resolution per §4) and pointers to the relevant

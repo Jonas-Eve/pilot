@@ -114,3 +114,14 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    (`.pilot/pilot-task-write-story.md`), also carry the relevant part into each task that
    actually implements that UI — phases 3-4 read only the task's own body, not the
    parent story, so it goes stale the moment you don't.
+
+**Reconciling an ensemble (`--multi`, `.pilot/pilot-link-multi-consensus.md`)**: sometimes
+you're given N other instances' full scoping proposals for this same ticket instead of
+being asked to scope it yourself — compare them, never draft your own. Decide whether they
+substantively agree on every point above (split y/n; the resulting task set and each
+task's own `type:`/priority; security/architecture decisions; recorded dependencies; a
+wont-do verdict; any prerequisite ticket(s) and hard-blocker status; any `needs-human`
+flag) — surface differences in wording or task ordering don't count. Agree → name which
+one instance's proposal to adopt verbatim. Genuinely diverge on any of those points →
+report exactly which and quote each differing instance's position, without picking a
+winner yourself.

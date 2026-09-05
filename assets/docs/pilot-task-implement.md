@@ -112,3 +112,13 @@ spec).
 You are not a phase-5 reviewer — your self-review at step 5a above is what stands in
 for that (`.pilot/pilot-link-review-consensus.md`); phase 5 for every ticket type is
 `pilot-pm` (feature only) + `pilot-architect` + `pilot-techlead`.
+
+**Reconciling an ensemble (`--multi`, `.pilot/pilot-link-multi-consensus.md`, fresh
+implementations only — never a reclaim)**: sometimes you're given N other instances'
+proposed implementation approaches for this same ticket instead of being asked to
+implement it yourself — compare them, never draft your own, and never at the code stage,
+only the approach. Decide whether they substantively agree on the overall approach
+(design, which files/layers it touches, the tradeoff it makes) — surface differences in
+wording don't count. Agree → name which one instance's approach to adopt verbatim.
+Genuinely diverge → report exactly which point(s) and quote each differing instance's
+position, without picking a winner yourself.

@@ -63,8 +63,12 @@ mechanics of running phase 2.
 2. **Claim** the ticket per `.pilot/pilot-process.md` §4: set assignee + `status:in-scope`,
    re-read to confirm the claim held.
 3. Call `Agent` with `subagent_type: "pilot-architect"` — once, or, with `--multi <N>`,
-   N times in parallel plus a reconciliation pass (`.pilot/pilot-link-multi-consensus.md`
-   — invalid combined with `--resume`). Read `.pilot/pilot-task-scope-story.md`
+   N times in parallel plus one further reconciliation call
+   (`.pilot/pilot-link-multi-consensus.md` — invalid combined with `--resume`) that reads
+   the same `.pilot/pilot-task-scope-story.md` (its own "Reconciling an ensemble" section
+   is what tells it this is a comparison, not a fresh scope) plus all N raw proposals, and,
+   on a retry round, the prior round's disagreement summary too. Read
+   `.pilot/pilot-task-scope-story.md`
    and pass its content as part of the prompt, plus `.pilot/pilot-link-bug-tickets.md` in
    full (the classify/originate mechanic for step 5's "Prerequisite (bug)" case — the task
    doc covers the phase-2-specific delta itself) — plus only what phase 2 needs beyond

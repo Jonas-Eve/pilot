@@ -99,11 +99,15 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
    as proposed" if none (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket") —
    so reviewers don't re-raise a point a human already answered.
 5a. **Per-role reconciliation** (only when `--multi` ran more than one instance of a
-    role): for each such role, reconcile its N verdicts into that role's single point-list
-    per `.pilot/pilot-link-multi-consensus.md` — a point only some instances raised is
+    role): for each such role, one further `Agent` call, same persona, reading that same
+    role's task doc from step 5 (its own "Reconciling an ensemble" section is what tells it
+    this is a comparison, not a fresh review) plus all N raw verdicts — reconciles them
+    into that role's single point-list per `.pilot/pilot-link-multi-consensus.md` — a point
+    only some instances raised is
     coverage, union it in; only two instances reaching opposite judgments about the
     identical point is genuine disagreement, retried once (that role only, that point in
-    context) — still unresolved after that retry → turn it into one `decision`-tagged
+    context, same task doc plus that summary) — still unresolved after that retry → turn it
+    into one `decision`-tagged
     point in that role's own list, quoting every differing position verbatim, and let
     step 6's ordinary tag-based aggregation carry it from there (`needs-human` follows
     automatically, same as any other `decision` point — no separate escalation path).

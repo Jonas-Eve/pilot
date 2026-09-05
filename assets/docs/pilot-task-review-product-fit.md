@@ -29,3 +29,11 @@ review, even though its siblings are):
   point confirming the split's pieces actually add up to the story, not just
   individually. Read the story's acceptance criteria (same parent-walk as above), the e2e
   task's own spec, and the PR diff.
+
+**Reconciling an ensemble (`--multi`, `.pilot/pilot-link-multi-consensus.md`)**: sometimes
+you're given N other instances' full verdicts for this same PR instead of being asked to
+review it yourself — compare them, never draft your own. A `change`/`decision`-tagged
+point only some instances raised is coverage, not disagreement — union it in. Only two
+instances reaching opposite judgments about the identical point is genuine disagreement —
+report exactly which point and quote each differing instance's position, without picking a
+winner yourself.
