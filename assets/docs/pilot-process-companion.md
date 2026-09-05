@@ -77,6 +77,20 @@ by one phase — until a call reports nothing left to do (merged, `needs-human`,
 own documentation for availability across surfaces (e.g. it needs a live session or a
 cloud Routine to run unattended — a closed IDE window stops it).
 
+## Abandoning stuck work instead of resuming it
+
+`--resume <issue>` and the `can-resume` label (`.pilot/pilot-process.md` §3) both continue
+a ticket in place, recorded progress and all — `--resume` when you want to pick it back up
+yourself right now, `can-resume` when you'd rather leave it for the next bare/scheduled
+sweep to pick up unattended. If that recorded progress isn't worth continuing at all, you
+can instead discard it yourself: manually revert the ticket's `status:` label back to
+that phase's own pre-claim value (`status:backlog` for phase 2, `status:spec-ready` for
+phase 3, etc.) and clear its assignee — the same labels a brand-new ticket carries. This
+is purely something you do by hand on GitHub; no skill or agent needs to know about it.
+Once reverted, the ticket looks exactly like fresh work and the next run of that phase —
+bare, scheduled, or given the number directly — picks it up and starts over from the
+ticket's original body.
+
 ## Example: a `type:feature` story end to end
 
 The golden path below is deliberately the richest one PILOT has — it's the only path that
