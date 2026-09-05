@@ -891,7 +891,9 @@ the PR — a substitute for a separate reviewer checking the same thing again in
 (`.pilot/pilot-link-review-consensus.md`), not an addition to it. Phase 5 has no
 incremental assembly to reconcile this way — its own aggregation already collapses every
 reviewer's one-shot verdict into a single outcome before its one pair checkpoint is ever
-reached, so there's nothing earlier to re-read against.
+reached, so there's nothing earlier to re-read against; each reviewer instead re-checks
+its own points once, right before returning its verdict
+(`.pilot/pilot-link-review-consensus.md`).
 
 **`--auto`** is the old default, before pair mode existed: the agent decides everything
 and the skill applies the finished result straight to GitHub in one pass, no human
