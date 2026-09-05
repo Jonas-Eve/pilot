@@ -16,15 +16,13 @@ parallel instances; the claim step below prevents collisions.
    - With `--resume`: must be `status:in-dev`, assigned, no `needs-human`/`on-hold` (a
      ticket left mid-pair session). Follow `.pilot/pilot-process.md` §4 "Resuming an
      orphaned claim" instead of steps 2-6 — already claimed; its own "the phase's `Agent`
-     call" is this skill's own step 3, invoked with the recovered context as input
-     (`--multi` invalid here, per `.pilot/pilot-link-multi-consensus.md`). Mismatch →
-     report and stop.
+     call" is this skill's own step 3, invoked with the recovered context as input.
+     Mismatch → report and stop.
    - Without `--resume`, `status:in-dev`, no `needs-human`/`on-hold`, carrying
      `can-resume` → resume, not a fresh claim. Follow
      `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-6 —
-     already claimed; its own "the phase's `Agent` call" is this skill's own step 3
-     (including `--multi`, same as a fresh claim), invoked with the original blocking
-     context as input.
+     already claimed; its own "the phase's `Agent` call" is this skill's own step 3,
+     invoked with the original blocking context as input.
    - Without `--resume`, `status:in-dev`, assigned, no `needs-human`/`on-hold`, no
      `can-resume` → likely mid-pair-session; report and ask the human to re-run
      with `--resume`, or add `can-resume` themselves.

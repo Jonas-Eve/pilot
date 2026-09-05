@@ -17,15 +17,13 @@ mechanics of running phase 3.
      with **no** `needs-human` and **no** `on-hold` — a ticket left mid-pair session.
      Follow `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" instead of steps
      2-5 below — skip the claim, already claimed; its own "the phase's `Agent` call" is
-     this skill's own step 3, invoked with the recovered context as input (`--multi`
-     invalid here, per `.pilot/pilot-link-multi-consensus.md`). If it doesn't match,
-     report and stop.
+     this skill's own step 3, invoked with the recovered context as input. If it doesn't
+     match, report and stop.
    - Given issue number without `--resume`, `status:in-spec`, **no** `needs-human`, **no**
      `on-hold`, carrying `can-resume` → resume, not a fresh claim. Follow
      `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-5
      below — skip the claim, already claimed; its own "the phase's `Agent` call" is this
-     skill's own step 3 (including `--multi`, same as a fresh claim), invoked with the
-     original blocking context as input.
+     skill's own step 3, invoked with the original blocking context as input.
    - Given issue number without `--resume`, `status:in-spec`, already assigned, **no**
      `needs-human`, **no** `on-hold`, no `can-resume` → looks like a ticket left mid-pair
      session. Report that and ask the human to re-run with `--resume`, or add
