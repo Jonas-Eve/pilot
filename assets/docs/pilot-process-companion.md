@@ -68,14 +68,22 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
                           stopping at whichever one currently claims it
 /pilot-auto 48 --merge  → same, and merges #48's PR itself once review's verdict is
                           all-approve
+/pilot-auto --again     → sweep mode, but keeps going after each candidate instead of
+                          stopping at the first — drains every pool in one call
+/pilot-auto 48 --next   → keeps re-dispatching #48 after each phase advance, until
+                          nothing's left to do, needs-human is flagged, or it closes
+                          (`--continue` is an accepted alias for `--next`)
 ```
 
 Pairing `/pilot-auto <ticket> [--merge]` with Claude Code's own `/loop` skill (e.g.
 `/loop /pilot-auto 48 --merge`) re-invokes it repeatedly — each call advances the ticket
 by one phase — until a call reports nothing left to do (merged, `needs-human`, or
-`status:done`). `/loop` is a general Claude Code capability, not a PILOT skill; see its
-own documentation for availability across surfaces (e.g. it needs a live session or a
-cloud Routine to run unattended — a closed IDE window stops it).
+`status:done`); `/pilot-auto 48 --next [--merge]` does the same thing natively, in one
+command, without needing `/loop` at all. `/loop` is a general Claude Code capability, not
+a PILOT skill; see its own documentation for availability across surfaces (e.g. it needs
+a live session or a cloud Routine to run unattended — a closed IDE window stops it) — still
+useful for looping a bare `/pilot-scope`/`/pilot-spec`/`/pilot-dev`/`/pilot-review --auto`
+call, or anything `--again`/`--next` don't cover.
 
 ## Abandoning stuck work instead of resuming it
 
