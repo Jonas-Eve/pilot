@@ -763,17 +763,6 @@ To resume:
 
 Finalization behaves exactly as any other run of that phase from here.
 
-### Abandoning an orphaned or `needs-human` ticket instead of resuming it
-
-`--resume` and clearing `needs-human` both continue a ticket in place, recorded progress
-and all. A human can instead discard that progress entirely: manually revert the ticket's
-`status:` back to that phase's own pre-claim status (and clear its assignee) — the same
-labels a brand-new ticket carries. It re-enters the ordinary "Fresh work" pool above like
-any other unclaimed ticket; whichever run claims it next starts over from the ticket's
-original body, with no special handling for the abandoned attempt. This is a deliberate
-human choice when the recorded progress isn't worth continuing — never something a phase
-skill does on its own.
-
 ### Reclaiming a `status:changes-requested` ticket (`/pilot-dev` only)
 
 Unlike "Resuming a `needs-human` ticket" or "Resuming an orphaned claim" above,
