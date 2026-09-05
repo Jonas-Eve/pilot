@@ -60,6 +60,7 @@ LABELS=(
   "status:done|0E8A16|PILOT: merged, via cascade from a status:split parent's tasks, or confirmed by phase 6 QA"
   "needs-human|B60205|PILOT: a phase hit something only a human can decide; status: stays wherever it was"
   "on-hold|C2C2C2|PILOT: deliberately paused, not blocked on a question; excluded from every phase's candidate pools"
+  "can-resume|0E8A16|PILOT: human-verified signal that an in-progress ticket is safe for the next sweep to pick up"
 )
 
 echo "Setting up PILOT labels on ${1:-the current repo}..."

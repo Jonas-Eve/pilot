@@ -9,3 +9,8 @@
    file/`README.md` outside the marked blocks (e.g. a command name in prose) — after
    running `/pilot-update`, check cheaply: `grep` the exact term(s) that changed across
    both files and fix what turns up.
+5. **A synced mechanism change can also leave a gap a `grep` won't find** — this file's
+   or `README.md`'s own prose about PILOT (a workflow description, a walkthrough) can go
+   stale in substance even when no single term was renamed, if what it describes no
+   longer matches the freshly-synced canonical behavior. After `/pilot-update`, skim that
+   prose against what actually changed, not just the renamed-term grep above.

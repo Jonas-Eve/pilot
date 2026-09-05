@@ -9,7 +9,12 @@ labels, states, and claim protocol this builds on.
 Each reviewer returns a verdict: approve, or block with one or more points tagged either
 `change` — a concrete fix the reviewer can articulate, nothing for a human to weigh in on
 — or `decision` — a genuine judgment call with no fix to propose until a human weighs in.
-Default to `change` whenever a fix can be named. A validation/CI mismatch always counts as
+Default to `change` whenever a fix can be named. Before returning it, re-read your own
+points against the PR's current head commit and the review as a whole, not just what
+prompted each one along the way, and drop or fix anything that no longer holds — phase 5
+has no incremental buildup to reconcile the way phases 1-4 do
+(`.pilot/pilot-process.md` §4 "Interaction modes"), so this is its own one-shot equivalent.
+A validation/CI mismatch always counts as
 `change`: the tech lead re-runs this project's own build/test/lint commands directly
 against the PR's branch before voting (`.pilot/pilot-task-review-spec-conformance.md`) — the
 other reviewers don't duplicate that check — and once this project has a CI workflow

@@ -36,17 +36,17 @@ merges.
      any stale one (`mcp__github__pull_request_review_write` method `delete_pending`) and
      resume normally from step 3. Mismatch → report and stop.
    - Given (or pooled) without `--resume`, `status:in-review`, assigned, no
-     `needs-human`/`on-hold`, thread shows a `needs-human` block later cleared → resume,
+     `needs-human`/`on-hold`, carrying `can-resume` → resume,
      not a fresh claim. Follow `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"
      instead of step 2 — already claimed.
    - Given without `--resume`, `status:in-review`, assigned, no `needs-human`/`on-hold`, no
-     `needs-human` history → looks orphaned; report and ask the human to re-run with
-     `--resume` rather than proceeding.
+     `can-resume` → looks orphaned; report and ask the human to re-run with
+     `--resume`, or add `can-resume` themselves.
    - `status:in-review` still carrying `needs-human`/`on-hold` → not resolved yet; report
      and stop.
    - Otherwise, or none given → per `.pilot/pilot-process.md` §4 "Picking the next
      ticket...": the given ticket, or the merged pool of unclaimed `status:review-ready`
-     (fresh) and `status:in-review` with `needs-human` just cleared (resumable — handled by
+     (fresh) and `status:in-review` carrying `can-resume` (resumable — handled by
      the second bullet above, not here), excluding `on-hold`, ordered by highest
      `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
      isn't, then oldest first (`mcp__github__search_issues`). `status:changes-requested`

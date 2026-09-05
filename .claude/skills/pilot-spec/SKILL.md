@@ -1,7 +1,7 @@
 ---
 name: pilot-spec
-description: "Phase 3 of PILOT (see .pilot/pilot-process.md): the tech lead agent writes the technical implementation spec for an already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a previously-flagged ticket once a human clears the flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or needs-human-resumable work (e.g. --auto from a scheduled cron Routine), skipping anything on-hold or blocked by an unresolved 'Depends on #N' reference, preferring a ticket that blocks another over one that doesn't. Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
-argument-hint: "<issue number, optional — picks the next spec-ready or needs-human-resumable ticket if omitted> [--auto] | <issue number> --resume"
+description: "Phase 3 of PILOT (see .pilot/pilot-process.md): the tech lead agent writes the technical implementation spec for an already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a previously-flagged ticket once a human clears the flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or can-resume-marked work (e.g. --auto from a scheduled cron Routine), skipping anything on-hold or blocked by an unresolved 'Depends on #N' reference, preferring a ticket that blocks another over one that doesn't. Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
+argument-hint: "<issue number, optional — picks the next spec-ready or can-resume-marked ticket if omitted> [--auto] | <issue number> --resume"
 ---
 
 # PILOT — Phase 3: Lay Out
@@ -18,13 +18,13 @@ mechanics of running phase 3.
      Follow `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" instead of steps
      2-5 below — skip the claim, already claimed. If it doesn't match, report and stop.
    - Given issue number without `--resume`, `status:in-spec`, **no** `needs-human`, **no**
-     `on-hold`, and its thread shows a `needs-human` block that was later cleared →
-     resume, not a fresh claim. Follow `.pilot/pilot-process.md` §4 "Resuming a
-     `needs-human` ticket" instead of steps 2-5 below — skip the claim, already claimed.
+     `on-hold`, carrying `can-resume` → resume, not a fresh claim. Follow
+     `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-5
+     below — skip the claim, already claimed.
    - Given issue number without `--resume`, `status:in-spec`, already assigned, **no**
-     `needs-human`, **no** `on-hold`, but no `needs-human` history in its thread → looks
-     like a ticket left mid-pair session. Report that and ask the human to re-run with
-     `--resume` rather than proceeding.
+     `needs-human`, **no** `on-hold`, no `can-resume` → looks like a ticket left mid-pair
+     session. Report that and ask the human to re-run with `--resume`, or add
+     `can-resume` themselves.
    - Given issue number, `status:in-spec`, still has `needs-human` or `on-hold` → not
      resolved yet, report that and stop.
    - Given issue number, `status:spec-ready`, unclaimed, but its body carries a "Depends
@@ -34,9 +34,9 @@ mechanics of running phase 3.
      the pool).
    - Given issue number otherwise, or none given → per `.pilot/pilot-process.md` §4
      "Picking the next ticket...": the given ticket, or the merged pool of unclaimed
-     `status:spec-ready` (fresh) and `status:in-spec` with `needs-human`/`on-hold` just
-     cleared (resumable — a ticket left mid-pair session is never in this pool, only
-     reachable via an explicit `--resume <issue>`), excluding any with an unresolved
+     `status:spec-ready` (fresh) and `status:in-spec` carrying `can-resume` (resumable —
+     a ticket left mid-pair session is never in this pool, only reachable via an
+     explicit `--resume <issue>`), excluding any with an unresolved
      "Depends on #N" (`.pilot/pilot-process.md` §4 "Blocked-by dependencies"), highest
      `priority:` then a ticket named in another open ticket's "Blocks #M" before one that
      isn't, then oldest first (`mcp__github__search_issues`). This is what a scheduled

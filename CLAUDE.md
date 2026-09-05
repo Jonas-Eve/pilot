@@ -189,6 +189,19 @@ the skill files) — never a fixed path, there is no installed location.
   tightly cross-referenced. After editing any of them, `grep` the exact term(s) you
   changed (a renamed label, a moved section heading, a link/task doc's filename) across
   that whole family and fix what turns up, rather than re-reading every file end to end.
+- **Coherence and convention check — a term grep alone doesn't catch this:** before
+  considering a mechanism change done, do a second pass a `grep` can't: walk the actual
+  state combinations the change touches (a ticket that's assigned-but-unlabeled,
+  cleared-but-never-set, both flags at once) and confirm each one is handled somewhere,
+  not only the common case — an internal contradiction (two sections implying opposite
+  rules for the same shape) reads fine word by word and only shows up this way. Then
+  re-run the "Three tiers" test above against what the change actually turned into, not
+  what it was meant to be — a paragraph can read generic and still be single-skill
+  content that drifted into `pilot-process.md` because that file was already open.
+  (This is exactly how `can-resume` replaced a thread-history check: two existing
+  sections described the same ticket shape — assigned, in-progress, no `needs-human` —
+  with opposite pool membership, caught only by tracing the state space, not by grepping
+  a term.)
 - **Renaming or removing a skill/agent:** `/pilot-update` handles this by diffing a
   project's locally-copied skills/agents against this repo's current `.claude/skills/`/
   `.claude/agents/` and flagging anything that no longer matches anything upstream as
