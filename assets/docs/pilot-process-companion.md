@@ -49,8 +49,9 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-dev 42 --auto     → same, no live checkpoint (needed for a scheduled Routine)
 /pilot-dev 42 --resume   → picks back up a mid-pair session, or recovers a crashed
                            run's orphaned claim, on #42
-/pilot-dev 42 --multi 3 → 3 devs independently implement #42 on separate branches,
-                           reconciled to one PR (or needs-human, all branches pushed)
+/pilot-dev 42 --multi 3 → 3 devs independently propose an approach for #42, reconciled
+                           to one agreed plan a single dev then implements as one PR
+                           (or needs-human, quoting the differing approaches)
 
 /pilot-review            → sweeps every status:review-ready/resumable PR, no argument
                            needed, pair by default

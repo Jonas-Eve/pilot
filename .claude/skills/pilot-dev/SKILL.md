@@ -1,6 +1,6 @@
 ---
 name: pilot-dev
-description: "Phase 4 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. An optional --multi <N> runs N devs independently on their own branches for the one claimed ticket and reconciles them into a single PR, escalating to needs-human with every branch pushed on genuine, unresolved disagreement (see .pilot/pilot-link-multi-consensus.md) — no effect on a reclaim, which always pushes to the one already-open PR's own branch. Use once /pilot-spec has produced a technical spec."
+description: "Phase 4 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. An optional --multi <N> runs N devs independently proposing an implementation approach for the one claimed ticket and reconciles them into a single agreed approach before a single dev actually implements it, escalating to needs-human quoting the differing approaches on genuine, unresolved disagreement (see .pilot/pilot-link-multi-consensus.md) — no effect on a reclaim, which always pushes to the one already-open PR's own branch. Use once /pilot-spec has produced a technical spec."
 argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto] [--multi N] | <issue number> --resume"
 ---
 
@@ -58,11 +58,7 @@ parallel instances; the claim step below prevents collisions.
     `subagent_type: "pilot-e2e"`; otherwise `"pilot-dev"`. The only thing `type:e2e`
     changes here — claim, pool selection, and everything below apply identically either
     way.
-3. Call the `Agent` tool with the `subagent_type` chosen in step 2a — once, or, with
-   `--multi <N>`, N times in parallel each on its own branch plus a reconciliation pass
-   (`.pilot/pilot-link-multi-consensus.md`) — except on a **reclaim** (step 1), where
-   `--multi` has no effect and this always runs once: N independent branches don't
-   compose with pushing more commits to one already-open PR's own branch. Read
+3. Call the `Agent` tool with the `subagent_type` chosen in step 2a. Read
    `.pilot/pilot-task-implement.md` and pass its content as part of the prompt — for
    `pilot-e2e`, also read and pass `.pilot/pilot-task-implement-e2e.md` alongside it, since
    it only documents that persona's differences from the base task. Also pass
@@ -78,31 +74,40 @@ parallel instances; the claim step below prevents collisions.
    `mcp__github__pull_request_read` method `get_reviews` (the body holds the points, not a
    plain issue comment, `.pilot/pilot-link-review-consensus.md`) — with its `change`-tagged
    points to fix, plus any `decision`-tagged points and their resolution, instead of a
-   fresh spec — only more commits on the existing PR. **Unless `--auto` was given**
-   (`.pilot/pilot-process.md` §4
-   "Interaction modes" — pair is the default; a fresh claim or paused-pair resume only,
-   never combined with a reclaim): first ask for a proposed implementation approach, not
-   the finished implementation — the pair-coding checkpoint. Show the human that plan as a
-   normal reply, wait for their response, feed it back to the agent, repeat until approved,
-   writing each approved checkpoint into the ticket right away (a comment, or a partial
-   `issue_write`) rather than holding it in-conversation — this is what `--resume` picks
-   back up if the session ends before final approval (`.pilot/pilot-process.md` §4
-   "Resuming an orphaned claim"). Requires a human live in this session; a scheduled
-   Routine must pass `--auto` instead. Once approved, proceed with implementation below —
-   the "ask live" behavior for a genuine blocker (§3) still applies during implementation
-   itself; pair mode doesn't replace it.
-4. The subagent (or, with `--multi`, the reconciled instance) either implements the
-   ticket, runs the relevant validation, and opens a
+   fresh spec — only more commits on the existing PR.
+   - **Without `--multi`** (or on a reclaim, where `--multi` has no effect either way):
+     **unless `--auto` was given** (`.pilot/pilot-process.md` §4 "Interaction modes" — pair
+     is the default; a fresh claim or paused-pair resume only, never combined with a
+     reclaim): first ask for a proposed implementation approach, not the finished
+     implementation — the pair-coding checkpoint. Show the human that plan as a normal
+     reply, wait for their response, feed it back to the agent, repeat until approved,
+     writing each approved checkpoint into the ticket right away (a comment, or a partial
+     `issue_write`) rather than holding it in-conversation — this is what `--resume` picks
+     back up if the session ends before final approval (`.pilot/pilot-process.md` §4
+     "Resuming an orphaned claim"). Requires a human live in this session; a scheduled
+     Routine must pass `--auto` instead. Once approved, the same `Agent` call proceeds with
+     implementation below — the "ask live" behavior for a genuine blocker (§3) still
+     applies during implementation itself; pair mode doesn't replace it. **`--auto`**, with
+     neither pair nor `--multi` in play, skips straight to implementation in this one call.
+   - **With `--multi <N>`** (fresh claim only): N instances run in parallel, **each asked
+     for a proposed implementation approach only, not the finished implementation** — same
+     content as the pair-coding checkpoint above, never code. A reconciliation pass then
+     settles on one approach (`.pilot/pilot-link-multi-consensus.md`): every substantive
+     point agrees → adopt it; genuine disagreement → one retry round with the disagreement
+     in context; still unresolved → stop here, add `needs-human` quoting every round's
+     differing approaches verbatim — nothing was implemented yet, so nothing to push or
+     clean up. Once an approach is settled, **unless `--auto`**, show it to the human as
+     the normal pair-coding checkpoint above (repeat until approved, same checkpoint
+     discipline) — then, whether via pair approval or `--auto` straight through, make
+     **one further, single** `Agent` call (never N again — the ensemble's job ends at the
+     approach) with that approach as its explicit plan, to actually implement it.
+4. The subagent either implements the ticket, runs the relevant validation, and opens a
    pull request following this project's own PR template if it has one (e.g.
    `.github/pull_request_template.md`) — including a "PILOT ticket" section if the
    template defines one: type, `Closes #<issue>`, spec deviations — or, for a reclaim,
    pushes new commits addressing the blocking review to that same existing PR instead of
    opening a new one — or hits a genuine blocking conflict it can't resolve alone and
-   stops without a PR (or without pushing, for a reclaim). With `--multi`, if
-   reconciliation still can't resolve a genuine disagreement after its one retry round,
-   stop here instead: push every instance's branch (never merge them, never open a PR yet)
-   and add `needs-human` with each branch linked plus every round's differing positions
-   quoted verbatim (`.pilot/pilot-link-multi-consensus.md`).
+   stops without a PR (or without pushing, for a reclaim).
 5. Apply the result:
    - PR opened, or new commits pushed to an existing PR (reclaim case): clear the assignee
      and set `status:review-ready` on the ticket (phase 5's own pre-claim status — never

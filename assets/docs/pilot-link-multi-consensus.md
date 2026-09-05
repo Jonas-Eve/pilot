@@ -62,11 +62,15 @@ What counts as a "substantive decision point" is specific to each caller:
   verdict; any prerequisite ticket(s) and hard-blocker status; any `needs-human` flag.
 - **`/pilot-spec` (tech lead)**: the technical approach/design decisions in the spec; any
   blocking conflict raised against the architect's decisions.
-- **`/pilot-dev` (dev/e2e)**: substantive equivalence of implementation approach and
-  outcome — same overall approach, passing the same validation/tests, no materially
-  different tradeoff — never byte-for-byte code identity. Each of the N instances works
-  its own branch (never share one); the adopted instance's branch is what gets opened as
-  the PR. Only a fresh claim — reclaiming a `status:changes-requested` ticket
+- **`/pilot-dev` (dev/e2e)**: the ensemble runs at the **proposed-approach stage only**
+  (`pilot-dev/SKILL.md` step 3) — never on finished code, so there's no branch to push or
+  diff to compare: N instances each propose an implementation approach, never touching
+  code yet. A substantive decision point here is the approach itself (overall design,
+  which files/layers it touches, the tradeoff it makes) — surface differences in how it's
+  worded don't count. Once reconciled (or approved by a live human in pair mode, same as
+  any single-agent proposal), exactly **one** further `Agent` call implements it
+  (`pilot-dev/SKILL.md` step 4) — the ensemble's job ends at the approach, it's never
+  re-run on the code. Only a fresh claim — reclaiming a `status:changes-requested` ticket
   (`.pilot/pilot-process.md` §4 "Reclaiming a `status:changes-requested` ticket") is
   continuing one specific existing line of work (more commits on one already-open PR's own
   branch), not a fresh candidate to ensemble, so `--multi` silently has no effect there
@@ -91,13 +95,13 @@ What counts as a "substantive decision point" is specific to each caller:
 - Round 1 disagrees → run **one** more ensemble round: same N, same original inputs, plus
   the consensus check's disagreement summary appended so the fresh instances can reconsider
   it — then run the consensus check again.
-- That second round still disagrees → stop ensembling on that point. For `/pilot-scope`
-  and `/pilot-spec`, add `needs-human` (`.pilot/pilot-process.md` §3) with a comment
-  quoting every divergent point and each round's differing positions verbatim, never
-  summarized away — a human decides directly, the same as any other blocking judgment
-  call. For `/pilot-dev`, the same, plus push every instance's branch (never merge them)
-  and link each one in the comment so the human can compare real diffs; no PR is opened
-  yet. For `/pilot-review`, don't add `needs-human` directly — fold the divergence into
+- That second round still disagrees → stop ensembling on that point. For `/pilot-scope`,
+  `/pilot-spec`, and `/pilot-dev` (still at the proposed-approach stage, above — nothing
+  implemented yet, so nothing to push or clean up), add `needs-human`
+  (`.pilot/pilot-process.md` §3) with a comment quoting every divergent point and each
+  round's differing positions verbatim, never summarized away — a human decides directly,
+  the same as any other blocking judgment call. For `/pilot-review`, don't add
+  `needs-human` directly — fold the divergence into
   one `decision`-tagged point in that role's list instead (above), scoped to the specific
   contested point only; the rest of that role's reconciled points, and the other roles'
   own ensembles, proceed normally, and step 6's aggregation adds `needs-human` the
