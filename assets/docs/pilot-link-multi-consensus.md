@@ -11,7 +11,11 @@ both are pair-only, human-conversation phases this ensemble shape doesn't fit.
 `--multi <N>` (a positive integer; omitted or `1` is today's unchanged behavior) runs
 **N independent instances of the same persona on the same claimed ticket**, instead of
 one, to increase the odds a genuinely better proposal surfaces or a real gap gets caught —
-not N different tickets, and not N different personas. This is orthogonal to which ticket
+not N different tickets, and not N different personas. **`--multi` given with no value, or
+a non-positive-integer value, is invalid** — a required argument is missing/malformed,
+same posture as any other malformed invocation in this repo (e.g. `pilot-auto/SKILL.md`'s
+"Determining the mode"): report exactly that and stop, never guess a default N. This is
+orthogonal to which ticket
 gets claimed: the ordinary claim protocol and pool-picking (`.pilot/pilot-process.md` §4)
 are completely unaffected — still exactly one ticket claimed per invocation. It's also
 orthogonal to pair vs `--auto` (`.pilot/pilot-process.md` §4 "Interaction modes"): the
