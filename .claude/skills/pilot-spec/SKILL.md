@@ -50,23 +50,22 @@ mechanics of running phase 3.
 2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-spec`, re-read
    to confirm the claim held.
 3. Call the `Agent` tool with `subagent_type: "pilot-techlead"` — once, or, with
-   `--multi <N>`, N times in parallel plus one further reconciliation call
-   (`.pilot/pilot-link-multi-consensus.md` — invalid combined with `--resume`) that reads
-   the same `.pilot/pilot-task-write-spec.md` (its own "Reconciling an ensemble" section is
-   what tells it this is a comparison, not a fresh spec) plus all N raw specs, and, on a
-   retry round, the prior round's disagreement summary too. Read
+   `--multi <N>` (invalid combined with `--resume`), N times in parallel. Read
    `.pilot/pilot-task-write-spec.md` and pass its content as part of the prompt, plus
    only the ticket's current body (including the architect's decisions, and, if
    resuming, the comment thread's resolution per §4) and pointers to the relevant
    docs for the area it touches (this project's own per-service/per-package docs,
    wherever it keeps them — e.g. `apps/<app-name>/docs/`, a `docs/` folder, or a
    service-level README) — not the running conversation history.
+3a. **With `--multi`, reconcile the N specs yourself** — no further `Agent` call
+    (`.pilot/pilot-link-multi-consensus.md` has the comparison criteria): every
+    substantive point agrees → adopt one verbatim; genuine disagreement → run one more
+    round of step 3 with the disagreement noted, then compare again; still unresolved →
+    stop here, add `needs-human` with every round's differing positions quoted verbatim —
+    don't continue to step 4.
 4. The subagent (or, with `--multi`, the reconciled proposal) returns either: a
    technical spec to append to the ticket, or a blocking conflict with the architect's
-   decisions that needs a human. With `--multi`, if reconciliation still can't resolve
-   a genuine disagreement after its one retry round, stop here instead: add
-   `needs-human` with every round's differing positions quoted verbatim
-   (`.pilot/pilot-link-multi-consensus.md`) — don't continue to step 4a.
+   decisions that needs a human.
 4a. **Unless `--auto` was given** (`.pilot/pilot-process.md` §4 "Interaction modes" — pair
     is the default for this skill): don't finalize the spec yet. Show the human the
     drafted spec outline as a normal reply, wait for their response, and feed it back to

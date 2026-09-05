@@ -62,12 +62,8 @@ mechanics of running phase 2.
      sweeps").
 2. **Claim** the ticket per `.pilot/pilot-process.md` §4: set assignee + `status:in-scope`,
    re-read to confirm the claim held.
-3. Call `Agent` with `subagent_type: "pilot-architect"` — once, or, with `--multi <N>`,
-   N times in parallel plus one further reconciliation call
-   (`.pilot/pilot-link-multi-consensus.md` — invalid combined with `--resume`) that reads
-   the same `.pilot/pilot-task-scope-story.md` (its own "Reconciling an ensemble" section
-   is what tells it this is a comparison, not a fresh scope) plus all N raw proposals, and,
-   on a retry round, the prior round's disagreement summary too. Read
+3. Call `Agent` with `subagent_type: "pilot-architect"` — once, or, with `--multi <N>`
+   (invalid combined with `--resume`), N times in parallel. Read
    `.pilot/pilot-task-scope-story.md`
    and pass its content as part of the prompt, plus `.pilot/pilot-link-bug-tickets.md` in
    full (the classify/originate mechanic for step 5's "Prerequisite (bug)" case — the task
@@ -78,10 +74,13 @@ mechanics of running phase 2.
    (identity/tenancy/security boundaries, target system design, if documented) —
    plus, for a `status:qa`/`status:in-qa` reclaim (step 1), which existing tasks are
    already `status:done` from the earlier round, including the e2e one. Not the
-   conversation history. With `--multi`, if reconciliation still can't resolve a
-   genuine disagreement after its one retry round, stop here: add `needs-human` with
-   every round's differing positions quoted verbatim
-   (`.pilot/pilot-link-multi-consensus.md`) — don't continue to step 4.
+   conversation history.
+3a. **With `--multi`, reconcile the N proposals yourself** — no further `Agent` call
+    (`.pilot/pilot-link-multi-consensus.md` has the comparison criteria): every
+    substantive point agrees → adopt one verbatim; genuine disagreement → run one more
+    round of step 3 with the disagreement noted, then compare again; still unresolved →
+    stop here, add `needs-human` with every round's differing positions quoted verbatim —
+    don't continue to step 4.
 4. The subagent (or, with `--multi`, the reconciled proposal) returns one of:
    - `type:tech`: a single scoped body (no split, with its `priority:` reconfirmed or
      revised from phase 1), or a set of proposed tasks (split, judgment call) each with

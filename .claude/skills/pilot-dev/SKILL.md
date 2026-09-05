@@ -96,16 +96,14 @@ parallel instances; the claim step below prevents collisions.
      neither pair nor `--multi` in play, skips straight to implementation in this one call.
    - **With `--multi <N>`** (fresh claim only): N instances run in parallel, **each asked
      for a proposed implementation approach only, not the finished implementation** — same
-     content as the pair-coding checkpoint above, never code. One further reconciliation
-     call, reading the same `.pilot/pilot-task-implement.md` (its own "Reconciling an
-     ensemble" section is what tells it this is a comparison, not a fresh proposal) plus
-     all N raw approaches, settles on one (`.pilot/pilot-link-multi-consensus.md`): every
-     substantive point agrees → adopt it; genuine disagreement → one retry round with the
-     disagreement in context (same task doc, plus that summary); still unresolved → stop
-     here, add `needs-human` quoting every round's differing approaches verbatim —
-     nothing was implemented yet, so nothing to push or clean up. Once an approach is
-     settled, **unless `--auto`**, show it to the human as the normal pair-coding
-     checkpoint above (repeat until approved, same checkpoint
+     content as the pair-coding checkpoint above, never code. **Reconcile the N approaches
+     yourself** — no further `Agent` call (`.pilot/pilot-link-multi-consensus.md` has the
+     comparison criteria): every substantive point agrees → adopt one verbatim; genuine
+     disagreement → run one more round of N instances with the disagreement noted, then
+     compare again; still unresolved → stop here, add `needs-human` quoting every round's
+     differing approaches verbatim — nothing was implemented yet, so nothing to push or
+     clean up. Once an approach is settled, **unless `--auto`**, show it to the human as
+     the normal pair-coding checkpoint above (repeat until approved, same checkpoint
      discipline) — then, whether via pair approval or `--auto` straight through, make
      **one further, single** `Agent` call (never N again — the ensemble's job ends at the
      approach) with that approach as its explicit plan, to actually implement it.
