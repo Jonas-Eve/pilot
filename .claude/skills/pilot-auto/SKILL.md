@@ -1,7 +1,7 @@
 ---
 name: pilot-auto
-description: "Convenience dispatcher over PILOT's four auto-capable phase sweeps (see .pilot/pilot-process.md): tries /pilot-review --auto, then /pilot-dev --auto, then /pilot-spec --auto, then /pilot-scope --auto, in that order, stopping at the first one that actually finds and processes at least one candidate. Takes an optional subset (review/dev/spec/scope, any combination, any order) to restrict which phases it tries this run, e.g. 'spec scope' to dispatch only those two — still evaluated finish-before-start, just narrowed to the given ones; omit for all four. An optional --merge, combined with review being in scope, is forwarded only to /pilot-review (the other three have no such flag), merging an approved PR itself instead of leaving it for a human. An optional --again, sweep mode only (full set or a subset), keeps re-running the same dispatch after each candidate instead of stopping at the first, draining every phase's pool in this one invocation until a full pass finds nothing. Given a single issue number instead, tries that same fixed order against that one ticket instead of a pool — each phase's own claim protocol reports nothing to do when the ticket isn't currently in that phase's pre-claim status, so this command never inspects the ticket's status: itself, it just tries each phase in turn and stops at the first that claims it. An optional --next (alias --continue), ticket-dispatch mode only, keeps re-dispatching that same ticket after each phase advance instead of stopping there, until a pass finds nothing left to do for it, a phase flags needs-human, or it closes — internalizing the documented `/loop /pilot-auto <ticket>` pattern into one command. Lets a scheduled Routine (or a human) fire one bare command instead of picking which phase needs attention, or hand it one ticket without knowing which phase it's currently in. Never invokes /pilot-story or /pilot-qa — both are pair-only, no bare/--auto mode exists for either, and neither is ever a valid subset token or dispatch target. Adds no phase, claim, or label mechanic of its own: each invoked skill still resolves and processes its own candidate (pool or given ticket) exactly as it would standalone."
-argument-hint: "[review] [dev] [spec] [scope] [--merge] [--again] — any subset, any order, space-separated; omit subset for all four, --merge forwards to /pilot-review only, --again sweeps repeatedly until a full pass finds nothing | <issue number> [--merge] [--next|--continue] — try that one ticket against each phase in the same order, in --auto mode; --next keeps re-dispatching it until nothing's left, needs-human, or it closes"
+description: "Convenience dispatcher over PILOT's four auto-capable phase sweeps (see .pilot/pilot-process.md): tries /pilot-review --auto, then /pilot-dev --auto, then /pilot-spec --auto, then /pilot-scope --auto, in that order, stopping at the first one that actually finds and processes at least one candidate. Takes an optional subset (review/dev/spec/scope, any combination, any order) to restrict which phases it tries this run, e.g. 'spec scope' to dispatch only those two — still evaluated finish-before-start, just narrowed to the given ones; omit for all four. An optional --merge, combined with review being in scope, is forwarded only to /pilot-review (the other three have no such flag), merging an approved PR itself instead of leaving it for a human. An optional --again, sweep mode only (full set or a subset), keeps re-running the same dispatch after each candidate instead of stopping at the first, draining every phase's pool in this one invocation until a full pass finds nothing. Given a single issue number instead, tries that same fixed order against that one ticket instead of a pool — each phase's own claim protocol reports nothing to do when the ticket isn't currently in that phase's pre-claim status, so this command never inspects the ticket's status: itself, it just tries each phase in turn and stops at the first that claims it. An optional --next (alias --continue) keeps re-dispatching after each phase advance instead of stopping there, until a pass finds nothing left to do, a phase flags needs-human, or the ticket closes — internalizing the documented `/loop /pilot-auto <ticket>` pattern into one command. Given with an issue number, it keeps re-dispatching that same ticket. Given with no issue number (optionally with a subset), the first pass behaves like sweep mode and whichever candidate actually gets claimed becomes the ticket every later pass re-dispatches against, through the full four-phase chain regardless of any subset given for that first pass — riding one ticket through to done instead of processing a different candidate each time. Lets a scheduled Routine (or a human) fire one bare command instead of picking which phase needs attention, or hand it one ticket without knowing which phase it's currently in. Never invokes /pilot-story or /pilot-qa — both are pair-only, no bare/--auto mode exists for either, and neither is ever a valid subset token or dispatch target. Adds no phase, claim, or label mechanic of its own: each invoked skill still resolves and processes its own candidate (pool or given ticket) exactly as it would standalone."
+argument-hint: "[review] [dev] [spec] [scope] [--merge] [--again|--next] — any subset, any order, space-separated; omit subset for all four, --merge forwards to /pilot-review only, --again sweeps repeatedly (a different candidate each pass) until a full pass finds nothing, --next (alias --continue) instead pins whichever candidate the first pass claims and rides that one ticket through the full chain | <issue number> [--merge] [--next|--continue] — try that one ticket against each phase in the same order, in --auto mode; --next keeps re-dispatching it until nothing's left, needs-human, or it closes"
 ---
 
 # PILOT — Auto Dispatch
@@ -59,10 +59,11 @@ subset, or reached before something else claims the ticket in dispatch mode).
 
 `--again` only combines with sweep mode (full set or a restricted subset) — invalid
 alongside an issue number, same as any other mode mismatch above. `--next` (alias
-`--continue`) only combines with ticket-dispatch mode — invalid with no argument or a
-subset, since there's no single ticket to keep advancing. Neither ever combines with the
-other, since sweep mode and ticket-dispatch mode already can't. See "Repeating a run"
-below for what each one actually does.
+`--continue`) combines with any input above — no argument, a subset, or a single issue
+number — since it changes what happens *after* the first pass, not which mode that first
+pass runs in (below, "Repeating a run"). `--again` and `--next` never combine with each
+other: giving both is invalid, since they disagree about what a later pass should target
+(a fresh candidate each time, vs. the one just claimed).
 
 ## Why the fixed order
 
@@ -123,20 +124,31 @@ simply gets "nothing to do" from all four tried phases — report that, don't gu
 
 Without either flag, one run above is exactly one iteration: stop at the first phase that
 does something, or report nothing to do. Both flags instead repeat that same run —
-iteration after iteration, each one the steps above in full — until a stopping condition
-below is met. Never combine the two: each is valid only in the one mode described here,
-already stated above.
+iteration after iteration, each one the steps above in full, always keeping whatever
+subset/`--merge` were given on the original command — until a stopping condition below is
+met. Never combine the two (above).
 
-**`--again`** (sweep mode, full set or a restricted subset): after one iteration claims
-and processes a candidate, immediately run another iteration of the same subset from step
-1 — a fresh pool read each time, since the candidate just processed no longer belongs to
-that phase's pool. Keep going until one full iteration finds nothing across every phase in
-the subset — the pool(s) are empty, not just this one candidate. This drains the subset's
-pool(s) in a single invocation instead of processing one candidate and stopping.
+**`--again`** (sweep mode, full set or a restricted subset only — invalid with an issue
+number): after one iteration claims and processes a candidate, immediately run another
+iteration of the same subset from step 1 — a fresh pool read each time, since the
+candidate just processed no longer belongs to that phase's pool, so each iteration is a
+*different* ticket. Keep going until one full iteration finds nothing across every phase
+in the subset — the pool(s) are empty, not just this one candidate. This drains the
+subset's pool(s) in a single invocation instead of processing one candidate and stopping.
 
-**`--next`** (alias `--continue`, ticket-dispatch mode only): after one iteration's phase
-advances the given ticket, immediately run another iteration of all four phases against
-that same ticket number. Keep going until any of:
+**`--next`** (alias `--continue`): every iteration after the first re-dispatches the same
+one ticket, all four phases, regardless of what the original command looked like:
+- **Given an issue number**: every iteration targets that number.
+- **Given no issue number** (with or without a subset): the *first* iteration is a sweep
+  (that subset, or the full set) exactly as it would run without `--next` — whichever
+  phase actually claims a candidate there fixes the ticket number every iteration after it
+  re-dispatches against, from then on trying all four phases regardless of the first
+  iteration's subset (a subset only ever shapes which candidate gets picked up front, "Why
+  the fixed order" above still decides the order every iteration tries them in). If that
+  first sweep finds nothing, there's no ticket to pin — report idle and stop, same as
+  sweep mode without `--next`.
+
+Either way, keep re-dispatching that one ticket until any of:
 - an iteration finds nothing to do for it across all four phases (it's left their
   territory entirely — merged, `status:done`/`status:wont-do`, or now a phase-1/phase-6
   candidate instead, `.pilot/pilot-process.md` §4);
@@ -167,6 +179,7 @@ with which phase actually claimed the ticket (e.g. "Ticket #48 → ran `/pilot-d
 
 **With `--again` or `--next`**: report each iteration in the same style as above, in order,
 not just the last one, then a one-line summary — for `--again`, how many candidates were
-processed and across which phases before the subset went idle; for `--next`, how many
-phase-advances the ticket went through and which of the three stopping conditions ended it
-(nothing left to do, `needs-human` flagged, or closed).
+processed and across which phases before the subset went idle; for `--next` given no issue
+number, name the ticket the first iteration pinned before listing what happened to it;
+either way, close with how many phase-advances it went through and which of the three
+stopping conditions ended it (nothing left to do, `needs-human` flagged, or closed).

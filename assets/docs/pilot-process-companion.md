@@ -70,6 +70,9 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
                           all-approve
 /pilot-auto --again     → sweep mode, but keeps going after each candidate instead of
                           stopping at the first — drains every pool in one call
+/pilot-auto --next      → sweep mode for the first pass only; whichever candidate a
+                          phase claims there, keep re-dispatching that one ticket
+                          through the full chain instead of moving to another
 /pilot-auto 48 --next   → keeps re-dispatching #48 after each phase advance, until
                           nothing's left to do, needs-human is flagged, or it closes
                           (`--continue` is an accepted alias for `--next`)
