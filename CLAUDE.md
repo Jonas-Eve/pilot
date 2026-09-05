@@ -194,14 +194,23 @@ the skill files) — never a fixed path, there is no installed location.
   state combinations the change touches (a ticket that's assigned-but-unlabeled,
   cleared-but-never-set, both flags at once) and confirm each one is handled somewhere,
   not only the common case — an internal contradiction (two sections implying opposite
-  rules for the same shape) reads fine word by word and only shows up this way. Then
-  re-run the "Three tiers" test above against what the change actually turned into, not
-  what it was meant to be — a paragraph can read generic and still be single-skill
+  rules for the same shape) reads fine word by word and only shows up this way. Walk this
+  against the *whole* file the change lands in, not just the new content checked against
+  itself — a rule stated elsewhere, written long before this change existed, can conflict
+  with what you just added exactly as easily as two new sections can conflict with each
+  other, and it's the one direction "does my new stuff hang together" naturally skips.
+  Then re-run the "Three tiers" test above against what the change actually turned into,
+  not what it was meant to be — a paragraph can read generic and still be single-skill
   content that drifted into `pilot-process.md` because that file was already open.
   (This is exactly how `can-resume` replaced a thread-history check: two existing
   sections described the same ticket shape — assigned, in-progress, no `needs-human` —
   with opposite pool membership, caught only by tracing the state space, not by grepping
-  a term.)
+  a term. And how `pilot-auto`'s `--next` was caught missing a stopping condition:
+  its own three conditions were checked against every ticket status shape, but not
+  against a rule stated earlier in the same file — "if a target skill's own resolution
+  decides a given ticket looks orphaned... relay that and stop" — a fourth real
+  condition the new list never mentioned because it predated `--next` and nothing
+  prompted a re-read of it.)
 - **Renaming or removing a skill/agent:** `/pilot-update` handles this by diffing a
   project's locally-copied skills/agents against this repo's current `.claude/skills/`/
   `.claude/agents/` and flagging anything that no longer matches anything upstream as
