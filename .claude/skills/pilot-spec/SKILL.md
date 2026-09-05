@@ -1,7 +1,7 @@
 ---
 name: pilot-spec
-description: "Phase 3 of PILOT (see .pilot/pilot-process.md): the tech lead agent writes the technical implementation spec for an already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a previously-flagged ticket once a human clears the flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or can-resume-marked work (e.g. --auto from a scheduled cron Routine), skipping anything on-hold or blocked by an unresolved 'Depends on #N' reference, preferring a ticket that blocks another over one that doesn't. Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
-argument-hint: "<issue number, optional — picks the next spec-ready or can-resume-marked ticket if omitted> [--auto] | <issue number> --resume"
+description: "Phase 3 of PILOT (see .pilot/pilot-process.md): the tech lead agent writes the technical implementation spec for an already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a previously-flagged ticket once a human clears the flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or can-resume-marked work (e.g. --auto from a scheduled cron Routine), skipping anything on-hold or blocked by an unresolved 'Depends on #N' reference, preferring a ticket that blocks another over one that doesn't. An optional --multi <N> runs N tech leads independently on the one claimed ticket instead of one and reconciles them into a single spec, escalating to needs-human on genuine, unresolved disagreement (see .pilot/pilot-link-multi-consensus.md). Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
+argument-hint: "<issue number, optional — picks the next spec-ready or can-resume-marked ticket if omitted> [--auto] [--multi [N]] | <issue number> --resume"
 ---
 
 # PILOT — Phase 3: Lay Out
@@ -16,11 +16,16 @@ mechanics of running phase 3.
    - Given issue number with `--resume`: must be `status:in-spec`, already assigned,
      with **no** `needs-human` and **no** `on-hold` — a ticket left mid-pair session.
      Follow `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" instead of steps
-     2-5 below — skip the claim, already claimed. If it doesn't match, report and stop.
+     2-5 below — skip the claim, already claimed; its own "the phase's `Agent` call" is
+     this skill's own step 3, invoked with the recovered context as input (`--multi`
+     invalid here, per `.pilot/pilot-link-multi-consensus.md`). If it doesn't match,
+     report and stop.
    - Given issue number without `--resume`, `status:in-spec`, **no** `needs-human`, **no**
      `on-hold`, carrying `can-resume` → resume, not a fresh claim. Follow
      `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-5
-     below — skip the claim, already claimed.
+     below — skip the claim, already claimed; its own "the phase's `Agent` call" is this
+     skill's own step 3 (including `--multi`, same as a fresh claim), invoked with the
+     original blocking context as input.
    - Given issue number without `--resume`, `status:in-spec`, already assigned, **no**
      `needs-human`, **no** `on-hold`, no `can-resume` → looks like a ticket left mid-pair
      session. Report that and ask the human to re-run with `--resume`, or add
@@ -44,15 +49,24 @@ mechanics of running phase 3.
      sweeps").
 2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-spec`, re-read
    to confirm the claim held.
-3. Call the `Agent` tool with `subagent_type: "pilot-techlead"`. Read
+3. Call the `Agent` tool with `subagent_type: "pilot-techlead"` — once, or, with
+   `--multi <N>`, N times in parallel plus one further reconciliation call
+   (`.pilot/pilot-link-multi-consensus.md` — invalid combined with `--resume`) that reads
+   the same `.pilot/pilot-task-write-spec.md` (its own "Reconciling an ensemble" section is
+   what tells it this is a comparison, not a fresh spec) plus all N raw specs, and, on a
+   retry round, the prior round's disagreement summary too. Read
    `.pilot/pilot-task-write-spec.md` and pass its content as part of the prompt, plus
    only the ticket's current body (including the architect's decisions, and, if
    resuming, the comment thread's resolution per §4) and pointers to the relevant
    docs for the area it touches (this project's own per-service/per-package docs,
    wherever it keeps them — e.g. `apps/<app-name>/docs/`, a `docs/` folder, or a
    service-level README) — not the running conversation history.
-4. The subagent returns either: a technical spec to append to the ticket, or a
-   blocking conflict with the architect's decisions that needs a human.
+4. The subagent (or, with `--multi`, the reconciled proposal) returns either: a
+   technical spec to append to the ticket, or a blocking conflict with the architect's
+   decisions that needs a human. With `--multi`, if reconciliation still can't resolve
+   a genuine disagreement after its one retry round, stop here instead: add
+   `needs-human` with every round's differing positions quoted verbatim
+   (`.pilot/pilot-link-multi-consensus.md`) — don't continue to step 4a.
 4a. **Unless `--auto` was given** (`.pilot/pilot-process.md` §4 "Interaction modes" — pair
     is the default for this skill): don't finalize the spec yet. Show the human the
     drafted spec outline as a normal reply, wait for their response, and feed it back to

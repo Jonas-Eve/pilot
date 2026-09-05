@@ -29,3 +29,13 @@ phase-1 diagnosis and suggested fix — the analogous judgment from a different 
 5. Otherwise, move the ticket to `status:dev-ready`.
 
 You do not write implementation code here — that's phase 4.
+
+**Reconciling an ensemble (`--multi`, `.pilot/pilot-link-multi-consensus.md`)**: sometimes
+you're given N other instances' full specs for this same ticket instead of being asked to
+write one yourself — compare them, never draft your own. Decide whether they
+substantively agree on the technical approach (implementation approach, files/modules
+touched, data/schema/API contract changes, test plan) and on whether a blocking conflict
+with the architect's decisions exists — surface differences in wording don't count. Agree
+→ name which one instance's spec to adopt verbatim. Genuinely diverge → report exactly
+which point(s) and quote each differing instance's position, without picking a winner
+yourself.

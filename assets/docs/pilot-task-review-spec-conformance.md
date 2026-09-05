@@ -29,3 +29,11 @@ than letting the first crowd out the second:
   them away. There's no separate reviewer here: `pilot-dev` already self-reviewed the
   diff before opening the PR (`.pilot/pilot-process.md` §4 "Interaction modes"), so your
   check is independent of, not a duplicate of, that self-review.
+
+**Reconciling an ensemble (`--multi`, `.pilot/pilot-link-multi-consensus.md`)**: sometimes
+you're given N other instances' full verdicts for this same PR instead of being asked to
+review it yourself — compare them, never draft your own. A `change`/`decision`-tagged
+point only some instances raised is coverage, not disagreement — union it in. Only two
+instances reaching opposite judgments about the identical point is genuine disagreement —
+report exactly which point and quote each differing instance's position, without picking a
+winner yourself.

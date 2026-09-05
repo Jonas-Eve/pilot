@@ -1,7 +1,7 @@
 ---
 name: pilot-scope
-description: "Phase 2 of PILOT (see .pilot/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature or type:tech only — type:bug never reaches this phase, always created directly as a spec-ready task) and, in one pass, challenges it, then scopes it as-is or splits it into dev-sized tasks (level:task, each its own independent type: — never inherited) — judgment call for type:tech, mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler) plus exactly one type:e2e task depending on every other task in the split. Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. For type:feature, the PM agent also checks the proposed type:feature tasks (excluding type:tech/type:e2e siblings) against the story's acceptance criteria before finalizing. Defaults to pair mode (walks the decomposition with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human). Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:in-scope then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. Use for scoping/decomposing an already-created type:feature/type:tech ticket — not for formalizing a new need (that's /pilot-story)."
-argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto] | <issue number> --resume"
+description: "Phase 2 of PILOT (see .pilot/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature or type:tech only — type:bug never reaches this phase, always created directly as a spec-ready task) and, in one pass, challenges it, then scopes it as-is or splits it into dev-sized tasks (level:task, each its own independent type: — never inherited) — judgment call for type:tech, mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler) plus exactly one type:e2e task depending on every other task in the split. Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. For type:feature, the PM agent also checks the proposed type:feature tasks (excluding type:tech/type:e2e siblings) against the story's acceptance criteria before finalizing. Defaults to pair mode (walks the decomposition with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human). Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:in-scope then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. An optional --multi <N> runs N architects independently on the one claimed ticket instead of one and reconciles them into a single proposal, escalating to needs-human on genuine, unresolved disagreement (see .pilot/pilot-link-multi-consensus.md). Use for scoping/decomposing an already-created type:feature/type:tech ticket — not for formalizing a new need (that's /pilot-story)."
+argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto] [--multi [N]] | <issue number> --resume"
 ---
 
 # PILOT — Phase 2: Investigate
@@ -62,7 +62,13 @@ mechanics of running phase 2.
      sweeps").
 2. **Claim** the ticket per `.pilot/pilot-process.md` §4: set assignee + `status:in-scope`,
    re-read to confirm the claim held.
-3. Call `Agent` with `subagent_type: "pilot-architect"`. Read `.pilot/pilot-task-scope-story.md`
+3. Call `Agent` with `subagent_type: "pilot-architect"` — once, or, with `--multi <N>`,
+   N times in parallel plus one further reconciliation call
+   (`.pilot/pilot-link-multi-consensus.md` — invalid combined with `--resume`) that reads
+   the same `.pilot/pilot-task-scope-story.md` (its own "Reconciling an ensemble" section
+   is what tells it this is a comparison, not a fresh scope) plus all N raw proposals, and,
+   on a retry round, the prior round's disagreement summary too. Read
+   `.pilot/pilot-task-scope-story.md`
    and pass its content as part of the prompt, plus `.pilot/pilot-link-bug-tickets.md` in
    full (the classify/originate mechanic for step 5's "Prerequisite (bug)" case — the task
    doc covers the phase-2-specific delta itself) — plus only what phase 2 needs beyond
@@ -72,8 +78,11 @@ mechanics of running phase 2.
    (identity/tenancy/security boundaries, target system design, if documented) —
    plus, for a `status:qa`/`status:in-qa` reclaim (step 1), which existing tasks are
    already `status:done` from the earlier round, including the e2e one. Not the
-   conversation history.
-4. The subagent returns one of:
+   conversation history. With `--multi`, if reconciliation still can't resolve a
+   genuine disagreement after its one retry round, stop here: add `needs-human` with
+   every round's differing positions quoted verbatim
+   (`.pilot/pilot-link-multi-consensus.md`) — don't continue to step 4.
+4. The subagent (or, with `--multi`, the reconciled proposal) returns one of:
    - `type:tech`: a single scoped body (no split, with its `priority:` reconfirmed or
      revised from phase 1), or a set of proposed tasks (split, judgment call) each with
      security/architecture decisions, dependencies, and its own suggested priority.
