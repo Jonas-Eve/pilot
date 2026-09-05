@@ -1,7 +1,7 @@
 ---
 name: pilot-scope
-description: "Phase 2 of PILOT (see .pilot/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature or type:tech only — type:bug never reaches this phase, always created directly as a spec-ready task) and, in one pass, challenges it, then scopes it as-is or splits it into dev-sized tasks (level:task, each its own independent type: — never inherited) — judgment call for type:tech, mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler) plus exactly one type:e2e task depending on every other task in the split. Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. For type:feature, the PM agent also checks the proposed type:feature tasks (excluding type:tech/type:e2e siblings) against the story's acceptance criteria before finalizing. Defaults to pair mode (walks the decomposition with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human). Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:in-scope then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. Use for scoping/decomposing an already-created type:feature/type:tech ticket — not for formalizing a new need (that's /pilot-story)."
-argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto] | <issue number> --resume"
+description: "Phase 2 of PILOT (see .pilot/pilot-process.md): the architect agent takes an already-formalized ticket (type:feature or type:tech only — type:bug never reaches this phase, always created directly as a spec-ready task) and, in one pass, challenges it, then scopes it as-is or splits it into dev-sized tasks (level:task, each its own independent type: — never inherited) — judgment call for type:tech, mandatory for type:feature: one or more tasks (typically type:feature, sometimes a type:tech enabler) plus exactly one type:e2e task depending on every other task in the split. Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. For type:feature, the PM agent also checks the proposed type:feature tasks (excluding type:tech/type:e2e siblings) against the story's acceptance criteria before finalizing. Defaults to pair mode (walks the decomposition with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human). Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:in-scope then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. An optional --parallel <N>, combined with --auto and no explicit ticket, claims and processes up to N candidates from that same pool in one run instead of one (see .pilot/pilot-link-parallel-sweep.md). Use for scoping/decomposing an already-created type:feature/type:tech ticket — not for formalizing a new need (that's /pilot-story)."
+argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto] [--parallel N] | <issue number> --resume"
 ---
 
 # PILOT — Phase 2: Investigate
@@ -59,10 +59,17 @@ mechanics of running phase 2.
      `can-resume` (resumable — a mid-pair ticket is never in this pool, only reachable
      via `--resume <issue>`), highest `priority:` then oldest first. What a scheduled
      cron Routine drives with `--auto` (`.pilot/pilot-process.md` §4 "Scheduled
-     sweeps").
+     sweeps"). With `--parallel <N>` (requires `--auto`, no explicit ticket) claim up to
+     N candidates from this pool instead of one — `.pilot/pilot-link-parallel-sweep.md`
+     has the mechanics; steps 2-6 below then run once per claimed ticket, step 3 (and 4a)
+     in parallel across all of them.
 2. **Claim** the ticket per `.pilot/pilot-process.md` §4: set assignee + `status:in-scope`,
-   re-read to confirm the claim held.
-3. Call `Agent` with `subagent_type: "pilot-architect"`. Read `.pilot/pilot-task-scope-story.md`
+   re-read to confirm the claim held — under `--parallel`, a lost race just drops that
+   candidate and moves to the next one in the pool instead of aborting the run
+   (`.pilot/pilot-link-parallel-sweep.md`).
+3. Call `Agent` with `subagent_type: "pilot-architect"` — once per claimed ticket, in
+   parallel, when `--parallel` claimed more than one
+   (`.pilot/pilot-link-parallel-sweep.md`). Read `.pilot/pilot-task-scope-story.md`
    and pass its content as part of the prompt, plus `.pilot/pilot-link-bug-tickets.md` in
    full (the classify/originate mechanic for step 5's "Prerequisite (bug)" case — the task
    doc covers the phase-2-specific delta itself) — plus only what phase 2 needs beyond
@@ -116,7 +123,10 @@ mechanics of running phase 2.
     odds with a later one, a gap no checkpoint's author noticed). Do this for both
     pair and `--auto` — `--auto` has no rounds to reconcile but still benefits from
     one coherence read before writing.
-5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`):
+5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`) — for
+   each claimed ticket independently, the moment its own steps 3-4c finish
+   (`.pilot/pilot-link-parallel-sweep.md` when `--parallel` claimed more than one — one
+   ticket's outcome never waits on or changes another's):
    - No split (`type:tech` only — a `type:feature` story is never this case, step
      4): update the ticket body with the decisions, set `status:spec-ready`, and write
      the reconfirmed/revised `priority:` from step 4 (still the ticket's own — it's
@@ -159,4 +169,6 @@ mechanics of running phase 2.
      blocking relationship (`.pilot/pilot-process.md` §2 "Prerequisite tech tickets")
      — skip this when the scoped ticket has no parent Epic.
 6. Report the outcome (ticket(s) scoped/split, dependencies recorded, prerequisite
-   ticket(s) spun out, or closed as won't-do) back to the human.
+   ticket(s) spun out, or closed as won't-do) back to the human — once per claimed ticket
+   plus a one-line summary when `--parallel` claimed more than one
+   (`.pilot/pilot-link-parallel-sweep.md`).

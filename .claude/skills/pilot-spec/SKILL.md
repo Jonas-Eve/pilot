@@ -1,7 +1,7 @@
 ---
 name: pilot-spec
-description: "Phase 3 of PILOT (see .pilot/pilot-process.md): the tech lead agent writes the technical implementation spec for an already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a previously-flagged ticket once a human clears the flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or can-resume-marked work (e.g. --auto from a scheduled cron Routine), skipping anything on-hold or blocked by an unresolved 'Depends on #N' reference, preferring a ticket that blocks another over one that doesn't. Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
-argument-hint: "<issue number, optional — picks the next spec-ready or can-resume-marked ticket if omitted> [--auto] | <issue number> --resume"
+description: "Phase 3 of PILOT (see .pilot/pilot-process.md): the tech lead agent writes the technical implementation spec for an already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a previously-flagged ticket once a human clears the flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or can-resume-marked work (e.g. --auto from a scheduled cron Routine), skipping anything on-hold or blocked by an unresolved 'Depends on #N' reference, preferring a ticket that blocks another over one that doesn't. An optional --parallel <N>, combined with --auto and no explicit ticket, claims and processes up to N candidates from that same pool in one run instead of one (see .pilot/pilot-link-parallel-sweep.md). Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
+argument-hint: "<issue number, optional — picks the next spec-ready or can-resume-marked ticket if omitted> [--auto] [--parallel N] | <issue number> --resume"
 ---
 
 # PILOT — Phase 3: Lay Out
@@ -41,10 +41,17 @@ mechanics of running phase 3.
      `priority:` then a ticket named in another open ticket's "Blocks #M" before one that
      isn't, then oldest first (`mcp__github__search_issues`). This is what a scheduled
      cron Routine drives with `--auto` added (`.pilot/pilot-process.md` §4 "Scheduled
-     sweeps").
+     sweeps"). With `--parallel <N>` (requires `--auto`, no explicit ticket) claim up to
+     N candidates from this pool instead of one — `.pilot/pilot-link-parallel-sweep.md`
+     has the mechanics; steps 2-6 below then run once per claimed ticket, steps 3-4b in
+     parallel across all of them.
 2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-spec`, re-read
-   to confirm the claim held.
-3. Call the `Agent` tool with `subagent_type: "pilot-techlead"`. Read
+   to confirm the claim held — under `--parallel`, a lost race just drops that candidate
+   and moves to the next one in the pool instead of aborting the run
+   (`.pilot/pilot-link-parallel-sweep.md`).
+3. Call the `Agent` tool with `subagent_type: "pilot-techlead"` — once per claimed ticket,
+   in parallel, when `--parallel` claimed more than one
+   (`.pilot/pilot-link-parallel-sweep.md`). Read
    `.pilot/pilot-task-write-spec.md` and pass its content as part of the prompt, plus
    only the ticket's current body (including the architect's decisions, and, if
    resuming, the comment thread's resolution per §4) and pointers to the relevant
@@ -67,9 +74,12 @@ mechanics of running phase 3.
     applying anything, have the tech lead re-read the whole spec as it now stands — not
     just the latest round's delta — and fix anything that no longer holds together
     across rounds. Do this whether the run was pair or `--auto`.
-5. Apply the result:
+5. Apply the result — for each claimed ticket independently, the moment its own steps
+   3-4b finish (`.pilot/pilot-link-parallel-sweep.md` when `--parallel` claimed more than
+   one — one ticket's outcome never waits on or changes another's):
    - Spec produced: update the ticket body, set `status:dev-ready`.
    - Blocking conflict: leave the subagent's explanation as a comment on the ticket, add
      `needs-human` (`status:in-spec` stays — it's an orthogonal flag, `.pilot/pilot-process.md`
      §3).
-6. Report the outcome back to the human.
+6. Report the outcome back to the human — once per claimed ticket plus a one-line summary
+   when `--parallel` claimed more than one (`.pilot/pilot-link-parallel-sweep.md`).

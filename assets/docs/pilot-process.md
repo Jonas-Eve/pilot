@@ -670,7 +670,10 @@ ticket number, it builds its candidate pool from **two** queries, not one:
 All pools that apply to a given phase skill are merged and picked from together: highest
 `priority:` first, then a ticket referenced by another open ticket's "Blocks #M" comment
 before one that isn't, then oldest by creation date to break ties; a ticket carrying no
-`priority:` at all sorts last. A ticket still carrying
+`priority:` at all sorts last. `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, and
+`/pilot-review` also accept an optional `--parallel <N>` to claim and process up to N
+candidates from this same ordering in one run instead of exactly one
+(`.pilot/pilot-link-parallel-sweep.md`). A ticket still carrying
 `needs-human` or `on-hold` is never a candidate in any pool, and neither is one whose body
 has an unresolved "Depends on #N" reference (below, "Blocked-by dependencies") — both
 re-enter automatically once resolved, no flag to remove for the dependency case. An
@@ -825,8 +828,10 @@ all. Beyond that flag, this works without any special-casing because "picking th
 ticket when none is specified" (above) already covers both fresh and resumed work
 identically. Four independent Routines — one each for `/pilot-scope --auto`, `/pilot-spec
 --auto`, `/pilot-dev --auto`, and `/pilot-review --auto` (add `--merge` too if the Routine
-should also merge once every reviewer approves, §3 "`status:approved`") — each on its own
-schedule, so a slow or failing phase never delays the others.
+should also merge once every reviewer approves, §3 "`status:approved`"; add `--parallel
+<N>` too if the Routine should claim and process several candidates per firing instead of
+one, `.pilot/pilot-link-parallel-sweep.md`) — each on its own schedule, so a slow or
+failing phase never delays the others.
 
 ### Interaction modes: pair (default) and `--auto`
 
@@ -904,7 +909,11 @@ checkpoint. This is what a scheduled Routine must use for `/pilot-scope`, `/pilo
 `--auto` and `--resume` are mutually exclusive with each other and with pair mode itself —
 pick exactly one per run. `--merge` (phase 5 only, §3 "`status:approved`") is a separate,
 orthogonal flag: it controls only whether an all-approve outcome also merges the PR itself,
-and combines with either pair or `--auto`.
+and combines with either pair or `--auto`. `--parallel <N>` (`/pilot-scope`, `/pilot-spec`,
+`/pilot-dev`, `/pilot-review` only, `.pilot/pilot-link-parallel-sweep.md`) requires
+`--auto` — it claims and processes several tickets from the bare pool in one run, which
+has no meaning for pair's one-ticket-at-a-time checkpoints — and is invalid alongside an
+explicit issue number or `--resume`, both of which already name exactly one ticket.
 
 This is unrelated to the "ask live" behavior in §3 ("`needs-human` — an orthogonal
 flag") — that one fires for a genuine blocker the agent can't resolve alone, whether or

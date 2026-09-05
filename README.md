@@ -51,9 +51,10 @@ time instead of carrying every one of its duties' instructions on every invocati
     `/pilot-qa` — the six phases themselves.
   - `/pilot-auto` — dispatcher: tries `/pilot-review --auto`, `/pilot-dev --auto`,
     `/pilot-spec --auto`, `/pilot-scope --auto`, in that order, stopping at the first one
-    that finds work (an optional `--merge` forwards to `/pilot-review` only, `--again`
-    keeps sweeping until a full pass finds nothing instead of stopping at the first
-    candidate). Bare (or a
+    that finds work (an optional `--merge` forwards to `/pilot-review` only, `--parallel
+    <N>` forwards to whichever phase runs and claims up to N pool candidates in one run
+    instead of one, `--again` keeps sweeping until a full pass finds nothing instead of
+    stopping at the first candidate/batch). Bare (or a
     subset like `/pilot-auto spec scope`), each phase works its own pool. Given a single
     issue number instead (`/pilot-auto 48`), the same four are tried against that one
     ticket rather than a pool — each phase's own claim protocol reports nothing to do when

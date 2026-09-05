@@ -1,7 +1,7 @@
 ---
 name: pilot-dev
-description: "Phase 4 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. Use once /pilot-spec has produced a technical spec."
-argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto] | <issue number> --resume"
+description: "Phase 4 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. An optional --parallel <N>, combined with --auto and no explicit ticket, claims and processes up to N candidates from that same pool in one run instead of one (see .pilot/pilot-link-parallel-sweep.md). Use once /pilot-spec has produced a technical spec."
+argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto] [--parallel N] | <issue number> --resume"
 ---
 
 # PILOT — Phase 4: Operate
@@ -50,15 +50,23 @@ parallel instances; the claim step below prevents collisions.
      `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
      isn't, then oldest first (`mcp__github__search_issues`). A scheduled cron Routine
      drives this with `--auto` added (`.pilot/pilot-process.md` §4 "Scheduled sweeps").
+     With `--parallel <N>` (requires `--auto`, no explicit ticket) claim up to N
+     candidates from this pool instead of one — `.pilot/pilot-link-parallel-sweep.md` has
+     the mechanics; steps 2-6 below then run once per claimed ticket, steps 3-4 in
+     parallel across all of them.
 2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-dev`, then
    re-read the ticket. If the assignee changed (another instance won the race), stand
-   down and return to step 1 for a different ticket.
+   down — under `--parallel`, move to the next candidate in the pool instead of this one
+   (`.pilot/pilot-link-parallel-sweep.md`); otherwise return to step 1 for a different
+   ticket.
 2a. **Pick the persona**: ticket's own `type:e2e` (`.pilot/pilot-link-e2e-tasks.md` — never
     inherited, read off the ticket, not its story) →
     `subagent_type: "pilot-e2e"`; otherwise `"pilot-dev"`. The only thing `type:e2e`
     changes here — claim, pool selection, and everything below apply identically either
     way.
-3. Call the `Agent` tool with the `subagent_type` chosen in step 2a. Read
+3. Call the `Agent` tool with the `subagent_type` chosen in step 2a — once per claimed
+   ticket, in parallel, when `--parallel` claimed more than one
+   (`.pilot/pilot-link-parallel-sweep.md`). Read
    `.pilot/pilot-task-implement.md` and pass its content as part of the prompt — for
    `pilot-e2e`, also read and pass `.pilot/pilot-task-implement-e2e.md` alongside it, since
    it only documents that persona's differences from the base task. Also pass
@@ -94,7 +102,9 @@ parallel instances; the claim step below prevents collisions.
    pushes new commits addressing the blocking review to that same existing PR instead of
    opening a new one — or hits a genuine blocking conflict it can't resolve alone and
    stops without a PR (or without pushing, for a reclaim).
-5. Apply the result:
+5. Apply the result — for each claimed ticket independently, the moment its own subagent
+   call finishes (`.pilot/pilot-link-parallel-sweep.md` when `--parallel` claimed more
+   than one — one ticket's outcome never waits on or changes another's):
    - PR opened, or new commits pushed to an existing PR (reclaim case): clear the assignee
      and set `status:review-ready` on the ticket (phase 5's own pre-claim status — never
      `status:in-review` directly, `.pilot/pilot-process.md` §4 "Claim Protocol").
@@ -110,5 +120,7 @@ parallel instances; the claim step below prevents collisions.
      (step 1's "Depends on #N" bullet) — no flag to clear, no `--resume` needed;
      whichever future run claims it picks up that branch per step 1's own claim-time
      check (`.pilot/pilot-task-implement.md` step 1).
-6. Report the PR URL, or the blocking summary, back to the human. Never merge as part of
+6. Report the PR URL, or the blocking summary, back to the human — once per claimed
+   ticket plus a one-line summary when `--parallel` claimed more than one
+   (`.pilot/pilot-link-parallel-sweep.md`). Never merge as part of
    this skill.
