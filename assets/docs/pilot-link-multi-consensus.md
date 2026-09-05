@@ -32,12 +32,6 @@ genuinely reconsidering given new information, which benefits from the same ense
 fresh claim — `--multi` applies there normally, wherever a phase's own steps route it
 through the persona's ordinary `Agent` call.
 
-For `/pilot-dev` only, also no effect on reclaiming a `status:changes-requested` ticket
-(below) — pushing more commits to one already-open PR's own branch doesn't compose with N
-independent branches. Whether a given ticket, or one a bare pool resolves to, turns out to
-be a reclaim isn't always known upfront, so `--multi` silently proceeds as a single
-instance there instead of erroring.
-
 ## Mechanics
 
 ### One ensemble round
@@ -75,12 +69,13 @@ What counts as a "substantive decision point" is specific to each caller:
   worded don't count. Once reconciled (or approved by a live human in pair mode, same as
   any single-agent proposal), exactly **one** further `Agent` call implements it
   (`pilot-dev/SKILL.md` step 4) — the ensemble's job ends at the approach, it's never
-  re-run on the code. Only a fresh claim — reclaiming a `status:changes-requested` ticket
-  (`.pilot/pilot-process.md` §4 "Reclaiming a `status:changes-requested` ticket") is
-  continuing one specific existing line of work (more commits on one already-open PR's own
-  branch), not a fresh candidate to ensemble, so `--multi` silently has no effect there
-  (proceeds as a single dev) rather than erroring — whether a given ticket, or one a bare
-  pool resolves to, turns out to be a reclaim isn't always known upfront.
+  re-run on the code. Only a fresh claim — a reclaim (`.pilot/pilot-process.md` §4
+  "Reclaiming a `status:changes-requested` ticket") never goes through this
+  proposed-approach stage in the first place, pair or `--auto` alike (the phase-5 review
+  already specified exactly what to fix, so `pilot-dev/SKILL.md` step 3 implements that fix
+  directly in one call) — there's no approach for `--multi` to ensemble on, so it silently
+  has no effect there rather than erroring; whether a given ticket, or one a bare pool
+  resolves to, turns out to be a reclaim isn't always known upfront.
 - **`/pilot-review`, per role** (run once per role actually in this PR's reviewer set,
   `pilot-review/SKILL.md` step 3): a `change`/`decision`-tagged point
   (`.pilot/pilot-link-review-consensus.md`) that only some of the N instances raised is

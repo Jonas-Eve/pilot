@@ -1,7 +1,7 @@
 ---
 name: pilot-spec
 description: "Phase 3 of PILOT (see .pilot/pilot-process.md): the tech lead agent writes the technical implementation spec for an already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a previously-flagged ticket once a human clears the flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or can-resume-marked work (e.g. --auto from a scheduled cron Routine), skipping anything on-hold or blocked by an unresolved 'Depends on #N' reference, preferring a ticket that blocks another over one that doesn't. An optional --multi <N> runs N tech leads independently on the one claimed ticket instead of one and reconciles them into a single spec, escalating to needs-human on genuine, unresolved disagreement (see .pilot/pilot-link-multi-consensus.md). Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
-argument-hint: "<issue number, optional — picks the next spec-ready or can-resume-marked ticket if omitted> [--auto] [--multi N] | <issue number> --resume"
+argument-hint: "<issue number, optional — picks the next spec-ready or can-resume-marked ticket if omitted> [--auto] [--multi [N]] | <issue number> --resume"
 ---
 
 # PILOT — Phase 3: Lay Out
