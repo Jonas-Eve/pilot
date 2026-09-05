@@ -32,17 +32,20 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
 1. Resolve the ticket:
    - Given `--resume`: must be `status:in-review`, assigned, no `needs-human`/`on-hold`.
      Follow `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" instead of step 2 below
-     — already claimed. Check for an existing pending review under this run's own identity
+     — already claimed (`--multi` invalid here, per `.pilot/pilot-link-multi-consensus.md`).
+     Check for an existing pending review under this run's own identity
      (`mcp__github__pull_request_read` method `get_reviews`): still pinned to the PR's
      current head commit → skip straight to step 8 with its already-computed outcome
      (step 8 itself routes on/around the pair pause exactly as it would for a fresh run) —
      no need to re-run reviewers. Stale (commit no longer matches) or none found → discard
      any stale one (`mcp__github__pull_request_review_write` method `delete_pending`) and
-     resume normally from step 3. Mismatch → report and stop.
+     resume normally from step 3 — including `--multi`, same as a fresh claim, since it's
+     no longer this stale-pending-review case. Mismatch → report and stop.
    - Given (or pooled) without `--resume`, `status:in-review`, assigned, no
      `needs-human`/`on-hold`, carrying `can-resume` → resume,
      not a fresh claim. Follow `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"
-     instead of step 2 — already claimed.
+     instead of step 2 — already claimed; step 3 onward, including `--multi`, still applies
+     normally from here, same as a fresh claim.
    - Given without `--resume`, `status:in-review`, assigned, no `needs-human`/`on-hold`, no
      `can-resume` → looks orphaned; report and ask the human to re-run with
      `--resume`, or add `can-resume` themselves.

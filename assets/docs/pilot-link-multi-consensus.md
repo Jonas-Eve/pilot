@@ -23,7 +23,9 @@ unchanged behavior (a single instance, no ensemble). **`--multi` given with no v
 defaults to `N=2`** — the smallest ensemble that still has something to reconcile. A
 malformed value instead (not a positive integer — `0`, negative, non-numeric) is invalid:
 report exactly that and stop, same posture as any other malformed invocation in this repo
-(e.g. `pilot-auto/SKILL.md`'s "Determining the mode"). This is orthogonal to which ticket
+(e.g. `pilot-auto/SKILL.md`'s "Determining the mode"). `--multi 1` is valid syntax but a
+no-op, identical to omitting the flag — one instance has nothing to reconcile against, so
+it's adopted directly with no comparison step at all. This is orthogonal to which ticket
 gets claimed: the ordinary claim protocol and pool-picking (`.pilot/pilot-process.md` §4)
 are completely unaffected — still exactly one ticket claimed per invocation. It's also
 orthogonal to pair vs `--auto` (`.pilot/pilot-process.md` §4 "Interaction modes"): the

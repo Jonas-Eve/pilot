@@ -94,7 +94,8 @@ parallel instances; the claim step below prevents collisions.
      implementation below — the "ask live" behavior for a genuine blocker (§3) still
      applies during implementation itself; pair mode doesn't replace it. **`--auto`**, with
      neither pair nor `--multi` in play, skips straight to implementation in this one call.
-   - **With `--multi <N>`** (fresh claim only): N instances run in parallel, **each asked
+   - **With `--multi <N>`** (a fresh claim, or a resume via `can-resume` per step 1 —
+     never a reclaim, never the literal `--resume` flag): N instances run in parallel, **each asked
      for a proposed implementation approach only, not the finished implementation** — same
      content as the pair-coding checkpoint above, never code. **Reconcile the N approaches
      yourself** — no further `Agent` call (`.pilot/pilot-link-multi-consensus.md` has the
