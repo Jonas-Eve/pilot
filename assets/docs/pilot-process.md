@@ -904,8 +904,8 @@ checkpoint. This is what a scheduled Routine must use for `/pilot-scope`, `/pilo
 `--auto` and `--resume` are mutually exclusive with each other and with pair mode itself —
 pick exactly one per run. `--merge` (phase 5 only, §3 "`status:approved`") is a separate,
 orthogonal flag: it controls only whether an all-approve outcome also merges the PR itself,
-and combines with either pair or `--auto`. `--parallel <N>` (`/pilot-scope`, `/pilot-spec`,
-`/pilot-dev`, `/pilot-review` only, `.pilot/pilot-link-parallel-consensus.md`) is
+and combines with either pair or `--auto`. `--multi <N>` (`/pilot-scope`, `/pilot-spec`,
+`/pilot-dev`, `/pilot-review` only, `.pilot/pilot-link-multi-consensus.md`) is
 orthogonal to both: it runs N instances of the same persona on the one claimed ticket and
 reconciles them into the single proposal that pair reviews or `--auto` applies straight
 through — combines with either mode, invalid only alongside `--resume` (resuming

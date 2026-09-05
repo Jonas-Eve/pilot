@@ -1,7 +1,7 @@
 ---
 name: pilot-dev
-description: "Phase 4 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. An optional --parallel <N> runs N devs independently on their own branches for the one claimed ticket and reconciles them into a single PR, escalating to needs-human with every branch pushed on genuine, unresolved disagreement (see .pilot/pilot-link-parallel-consensus.md) — no effect on a reclaim, which always pushes to the one already-open PR's own branch. Use once /pilot-spec has produced a technical spec."
-argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto] [--parallel N] | <issue number> --resume"
+description: "Phase 4 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. An optional --multi <N> runs N devs independently on their own branches for the one claimed ticket and reconciles them into a single PR, escalating to needs-human with every branch pushed on genuine, unresolved disagreement (see .pilot/pilot-link-multi-consensus.md) — no effect on a reclaim, which always pushes to the one already-open PR's own branch. Use once /pilot-spec has produced a technical spec."
+argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto] [--multi N] | <issue number> --resume"
 ---
 
 # PILOT — Phase 4: Operate
@@ -59,9 +59,9 @@ parallel instances; the claim step below prevents collisions.
     changes here — claim, pool selection, and everything below apply identically either
     way.
 3. Call the `Agent` tool with the `subagent_type` chosen in step 2a — once, or, with
-   `--parallel <N>`, N times in parallel each on its own branch plus a reconciliation pass
-   (`.pilot/pilot-link-parallel-consensus.md`) — except on a **reclaim** (step 1), where
-   `--parallel` has no effect and this always runs once: N independent branches don't
+   `--multi <N>`, N times in parallel each on its own branch plus a reconciliation pass
+   (`.pilot/pilot-link-multi-consensus.md`) — except on a **reclaim** (step 1), where
+   `--multi` has no effect and this always runs once: N independent branches don't
    compose with pushing more commits to one already-open PR's own branch. Read
    `.pilot/pilot-task-implement.md` and pass its content as part of the prompt — for
    `pilot-e2e`, also read and pass `.pilot/pilot-task-implement-e2e.md` alongside it, since
@@ -91,18 +91,18 @@ parallel instances; the claim step below prevents collisions.
    Routine must pass `--auto` instead. Once approved, proceed with implementation below —
    the "ask live" behavior for a genuine blocker (§3) still applies during implementation
    itself; pair mode doesn't replace it.
-4. The subagent (or, with `--parallel`, the reconciled instance) either implements the
+4. The subagent (or, with `--multi`, the reconciled instance) either implements the
    ticket, runs the relevant validation, and opens a
    pull request following this project's own PR template if it has one (e.g.
    `.github/pull_request_template.md`) — including a "PILOT ticket" section if the
    template defines one: type, `Closes #<issue>`, spec deviations — or, for a reclaim,
    pushes new commits addressing the blocking review to that same existing PR instead of
    opening a new one — or hits a genuine blocking conflict it can't resolve alone and
-   stops without a PR (or without pushing, for a reclaim). With `--parallel`, if
+   stops without a PR (or without pushing, for a reclaim). With `--multi`, if
    reconciliation still can't resolve a genuine disagreement after its one retry round,
    stop here instead: push every instance's branch (never merge them, never open a PR yet)
    and add `needs-human` with each branch linked plus every round's differing positions
-   quoted verbatim (`.pilot/pilot-link-parallel-consensus.md`).
+   quoted verbatim (`.pilot/pilot-link-multi-consensus.md`).
 5. Apply the result:
    - PR opened, or new commits pushed to an existing PR (reclaim case): clear the assignee
      and set `status:review-ready` on the ticket (phase 5's own pre-claim status — never

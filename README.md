@@ -51,7 +51,7 @@ time instead of carrying every one of its duties' instructions on every invocati
     `/pilot-qa` — the six phases themselves.
   - `/pilot-auto` — dispatcher: tries `/pilot-review --auto`, `/pilot-dev --auto`,
     `/pilot-spec --auto`, `/pilot-scope --auto`, in that order, stopping at the first one
-    that finds work (an optional `--merge` forwards to `/pilot-review` only, `--parallel
+    that finds work (an optional `--merge` forwards to `/pilot-review` only, `--multi
     <N>` forwards to whichever phase claims a ticket, running N instances of its persona on
     that one ticket and reconciling them, `--again` keeps sweeping until a full pass finds
     nothing instead of stopping at the first candidate). Bare (or a

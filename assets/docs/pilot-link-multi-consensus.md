@@ -1,4 +1,4 @@
-# Parallel Consensus: `--parallel <N>`
+# Multi Consensus: `--multi <N>`
 
 Shared by `/pilot-scope` (architect), `/pilot-spec` (tech lead), `/pilot-dev` (dev/e2e),
 and `/pilot-review` (each of its already-selected reviewer roles — PM, architect, tech
@@ -8,7 +8,7 @@ both are pair-only, human-conversation phases this ensemble shape doesn't fit.
 
 ## What it changes
 
-`--parallel <N>` (a positive integer; omitted or `1` is today's unchanged behavior) runs
+`--multi <N>` (a positive integer; omitted or `1` is today's unchanged behavior) runs
 **N independent instances of the same persona on the same claimed ticket**, instead of
 one, to increase the odds a genuinely better proposal surfaces or a real gap gets caught —
 not N different tickets, and not N different personas. This is orthogonal to which ticket
@@ -24,13 +24,13 @@ in-progress state (`.pilot/pilot-process.md` §4 "Resuming an orphaned claim") �
 one interrupted train of thought, not a fresh multi-perspective ask. An implicit resume via
 `can-resume` (a previously-blocked ticket, now cleared) is different: the persona is
 genuinely reconsidering given new information, which benefits from the same ensemble as a
-fresh claim — `--parallel` applies there normally, wherever a phase's own steps route it
+fresh claim — `--multi` applies there normally, wherever a phase's own steps route it
 through the persona's ordinary `Agent` call.
 
 For `/pilot-dev` only, also no effect on reclaiming a `status:changes-requested` ticket
 (below) — pushing more commits to one already-open PR's own branch doesn't compose with N
 independent branches. Whether a given ticket, or one a bare pool resolves to, turns out to
-be a reclaim isn't always known upfront, so `--parallel` silently proceeds as a single
+be a reclaim isn't always known upfront, so `--multi` silently proceeds as a single
 instance there instead of erroring.
 
 ## Mechanics
@@ -69,7 +69,7 @@ What counts as a "substantive decision point" is specific to each caller:
   the PR. Only a fresh claim — reclaiming a `status:changes-requested` ticket
   (`.pilot/pilot-process.md` §4 "Reclaiming a `status:changes-requested` ticket") is
   continuing one specific existing line of work (more commits on one already-open PR's own
-  branch), not a fresh candidate to ensemble, so `--parallel` silently has no effect there
+  branch), not a fresh candidate to ensemble, so `--multi` silently has no effect there
   (proceeds as a single dev) rather than erroring — whether a given ticket, or one a bare
   pool resolves to, turns out to be a reclaim isn't always known upfront.
 - **`/pilot-review`, per role** (run once per role actually in this PR's reviewer set,
@@ -108,7 +108,7 @@ What counts as a "substantive decision point" is specific to each caller:
 
 ## `/pilot-auto` forwarding
 
-An optional `--parallel <N>` on `/pilot-auto` forwards verbatim to whichever phase actually
+An optional `--multi <N>` on `/pilot-auto` forwards verbatim to whichever phase actually
 runs, in both sweep mode and ticket-dispatch mode alike (unlike `--merge`'s review-only
 scope) — it changes nothing about which ticket gets claimed, only how the claiming phase
 works the one ticket it claims. Invalid combined with `--resume`, same as above (`/pilot-

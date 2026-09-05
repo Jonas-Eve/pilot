@@ -1,7 +1,7 @@
 ---
 name: pilot-spec
-description: "Phase 3 of PILOT (see .pilot/pilot-process.md): the tech lead agent writes the technical implementation spec for an already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a previously-flagged ticket once a human clears the flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or can-resume-marked work (e.g. --auto from a scheduled cron Routine), skipping anything on-hold or blocked by an unresolved 'Depends on #N' reference, preferring a ticket that blocks another over one that doesn't. An optional --parallel <N> runs N tech leads independently on the one claimed ticket instead of one and reconciles them into a single spec, escalating to needs-human on genuine, unresolved disagreement (see .pilot/pilot-link-parallel-consensus.md). Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
-argument-hint: "<issue number, optional — picks the next spec-ready or can-resume-marked ticket if omitted> [--auto] [--parallel N] | <issue number> --resume"
+description: "Phase 3 of PILOT (see .pilot/pilot-process.md): the tech lead agent writes the technical implementation spec for an already-scoped ticket (status:spec-ready), or flags needs-human if the architect's decisions don't hold up against the real code. Defaults to pair mode — walks through the drafted spec with a human live in the session, checkpointing progress into the ticket as it goes; pass --auto to write it straight away instead (needed for a scheduled cron Routine, since pair requires a live human). Also resumes a previously-flagged ticket once a human clears the flag, resumes a ticket left mid-pair session with --resume <issue number>, and runs bare with no argument to pick up fresh or can-resume-marked work (e.g. --auto from a scheduled cron Routine), skipping anything on-hold or blocked by an unresolved 'Depends on #N' reference, preferring a ticket that blocks another over one that doesn't. An optional --multi <N> runs N tech leads independently on the one claimed ticket instead of one and reconciles them into a single spec, escalating to needs-human on genuine, unresolved disagreement (see .pilot/pilot-link-multi-consensus.md). Use once a ticket has been through /pilot-scope and needs its spec written before development starts."
+argument-hint: "<issue number, optional — picks the next spec-ready or can-resume-marked ticket if omitted> [--auto] [--multi N] | <issue number> --resume"
 ---
 
 # PILOT — Phase 3: Lay Out
@@ -45,20 +45,20 @@ mechanics of running phase 3.
 2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-spec`, re-read
    to confirm the claim held.
 3. Call the `Agent` tool with `subagent_type: "pilot-techlead"` — once, or, with
-   `--parallel <N>`, N times in parallel plus a reconciliation pass
-   (`.pilot/pilot-link-parallel-consensus.md` — invalid combined with `--resume`). Read
+   `--multi <N>`, N times in parallel plus a reconciliation pass
+   (`.pilot/pilot-link-multi-consensus.md` — invalid combined with `--resume`). Read
    `.pilot/pilot-task-write-spec.md` and pass its content as part of the prompt, plus
    only the ticket's current body (including the architect's decisions, and, if
    resuming, the comment thread's resolution per §4) and pointers to the relevant
    docs for the area it touches (this project's own per-service/per-package docs,
    wherever it keeps them — e.g. `apps/<app-name>/docs/`, a `docs/` folder, or a
    service-level README) — not the running conversation history.
-4. The subagent (or, with `--parallel`, the reconciled proposal) returns either: a
+4. The subagent (or, with `--multi`, the reconciled proposal) returns either: a
    technical spec to append to the ticket, or a blocking conflict with the architect's
-   decisions that needs a human. With `--parallel`, if reconciliation still can't resolve
+   decisions that needs a human. With `--multi`, if reconciliation still can't resolve
    a genuine disagreement after its one retry round, stop here instead: add
    `needs-human` with every round's differing positions quoted verbatim
-   (`.pilot/pilot-link-parallel-consensus.md`) — don't continue to step 4a.
+   (`.pilot/pilot-link-multi-consensus.md`) — don't continue to step 4a.
 4a. **Unless `--auto` was given** (`.pilot/pilot-process.md` §4 "Interaction modes" — pair
     is the default for this skill): don't finalize the spec yet. Show the human the
     drafted spec outline as a normal reply, wait for their response, and feed it back to
