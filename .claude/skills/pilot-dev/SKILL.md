@@ -1,6 +1,6 @@
 ---
 name: pilot-dev
-description: "Phase 4 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. An optional --parallel <N>, combined with --auto and no explicit ticket, claims and processes up to N candidates from that same pool in one run instead of one (see .pilot/pilot-link-parallel-sweep.md). Use once /pilot-spec has produced a technical spec."
+description: "Phase 4 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. An optional --parallel <N> runs N devs independently on their own branches for the one claimed ticket and reconciles them into a single PR, escalating to needs-human with every branch pushed on genuine, unresolved disagreement (see .pilot/pilot-link-parallel-consensus.md) — no effect on a reclaim, which always pushes to the one already-open PR's own branch. Use once /pilot-spec has produced a technical spec."
 argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto] [--parallel N] | <issue number> --resume"
 ---
 
@@ -50,23 +50,19 @@ parallel instances; the claim step below prevents collisions.
      `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
      isn't, then oldest first (`mcp__github__search_issues`). A scheduled cron Routine
      drives this with `--auto` added (`.pilot/pilot-process.md` §4 "Scheduled sweeps").
-     With `--parallel <N>` (requires `--auto`, no explicit ticket) claim up to N
-     candidates from this pool instead of one — `.pilot/pilot-link-parallel-sweep.md` has
-     the mechanics; steps 2-6 below then run once per claimed ticket, steps 3-4 in
-     parallel across all of them.
 2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-dev`, then
    re-read the ticket. If the assignee changed (another instance won the race), stand
-   down — under `--parallel`, move to the next candidate in the pool instead of this one
-   (`.pilot/pilot-link-parallel-sweep.md`); otherwise return to step 1 for a different
-   ticket.
+   down and return to step 1 for a different ticket.
 2a. **Pick the persona**: ticket's own `type:e2e` (`.pilot/pilot-link-e2e-tasks.md` — never
     inherited, read off the ticket, not its story) →
     `subagent_type: "pilot-e2e"`; otherwise `"pilot-dev"`. The only thing `type:e2e`
     changes here — claim, pool selection, and everything below apply identically either
     way.
-3. Call the `Agent` tool with the `subagent_type` chosen in step 2a — once per claimed
-   ticket, in parallel, when `--parallel` claimed more than one
-   (`.pilot/pilot-link-parallel-sweep.md`). Read
+3. Call the `Agent` tool with the `subagent_type` chosen in step 2a — once, or, with
+   `--parallel <N>`, N times in parallel each on its own branch plus a reconciliation pass
+   (`.pilot/pilot-link-parallel-consensus.md`) — except on a **reclaim** (step 1), where
+   `--parallel` has no effect and this always runs once: N independent branches don't
+   compose with pushing more commits to one already-open PR's own branch. Read
    `.pilot/pilot-task-implement.md` and pass its content as part of the prompt — for
    `pilot-e2e`, also read and pass `.pilot/pilot-task-implement-e2e.md` alongside it, since
    it only documents that persona's differences from the base task. Also pass
@@ -95,16 +91,19 @@ parallel instances; the claim step below prevents collisions.
    Routine must pass `--auto` instead. Once approved, proceed with implementation below —
    the "ask live" behavior for a genuine blocker (§3) still applies during implementation
    itself; pair mode doesn't replace it.
-4. The subagent either implements the ticket, runs the relevant validation, and opens a
+4. The subagent (or, with `--parallel`, the reconciled instance) either implements the
+   ticket, runs the relevant validation, and opens a
    pull request following this project's own PR template if it has one (e.g.
    `.github/pull_request_template.md`) — including a "PILOT ticket" section if the
    template defines one: type, `Closes #<issue>`, spec deviations — or, for a reclaim,
    pushes new commits addressing the blocking review to that same existing PR instead of
    opening a new one — or hits a genuine blocking conflict it can't resolve alone and
-   stops without a PR (or without pushing, for a reclaim).
-5. Apply the result — for each claimed ticket independently, the moment its own subagent
-   call finishes (`.pilot/pilot-link-parallel-sweep.md` when `--parallel` claimed more
-   than one — one ticket's outcome never waits on or changes another's):
+   stops without a PR (or without pushing, for a reclaim). With `--parallel`, if
+   reconciliation still can't resolve a genuine disagreement after its one retry round,
+   stop here instead: push every instance's branch (never merge them, never open a PR yet)
+   and add `needs-human` with each branch linked plus every round's differing positions
+   quoted verbatim (`.pilot/pilot-link-parallel-consensus.md`).
+5. Apply the result:
    - PR opened, or new commits pushed to an existing PR (reclaim case): clear the assignee
      and set `status:review-ready` on the ticket (phase 5's own pre-claim status — never
      `status:in-review` directly, `.pilot/pilot-process.md` §4 "Claim Protocol").
@@ -120,7 +119,5 @@ parallel instances; the claim step below prevents collisions.
      (step 1's "Depends on #N" bullet) — no flag to clear, no `--resume` needed;
      whichever future run claims it picks up that branch per step 1's own claim-time
      check (`.pilot/pilot-task-implement.md` step 1).
-6. Report the PR URL, or the blocking summary, back to the human — once per claimed
-   ticket plus a one-line summary when `--parallel` claimed more than one
-   (`.pilot/pilot-link-parallel-sweep.md`). Never merge as part of
+6. Report the PR URL, or the blocking summary, back to the human. Never merge as part of
    this skill.

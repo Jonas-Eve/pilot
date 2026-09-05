@@ -31,7 +31,8 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
                            flag, on #42
 /pilot-scope 12          → also re-scopes a type:feature story already at
                            status:qa/status:in-qa, for a new split round
-/pilot-scope --auto --parallel 3 → claims and scopes up to 3 pool candidates in one run
+/pilot-scope 42 --parallel 3 → 3 architects independently scope #42, reconciled into one
+                           proposal (or needs-human on genuine disagreement)
 
 /pilot-spec              → sweeps the next spec-ready/resumable ticket, no argument
                            needed
@@ -39,7 +40,8 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-spec 42 --auto    → same, no live checkpoint (needed for a scheduled Routine)
 /pilot-spec 42 --resume  → picks back up a mid-pair session, or a cleared needs-human
                            flag, on #42
-/pilot-spec --auto --parallel 3 → claims and specs up to 3 pool candidates in one run
+/pilot-spec 42 --parallel 3 → 3 tech leads independently spec #42, reconciled into one
+                           proposal (or needs-human on genuine disagreement)
 
 /pilot-dev               → claims and implements the next status:dev-ready ticket, no
                            argument needed
@@ -47,7 +49,8 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-dev 42 --auto     → same, no live checkpoint (needed for a scheduled Routine)
 /pilot-dev 42 --resume   → picks back up a mid-pair session, or recovers a crashed
                            run's orphaned claim, on #42
-/pilot-dev --auto --parallel 3 → claims and implements up to 3 pool candidates in one run
+/pilot-dev 42 --parallel 3 → 3 devs independently implement #42 on separate branches,
+                           reconciled to one PR (or needs-human, all branches pushed)
 
 /pilot-review            → sweeps every status:review-ready/resumable PR, no argument
                            needed, pair by default
@@ -56,7 +59,8 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-review 57 --auto  → same, no live checkpoint (needed for a scheduled Routine)
 /pilot-review 57 --merge → merges the PR itself once every reviewer approves
 /pilot-review 57 --resume → recovers a claim orphaned by a crashed phase-5 run
-/pilot-review --auto --parallel 3 → claims and reviews up to 3 pool PRs in one run
+/pilot-review 57 --parallel 3 → 3 instances of each reviewer role independently review
+                           #57, each role reconciled into one verdict
 
 /pilot-qa                → sweeps the next fresh status:qa or resumable status:in-qa
                            ticket, no argument needed
@@ -68,11 +72,12 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-auto --merge     → same, merging review's PR itself if that's the phase that runs
                           and its verdict is all-approve
 /pilot-auto dev spec    → same, restricted to that subset (still tried in fixed order)
-/pilot-auto --parallel 3 → same, forwarding --parallel 3 to whichever phase runs
 /pilot-auto 48          → tries the same four phases against ticket #48 specifically,
                           stopping at whichever one currently claims it
 /pilot-auto 48 --merge  → same, and merges #48's PR itself once review's verdict is
                           all-approve
+/pilot-auto 48 --parallel 3 → same, forwarding --parallel 3 to whichever phase claims #48
+                          — 3 instances of that phase's persona reconciled into one
 /pilot-auto --again     → sweep mode, but keeps going after each candidate instead of
                           stopping at the first — drains every pool in one call
 /pilot-auto --next      → sweep mode for the first pass only; whichever candidate a

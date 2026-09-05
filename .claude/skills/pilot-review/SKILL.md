@@ -1,6 +1,6 @@
 ---
 name: pilot-review
-description: "Phase 5 of PILOT (see .pilot/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, .pilot/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+architect+tech lead for type:feature/type:e2e, architect+tech lead only for type:tech/type:bug) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved; a pure code-level verdict moves straight to status:changes-requested with no needs-human, so /pilot-dev can reclaim it immediately; a verdict blocking on any judgment call (alone or alongside code-level points) adds needs-human too (status:in-review stays for a pure judgment call, status:changes-requested for a mixed one), gating /pilot-dev's reclaim on a human clearing it. Defaults to pair mode: an all-approve or pure-code-level verdict gets a live human's last look before it's submitted; a verdict carrying any judgment call always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. An optional --parallel <N>, combined with --auto and no explicit ticket, claims and processes up to N PRs from that same pool in one run instead of one (see .pilot/pilot-link-parallel-sweep.md). Use once /pilot-dev has opened a PR ready for review."
+description: "Phase 5 of PILOT (see .pilot/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, .pilot/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+architect+tech lead for type:feature/type:e2e, architect+tech lead only for type:tech/type:bug) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved; a pure code-level verdict moves straight to status:changes-requested with no needs-human, so /pilot-dev can reclaim it immediately; a verdict blocking on any judgment call (alone or alongside code-level points) adds needs-human too (status:in-review stays for a pure judgment call, status:changes-requested for a mixed one), gating /pilot-dev's reclaim on a human clearing it. Defaults to pair mode: an all-approve or pure-code-level verdict gets a live human's last look before it's submitted; a verdict carrying any judgment call always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. An optional --parallel <N> runs N instances of each already-selected reviewer role independently on the one claimed PR instead of one, reconciling each role's own verdict before the usual cross-role aggregation, escalating to needs-human on a genuine, unresolved same-point disagreement (see .pilot/pilot-link-parallel-consensus.md). Use once /pilot-dev has opened a PR ready for review."
 argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto] [--merge] [--parallel N] | <issue number> --resume [--merge]"
 ---
 
@@ -21,10 +21,11 @@ either), step 8 is then a pre-submission checkpoint; for an outcome carrying `ne
 8's pause and step 10's live engagement, applying every outcome straight through (required
 for a scheduled Routine, `.pilot/pilot-process.md` §4 "Scheduled sweeps"). `--merge` is a
 separate, orthogonal flag (step 12) usable with either mode — without it, this skill never
-merges. `--parallel <N>` (requires `--auto`, no explicit ticket) claims up to N PRs from
-the pool instead of one, running steps 2-13 once per PR — composing with, not replacing,
-this skill's own per-PR reviewer parallelism (step 5): N claimed PRs means N × (2 or 3)
-simultaneous `Agent` calls, not N. See `.pilot/pilot-link-parallel-sweep.md`.
+merges. `--parallel <N>` runs N instances of each role already selected in step 3 (PM
+and/or architect and/or tech lead, depending on `type:`) instead of one — composing with,
+not replacing, this skill's existing per-role parallelism: (2 or 3) roles × N instances
+simultaneous `Agent` calls, reconciled per role before step 6's cross-role aggregation.
+Invalid combined with `--resume`. See `.pilot/pilot-link-parallel-consensus.md`.
 
 ## Steps
 
@@ -53,15 +54,11 @@ simultaneous `Agent` calls, not N. See `.pilot/pilot-link-parallel-sweep.md`.
      the second bullet above, not here), excluding `on-hold`, ordered by highest
      `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
      isn't, then oldest first (`mcp__github__search_issues`). `status:changes-requested`
-     tickets are never in this pool — `/pilot-dev` reclaims those (§4). With `--parallel
-     <N>` (requires `--auto`, no explicit ticket) claim up to N candidates from this pool
-     instead of one — `.pilot/pilot-link-parallel-sweep.md` has the mechanics; steps 2-13
-     below then run once per claimed PR.
+     tickets are never in this pool — `/pilot-dev` reclaims those (§4).
 2. **Claim** it (fresh case only, above) per `.pilot/pilot-process.md` §4: assignee +
    `status:in-review`, re-read to confirm. If the assignee changed (race lost), stand down
-   — under `--parallel`, move to the next candidate in the pool instead of this one
-   (`.pilot/pilot-link-parallel-sweep.md`); otherwise return to step 1 for a different
-   candidate (bare pool only — report nothing to do if a specific ticket was requested).
+   and return to step 1 for a different candidate (bare pool only — report nothing to do if
+   a specific ticket was requested).
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's,
    `.pilot/pilot-process.md` §2 "`type:` is never inherited") to pick the reviewer set:
    - `type:feature` or `type:e2e` → `pilot-pm`, `pilot-architect`, `pilot-techlead`
@@ -78,8 +75,10 @@ simultaneous `Agent` calls, not N. See `.pilot/pilot-link-parallel-sweep.md`.
    PR's head commit before proceeding — red/pending CI is an automatic `change`-tagged
    block (step 6). Until then, this is a no-op and the tech lead's own re-run in step 5 is
    the only safety net.
-5. Call the `Agent` tool once per reviewer, **in parallel**, `subagent_type` set to that
-   persona (per step 3's independence guarantee). Pass every reviewer
+5. Call the `Agent` tool once per reviewer — or, with `--parallel <N>`, N times per
+   reviewer role — **in parallel** (every role's every instance launched together,
+   `subagent_type` set to that persona per step 3's independence guarantee). Pass every
+   reviewer
    `.pilot/pilot-link-review-consensus.md` in full — the shared verdict format and tagging
    rule, identical for all three, one canonical statement instead of restated per persona
    — plus the matching task doc for what's specific to that persona:
@@ -99,6 +98,17 @@ simultaneous `Agent` calls, not N. See `.pilot/pilot-link-parallel-sweep.md`.
    in the PR's comment thread after it: a specific reply, or "no reply — treat as approved
    as proposed" if none (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket") —
    so reviewers don't re-raise a point a human already answered.
+5a. **Per-role reconciliation** (only when `--parallel` ran more than one instance of a
+    role): for each such role, reconcile its N verdicts into that role's single point-list
+    per `.pilot/pilot-link-parallel-consensus.md` — a point only some instances raised is
+    coverage, union it in; only two instances reaching opposite judgments about the
+    identical point is genuine disagreement, retried once (that role only, that point in
+    context) — still unresolved after that retry → turn it into one `decision`-tagged
+    point in that role's own list, quoting every differing position verbatim, and let
+    step 6's ordinary tag-based aggregation carry it from there (`needs-human` follows
+    automatically, same as any other `decision` point — no separate escalation path).
+    Continue to step 6 with each ensembled role's single reconciled point-list; a role
+    that didn't run as an ensemble passes its one verdict through unchanged.
 6. Collect the verdicts. Aggregate into exactly **one** outcome
    (`.pilot/pilot-link-review-consensus.md`):
    - All blocking points tagged `decision`, none `change` → every point, grouped by
@@ -153,16 +163,15 @@ simultaneous `Agent` calls, not N. See `.pilot/pilot-link-parallel-sweep.md`.
     spot: leave step 9's review and `needs-human` standing — a genuine async wait like any
     other unresolved `needs-human`, resolved by a later run of this skill.
 11. Never submit more than two reviews per PR — step 9's, plus step 10's
-    live-resolution correction when it applies — and never one review per reviewer. This
-    cap is per PR even when `--parallel` claimed several in the same run.
+    live-resolution correction when it applies — and never one review per reviewer, or,
+    with `--parallel`, per ensemble instance: step 5a already reconciled each role down to
+    one point-list before step 6 ever runs.
 12. **Merge, only with `--merge`:** if the final outcome (step 9, or step 10's correction) is
     `status:approved` and `--merge` was passed, merge the PR now
     (`mcp__github__merge_pull_request`, the repository's normal merge method). Without
     `--merge`, or on any other outcome, never merge — a human merges by hand, same as
     before.
-13. Report the outcome, including whether this run merged the PR itself — once per
-    claimed PR plus a one-line summary when `--parallel` claimed more than one
-    (`.pilot/pilot-link-parallel-sweep.md`). Once a PR is
+13. Report the outcome, including whether this run merged the PR itself. Once a PR is
     merged (by a human, or by step 12), `.github/workflows/pilot-status-on-merge.yml` sets
     `status:done` and runs the cascading-completion check (`.pilot/pilot-process.md` §3)
     — this skill's own job ends at the submitted review(s) (plus, when `--merge` applied,
