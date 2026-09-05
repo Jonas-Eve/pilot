@@ -41,7 +41,7 @@ merges.
      instead of step 2 — already claimed.
    - Given without `--resume`, `status:in-review`, assigned, no `needs-human`/`on-hold`, no
      `can-resume` → looks orphaned; report and ask the human to re-run with
-     `--resume`, or add `can-resume` themselves once they've verified it's safe.
+     `--resume`, or add `can-resume` themselves.
    - `status:in-review` still carrying `needs-human`/`on-hold` → not resolved yet; report
      and stop.
    - Otherwise, or none given → per `.pilot/pilot-process.md` §4 "Picking the next

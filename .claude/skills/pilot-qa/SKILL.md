@@ -29,7 +29,7 @@ this skill only covers the mechanics of running it.
    - Issue number without `--resume`, `status:in-qa`, assigned, **no**
      `needs-human`/`on-hold`, no `can-resume` → looks like a
      session left mid-pair; report and ask the human to re-run with `--resume`, or add
-     `can-resume` themselves once they've verified it's safe.
+     `can-resume` themselves.
    - Issue number still carrying `needs-human` or `on-hold` → not resolved yet; report and
      stop.
    - Any other issue number: must be `status:qa` (else — `status:split`, `status:done`, a

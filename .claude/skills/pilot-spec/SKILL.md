@@ -24,7 +24,7 @@ mechanics of running phase 3.
    - Given issue number without `--resume`, `status:in-spec`, already assigned, **no**
      `needs-human`, **no** `on-hold`, no `can-resume` → looks like a ticket left mid-pair
      session. Report that and ask the human to re-run with `--resume`, or add
-     `can-resume` themselves once they've verified it's safe.
+     `can-resume` themselves.
    - Given issue number, `status:in-spec`, still has `needs-human` or `on-hold` → not
      resolved yet, report that and stop.
    - Given issue number, `status:spec-ready`, unclaimed, but its body carries a "Depends

@@ -22,7 +22,7 @@ parallel instances; the claim step below prevents collisions.
      already claimed.
    - Without `--resume`, `status:in-dev`, assigned, no `needs-human`/`on-hold`, no
      `can-resume` → likely mid-pair-session; report and ask the human to re-run
-     with `--resume`, or add `can-resume` themselves once they've verified it's safe.
+     with `--resume`, or add `can-resume` themselves.
    - `status:in-dev` still carrying `needs-human` or `on-hold` → unresolved; report and
      stop.
    - `status:changes-requested`, no `needs-human`/`on-hold` → **reclaim**, distinct from

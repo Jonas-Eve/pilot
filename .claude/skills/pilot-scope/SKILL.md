@@ -23,8 +23,7 @@ mechanics of running phase 2.
      claim.
    - No `--resume`, `status:in-scope`, assigned, **no** `needs-human`/`on-hold`, and
      no `can-resume` → looks like a ticket left mid-pair. Report and ask the human to
-     re-run with `--resume`, or add `can-resume` themselves once they've verified it's
-     safe.
+     re-run with `--resume`, or add `can-resume` themselves.
    - `status:in-scope` still carrying `needs-human` or `on-hold` → not resolved yet,
      report and stop.
    - `level:task` → phase 2 only scopes `level:story` tickets, never a task (a task

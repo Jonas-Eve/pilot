@@ -500,9 +500,8 @@ are already actionable.
 
 A human resolves it by **removing the `needs-human` label** once they've responded (a
 reply comment) or decided there's nothing more to add — the label's absence is the whole
-signal that the block itself is resolved. Whether the ticket is then also picked up
-automatically or waits for someone to name it directly is a separate, orthogonal choice —
-see `can-resume` below and §4 "Resuming a `needs-human` ticket".
+signal that the block is resolved. Whether it's also picked up automatically from there
+is a separate choice — see `can-resume` below.
 
 **Always add `needs-human` and post the why/what's-needed comment the moment a phase
 hits something only a human can decide** — one path, not two, whether or not a human
@@ -722,12 +721,11 @@ The same reference feeds the ordering tie-break above.
 
 A human resolves the flag by **removing the `needs-human` label** from the ticket —
 optionally after leaving a reply comment with guidance, or with no reply at all if
-there's nothing to add beyond "proceed as proposed." Removing the label resolves the
-block for whoever's given the ticket number directly; it does **not** by itself make the
-ticket a bare/scheduled-sweep candidate — for that, the human also adds `can-resume` (§3)
-at the same time, the mechanical signal "Picking the next ticket..." above checks for.
-Either way, this can happen from any session, at any time — nothing depends on the
-session that raised the block still being alive.
+there's nothing to add beyond "proceed as proposed." That removal, not a reaction or a
+particular comment, is the entire signal a phase skill looks for. This can happen from
+any session, at any time — nothing depends on the session that raised the block still
+being alive. Whether the ticket also carries `can-resume` (§3) decides whether it's a
+bare/scheduled-sweep candidate or only reachable by ticket number.
 
 A phase skill treats a ticket as **resuming**, not a fresh claim, whenever it's already
 in that phase's in-progress `status:` (whether picked up via `can-resume` or given
@@ -740,11 +738,10 @@ explicitly) — skip the claim, it's already claimed:
 2. If `needs-human` is still present, it isn't resolved yet — report that and stop (this
    only matters when a ticket number was given explicitly; the bare pool above already
    excludes these).
-3. Otherwise, remove `can-resume` if present — a one-time signal, consumed the moment
-   this run picks the ticket up — and proceed with the phase's `Agent` call, passing both
-   the original blocking context and whatever's in the thread after it (a specific reply,
-   or "no reply — treat as approved as proposed" if none). The agent proceeds, corrects,
-   or blocks again if that still doesn't actually resolve things.
+3. Otherwise, remove `can-resume` if present (§3) and proceed with the phase's `Agent`
+   call, passing both the original blocking context and whatever's in the thread after it
+   (a specific reply, or "no reply — treat as approved as proposed" if none). The agent
+   proceeds, corrects, or blocks again if that still doesn't actually resolve things.
 
 ### Resuming an orphaned claim (`--resume`, or `can-resume`)
 
@@ -762,18 +759,10 @@ ticket someone else is actively working right now, which isn't the case. For pha
 specifically, `status:draft` is what makes this possible at all.
 
 Nothing on the ticket itself distinguishes an orphaned claim from one genuinely still in
-progress elsewhere — only a human verifying it firsthand can. Once they have, two ways to
-act on it:
-
-- **Resume it themselves, right now** — an **explicit** `--resume <issue>` (below — never
-  part of any bare/scheduled-sweep pool).
-- **Hand it to the next sweep instead** — add `can-resume` (§3) once verified safe. The
-  ticket then surfaces through the ordinary "Resumable work" pool above exactly like a
-  cleared `needs-human` ticket ("Resuming a `needs-human` ticket" above), no further
-  special-casing.
-
-Both preserve the ticket's recorded progress; they differ only in who picks it back up
-and when.
+progress elsewhere — only a human verifying it firsthand can. Once they have, they can
+resume it themselves right now via an **explicit** `--resume <issue>` (below — never part
+of any bare/scheduled-sweep pool), or add `can-resume` (§3) to hand it to the next sweep
+instead, same as a cleared `needs-human` ticket above.
 
 To resume via `--resume`:
 1. Read the full ticket — body and comment thread, not just the latest checkpoint. For
