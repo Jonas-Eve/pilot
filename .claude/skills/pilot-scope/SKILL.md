@@ -17,13 +17,14 @@ mechanics of running phase 2.
      `on-hold` — a ticket left mid-pair. Follow `.pilot/pilot-process.md` §4 "Resuming
      an orphaned claim", skipping step 2's claim (already claimed). If it
      doesn't match, report and stop.
-   - No `--resume`, `status:in-scope`, **no** `needs-human`/`on-hold`, but its thread
-     shows a `needs-human` block later cleared → a resume, not a fresh claim. Follow
+   - No `--resume`, `status:in-scope`, **no** `needs-human`/`on-hold`, carrying
+     `can-resume` → a resume, not a fresh claim. Follow
      `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket", skipping step 2's
      claim.
    - No `--resume`, `status:in-scope`, assigned, **no** `needs-human`/`on-hold`, and
-     no `needs-human` history in its thread → looks like a ticket left mid-pair.
-     Report and ask the human to re-run with `--resume`.
+     no `can-resume` → looks like a ticket left mid-pair. Report and ask the human to
+     re-run with `--resume`, or add `can-resume` themselves once they've verified it's
+     safe.
    - `status:in-scope` still carrying `needs-human` or `on-hold` → not resolved yet,
      report and stop.
    - `level:task` → phase 2 only scopes `level:story` tickets, never a task (a task
@@ -55,11 +56,11 @@ mechanics of running phase 2.
      relationship, as context. If `level:epic`, there's nothing to scope on the epic
      itself — stop and point at its stories.
    - No argument → per `.pilot/pilot-process.md` §4 "Picking the next ticket...": the
-     merged pool of unclaimed `status:backlog` (fresh) and `status:in-scope` with
-     `needs-human`/`on-hold` just cleared (resumable — a mid-pair ticket is never in
-     this pool, only reachable via `--resume <issue>`), highest `priority:` then
-     oldest first. What a scheduled cron Routine drives with `--auto`
-     (`.pilot/pilot-process.md` §4 "Scheduled sweeps").
+     merged pool of unclaimed `status:backlog` (fresh) and `status:in-scope` carrying
+     `can-resume` (resumable — a mid-pair ticket is never in this pool, only reachable
+     via `--resume <issue>`), highest `priority:` then oldest first. What a scheduled
+     cron Routine drives with `--auto` (`.pilot/pilot-process.md` §4 "Scheduled
+     sweeps").
 2. **Claim** the ticket per `.pilot/pilot-process.md` §4: set assignee + `status:in-scope`,
    re-read to confirm the claim held.
 3. Call `Agent` with `subagent_type: "pilot-architect"`. Read `.pilot/pilot-task-scope-story.md`

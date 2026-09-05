@@ -27,7 +27,7 @@ the fly, and applying a label that doesn't exist fails the API call outright:
 `status:dev-ready`, `status:in-dev`, `status:review-ready`, `status:in-review`,
 `status:changes-requested`,
 `status:approved`, `status:wont-do`, `status:split`, `status:qa`, `status:in-qa`,
-`status:done`, `needs-human`, `on-hold`.
+`status:done`, `needs-human`, `on-hold`, `can-resume`.
 
 Each phase is a Claude Code slash command, run from a session with read/write access to
 this repo's issues and PRs. `/pilot-story` and `/pilot-qa` never run except because
@@ -41,9 +41,8 @@ single command that runs all six phases end to end, drive the pipeline one phase
 time, per ticket.
 
 Every phase skill also runs bare, with **no argument at all** — it then works its normal
-pool of fresh candidates (its own pre-claim `status:`) *and* its own `needs-human`/
-`on-hold` tickets whose flag has since been cleared (§4 "Picking the next ticket..." and
-"Scheduled sweeps"). This is what a cron Routine calls on a timer — with `--auto` added for
+pool of fresh candidates (its own pre-claim `status:`) *and* its own in-progress tickets a
+human has marked `can-resume` (§4 "Picking the next ticket..." and "Scheduled sweeps"). This is what a cron Routine calls on a timer — with `--auto` added for
 `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, and `/pilot-review`, all four of which default
 to pair and need that flag to run unattended (§4 "Interaction modes").
 `/pilot-story` and `/pilot-qa` are pair-only and are never Routine-driven at all.
@@ -501,7 +500,9 @@ are already actionable.
 
 A human resolves it by **removing the `needs-human` label** once they've responded (a
 reply comment) or decided there's nothing more to add — the label's absence is the whole
-signal; nothing else needs to change by hand.
+signal that the block itself is resolved. Whether the ticket is then also picked up
+automatically or waits for someone to name it directly is a separate, orthogonal choice —
+see `can-resume` below and §4 "Resuming a `needs-human` ticket".
 
 **Always add `needs-human` and post the why/what's-needed comment the moment a phase
 hits something only a human can decide** — one path, not two, whether or not a human
@@ -581,6 +582,23 @@ since there's no question being asked that a live human could answer on the spot
 removed, the ticket is simply a normal candidate again. The two flags are independent and
 can coexist; clearing one has no effect on the other.
 
+### `can-resume` — a human's mechanical signal that in-progress work is ready to be picked back up
+
+Distinct from `needs-human`/`on-hold`: those two *block* a pool; this one *opts an
+already-claimed, in-progress ticket into* one. Only a human ever adds it, in either of two
+situations (§4 "Resuming a `needs-human` ticket", "Resuming an orphaned claim"): resolving
+`needs-human` and deciding the ticket should resume automatically rather than wait for
+someone to type `--resume`, or verifying firsthand that an orphaned claim is genuinely
+dead and safe to hand to the next sweep. Either way it means the same thing: whatever's
+recorded on the ticket so far is safe to continue from, unattended. A plain label check
+— the same deterministic, mechanical style as "Blocked-by dependencies" below — never
+something a subagent reasons about or a comment thread it has to reconstruct.
+
+The claiming phase skill removes it the moment it claims the ticket — a one-time "ready"
+signal, not a standing state. A human who'd rather resume it themselves, right now, skips
+the label entirely and runs `--resume <issue>` directly; both paths preserve the ticket's
+recorded progress, they only differ in who picks it back up and when.
+
 ### `priority:`
 - `priority:P0` / `priority:P1` / `priority:P2` — every ticket gets an initial value at
   phase 1, set by whichever agent creates it: the PM for `type:feature` (business
@@ -640,12 +658,10 @@ explicit `--resume <issue>`). When any other phase skill is invoked without an e
 ticket number, it builds its candidate pool from **two** queries, not one:
 1. **Fresh work** — tickets in its own pre-claim `status:`, no assignee.
 2. **Resumable work** — tickets already in its own *in-progress* `status:`, still carrying
-   the assignee from when they were originally claimed, whose thread shows `needs-human`
-   was applied and has since been removed — see "Resuming a `needs-human` ticket" below.
-   Current labels alone can't tell this apart from an orphaned claim (below): both read as
-   "assigned, in-progress, no `needs-human`" right now. Check each in-progress candidate's
-   own comment thread for that history before including it in this pool — a candidate with
-   no `needs-human` history at all is an orphaned claim, never a bare-pool candidate.
+   the assignee from when they were originally claimed, now also carrying `can-resume`
+   (§3) — a human's explicit signal that this one's safe to hand to the next sweep. A
+   plain label check, same as any other pool query here — never something the subagent
+   has to infer from a comment thread.
 
 `/pilot-dev` alone has a **third** pool: tickets in `status:changes-requested` with
 `needs-human` no longer present — phase 5 sent these back for an actual code fix
@@ -659,9 +675,10 @@ before one that isn't, then oldest by creation date to break ties; a ticket carr
 `needs-human` or `on-hold` is never a candidate in any pool, and neither is one whose body
 has an unresolved "Depends on #N" reference (below, "Blocked-by dependencies") — both
 re-enter automatically once resolved, no flag to remove for the dependency case. An
-orphaned claim (already assigned, still in that phase's in-progress `status:`, but no
-`needs-human`) is likewise never a candidate in any bare pool — see "Resuming an orphaned
-claim" below; it only resumes via an explicit `--resume <issue>`.
+orphaned claim (already assigned, still in that phase's in-progress `status:`, without
+`can-resume`) is likewise never a candidate in any bare pool — see "Resuming an orphaned
+claim" below; it resumes only via `can-resume` (once a human has verified it's safe) or an
+explicit `--resume <issue>`.
 
 ### Blocked-by dependencies (mechanical gate, distinct from `on-hold`)
 
@@ -705,13 +722,16 @@ The same reference feeds the ordering tie-break above.
 
 A human resolves the flag by **removing the `needs-human` label** from the ticket —
 optionally after leaving a reply comment with guidance, or with no reply at all if
-there's nothing to add beyond "proceed as proposed." That removal, not a reaction or a
-particular comment, is the entire signal a phase skill looks for. This can happen from
-any session, at any time — nothing depends on the session that raised the block still
-being alive.
+there's nothing to add beyond "proceed as proposed." Removing the label resolves the
+block for whoever's given the ticket number directly; it does **not** by itself make the
+ticket a bare/scheduled-sweep candidate — for that, the human also adds `can-resume` (§3)
+at the same time, the mechanical signal "Picking the next ticket..." above checks for.
+Either way, this can happen from any session, at any time — nothing depends on the
+session that raised the block still being alive.
 
 A phase skill treats a ticket as **resuming**, not a fresh claim, whenever it's already
-in that phase's in-progress `status:` (whether picked up bare or given explicitly):
+in that phase's in-progress `status:` (whether picked up via `can-resume` or given
+explicitly) — skip the claim, it's already claimed:
 1. Read the full blocking context, not just the ticket body — the blocking comment and
    everything posted after it, for every phase except 5. Phase 5's own block is a
    submitted PR review, not a comment (`.pilot/pilot-link-review-consensus.md`) —
@@ -720,12 +740,13 @@ in that phase's in-progress `status:` (whether picked up bare or given explicitl
 2. If `needs-human` is still present, it isn't resolved yet — report that and stop (this
    only matters when a ticket number was given explicitly; the bare pool above already
    excludes these).
-3. Otherwise, proceed with the phase's `Agent` call, passing both the original blocking
-   context and whatever's in the thread after it (a specific reply, or "no reply — treat
-   as approved as proposed" if none). The agent proceeds, corrects, or blocks again if
-   that still doesn't actually resolve things.
+3. Otherwise, remove `can-resume` if present — a one-time signal, consumed the moment
+   this run picks the ticket up — and proceed with the phase's `Agent` call, passing both
+   the original blocking context and whatever's in the thread after it (a specific reply,
+   or "no reply — treat as approved as proposed" if none). The agent proceeds, corrects,
+   or blocks again if that still doesn't actually resolve things.
 
-### Resuming an orphaned claim (`--resume`)
+### Resuming an orphaned claim (`--resume`, or `can-resume`)
 
 Distinct from both "Resuming a `needs-human` ticket" above and "Reclaiming a
 `status:changes-requested` ticket" below: a ticket claimed but with nobody actually still
@@ -740,11 +761,21 @@ claim-protocol check ("already has an assignee → stop") would treat either the
 ticket someone else is actively working right now, which isn't the case. For phase 1
 specifically, `status:draft` is what makes this possible at all.
 
-`--resume` requires an **explicit ticket number** — it is never part of any bare/
-scheduled-sweep pool. Nothing on the ticket itself distinguishes an orphaned claim from one
-genuinely still in progress elsewhere.
+Nothing on the ticket itself distinguishes an orphaned claim from one genuinely still in
+progress elsewhere — only a human verifying it firsthand can. Once they have, two ways to
+act on it:
 
-To resume:
+- **Resume it themselves, right now** — an **explicit** `--resume <issue>` (below — never
+  part of any bare/scheduled-sweep pool).
+- **Hand it to the next sweep instead** — add `can-resume` (§3) once verified safe. The
+  ticket then surfaces through the ordinary "Resumable work" pool above exactly like a
+  cleared `needs-human` ticket ("Resuming a `needs-human` ticket" above), no further
+  special-casing.
+
+Both preserve the ticket's recorded progress; they differ only in who picks it back up
+and when.
+
+To resume via `--resume`:
 1. Read the full ticket — body and comment thread, not just the latest checkpoint. For
    `/pilot-scope`, `/pilot-spec`, and `/pilot-dev`'s pair sessions this reconstructs pair
    mode's incremental checkpoint writes ("Interaction modes" below). `/pilot-review`'s own

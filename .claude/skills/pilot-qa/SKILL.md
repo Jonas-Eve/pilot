@@ -1,6 +1,6 @@
 ---
 name: pilot-qa
-description: "Phase 6 of PILOT (see .pilot/pilot-process.md): human QA for a type:feature story once every task — including its mandatory e2e one — has merged (status:qa). Builds a manual test plan from the story's acceptance criteria and merged tasks, walks a human through testing it live, and reports the verdict. Pair-only, no --auto, never Routine-driven. On a full pass, or once every failure resolves to not-a-bug, sets status:done and closes the issue (reports any not-a-bug finding to the human to raise via phase 1). On a genuine defect, originates a type:bug ticket directly as spec-ready and unclaims the story itself (back to status:qa) — same mechanics as a bug found mid-implementation in phase 4. An unclassifiable failure gets the standard needs-human flow (label + comment posted immediately, per .pilot/pilot-process.md §3 — resolved and cleared live in the same turn when the human answers right there, since this phase is always pair). Also resumes a ticket left mid-pair with --resume <issue number>, and bare (no argument) picks up the next status:qa (fresh) or resumable needs-human-cleared status:in-qa ticket, skipping anything on-hold. Use once a type:feature story's tasks have all merged and it's ready for a human to confirm the shipped behavior."
+description: "Phase 6 of PILOT (see .pilot/pilot-process.md): human QA for a type:feature story once every task — including its mandatory e2e one — has merged (status:qa). Builds a manual test plan from the story's acceptance criteria and merged tasks, walks a human through testing it live, and reports the verdict. Pair-only, no --auto, never Routine-driven. On a full pass, or once every failure resolves to not-a-bug, sets status:done and closes the issue (reports any not-a-bug finding to the human to raise via phase 1). On a genuine defect, originates a type:bug ticket directly as spec-ready and unclaims the story itself (back to status:qa) — same mechanics as a bug found mid-implementation in phase 4. An unclassifiable failure gets the standard needs-human flow (label + comment posted immediately, per .pilot/pilot-process.md §3 — resolved and cleared live in the same turn when the human answers right there, since this phase is always pair). Also resumes a ticket left mid-pair with --resume <issue number>, and bare (no argument) picks up the next status:qa (fresh) or can-resume-marked status:in-qa ticket, skipping anything on-hold. Use once a type:feature story's tasks have all merged and it's ready for a human to confirm the shipped behavior."
 argument-hint: "<issue number, optional — picks the next fresh status:qa or resumable status:in-qa ticket if omitted> | --resume <issue number>"
 disable-model-invocation: true
 ---
@@ -20,15 +20,16 @@ this skill only covers the mechanics of running it.
      confirmed, claim it (overwrite assignee), skip to step 5 with that state. If it
      doesn't match, report and stop.
    - Issue number without `--resume`, `status:in-qa`, **no** `needs-human`/`on-hold`,
-     thread shows a cleared `needs-human` block → a resume, not a fresh claim
+     carrying `can-resume` → a resume, not a fresh claim
      (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"); skip the claim in
      step 2, it's already claimed. Read the ticket and thread to reconstruct which cases
      were already confirmed and the blocking point's resolution, then skip to step 5 with
      that state, same as the `--resume` bullet above — never restart the test plan from
      step 3/4.
    - Issue number without `--resume`, `status:in-qa`, assigned, **no**
-     `needs-human`/`on-hold`, but no `needs-human` history in its thread → looks like a
-     session left mid-pair; report and ask the human to re-run with `--resume`.
+     `needs-human`/`on-hold`, no `can-resume` → looks like a
+     session left mid-pair; report and ask the human to re-run with `--resume`, or add
+     `can-resume` themselves once they've verified it's safe.
    - Issue number still carrying `needs-human` or `on-hold` → not resolved yet; report and
      stop.
    - Any other issue number: must be `status:qa` (else — `status:split`, `status:done`, a
@@ -37,8 +38,8 @@ this skill only covers the mechanics of running it.
      applies to an explicitly-given ticket here too, not just the pool) — report which
      ticket it's still blocked on and stop rather than claiming it, if one's still open.
    - No argument → per `.pilot/pilot-process.md` §4 "Picking the next ticket...": merged
-     pool of unclaimed `status:qa` (fresh) and `status:in-qa` with `needs-human` just
-     cleared (resumable — a mid-pair ticket is only reachable via explicit `--resume`),
+     pool of unclaimed `status:qa` (fresh) and `status:in-qa` carrying `can-resume`
+     (resumable — a mid-pair ticket is only reachable via explicit `--resume`),
      excluding `on-hold` and any with an unresolved "Depends on #N"
      (`.pilot/pilot-process.md` §4 "Blocked-by dependencies"), highest `priority:` then
      oldest first. No `--auto`, never Routine-driven (`.pilot/pilot-process.md` §4

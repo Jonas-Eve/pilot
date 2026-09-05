@@ -1,7 +1,7 @@
 ---
 name: pilot-dev
 description: "Phase 4 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. Use once /pilot-spec has produced a technical spec."
-argument-hint: "<issue number, optional — picks the next dev-ready or needs-human-resumable ticket if omitted> [--auto] | <issue number> --resume"
+argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto] | <issue number> --resume"
 ---
 
 # PILOT — Phase 4: Operate
@@ -16,13 +16,13 @@ parallel instances; the claim step below prevents collisions.
    - With `--resume`: must be `status:in-dev`, assigned, no `needs-human`/`on-hold` (a
      ticket left mid-pair session). Follow `.pilot/pilot-process.md` §4 "Resuming an
      orphaned claim" instead of steps 2-6 — already claimed. Mismatch → report and stop.
-   - Without `--resume`, `status:in-dev`, no `needs-human`/`on-hold`, thread shows a
-     cleared `needs-human` block → resume, not a fresh claim. Follow
+   - Without `--resume`, `status:in-dev`, no `needs-human`/`on-hold`, carrying
+     `can-resume` → resume, not a fresh claim. Follow
      `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-6 —
      already claimed.
-   - Without `--resume`, `status:in-dev`, assigned, no `needs-human`/`on-hold`, but no
-     `needs-human` history → likely mid-pair-session; report and ask the human to re-run
-     with `--resume` rather than proceeding.
+   - Without `--resume`, `status:in-dev`, assigned, no `needs-human`/`on-hold`, no
+     `can-resume` → likely mid-pair-session; report and ask the human to re-run
+     with `--resume`, or add `can-resume` themselves once they've verified it's safe.
    - `status:in-dev` still carrying `needs-human` or `on-hold` → unresolved; report and
      stop.
    - `status:changes-requested`, no `needs-human`/`on-hold` → **reclaim**, distinct from
@@ -39,7 +39,7 @@ parallel instances; the claim step below prevents collisions.
      bare-pool selection below, not just the pool).
    - Otherwise, or no issue given → per `.pilot/pilot-process.md` §4 "Picking the next
      ticket...": the given ticket, or the merged pool of unclaimed `status:dev-ready`
-     (fresh), `status:in-dev` with `needs-human`/`on-hold` just cleared (resumable), and
+     (fresh), `status:in-dev` carrying `can-resume` (resumable), and
      `status:changes-requested` with no `needs-human`/`on-hold` (reclaimable — immediately,
      for a review verdict that was purely code-level and so never carried `needs-human`
      to begin with, or once a human clears it for one that also blocked on a judgment
