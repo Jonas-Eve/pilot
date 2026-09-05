@@ -155,6 +155,10 @@ Either way, keep re-dispatching that one ticket until any of:
 - the phase that just ran flagged `needs-human` on it — stop the same way a live pair
   session would, nothing to gain from immediately retrying a ticket now waiting on a
   human;
+- an iteration's own phase reports the ticket looks orphaned and asks for `--resume` — a
+  concurrent claim by something else in between two iterations, however unlikely; relay
+  that and stop, exactly like a single dispatch would (above), never retry with `--resume`
+  on `--next`'s own initiative;
 - the ticket is now closed.
 
 This internalizes the `/loop /pilot-auto <ticket> [--merge]` pattern
@@ -181,5 +185,6 @@ with which phase actually claimed the ticket (e.g. "Ticket #48 → ran `/pilot-d
 not just the last one, then a one-line summary — for `--again`, how many candidates were
 processed and across which phases before the subset went idle; for `--next` given no issue
 number, name the ticket the first iteration pinned before listing what happened to it;
-either way, close with how many phase-advances it went through and which of the three
-stopping conditions ended it (nothing left to do, `needs-human` flagged, or closed).
+either way, close with how many phase-advances it went through and which of the four
+stopping conditions ended it (nothing left to do, `needs-human` flagged, reported
+orphaned, or closed).
