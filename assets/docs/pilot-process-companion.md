@@ -74,7 +74,8 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
                           phase claims there, keep re-dispatching that one ticket
                           through the full chain instead of moving to another
 /pilot-auto 48 --next   → keeps re-dispatching #48 after each phase advance, until
-                          nothing's left to do, needs-human is flagged, or it closes
+                          nothing's left to do, needs-human is flagged, it closes, or a
+                          concurrent claim makes it look orphaned
                           (`--continue` is an accepted alias for `--next`)
 ```
 

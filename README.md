@@ -59,8 +59,9 @@ time instead of carrying every one of its duties' instructions on every invocati
     ticket rather than a pool — each phase's own claim protocol reports nothing to do when
     the ticket isn't currently theirs, so this command never reads the ticket's `status:`
     itself. `--next` (alias `--continue`) keeps re-dispatching one ticket through the full
-    chain until nothing's left, `needs-human`, or it closes — given an issue number, that
-    ticket; given none, whichever candidate the first sweep pass claims. Not a phase itself, and never invokes
+    chain until nothing's left, `needs-human`, it closes, or it looks orphaned — given an
+    issue number, that ticket; given none, whichever candidate the first sweep pass
+    claims. Not a phase itself, and never invokes
     `/pilot-story`/`/pilot-qa` (pair-only).
     Lets one scheduled Routine drive the whole pipeline, or several Routines split it by
     cadence, or a human/Routine hand it one ticket without knowing which phase it's in —
