@@ -31,12 +31,10 @@ the fly, and applying a label that doesn't exist fails the API call outright:
 
 Each phase is a Claude Code slash command, run from a session with read/write access to
 this repo's issues and PRs. `/pilot-story` and `/pilot-qa` never run except because
-something sent their exact command literally, human or scheduled Routine
-(`.pilot/pilot-link-claim-protocol.md` "Scheduled sweeps") — the other four phases can also
-be invoked without one, but every phase, whichever way it's invoked, only ever acts on a
-ticket that's actually, currently in its own pre-claim `status:`
-(`.pilot/pilot-link-claim-protocol.md` "Claim Protocol"); nothing here infers which phase a
-ticket belongs to or
+something sent their exact command literally, human or scheduled Routine (§4 "Scheduled
+sweeps") — the other four phases can also be invoked without one, but every phase, whichever
+way it's invoked, only ever acts on a ticket that's actually, currently in its own pre-claim
+`status:` (§4 "Claim Protocol"); nothing here infers which phase a ticket belongs to or
 invents work. Bare, no-argument commands are what make the scheduled case useful —
 see `.pilot/pilot-process-companion.md` for example invocations of each command; there's no
 single command that runs all six phases end to end, drive the pipeline one phase at a
@@ -44,11 +42,9 @@ time, per ticket.
 
 Every phase skill also runs bare, with **no argument at all** — it then works its normal
 pool of fresh candidates (its own pre-claim `status:`) *and* its own in-progress tickets a
-human has marked `can-resume` (`.pilot/pilot-link-claim-protocol.md` "Picking the next
-ticket..." and "Scheduled sweeps"). This is what a cron Routine calls on a timer — with
-`--auto` added for `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, and `/pilot-review`, all
-four of which default to pair and need that flag to run unattended (§4 "Interaction
-modes").
+human has marked `can-resume` (§4 "Picking the next ticket..." and "Scheduled sweeps"). This is what a cron Routine calls on a timer — with `--auto` added for
+`/pilot-scope`, `/pilot-spec`, `/pilot-dev`, and `/pilot-review`, all four of which default
+to pair and need that flag to run unattended (§4 "Interaction modes").
 `/pilot-story` and `/pilot-qa` are pair-only and are never Routine-driven at all.
 
 ---
@@ -200,9 +196,8 @@ idea/need by theme — reuse it (attach the new story/stories as sub-issues of i
 than creating a duplicate. Only create a new Epic when no existing one fits and the idea
 genuinely can't be delivered as one story.
 
-**Phase 2 still claims and works exactly one ticket per invocation**
-(`.pilot/pilot-link-claim-protocol.md` "Claim Protocol"). But nothing stops the architect
-from *reading* related tickets for context
+**Phase 2 still claims and works exactly one ticket per invocation** (§4 "Claim
+Protocol"). But nothing stops the architect from *reading* related tickets for context
 while scoping that one ticket: the parent Epic (if any), sibling stories under it, or
 anything already linked via "Blocks #M"/"Depends on #N" or a sub-issue relationship — this
 is read-only context-gathering, not a second claim.
@@ -303,9 +298,8 @@ an already-once-split `level:story` differently depending on exactly how finishe
      original task wrote, not duplicate coverage from scratch.
   3. Run the PM coverage check (§2 above) against this round's new `type:feature` tasks
      only — the original tasks were already checked at split time.
-  4. Finalize exactly like any other split (`.pilot/pilot-link-claim-protocol.md` "Claim
-     Protocol"): the story lands back on `status:split`, now tracking this round's new
-     tasks instead.
+  4. Finalize exactly like any other split (§4 "Claim Protocol"): the story lands back on
+     `status:split`, now tracking this round's new tasks instead.
   Once this round's new e2e task also reaches `status:done`, the story cascades to
   `status:qa` again exactly as before (§3 "Cascading completion") — the new behavior gets
   its own human QA pass in phase 6, same as the original.
@@ -392,10 +386,9 @@ when phase 5 blocks on something that needs an actual code change — see
 - `status:in-dev` — a dev has claimed it for phase 4.
 - `status:review-ready` — a PR is open, unassigned, not currently claimed by phase 5: set
   by `/pilot-dev` when it opens a PR, or pushes a reclaim fix, in place of setting
-  `status:in-review` directly (`.pilot/pilot-link-claim-protocol.md` "Claim Protocol" —
-  this is phase 5's own pre-claim status, matching `status:dev-ready`'s role for phase 4).
-- `status:in-review` — phase 5 has claimed it (`.pilot/pilot-link-claim-protocol.md` "Claim
-  Protocol") and is running, or
+  `status:in-review` directly (§4 "Claim Protocol" — this is phase 5's own pre-claim
+  status, matching `status:dev-ready`'s role for phase 4).
+- `status:in-review` — phase 5 has claimed it (§4 "Claim Protocol") and is running, or
   blocked on a `decision`-only point awaiting a human — `needs-human` sits alongside, same
   as any other phase's in-progress status (§3 "`needs-human`" below). Never set directly by
   `/pilot-dev`, only by phase 5's own claim.
@@ -408,9 +401,8 @@ when phase 5 blocks on something that needs an actual code change — see
   `/pilot-dev` may claim it right away, same as any other pre-claim status. When
   `needs-human` is present (a mixed review), `/pilot-dev` claims it only once a human
   clears that flag (§4 "Reclaiming a `status:changes-requested` ticket") — reclaiming
-  either way is expected to find an existing assignee (phase 5's own claiming session,
-  `.pilot/pilot-link-claim-protocol.md` "Claim Protocol") and overwrite it rather than treat
-  that as a conflict. The dev pushes
+  either way is expected to find an existing assignee (phase 5's own claiming session, §4
+  "Claim Protocol") and overwrite it rather than treat that as a conflict. The dev pushes
   new commits to the *same* already-open PR (never a second PR for the same ticket) and
   moves the ticket to `status:review-ready` when done — never `status:in-review` directly,
   phase 5 claims it fresh.
@@ -518,8 +510,7 @@ happens *next*:
 
 - **Nobody answers on the spot** (a scheduled sweep with no human present, or an
   interactive human who says they need to think about it) — the label and comment stay
-  exactly as posted, and the ticket waits for the async resume protocol in
-  `.pilot/pilot-link-claim-protocol.md` "Resuming a `needs-human` ticket".
+  exactly as posted, and the ticket waits for the async resume protocol below.
 - **A human is live in the same session** and answers right there in conversation — the
   agent still posts the why/what's-needed comment first, exactly as it would if nobody
   were around; a quick answer is not a reason to skip straight to a resolution. Once the
@@ -594,8 +585,7 @@ can coexist; clearing one has no effect on the other.
 
 Distinct from `needs-human`/`on-hold`: those two *block* a pool; this one *opts an
 already-claimed, in-progress ticket into* one. Only a human ever adds it, in either of two
-situations (`.pilot/pilot-link-claim-protocol.md` "Resuming a `needs-human` ticket",
-"Resuming an orphaned claim"): resolving
+situations (§4 "Resuming a `needs-human` ticket", "Resuming an orphaned claim"): resolving
 `needs-human` and deciding the ticket should resume automatically rather than wait for
 someone to type `--resume`, or verifying firsthand that an orphaned claim is genuinely
 dead and safe to hand to the next sweep. Either way it means the same thing: whatever's
@@ -613,9 +603,9 @@ recorded progress, they only differ in who picks it back up and when.
   phase 1, set by whichever agent creates it: the PM for `type:feature` (business
   value/urgency to the user — the only phase-1 agent with the product context to judge
   it), the architect for `type:tech`/`type:bug` (the technical framing below — neither
-  has a PM angle). This is what lets `/pilot-scope`'s own `status:backlog` pool
-  (`.pilot/pilot-link-claim-protocol.md` "Picking the next ticket...") sort on something
-  real instead of every fresh story falling back to oldest-first.
+  has a PM angle). This is what lets `/pilot-scope`'s own `status:backlog` pool (§4
+  "Picking the next ticket...") sort on something real instead of every fresh story
+  falling back to oldest-first.
 - At phase 2, the architect reconfirms or revises it: unchanged if the ticket ends up not
   split (still the one leaf — `type:tech` only, `type:feature` always splits), or
   replaced by each task's own priority if it splits — a task's priority doesn't have to
@@ -634,22 +624,60 @@ recorded progress, they only differ in who picks it back up and when.
 
 ---
 
-## 4. Claim Protocol, Dependencies, Reclaiming, and Interaction Modes
+## 4. Claim Protocol (avoiding two agents on the same ticket)
 
 Phases 2, 3, 4, 5, and 6 each start by **claiming** the ticket before doing any real work,
 because several instances of the same phase (e.g. several devs, or two overlapping
 scheduled review sweeps) may run concurrently. Phase 1 doesn't fit this pattern the same
 way — there's no pre-existing ticket to claim — but the moment it creates the ticket
 (`status:draft`, §3), it assigns it the same way, and that assignment sticks if the pair
-session ends before final approval, exactly like a claimed ticket left mid-phase.
+session ends before final approval, exactly like a claimed ticket left mid-phase; see
+"Resuming an orphaned claim" below.
 
-**The claim steps themselves, how a phase picks its next ticket from a bare pool, and how
-it resumes a `needs-human`-cleared or orphaned claim are deterministic skill bookkeeping,
-not something a persona reasons about (§5) — their full mechanics live in
-`.pilot/pilot-link-claim-protocol.md`, read directly by every phase skill's own `SKILL.md`
-and by `pilot-auto`, never injected into an `Agent` call and never read by a persona.** The
-three sections below stay here instead, because a persona's own task doc relies on them
-directly.
+1. Read the ticket's current `status:` and assignee.
+2. If it's not in the expected pre-claim status, or already has an assignee, stop — it's
+   being worked or has moved on; pick a different ticket (or report nothing to do, if a
+   specific ticket number was requested explicitly).
+3. Otherwise, immediately set the assignee to the current agent/session and swap the
+   `status:` label to the in-progress one for this phase.
+4. Re-read the ticket once more. If the assignee is no longer this agent, another run won
+   the race — stand down and pick something else. This is optimistic, not a real lock:
+   cheap insurance against the common case, not a guarantee under true concurrent writes.
+5. Only after a successful claim does the phase's real work (the subagent call) start.
+
+Phase 5's claim only serializes separate *runs* of `/pilot-review` against the same
+ticket — the three (or two) reviewers **within** one claimed run still execute
+independently in parallel, never seeing each other's verdict
+(`.pilot/pilot-link-review-consensus.md`).
+
+### Picking the next ticket when none is specified
+
+Phase 1 has no such pool at all — it always starts from a raw need in free text (or an
+explicit `--resume <issue>`). When any other phase skill is invoked without an explicit
+ticket number, it builds its candidate pool from **two** queries, not one:
+1. **Fresh work** — tickets in its own pre-claim `status:`, no assignee.
+2. **Resumable work** — tickets already in its own *in-progress* `status:`, still carrying
+   the assignee from when they were originally claimed, now also carrying `can-resume`
+   (§3) — a human's explicit signal that this one's safe to hand to the next sweep. A
+   plain label check, same as any other pool query here — never something the subagent
+   has to infer from a comment thread.
+
+`/pilot-dev` alone has a **third** pool: tickets in `status:changes-requested` with
+`needs-human` no longer present — phase 5 sent these back for an actual code fix
+(`.pilot/pilot-link-review-consensus.md`). See
+"Reclaiming a `status:changes-requested` ticket" below.
+
+All pools that apply to a given phase skill are merged and picked from together: highest
+`priority:` first, then a ticket referenced by another open ticket's "Blocks #M" comment
+before one that isn't, then oldest by creation date to break ties; a ticket carrying no
+`priority:` at all sorts last. A ticket still carrying
+`needs-human` or `on-hold` is never a candidate in any pool, and neither is one whose body
+has an unresolved "Depends on #N" reference (below, "Blocked-by dependencies") — both
+re-enter automatically once resolved, no flag to remove for the dependency case. An
+orphaned claim (already assigned, still in that phase's in-progress `status:`, without
+`can-resume`) is likewise never a candidate in any bare pool — see "Resuming an orphaned
+claim" below; it resumes only via `can-resume` (once a human has verified it's safe) or an
+explicit `--resume <issue>`.
 
 ### Blocked-by dependencies (mechanical gate, distinct from `on-hold`)
 
@@ -666,8 +694,7 @@ the same gate for free.
 "Depends on #N" lines, one issue number each — never several numbers combined onto one
 line. This keeps the check a trivial per-line literal match, not a list/prose parse.
 
-Whenever a phase builds a candidate pool from its own `status:` pools
-(`.pilot/pilot-link-claim-protocol.md` "Picking the next ticket when none is specified"), it also
+Whenever a phase builds a candidate pool from its own `status:` pools (above), it also
 reads each candidate's body for this exact phrase and, for each `#N` found, checks whether
 that issue is still open — plain open/closed, not its `status:` label. A candidate with at
 least one still-open dependency is excluded from the pool for this run, the same as
@@ -688,20 +715,83 @@ do; `/pilot-scope` doesn't check this gate on an explicitly-given ticket number,
 never meaningfully fires from phase 2's own bare pool either, since nothing writes
 "Depends on #N" onto a ticket before phase 2 has scoped it at least once.
 
-The same reference feeds the ordering tie-break in
-`.pilot/pilot-link-claim-protocol.md` "Picking the next ticket when none is specified".
+The same reference feeds the ordering tie-break above.
+
+### Resuming a `needs-human` ticket
+
+A human resolves the flag by **removing the `needs-human` label** from the ticket —
+optionally after leaving a reply comment with guidance, or with no reply at all if
+there's nothing to add beyond "proceed as proposed." That removal, not a reaction or a
+particular comment, is the entire signal a phase skill looks for. This can happen from
+any session, at any time — nothing depends on the session that raised the block still
+being alive. Whether the ticket also carries `can-resume` (§3) decides whether it's a
+bare/scheduled-sweep candidate or only reachable by ticket number.
+
+A phase skill treats a ticket as **resuming**, not a fresh claim, whenever it's already
+in that phase's in-progress `status:` (whether picked up via `can-resume` or given
+explicitly) — skip the claim, it's already claimed:
+1. Read the full blocking context, not just the ticket body — the blocking comment and
+   everything posted after it, for every phase except 5. Phase 5's own block is a
+   submitted PR review, not a comment (`.pilot/pilot-link-review-consensus.md`) —
+   read that, plus the PR's comment thread for
+   whatever's posted after it.
+2. If `needs-human` is still present, it isn't resolved yet — report that and stop (this
+   only matters when a ticket number was given explicitly; the bare pool above already
+   excludes these).
+3. Otherwise, remove `can-resume` if present (§3) and proceed with the phase's `Agent`
+   call, passing both the original blocking context and whatever's in the thread after it
+   (a specific reply, or "no reply — treat as approved as proposed" if none). The agent
+   proceeds, corrects, or blocks again if that still doesn't actually resolve things.
+
+### Resuming an orphaned claim (`--resume`, or `can-resume`)
+
+Distinct from both "Resuming a `needs-human` ticket" above and "Reclaiming a
+`status:changes-requested` ticket" below: a ticket claimed but with nobody actually still
+working it — still carrying its original assignee, still in that phase's in-progress
+`status:` (`status:draft`, `status:in-scope`, `status:in-spec`, `status:in-dev`,
+`status:in-review`, `status:in-qa`), with **no** `needs-human`. Two different causes leave
+the exact same shape, indistinguishable from the ticket alone: a **pair** session
+("Interaction modes" below) that ended before reaching the phase's final approval
+(pair-capable phases only), or an `--auto` run that died mid-work (a quota limit, a crash,
+a timeout) before it could either finish or flag `needs-human`. Left alone, the normal
+claim-protocol check ("already has an assignee → stop") would treat either the same as a
+ticket someone else is actively working right now, which isn't the case. For phase 1
+specifically, `status:draft` is what makes this possible at all.
+
+Nothing on the ticket itself distinguishes an orphaned claim from one genuinely still in
+progress elsewhere — only a human verifying it firsthand can. Once they have, they can
+resume it themselves right now via an **explicit** `--resume <issue>` (below — never part
+of any bare/scheduled-sweep pool), or add `can-resume` (§3) to hand it to the next sweep
+instead, same as a cleared `needs-human` ticket above.
+
+To resume via `--resume`:
+1. Read the full ticket — body and comment thread, not just the latest checkpoint. For
+   `/pilot-scope`, `/pilot-spec`, and `/pilot-dev`'s pair sessions this reconstructs pair
+   mode's incremental checkpoint writes ("Interaction modes" below). `/pilot-review`'s own
+   checkpoint is a pending GitHub PR review instead of a ticket comment
+   (`pilot-review/SKILL.md` has the mechanics) — still pinned to the PR's current head
+   commit → that's the recovered outcome, skip re-running the reviewers; stale or absent →
+   discard any stale one and
+   restart the reviewers fresh, the tech lead's re-validation needs the actual current code
+   regardless. For an `--auto` run of any other phase, there's nothing to reconstruct — a
+   plain restart from the ticket's original inputs.
+2. Claim it the same way a `status:changes-requested` reclaim does (below) — an existing
+   assignee doesn't count as a conflict here. Overwrite it (assignee → this session);
+   `status:` stays at its current in-progress value.
+3. Pass whatever step 1 recovered to the phase's `Agent` call as its starting context, and
+   continue: the normal pair loop where one exists, otherwise a fresh pass.
+
+Finalization behaves exactly as any other run of that phase from here.
 
 ### Reclaiming a `status:changes-requested` ticket (`/pilot-dev` only)
 
-Unlike "Resuming a `needs-human` ticket" or "Resuming an orphaned claim"
-(`.pilot/pilot-link-claim-protocol.md`), `status:changes-requested` is set by *phase 5*
+Unlike "Resuming a `needs-human` ticket" or "Resuming an orphaned claim" above,
+`status:changes-requested` is set by *phase 5*
 (`.pilot/pilot-link-review-consensus.md`), not by `/pilot-dev` itself — the
 ticket already has an open PR, and whatever assignee is still on it is phase 5's own
-claiming session (`.pilot/pilot-link-claim-protocol.md` "Claim Protocol"), not necessarily
-whoever runs `/pilot-dev` next.
+claiming session (§4 "Claim Protocol"), not necessarily whoever runs `/pilot-dev` next.
 
-Reclaiming one follows the standard claim protocol (`.pilot/pilot-link-claim-protocol.md`)
-with a single, deliberate
+Reclaiming one follows the standard claim protocol above with a single, deliberate
 exception: an existing assignee doesn't count as "already claimed" for this status — the
 claiming session simply overwrites it (assignee → itself, `status:` → `in-dev`) and
 re-reads to confirm the overwrite held.
@@ -722,6 +812,21 @@ human look at the ticket before this, the subagent also posts one comment on the
 itself when it pushes the fix — a short summary of what changed in response to the review,
 so the ticket's own history stays coherent with the code without duplicating the review's
 full detail (`.pilot/pilot-task-implement.md`).
+
+### Scheduled sweeps
+
+Each phase skill is meant to also run **bare, on a timer** — a Routine whose prompt is
+nothing but the literal command. For `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, and
+`/pilot-review` — all four default to pair mode ("Interaction modes" below) — that literal
+command must include `--auto` (still no ticket number computed by the routine itself),
+since pair requires a human live in the session and a Routine has none. `/pilot-story` and
+`/pilot-qa` are pair-only with no `--auto` and are therefore never driven by a Routine at
+all. Beyond that flag, this works without any special-casing because "picking the next
+ticket when none is specified" (above) already covers both fresh and resumed work
+identically. Four independent Routines — one each for `/pilot-scope --auto`, `/pilot-spec
+--auto`, `/pilot-dev --auto`, and `/pilot-review --auto` (add `--merge` too if the Routine
+should also merge once every reviewer approves, §3 "`status:approved`") — each on its own
+schedule, so a slow or failing phase never delays the others.
 
 ### Interaction modes: pair (default) and `--auto`
 
@@ -751,11 +856,11 @@ skills split into three groups by which modes they support:
   all-approve outcome, or a pure-`change` outcome (no `decision` point, so no
   `needs-human`), instead pauses *before* submitting, for a last look. `--auto` skips every
   pause. Also supports `--merge` (§3 "`status:approved`") — orthogonal to pair/`--auto` —
-  and `--resume <issue>` to recover an orphaned claim
-  (`.pilot/pilot-link-claim-protocol.md`). `pilot-review/SKILL.md` has the full mechanics.
+  and `--resume <issue>` to recover an orphaned claim (above). `pilot-review/SKILL.md` has
+  the full mechanics.
 
-Both modes still claim (`.pilot/pilot-link-claim-protocol.md`) immediately, same as always
-— it's concurrency bookkeeping, unrelated to the content decision.
+Both modes still claim (above) immediately, same as always — it's concurrency
+bookkeeping, unrelated to the content decision.
 
 **Pair** requires a human live in the same session. The agent stops at its phase's
 natural checkpoint(s) — the drafted story, the proposed decomposition, the spec outline,
@@ -793,8 +898,7 @@ its own points once, right before returning its verdict
 **`--auto`** is the old default, before pair mode existed: the agent decides everything
 and the skill applies the finished result straight to GitHub in one pass, no human
 checkpoint. This is what a scheduled Routine must use for `/pilot-scope`, `/pilot-spec`,
-`/pilot-dev`, or `/pilot-review` (`.pilot/pilot-link-claim-protocol.md` "Scheduled
-sweeps") — pair requires a live human.
+`/pilot-dev`, or `/pilot-review` (above, "Scheduled sweeps") — pair requires a live human.
 `/pilot-story` has no `--auto` and is therefore never Routine-driven.
 
 `--auto` and `--resume` are mutually exclusive with each other and with pair mode itself —
@@ -835,8 +939,7 @@ ticket number between them — never a running transcript of the prior phase's `
 
 ## 6. Phase 5 — Review Consensus
 
-Claim/pool mechanics are the ordinary claim protocol (`.pilot/pilot-link-claim-protocol.md`)
-— nothing phase-5-specific there
+Claim/pool mechanics are the ordinary claim protocol (§4) — nothing phase-5-specific there
 beyond its own pre-claim/in-progress pair, `status:review-ready`/`status:in-review` (§3).
 How phase 5 reaches a verdict is split in two: the reviewer set is `pilot-review/SKILL.md`'s
 own step 3, and the `change`/`decision` tags contract is `.pilot/pilot-link-review-consensus.md`
@@ -870,9 +973,8 @@ the pool `/pilot-qa` picks from.
 
 ### Running it
 
-`/pilot-qa` is **pair-only** (§4 "Interaction modes"). It claims the story
-(`.pilot/pilot-link-claim-protocol.md` "Claim Protocol": `status:qa` → `status:in-qa`),
-builds a manual test plan, and walks the human
+`/pilot-qa` is **pair-only** (§4 "Interaction modes"). It claims the story (§4 "Claim
+Protocol": `status:qa` → `status:in-qa`), builds a manual test plan, and walks the human
 through it case by case. A failure is classified and handled exactly as
 `.pilot/pilot-link-bug-tickets.md` describes — a genuine defect gets its own
 `type:bug` ticket and unclaims the story back to `status:qa`; a non-bug failure is reported

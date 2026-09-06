@@ -8,14 +8,14 @@ disable-model-invocation: true
 # PILOT — Phase 1: Plan
 
 Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
-source of truth for labels and states — plus `.pilot/pilot-link-claim-protocol.md` for the
-claim/pool/resume mechanics; this skill only covers the mechanics of running phase 1.
+source of truth for labels, states, and the claim protocol; this skill only covers the
+mechanics of running phase 1.
 
 ## Steps
 
 1. Determine the input:
    - `--resume <issue>`: must be `status:draft`, assigned, **no** `needs-human`/`on-hold`
-     — a draft left mid-pair (`.pilot/pilot-link-claim-protocol.md` "Resuming an orphaned
+     — a draft left mid-pair (`.pilot/pilot-process.md` §4 "Resuming an orphaned
      claim"). Read the ticket and thread (`mcp__github__issue_read` `get_comments`) to
      reconstruct what's drafted, claim it (overwrite assignee), skip to step 5b with that
      state (call the agent in step 4 again first if revising the draft, passing the
@@ -56,8 +56,7 @@ claim/pool/resume mechanics; this skill only covers the mechanics of running pha
 5a. **Create the draft ticket(s) right away** (`mcp__github__issue_write`,
     `mcp__github__sub_issue_write`), before showing anything to the human — this is what
     makes `--resume` possible if the session ends before final approval
-    (`.pilot/pilot-process.md` §3 `status:draft`, `.pilot/pilot-link-claim-protocol.md`
-    "Resuming an orphaned claim"):
+    (`.pilot/pilot-process.md` §3 `status:draft`, §4 "Resuming an orphaned claim"):
     - Single story (`type:feature`/`type:tech`): create it, matching `type:` +
       `level:story` + `status:draft` + the agent's initial `priority:P0/P1/P2`
       (`.pilot/pilot-process.md` §3), assigned to this session.

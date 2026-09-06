@@ -3,8 +3,8 @@
 Injected whole by `.claude/skills/pilot-scope/SKILL.md`, `pilot-dev/SKILL.md`, and
 `pilot-qa/SKILL.md` — the phase-specific delta (whether the discovering ticket needs
 unclaiming, and how) lives in each duty's own task doc instead, never here. See
-`.pilot/pilot-process.md` §2/§3 for the generic ticket types and labels, and
-`.pilot/pilot-link-claim-protocol.md` for the claim protocol, this builds on.
+`.pilot/pilot-process.md` §2/§3/§4 for the generic ticket types, labels, and claim protocol
+this builds on.
 
 Distinct from a prerequisite *tech* ticket (`.pilot/pilot-process.md` §2 "Prerequisite tech
 tickets" — a new technical need, no defect implied): a concrete **defect** in

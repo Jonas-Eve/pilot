@@ -4,9 +4,8 @@ Read directly by `pilot-scope`/`pilot-spec`/`pilot-dev`/`pilot-review`'s own `SK
 run their own comparison logic — never injected into any `Agent` call, and never read by
 `.claude/agents/pilot-*.md`, which carry only identity now and never need to know they're
 part of an ensemble: every one of the N instances runs its ordinary duty, unmodified, same
-task doc, same prompt, as if it were the only one. See `.pilot/pilot-link-claim-protocol.md`
-for the generic claim protocol this builds on, and `.pilot/pilot-process.md` §4
-"Interaction modes" for pair/`--auto`.
+task doc, same prompt, as if it were the only one. See `.pilot/pilot-process.md` §4 for the
+generic claim protocol and interaction modes this builds on.
 
 Shared by `/pilot-scope` (architect), `/pilot-spec` (tech lead), `/pilot-dev` (dev/e2e),
 and `/pilot-review` (each of its already-selected reviewer roles — PM, architect, tech
@@ -25,7 +24,7 @@ defaults to `N=2`** — the smallest ensemble that still has something to reconc
 malformed value instead (not a positive integer — `0`, negative, non-numeric) is invalid:
 report exactly that and stop, same posture as any other malformed invocation in this repo
 (e.g. `pilot-auto/SKILL.md`'s "Determining the mode"). This is orthogonal to which ticket
-gets claimed: the ordinary claim protocol and pool-picking (`.pilot/pilot-link-claim-protocol.md`)
+gets claimed: the ordinary claim protocol and pool-picking (`.pilot/pilot-process.md` §4)
 are completely unaffected — still exactly one ticket claimed per invocation. It's also
 orthogonal to pair vs `--auto` (`.pilot/pilot-process.md` §4 "Interaction modes"): the
 reconciled result below is what pair's existing checkpoint shows the human, or what
@@ -33,7 +32,7 @@ reconciled result below is what pair's existing checkpoint shows the human, or w
 
 **Invalid combined with the literal `--resume` flag** — knowable from the command line
 alone, report and stop. That flag recovers one specific paused pair session's exact
-in-progress state (`.pilot/pilot-link-claim-protocol.md` "Resuming an orphaned claim") — continuing
+in-progress state (`.pilot/pilot-process.md` §4 "Resuming an orphaned claim") — continuing
 one interrupted train of thought, not a fresh multi-perspective ask. An implicit resume via
 `can-resume` (a previously-blocked ticket, now cleared) is different: the persona is
 genuinely reconsidering given new information, which benefits from the same ensemble as a
@@ -57,7 +56,7 @@ this phase (or, in `/pilot-review`, for the specific role being ensembled), iden
 prompt and inputs each time — the ordinary duty, unmodified — each instance fully isolated
 from the others — none sees any other's output, the same independence guarantee
 `/pilot-review`'s existing multi-persona parallelism already relies on
-(`.pilot/pilot-link-claim-protocol.md`).
+(`.pilot/pilot-process.md` §4).
 
 ### Consensus check — the skill's own comparison, no further `Agent` call
 

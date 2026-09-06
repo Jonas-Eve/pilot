@@ -18,14 +18,12 @@ references to any one consuming project); when porting a change from a project t
 forked PILOT, strip project-specific details the same way.
 
 At runtime, a phase skill reads up to three layers, not just its own file:
-`pilot-process.md` for the generic mechanics every phase shares (labels, states,
-pair/`--auto`), whichever `pilot-link-<topic>.md` doc(s) it's named in — including
-`pilot-link-claim-protocol.md`, the claim/pool/resume mechanics every phase skill and
-`pilot-auto` read but no persona ever does — for coordinating with the specific other
-skills/agents it hands off to or reads from, and its own `SKILL.md` for its own
-orchestration mechanics. §3 below ("Three tiers") is the mirror image of this for writing
-new content — decide the tier, then add it to the matching layer instead of the file you
-happen to already be editing.
+`pilot-process.md` for the generic mechanics every phase shares (labels, claim protocol,
+pair/`--auto`), whichever `pilot-link-<topic>.md` doc(s) it's named in for coordinating
+with the specific other skills/agents it hands off to or reads from, and its own
+`SKILL.md` for its own orchestration mechanics. §3 below ("Three tiers") is the mirror
+image of this for writing new content — decide the tier, then add it to the matching
+layer instead of the file you happen to already be editing.
 
 The actual judgment work happens in an isolated `Agent` call to one of the six personas
 (`.claude/agents/pilot-*.md`). Each of those carries only that persona's stable

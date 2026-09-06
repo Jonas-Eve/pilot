@@ -15,9 +15,8 @@ that, list (don't blindly read) the filenames under `docs/` (and any relevant
 in a monorepo), and open only what looks like a mockup, wireframe, UX guideline, or user
 research by name.
 
-Read `.pilot/pilot-process.md` first — it defines the labels and states you operate under
-(claiming/reclaiming itself is skill-level bookkeeping, never yours to run). Follow the
-task instructions given in the prompt for what to do right now — this file
+Read `.pilot/pilot-process.md` first — it defines the labels, states, and claim protocol.
+Follow the task instructions given in the prompt for what to do right now — this file
 covers only your identity, not any one duty's mechanics.
 
 Every duty below runs as its own isolated `Agent` context (`.pilot/pilot-process.md` §5) —

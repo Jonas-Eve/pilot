@@ -6,16 +6,14 @@ argument-hint: "[review] [dev] [spec] [scope] [--merge] [--multi [N]] [--again|-
 
 # PILOT — Auto Dispatch
 
-Read `.pilot/pilot-process.md` first if you haven't, plus `.pilot/pilot-link-claim-protocol.md`
-— this skill adds nothing to the state machine, claim protocol, or labels described there. It
-only sequences four already-existing bare/`--auto` sweeps
-(`.pilot/pilot-link-claim-protocol.md` "Scheduled sweeps"), each of which already
+Read `.pilot/pilot-process.md` first if you haven't — this skill adds nothing to the state
+machine, claim protocol, or labels described there. It only sequences four already-existing
+bare/`--auto` sweeps (`.pilot/pilot-process.md` §4 "Scheduled sweeps"), each of which already
 knows how to build and process its own candidate pool — or, given a single ticket instead of
 a pool, already knows how to resolve that one explicit ticket, including cleanly reporting
-nothing to do when it isn't currently in that phase's own territory
-(`.pilot/pilot-link-claim-protocol.md` "Claim Protocol", step 2: "stop... or report nothing
-to do, if a specific ticket number was requested explicitly"). Never re-implement any of
-that resolution logic here — this command doesn't
+nothing to do when it isn't currently in that phase's own territory (§4 "Claim Protocol",
+step 2: "stop... or report nothing to do, if a specific ticket number was requested
+explicitly"). Never re-implement any of that resolution logic here — this command doesn't
 read a ticket's `status:` label, doesn't know the label taxonomy, and doesn't decide which
 phase a ticket belongs to; it only tries each phase in a fixed order and relays whichever one
 says it actually did something. Always let the invoked skill do that deciding.
@@ -25,9 +23,8 @@ Never runs pair: this command's whole purpose is unattended dispatch, so it alwa
 wanting to pair through a specific ticket should call that phase's own skill directly
 instead. This also
 means it never passes `--resume`: that flag recovers a claim orphaned by an abandoned pair
-session or a crashed `--auto`/phase-5 run (`.pilot/pilot-link-claim-protocol.md` "Resuming
-an orphaned claim") — a deliberate human call this command never makes on its own, since
-nothing on the
+session or a crashed `--auto`/phase-5 run (`.pilot/pilot-process.md` §4 "Resuming an orphaned
+claim") — a deliberate human call this command never makes on its own, since nothing on the
 ticket distinguishes an orphan from one genuinely still in progress elsewhere. If a target
 skill's own resolution decides a given ticket looks orphaned, it reports that and stops,
 asking for `--resume` — relay that exactly as any other outcome, don't retry with it.
@@ -104,7 +101,7 @@ that actually does something:
    `--auto` is required here now that this phase
    defaults to pair (`.pilot/pilot-process.md` §4 "Interaction modes") — unattended dispatch
    is this command's whole point. Either way, let it resolve and process exactly as it
-   would standalone (`.pilot/pilot-link-claim-protocol.md` "Picking the next ticket...").
+   would standalone (`.pilot/pilot-process.md` §4 "Picking the next ticket...").
    - Nothing to review (empty pool, or — given a ticket — it isn't a PR/doesn't currently
      belong to phase 5) → continue to the next phase.
    - Otherwise (it reviewed the PR/pool, whatever the verdict) → stop here; this run's result
@@ -112,7 +109,7 @@ that actually does something:
 2. `/pilot-dev` (`Skill` tool). Sweep mode: `args: "--auto"` (append `--multi <N>` if
    given), resolving its own pool — fresh
    `status:dev-ready`, resumable, or reclaimable `status:changes-requested`
-   (`.pilot/pilot-link-claim-protocol.md` "Picking the next ticket..."). Ticket-dispatch mode: `args:
+   (`.pilot/pilot-process.md` §4 "Picking the next ticket..."). Ticket-dispatch mode: `args:
    "<issue number> --auto"` (`--multi <N>` appended the same way).
    - Nothing to do (empty pool, or the given ticket isn't currently phase 4's) → continue to
      the next phase.
@@ -167,7 +164,7 @@ one ticket, all four phases, regardless of what the original command looked like
 Either way, keep re-dispatching that one ticket until any of:
 - an iteration finds nothing to do for it across all four phases (it's left their
   territory entirely — merged, `status:done`/`status:wont-do`, or now a phase-1/phase-6
-  candidate instead, `.pilot/pilot-link-claim-protocol.md`);
+  candidate instead, `.pilot/pilot-process.md` §4);
 - the phase that just ran flagged `needs-human` on it — stop the same way a live pair
   session would, nothing to gain from immediately retrying a ticket now waiting on a
   human;

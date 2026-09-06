@@ -7,9 +7,8 @@ doc ever instructs a `Read` of this file), so keep it in sync by hand whenever t
 (phase 2) restates only the one fact it needs — excluded from the coverage surface — not
 the rest. `.pilot/pilot-task-implement.md`/`-implement-e2e.md` (phase 4) just cite it in
 passing, no restatement. Never by `.claude/agents/pilot-*.md`, which carry only identity
-now. See `.pilot/pilot-process.md` §2/§3/§7 for the generic ticket types, labels, and
-phase-6 trigger, and `.pilot/pilot-link-claim-protocol.md` for the claim protocol, this
-builds on.
+now. See `.pilot/pilot-process.md` §2/§3/§4/§7 for the generic ticket types, labels, claim
+protocol, and phase-6 trigger this builds on.
 
 **Mandatory for every `type:feature` story, never for `type:tech`/`type:bug`.** A story is
 one feature — one integrated flow a human can exercise — so every `type:feature` story
