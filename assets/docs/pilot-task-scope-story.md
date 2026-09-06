@@ -30,7 +30,8 @@ existing e2e coverage rather than duplicating it (never reopen or touch the
 already-done one), and run the PM coverage check (step 4a) against this round's new
 `type:feature` tasks only — the earlier ones were already checked when proposed.
 
-1. Claim the ticket per the protocol in `.pilot/pilot-process.md` §4 before starting.
+1. The claim (assignee + `status:in-scope`) is handled before you are invoked — assume
+   it's already yours.
 2. Challenge it (above).
 3. Decide whether it needs building at all: if challenging it convinces you it's out
    of scope, a duplicate, or superseded, propose `status:wont-do` instead of scoping
