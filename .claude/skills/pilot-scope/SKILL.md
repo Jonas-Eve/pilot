@@ -7,20 +7,20 @@ argument-hint: "<issue number, optional — picks the next fresh/resumable statu
 # PILOT — Phase 2: Investigate
 
 Read `.pilot/pilot-process.md` before running this if you haven't — it's the source of
-truth for labels, states, and the claim protocol; this skill covers only the
-mechanics of running phase 2.
+truth for labels and states — plus `.pilot/pilot-link-claim-protocol.md` for the
+claim/pool/resume mechanics; this skill covers only the mechanics of running phase 2.
 
 ## Steps
 
 1. Determine the input:
    - `--resume <issue>`: must be `status:in-scope`, assigned, **no** `needs-human`/
-     `on-hold` — a ticket left mid-pair. Follow `.pilot/pilot-process.md` §4 "Resuming
-     an orphaned claim", skipping step 2's claim (already claimed). If it
+     `on-hold` — a ticket left mid-pair. Follow `.pilot/pilot-link-claim-protocol.md`
+     "Resuming an orphaned claim", skipping step 2's claim (already claimed). If it
      doesn't match, report and stop.
    - No `--resume`, `status:in-scope`, **no** `needs-human`/`on-hold`, carrying
      `can-resume` → a resume, not a fresh claim. Follow
-     `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket", skipping step 2's
-     claim.
+     `.pilot/pilot-link-claim-protocol.md` "Resuming a `needs-human` ticket", skipping
+     step 2's claim.
    - No `--resume`, `status:in-scope`, assigned, **no** `needs-human`/`on-hold`, and
      no `can-resume` → looks like a ticket left mid-pair. Report and ask the human to
      re-run with `--resume`, or add `can-resume` themselves.
@@ -54,14 +54,14 @@ mechanics of running phase 2.
      linked) and anything referenced via "Blocks #M"/"Depends on #N" or a sub-issue
      relationship, as context. If `level:epic`, there's nothing to scope on the epic
      itself — stop and point at its stories.
-   - No argument → per `.pilot/pilot-process.md` §4 "Picking the next ticket...": the
-     merged pool of unclaimed `status:backlog` (fresh) and `status:in-scope` carrying
+   - No argument → per `.pilot/pilot-link-claim-protocol.md` "Picking the next ticket...":
+     the merged pool of unclaimed `status:backlog` (fresh) and `status:in-scope` carrying
      `can-resume` (resumable — a mid-pair ticket is never in this pool, only reachable
      via `--resume <issue>`), highest `priority:` then oldest first. What a scheduled
-     cron Routine drives with `--auto` (`.pilot/pilot-process.md` §4 "Scheduled
+     cron Routine drives with `--auto` (`.pilot/pilot-link-claim-protocol.md` "Scheduled
      sweeps").
-2. **Claim** the ticket per `.pilot/pilot-process.md` §4: set assignee + `status:in-scope`,
-   re-read to confirm the claim held.
+2. **Claim** the ticket per `.pilot/pilot-link-claim-protocol.md`: set assignee +
+   `status:in-scope`, re-read to confirm the claim held.
 3. Call `Agent` with `subagent_type: "pilot-architect"` — once, or, with `--multi <N>`
    (invalid combined with `--resume`), N times in parallel. Read
    `.pilot/pilot-task-scope-story.md`
@@ -69,7 +69,7 @@ mechanics of running phase 2.
    full (the classify/originate mechanic for step 5's "Prerequisite (bug)" case — the task
    doc covers the phase-2-specific delta itself) — plus only what phase 2 needs beyond
    that: the ticket's current body (including, if resuming, the comment thread's
-   resolution per §4), its parent Epic/linked tickets if any, pointers
+   resolution per `.pilot/pilot-link-claim-protocol.md`), its parent Epic/linked tickets if any, pointers
    to this project's own coding standards/security conventions and architecture docs
    (identity/tenancy/security boundaries, target system design, if documented) —
    plus, for a `status:qa`/`status:in-qa` reclaim (step 1), which existing tasks are
@@ -112,7 +112,7 @@ mechanics of running phase 2.
     (and PM, if applicable) — repeat until approved. Write each approved checkpoint
     into the ticket right away (a comment, or a partial `issue_write`) rather than
     holding it in-conversation — this is what `--resume` picks back up if the
-    session ends first (`.pilot/pilot-process.md` §4 "Resuming an orphaned
+    session ends first (`.pilot/pilot-link-claim-protocol.md` "Resuming an orphaned
     claim"). Requires a live human; a scheduled Routine must pass `--auto`. Once
     approved, continue to step 4c — its GitHub write is then just the remaining
     piece (final labels, unwritten sub-issues), since earlier checkpoints were

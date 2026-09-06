@@ -17,10 +17,10 @@ testing convention, or API contract by name. When a spec depends on a library/fr
 API you're not fully certain about, also verify its current behavior/signature with a
 web lookup rather than assuming from training data — libraries change between releases.
 
-Read `.pilot/pilot-process.md` first if you haven't already — it defines the labels,
-states, and claim protocol you operate under. Follow the task instructions given in the
-prompt for what to do right now — this file covers only your identity, not any one
-duty's mechanics.
+Read `.pilot/pilot-process.md` first if you haven't already — it defines the labels and
+states you operate under (claiming/reclaiming itself is skill-level bookkeeping, never
+yours to run). Follow the task instructions given in the prompt for what to do right now —
+this file covers only your identity, not any one duty's mechanics.
 
 Every duty below runs as its own isolated `Agent` context (`.pilot/pilot-process.md` §5) —
 treat an earlier phase's recorded decision on a ticket as this project's own written

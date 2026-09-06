@@ -6,23 +6,24 @@ argument-hint: "<issue number, optional — picks the next dev-ready or can-resu
 
 # PILOT — Phase 4: Operate
 
-Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
-protocol; this skill covers only phase 4's mechanics. Most likely phase to run as several
-parallel instances; the claim step below prevents collisions.
+Read `.pilot/pilot-process.md` first — source of truth for labels and states — plus
+`.pilot/pilot-link-claim-protocol.md` for the claim/pool/resume mechanics; this skill
+covers only phase 4's mechanics. Most likely phase to run as several parallel instances;
+the claim step below prevents collisions.
 
 ## Steps
 
 1. Resolve the ticket:
    - With `--resume`: must be `status:in-dev`, assigned, no `needs-human`/`on-hold` (a
-     ticket left mid-pair session). Follow `.pilot/pilot-process.md` §4 "Resuming an
-     orphaned claim" instead of steps 2-6 — already claimed; its own "the phase's `Agent`
-     call" is this skill's own step 3, invoked with the recovered context as input.
-     Mismatch → report and stop.
+     ticket left mid-pair session). Follow `.pilot/pilot-link-claim-protocol.md`
+     "Resuming an orphaned claim" instead of steps 2-6 — already claimed; its own "the
+     phase's `Agent` call" is this skill's own step 3, invoked with the recovered context
+     as input. Mismatch → report and stop.
    - Without `--resume`, `status:in-dev`, no `needs-human`/`on-hold`, carrying
      `can-resume` → resume, not a fresh claim. Follow
-     `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-6 —
-     already claimed; its own "the phase's `Agent` call" is this skill's own step 3,
-     invoked with the original blocking context as input.
+     `.pilot/pilot-link-claim-protocol.md` "Resuming a `needs-human` ticket" instead of
+     steps 2-6 — already claimed; its own "the phase's `Agent` call" is this skill's own
+     step 3, invoked with the original blocking context as input.
    - Without `--resume`, `status:in-dev`, assigned, no `needs-human`/`on-hold`, no
      `can-resume` → likely mid-pair-session; report and ask the human to re-run
      with `--resume`, or add `can-resume` themselves.
@@ -40,8 +41,8 @@ parallel instances; the claim step below prevents collisions.
      report which ticket it's blocked on and stop rather than claim (`.pilot/pilot-process.md`
      §4 "Blocked-by dependencies" — applies to an explicitly-given ticket exactly as to
      bare-pool selection below, not just the pool).
-   - Otherwise, or no issue given → per `.pilot/pilot-process.md` §4 "Picking the next
-     ticket...": the given ticket, or the merged pool of unclaimed `status:dev-ready`
+   - Otherwise, or no issue given → per `.pilot/pilot-link-claim-protocol.md` "Picking the
+     next ticket...": the given ticket, or the merged pool of unclaimed `status:dev-ready`
      (fresh), `status:in-dev` carrying `can-resume` (resumable), and
      `status:changes-requested` with no `needs-human`/`on-hold` (reclaimable — immediately,
      for a review verdict that was purely code-level and so never carried `needs-human`
@@ -52,9 +53,10 @@ parallel instances; the claim step below prevents collisions.
      (`.pilot/pilot-process.md` §4 "Blocked-by dependencies"), ordered by highest
      `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
      isn't, then oldest first (`mcp__github__search_issues`). A scheduled cron Routine
-     drives this with `--auto` added (`.pilot/pilot-process.md` §4 "Scheduled sweeps").
-2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-dev`, then
-   re-read the ticket. If the assignee changed (another instance won the race), stand
+     drives this with `--auto` added (`.pilot/pilot-link-claim-protocol.md` "Scheduled
+     sweeps").
+2. **Claim** it per `.pilot/pilot-link-claim-protocol.md`: set assignee + `status:in-dev`,
+   then re-read the ticket. If the assignee changed (another instance won the race), stand
    down and return to step 1 for a different ticket.
 2a. **Pick the persona**: ticket's own `type:e2e` (`.pilot/pilot-link-e2e-tasks.md` — never
     inherited, read off the ticket, not its story) →
@@ -72,7 +74,7 @@ parallel instances; the claim step below prevents collisions.
    (`.pilot/pilot-task-scope-story.md`) — not the running conversation history or the state
    of any other ticket being worked in parallel. **Resume case** (per step 1, needs-human
    cleared): also pass the original blocking comment and whatever's in the thread after it
-   (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"). **Reclaim case** (per
+   (`.pilot/pilot-link-claim-protocol.md` "Resuming a `needs-human` ticket"). **Reclaim case** (per
    step 1): pass the phase-5 blocking review — its submitted PR review, fetched via
    `mcp__github__pull_request_read` method `get_reviews` (the body holds the points, not a
    plain issue comment, `.pilot/pilot-link-review-consensus.md`) — with its `change`-tagged
@@ -86,7 +88,7 @@ parallel instances; the claim step below prevents collisions.
      reply, wait for their response, feed it back to the agent, repeat until approved,
      writing each approved checkpoint into the ticket right away (a comment, or a partial
      `issue_write`) rather than holding it in-conversation — this is what `--resume` picks
-     back up if the session ends before final approval (`.pilot/pilot-process.md` §4
+     back up if the session ends before final approval (`.pilot/pilot-link-claim-protocol.md`
      "Resuming an orphaned claim"). Requires a human live in this session; a scheduled
      Routine must pass `--auto` instead. Once approved, the same `Agent` call proceeds with
      implementation below — the "ask live" behavior for a genuine blocker (§3) still
@@ -116,7 +118,7 @@ parallel instances; the claim step below prevents collisions.
 5. Apply the result:
    - PR opened, or new commits pushed to an existing PR (reclaim case): clear the assignee
      and set `status:review-ready` on the ticket (phase 5's own pre-claim status — never
-     `status:in-review` directly, `.pilot/pilot-process.md` §4 "Claim Protocol").
+     `status:in-review` directly, `.pilot/pilot-link-claim-protocol.md` "Claim Protocol").
    - Blocking conflict: nothing further to set — the subagent already added
      `needs-human` and posted its comment itself (`status:in-dev` stays, per
      `.pilot/pilot-process.md` §3).

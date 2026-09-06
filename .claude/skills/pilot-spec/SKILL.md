@@ -7,21 +7,22 @@ argument-hint: "<issue number, optional — picks the next spec-ready or can-res
 # PILOT — Phase 3: Lay Out
 
 Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
-source of truth for labels, states, and the claim protocol; this skill only covers the
-mechanics of running phase 3.
+source of truth for labels and states — plus `.pilot/pilot-link-claim-protocol.md` for the
+claim/pool/resume mechanics; this skill only covers the mechanics of running phase 3.
 
 ## Steps
 
 1. Resolve the ticket:
    - Given issue number with `--resume`: must be `status:in-spec`, already assigned,
      with **no** `needs-human` and **no** `on-hold` — a ticket left mid-pair session.
-     Follow `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" instead of steps
-     2-5 below — skip the claim, already claimed; its own "the phase's `Agent` call" is
-     this skill's own step 3, invoked with the recovered context as input. If it doesn't
+     Follow `.pilot/pilot-link-claim-protocol.md` "Resuming an orphaned claim" instead of
+     steps 2-5 below — skip the claim, already claimed; its own "the phase's `Agent` call"
+     is this skill's own step 3, invoked with the recovered context as input. If it doesn't
      match, report and stop.
    - Given issue number without `--resume`, `status:in-spec`, **no** `needs-human`, **no**
      `on-hold`, carrying `can-resume` → resume, not a fresh claim. Follow
-     `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-5
+     `.pilot/pilot-link-claim-protocol.md` "Resuming a `needs-human` ticket" instead of
+     steps 2-5
      below — skip the claim, already claimed; its own "the phase's `Agent` call" is this
      skill's own step 3, invoked with the original blocking context as input.
    - Given issue number without `--resume`, `status:in-spec`, already assigned, **no**
@@ -35,7 +36,7 @@ mechanics of running phase 3.
      and stop rather than claim it (`.pilot/pilot-process.md` §4 "Blocked-by dependencies" —
      applies to an explicitly-given ticket the same as bare-pool selection below, not just
      the pool).
-   - Given issue number otherwise, or none given → per `.pilot/pilot-process.md` §4
+   - Given issue number otherwise, or none given → per `.pilot/pilot-link-claim-protocol.md`
      "Picking the next ticket...": the given ticket, or the merged pool of unclaimed
      `status:spec-ready` (fresh) and `status:in-spec` carrying `can-resume` (resumable —
      a ticket left mid-pair session is never in this pool, only reachable via an
@@ -43,16 +44,17 @@ mechanics of running phase 3.
      "Depends on #N" (`.pilot/pilot-process.md` §4 "Blocked-by dependencies"), highest
      `priority:` then a ticket named in another open ticket's "Blocks #M" before one that
      isn't, then oldest first (`mcp__github__search_issues`). This is what a scheduled
-     cron Routine drives with `--auto` added (`.pilot/pilot-process.md` §4 "Scheduled
-     sweeps").
-2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-spec`, re-read
-   to confirm the claim held.
+     cron Routine drives with `--auto` added (`.pilot/pilot-link-claim-protocol.md`
+     "Scheduled sweeps").
+2. **Claim** it per `.pilot/pilot-link-claim-protocol.md`: set assignee + `status:in-spec`,
+   re-read to confirm the claim held.
 3. Call the `Agent` tool with `subagent_type: "pilot-techlead"` — once, or, with
    `--multi <N>` (invalid combined with `--resume`), N times in parallel. Read
    `.pilot/pilot-task-write-spec.md` and pass its content as part of the prompt, plus
    only the ticket's current body (including the architect's decisions, and, if
-   resuming, the comment thread's resolution per §4) and pointers to the relevant
-   docs for the area it touches (this project's own per-service/per-package docs,
+   resuming, the comment thread's resolution per `.pilot/pilot-link-claim-protocol.md`)
+   and pointers to the relevant docs for the area it touches (this project's own
+   per-service/per-package docs,
    wherever it keeps them — e.g. `apps/<app-name>/docs/`, a `docs/` folder, or a
    service-level README) — not the running conversation history.
 3a. **With `--multi`, reconcile the N specs yourself** — no further `Agent` call
@@ -70,7 +72,7 @@ mechanics of running phase 3.
     the agent — repeat until they approve, writing each approved checkpoint into the
     ticket right away (a comment, or a partial `issue_write`) rather than holding it
     in-conversation — this is what `--resume` picks back up if the session ends before
-    final approval (`.pilot/pilot-process.md` §4 "Resuming an orphaned claim"). Requires
+    final approval (`.pilot/pilot-link-claim-protocol.md` "Resuming an orphaned claim"). Requires
     a human live in session; a scheduled Routine must pass `--auto` instead. Once
     approved, continue to step 4b — its GitHub write is then just the remaining piece
     (final `status:dev-ready`), since the spec was already saved checkpoint by checkpoint.

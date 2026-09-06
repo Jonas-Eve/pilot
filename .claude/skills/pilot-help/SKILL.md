@@ -22,10 +22,11 @@ source of truth and can change under `/pilot-update`:
 - `.claude/agents/pilot-*.md` (every installed persona) — its frontmatter/body for
   identity and judgment, and its own trailing task-doc list for which duties it serves.
 - `.pilot/pilot-process.md` — the generic mechanics shared by every phase (pair vs
-  `--auto`, the claim protocol, `--resume`, the `status:`/label state machine) that a
-  single `SKILL.md` assumes rather than restates.
+  `--auto`, the `status:`/label state machine) that a single `SKILL.md` assumes rather
+  than restates.
 - `.pilot/pilot-link-*.md` — mechanics shared by *some* commands, not all (e.g.
-  `pilot-link-multi-consensus.md` for `--multi`, read by every phase skill and
+  `pilot-link-multi-consensus.md` for `--multi`, and `pilot-link-claim-protocol.md` for
+  the claim protocol, `--resume`, and pool-picking, both read by every phase skill and
   `pilot-auto` alike but by none of the bootstrap/maintenance commands).
 - `.pilot/pilot-process-companion.md` — a human-facing quickstart with plain example
   invocations of every command; reuse or adapt its examples in detail/recommend mode

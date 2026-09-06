@@ -102,7 +102,7 @@ spec).
    — including a "PILOT ticket" section if the template defines one: type,
    `Closes #<issue>`, and any spec deviation from step 4 — clear the assignee, and
    move the ticket to `status:review-ready` (phase 5's own pre-claim status,
-   `.pilot/pilot-process.md` §4). Never merge — that's phase 5's call, never dev's: a
+   `.pilot/pilot-link-claim-protocol.md`). Never merge — that's phase 5's call, never dev's: a
    human merges by hand, unless `/pilot-review` itself was run with `--merge`
    (`.pilot/pilot-process.md` §3 "`status:approved`").
 7. Update any docs or service-level README/CLAUDE.md (or equivalent) the change

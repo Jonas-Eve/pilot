@@ -1,13 +1,14 @@
 ---
 name: pilot-review
-description: "Phase 5 of PILOT (see .pilot/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, .pilot/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+architect+tech lead for type:feature/type:e2e, architect+tech lead only for type:tech/type:bug) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved; a pure code-level verdict moves straight to status:changes-requested with no needs-human, so /pilot-dev can reclaim it immediately; a verdict blocking on any judgment call (alone or alongside code-level points) adds needs-human too (status:in-review stays for a pure judgment call, status:changes-requested for a mixed one), gating /pilot-dev's reclaim on a human clearing it. Defaults to pair mode: an all-approve or pure-code-level verdict gets a live human's last look before it's submitted; a verdict carrying any judgment call always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. An optional --multi <N> runs N instances of each already-selected reviewer role independently on the one claimed PR instead of one, reconciling each role's own verdict before the usual cross-role aggregation, escalating to needs-human on a genuine, unresolved same-point disagreement (see .pilot/pilot-link-multi-consensus.md). Use once /pilot-dev has opened a PR ready for review."
+description: "Phase 5 of PILOT (see .pilot/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, .pilot/pilot-link-claim-protocol.md 'Claim Protocol'), then runs the review agents (PM+architect+tech lead for type:feature/type:e2e, architect+tech lead only for type:tech/type:bug) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved; a pure code-level verdict moves straight to status:changes-requested with no needs-human, so /pilot-dev can reclaim it immediately; a verdict blocking on any judgment call (alone or alongside code-level points) adds needs-human too (status:in-review stays for a pure judgment call, status:changes-requested for a mixed one), gating /pilot-dev's reclaim on a human clearing it. Defaults to pair mode: an all-approve or pure-code-level verdict gets a live human's last look before it's submitted; a verdict carrying any judgment call always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. An optional --multi <N> runs N instances of each already-selected reviewer role independently on the one claimed PR instead of one, reconciling each role's own verdict before the usual cross-role aggregation, escalating to needs-human on a genuine, unresolved same-point disagreement (see .pilot/pilot-link-multi-consensus.md). Use once /pilot-dev has opened a PR ready for review."
 argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto] [--merge] [--multi [N]] | <issue number> --resume [--merge]"
 ---
 
 # PILOT — Phase 5: Test & Validate
 
-Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
-protocol (§4) — and `.pilot/pilot-link-review-consensus.md` for the shared `change`/`decision`
+Read `.pilot/pilot-process.md` first — source of truth for labels and states — plus
+`.pilot/pilot-link-claim-protocol.md` for the claim/pool/resume mechanics and
+`.pilot/pilot-link-review-consensus.md` for the shared `change`/`decision`
 tags contract; this skill covers only phase 5's mechanics, including how it picks the
 reviewer set (step 3).
 
@@ -19,7 +20,8 @@ either), step 8 is then a pre-submission checkpoint; for an outcome carrying `ne
 (decision-only, or mixed `change`+`decision`), that outcome always submits immediately
 (step 9) and pair's value comes after, in step 10's live resolution. `--auto` skips step
 8's pause and step 10's live engagement, applying every outcome straight through (required
-for a scheduled Routine, `.pilot/pilot-process.md` §4 "Scheduled sweeps"). `--merge` is a
+for a scheduled Routine, `.pilot/pilot-link-claim-protocol.md` "Scheduled sweeps").
+`--merge` is a
 separate, orthogonal flag (step 12) usable with either mode — without it, this skill never
 merges. `--multi <N>` runs N instances of each role already selected in step 3 (PM
 and/or architect and/or tech lead, depending on `type:`) instead of one — composing with,
@@ -31,7 +33,7 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
 
 1. Resolve the ticket:
    - Given `--resume`: must be `status:in-review`, assigned, no `needs-human`/`on-hold`.
-     Follow `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" instead of step 2 below
+     Follow `.pilot/pilot-link-claim-protocol.md` "Resuming an orphaned claim" instead of step 2 below
      — already claimed. Check for an existing pending review under this run's own identity
      (`mcp__github__pull_request_read` method `get_reviews`): still pinned to the PR's
      current head commit → skip straight to step 8 with its already-computed outcome
@@ -41,21 +43,21 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
      resume normally from step 3. Mismatch → report and stop.
    - Given (or pooled) without `--resume`, `status:in-review`, assigned, no
      `needs-human`/`on-hold`, carrying `can-resume` → resume,
-     not a fresh claim. Follow `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"
-     instead of step 2 — already claimed.
+     not a fresh claim. Follow `.pilot/pilot-link-claim-protocol.md` "Resuming a
+     `needs-human` ticket" instead of step 2 — already claimed.
    - Given without `--resume`, `status:in-review`, assigned, no `needs-human`/`on-hold`, no
      `can-resume` → looks orphaned; report and ask the human to re-run with
      `--resume`, or add `can-resume` themselves.
    - `status:in-review` still carrying `needs-human`/`on-hold` → not resolved yet; report
      and stop.
-   - Otherwise, or none given → per `.pilot/pilot-process.md` §4 "Picking the next
+   - Otherwise, or none given → per `.pilot/pilot-link-claim-protocol.md` "Picking the next
      ticket...": the given ticket, or the merged pool of unclaimed `status:review-ready`
      (fresh) and `status:in-review` carrying `can-resume` (resumable — handled by
      the second bullet above, not here), excluding `on-hold`, ordered by highest
      `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
      isn't, then oldest first (`mcp__github__search_issues`). `status:changes-requested`
      tickets are never in this pool — `/pilot-dev` reclaims those (§4).
-2. **Claim** it (fresh case only, above) per `.pilot/pilot-process.md` §4: assignee +
+2. **Claim** it (fresh case only, above) per `.pilot/pilot-link-claim-protocol.md`: assignee +
    `status:in-review`, re-read to confirm. If the assignee changed (race lost), stand down
    and return to step 1 for a different candidate (bare pool only — report nothing to do if
    a specific ticket was requested).
@@ -96,7 +98,8 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
    run that raised the block, fetched via `mcp__github__pull_request_read` method
    `get_reviews` (its body holds the points, not a plain issue comment) — and whatever's
    in the PR's comment thread after it: a specific reply, or "no reply — treat as approved
-   as proposed" if none (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket") —
+   as proposed" if none (`.pilot/pilot-link-claim-protocol.md` "Resuming a `needs-human`
+   ticket") —
    so reviewers don't re-raise a point a human already answered.
 5a. **Per-role reconciliation** (only when `--multi` ran more than one instance of a
     role): for each such role, reconcile its N verdicts yourself — no further `Agent`

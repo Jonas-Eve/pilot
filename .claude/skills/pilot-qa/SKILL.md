@@ -8,20 +8,21 @@ disable-model-invocation: true
 # PILOT — Phase 6: Human QA
 
 Read `.pilot/pilot-process.md` before running this if you haven't already — it's the source
-of truth for labels, states, and the claim protocol, and §7 specifically covers this phase;
-this skill only covers the mechanics of running it.
+of truth for labels and states, and §7 specifically covers this phase — plus
+`.pilot/pilot-link-claim-protocol.md` for the claim/pool/resume mechanics; this skill only
+covers the mechanics of running it.
 
 ## Steps
 
 1. Determine the input:
    - `--resume <issue>`: must be `status:in-qa`, assigned, **no** `needs-human`/`on-hold`
-     — a session left mid-pair (`.pilot/pilot-process.md` §4 "Resuming an orphaned
-     claim"). Read the ticket and thread to reconstruct which cases were already
+     — a session left mid-pair (`.pilot/pilot-link-claim-protocol.md` "Resuming an
+     orphaned claim"). Read the ticket and thread to reconstruct which cases were already
      confirmed, claim it (overwrite assignee), skip to step 5 with that state. If it
      doesn't match, report and stop.
    - Issue number without `--resume`, `status:in-qa`, **no** `needs-human`/`on-hold`,
      carrying `can-resume` → a resume, not a fresh claim
-     (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"); skip the claim in
+     (`.pilot/pilot-link-claim-protocol.md` "Resuming a `needs-human` ticket"); skip the claim in
      step 2, it's already claimed. Read the ticket and thread to reconstruct which cases
      were already confirmed and the blocking point's resolution, then skip to step 5 with
      that state, same as the `--resume` bullet above — never restart the test plan from
@@ -37,15 +38,15 @@ this skill only covers the mechanics of running it.
      carry no open "Depends on #N" (`.pilot/pilot-process.md` §4 "Blocked-by dependencies" —
      applies to an explicitly-given ticket here too, not just the pool) — report which
      ticket it's still blocked on and stop rather than claiming it, if one's still open.
-   - No argument → per `.pilot/pilot-process.md` §4 "Picking the next ticket...": merged
-     pool of unclaimed `status:qa` (fresh) and `status:in-qa` carrying `can-resume`
+   - No argument → per `.pilot/pilot-link-claim-protocol.md` "Picking the next ticket...":
+     merged pool of unclaimed `status:qa` (fresh) and `status:in-qa` carrying `can-resume`
      (resumable — a mid-pair ticket is only reachable via explicit `--resume`),
      excluding `on-hold` and any with an unresolved "Depends on #N"
      (`.pilot/pilot-process.md` §4 "Blocked-by dependencies"), highest `priority:` then
      oldest first. No `--auto`, never Routine-driven (`.pilot/pilot-process.md` §4
-     "Interaction modes", "Scheduled sweeps").
-2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-qa`, re-read to
-   confirm the claim held.
+     "Interaction modes", `.pilot/pilot-link-claim-protocol.md` "Scheduled sweeps").
+2. **Claim** it per `.pilot/pilot-link-claim-protocol.md`: set assignee + `status:in-qa`,
+   re-read to confirm the claim held.
 3. Gather context: the story's own body (acceptance criteria) and, for each of its dev and
    e2e tasks, the spec (phase 3) and the merged PR (`mcp__github__issue_read`,
    `mcp__github__pull_request_read`) — not the running conversation history.

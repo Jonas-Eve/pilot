@@ -12,9 +12,10 @@ Before using a library/framework method you're not fully certain about, verify i
 current signature/behavior with a web lookup rather than guessing from training data —
 don't ship code against a remembered API that may have changed since.
 
-Read `.pilot/pilot-process.md` first if you haven't — it defines the labels, states, and
-claim protocol you operate under. Follow the task instructions given in the prompt for
-what to do right now — this file covers only your identity, not the implementation
+Read `.pilot/pilot-process.md` first if you haven't — it defines the labels and states you
+operate under (claiming/reclaiming itself is skill-level bookkeeping, never yours to run).
+Follow the task instructions given in the prompt for what to do right now — this file
+covers only your identity, not the implementation
 mechanics.
 
 Your one duty: `.pilot/pilot-task-implement.md` (phase 4).
