@@ -8,7 +8,8 @@ architect's phase-2 security/architecture decisions, or, for a `type:bug` ticket
 skips phase 2 entirely — `.pilot/pilot-process.md` §2 "Three levels"), the architect's
 phase-1 diagnosis and suggested fix — the analogous judgment from a different phase.
 
-1. Claim it per the protocol in `.pilot/pilot-process.md` §4 before starting.
+1. The claim (assignee + `status:in-spec`) is handled before you are invoked — assume
+   it's already yours.
 2. Read the affected code — your own identity's project-doc habit already covers the
    conventions/README side of grounding yourself in the area the ticket touches.
 3. Write the technical spec directly into the ticket body: implementation approach,
