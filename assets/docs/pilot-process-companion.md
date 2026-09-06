@@ -88,6 +88,20 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
                           nothing's left to do, needs-human is flagged, it closes, or a
                           concurrent claim makes it look orphaned
                           (`--continue` is an accepted alias for `--next`)
+
+/pilot-help             → lists every installed command, grouped and summarized
+/pilot-help dev         → explains /pilot-dev in full (modes, flags, examples)
+/pilot-help --multi     → explains --multi: which commands accept it, what it does
+/pilot-help architect   → explains the pilot-architect persona (identity, which phases
+                          use it) — no collision, so the bare name is enough
+/pilot-help agent dev   → explains the pilot-dev persona specifically; bare "dev" would
+                          instead explain the /pilot-dev command
+/pilot-help "I want to keep retrying the same ticket until it's done"
+                        → answers with the exact command (here, /pilot-auto <ticket>
+                          --next), not just a description
+/pilot-help "who checks security implications"
+                        → names the persona (pilot-architect), not a command line —
+                          the ask was "who", not "what do I run"
 ```
 
 Pairing `/pilot-auto <ticket> [--merge]` with Claude Code's own `/loop` skill (e.g.

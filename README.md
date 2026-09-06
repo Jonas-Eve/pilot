@@ -29,8 +29,9 @@ time instead of carrying every one of its duties' instructions on every invocati
 
 ## What this repo ships
 
-- **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, plus the six
-  PILOT phase commands — copied verbatim into a consuming project's `.claude/skills/`
+- **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, the six
+  PILOT phase commands, a dispatcher, and a help command — copied verbatim into a
+  consuming project's `.claude/skills/`
   (see "Installing in a project" below), so all of them, `pilot-init`/`pilot-init-archi`/
   `pilot-update` included, are ordinary project-local commands once installed.
   - `/pilot-init` — one-time: name the project, write its functional vision, copy in
@@ -67,6 +68,13 @@ time instead of carrying every one of its duties' instructions on every invocati
     Lets one scheduled Routine drive the whole pipeline, or several Routines split it by
     cadence, or a human/Routine hand it one ticket without knowing which phase it's in —
     see `.claude/skills/pilot-auto/SKILL.md`.
+  - `/pilot-help` — read-only discovery over all of the above plus the six agents below:
+    bare, lists every installed command with a one-line summary; given a command, flag,
+    or agent name, explains it in detail (an agent name that collides with a command's,
+    `dev`/`qa`, needs a leading `agent` token — the other four don't); given free text,
+    either the exact command to run for a described goal, or which persona is
+    responsible for a kind of judgment, whichever was actually asked. Never claims a
+    ticket or invokes another skill/agent itself — see `.claude/skills/pilot-help/SKILL.md`.
 - **Agents** (`.claude/agents/`): the six personas the phase skills delegate to —
   `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 4's
   persona for an end-to-end-test task, `type:e2e`, instead of `pilot-dev`), and
