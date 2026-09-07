@@ -152,9 +152,9 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
      reviewer; `needs-human` added; `status:in-review` stays.
 
    If GitHub rejects an `APPROVE`/`REQUEST_CHANGES` submission above because this run's
-   connected identity is the PR's own author, resubmit the identical body with `event:
-   COMMENT` instead — never `needs-human` on its own — and still apply that bullet's
-   label/`status:` transition unchanged.
+   connected identity is the PR's own author, retry `submit_pending` on that same pending
+   review (never a second `create`) with `event: COMMENT` instead — never `needs-human` on
+   its own — and still apply that bullet's label/`status:` transition unchanged.
 10. **Live resolution of a submitted `needs-human` block** (pair mode only, right after
     step 9 submits it; applies to both the decision-only and the mixed `change`+`decision`
     outcome — never the pure-`change` outcome, which never carries `needs-human` to
