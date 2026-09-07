@@ -97,13 +97,16 @@ parallel instances; the claim step below prevents collisions.
      for a proposed implementation approach only, not the finished implementation** — same
      content as the pair-coding checkpoint above, never code. **Reconcile the N approaches
      yourself** — no further `Agent` call (`.pilot/pilot-link-multi-consensus.md` has the
-     comparison criteria): every substantive point agrees → adopt one verbatim; genuine
+     comparison criteria, and the escalation mechanics — including what happens if a
+     human is live in this pair session when the second round still disagrees — for
+     what follows): every substantive point agrees → adopt one verbatim; genuine
      disagreement → run one more round of N instances with the disagreement noted, then
-     compare again; still unresolved → stop here, add `needs-human` quoting every round's
-     differing approaches verbatim — nothing was implemented yet, so nothing to push or
-     clean up. Once an approach is settled, **unless `--auto`**, show it to the human as
-     the normal pair-coding checkpoint above (repeat until approved, same checkpoint
-     discipline) — then, whether via pair approval or `--auto` straight through, make
+     compare again; still unresolved → follow that escalation — nothing was implemented
+     yet, so nothing to push or clean up either way. Once an approach is settled (reached
+     by consensus, or by a live human resolving the escalation), **unless `--auto`**,
+     show it to the human as the normal pair-coding checkpoint above (repeat until
+     approved, same checkpoint discipline) — then, whether via pair approval or `--auto`
+     straight through, make
      **one further, single** `Agent` call (never N again — the ensemble's job ends at the
      approach) with that approach as its explicit plan, to actually implement it.
 4. The subagent either implements the ticket, runs the relevant validation, and opens a

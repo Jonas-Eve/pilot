@@ -76,11 +76,12 @@ mechanics of running phase 2.
    already `status:done` from the earlier round, including the e2e one. Not the
    conversation history.
 3a. **With `--multi`, reconcile the N proposals yourself** — no further `Agent` call
-    (`.pilot/pilot-link-multi-consensus.md` has the comparison criteria): every
-    substantive point agrees → adopt one verbatim; genuine disagreement → run one more
-    round of step 3 with the disagreement noted, then compare again; still unresolved →
-    stop here, add `needs-human` with every round's differing positions quoted verbatim —
-    don't continue to step 4.
+    (`.pilot/pilot-link-multi-consensus.md` has the comparison criteria and the
+    escalation mechanics, including what happens if a human is live in this pair
+    session when the second round still disagrees): every substantive point agrees →
+    adopt one verbatim; genuine disagreement → run one more round of step 3 with the
+    disagreement noted, then compare again; still unresolved → follow that escalation
+    before deciding whether to continue to step 4.
 4. The subagent (or, with `--multi`, the reconciled proposal) returns one of:
    - `type:tech`: a single scoped body (no split, with its `priority:` reconfirmed or
      revised from phase 1), or a set of proposed tasks (split, judgment call) each with

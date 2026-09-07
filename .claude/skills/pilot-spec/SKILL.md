@@ -56,11 +56,12 @@ mechanics of running phase 3.
    wherever it keeps them — e.g. `apps/<app-name>/docs/`, a `docs/` folder, or a
    service-level README) — not the running conversation history.
 3a. **With `--multi`, reconcile the N specs yourself** — no further `Agent` call
-    (`.pilot/pilot-link-multi-consensus.md` has the comparison criteria): every
-    substantive point agrees → adopt one verbatim; genuine disagreement → run one more
-    round of step 3 with the disagreement noted, then compare again; still unresolved →
-    stop here, add `needs-human` with every round's differing positions quoted verbatim —
-    don't continue to step 4.
+    (`.pilot/pilot-link-multi-consensus.md` has the comparison criteria and the
+    escalation mechanics, including what happens if a human is live in this pair
+    session when the second round still disagrees): every substantive point agrees →
+    adopt one verbatim; genuine disagreement → run one more round of step 3 with the
+    disagreement noted, then compare again; still unresolved → follow that escalation
+    before deciding whether to continue to step 4.
 4. The subagent (or, with `--multi`, the reconciled proposal) returns either: a
    technical spec to append to the ticket, or a blocking conflict with the architect's
    decisions that needs a human.
