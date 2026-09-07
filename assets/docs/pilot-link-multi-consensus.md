@@ -114,7 +114,16 @@ What counts as a "substantive decision point" is specific to each caller:
   implemented yet, so nothing to push or clean up), add `needs-human`
   (`.pilot/pilot-process.md` §3) with a comment quoting every divergent point and each
   round's differing positions verbatim, never summarized away — a human decides directly,
-  the same as any other blocking judgment call. For `/pilot-review`, don't add
+  the same as any other blocking judgment call, **including the "a human is live in the
+  same session" path** (`.pilot/pilot-process.md` §3): pair mode running `--multi` is
+  still pair mode, so a human present right then answers immediately rather than waiting
+  for the async resume protocol, same as a single-instance run would. Once they do, the
+  agent posts the resolution comment, removes `needs-human`, and their answer becomes the
+  reconciled proposal — the phase then continues to its normal remaining steps exactly as
+  if consensus had been reached at round 1 or 2. No live human on the spot (a scheduled
+  `--auto` sweep, or a pair session where the human says they need to think about it) →
+  the ticket stays blocked and waits, same as any other `needs-human` ticket. For
+  `/pilot-review`, don't add
   `needs-human` directly — fold the divergence into one `decision`-tagged point in that
   role's list instead (above), scoped to the specific contested point only; the rest of
   that role's reconciled points, and the other roles' own ensembles, proceed normally, and
