@@ -104,16 +104,6 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
                           the ask was "who", not "what do I run"
 ```
 
-Pairing `/pilot-auto <ticket> [--merge]` with Claude Code's own `/loop` skill (e.g.
-`/loop /pilot-auto 48 --merge`) re-invokes it repeatedly — each call advances the ticket
-by one phase — until a call reports nothing left to do (merged, `needs-human`, or
-`status:done`); `/pilot-auto 48 --next [--merge]` does the same thing natively, in one
-command, without needing `/loop` at all. `/loop` is a general Claude Code capability, not
-a PILOT skill; see its own documentation for availability across surfaces (e.g. it needs
-a live session or a cloud Routine to run unattended — a closed IDE window stops it) — still
-useful for looping a bare `/pilot-scope`/`/pilot-spec`/`/pilot-dev`/`/pilot-review --auto`
-call, or anything `--again`/`--next` don't cover.
-
 ## Abandoning stuck work instead of resuming it
 
 `--resume <issue>` and the `can-resume` label (`.pilot/pilot-process.md` §3) both continue
