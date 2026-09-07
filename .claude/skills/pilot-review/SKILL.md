@@ -141,14 +141,7 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
    `submit_pending`) plus the matching label — the outcome's `event`
    (`.pilot/pilot-link-review-consensus.md`):
    - All approved → `event: APPROVE`; body states all agents approve and, per step 12,
-     whether this run also merges or a human still needs to; `status:approved`. GitHub
-     itself refuses an `APPROVE` review from the PR's own author, which this run's single
-     connected GitHub identity always is — a mechanical platform restriction, not a
-     judgment call, so it never becomes `needs-human`: on that specific rejection, resubmit
-     the identical body with `event: COMMENT` instead (noting in the body that every
-     reviewer approves but GitHub couldn't record a native approval for that reason) and
-     still set `status:approved` — the label, not GitHub's own review state, is what the
-     rest of PILOT reads.
+     whether this run also merges or a human still needs to; `status:approved`.
    - At least one blocking point tagged `change`, none tagged `decision` → `event:
      REQUEST_CHANGES`; body lists every point; **no** `needs-human`; `status:changes-requested`
      — `/pilot-dev` may reclaim it right away, no human step needed.
@@ -157,6 +150,11 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
      reclaims once the `decision` point(s) are cleared.
    - Blocking points all `decision` → `event: COMMENT`; body lists every point grouped by
      reviewer; `needs-human` added; `status:in-review` stays.
+
+   If GitHub rejects an `APPROVE`/`REQUEST_CHANGES` submission above because this run's
+   connected identity is the PR's own author, resubmit the identical body with `event:
+   COMMENT` instead — never `needs-human` on its own — and still apply that bullet's
+   label/`status:` transition unchanged.
 10. **Live resolution of a submitted `needs-human` block** (pair mode only, right after
     step 9 submits it; applies to both the decision-only and the mixed `change`+`decision`
     outcome — never the pure-`change` outcome, which never carries `needs-human` to
