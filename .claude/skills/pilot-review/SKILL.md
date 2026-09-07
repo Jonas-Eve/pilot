@@ -164,7 +164,10 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
     (approved, or the remaining `change`-tagged points instead) and submit **one more**
     review — a fresh `create` with `event` set this time, no separate pending step needed
     for a decision made in the same breath — reflecting it, same event mapping as step 9,
-    plus the matching label. This keeps GitHub's own review status honest, not just the
+    plus the matching label. If GitHub rejects that submission for the same reason as step
+    9, retry with another fresh `create` (`event: COMMENT`) instead — no pending review to
+    resubmit against here, so a fresh `create` is the retry itself — still applying the
+    corrected label unchanged. This keeps GitHub's own review status honest, not just the
     ticket's label; never fold it into step 9's review, that one already went out. If their
     answer doesn't actually clear the block, or `--auto` was given, or nobody answers on the
     spot: leave step 9's review and `needs-human` standing — a genuine async wait like any
