@@ -141,7 +141,14 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
    `submit_pending`) plus the matching label — the outcome's `event`
    (`.pilot/pilot-link-review-consensus.md`):
    - All approved → `event: APPROVE`; body states all agents approve and, per step 12,
-     whether this run also merges or a human still needs to; `status:approved`.
+     whether this run also merges or a human still needs to; `status:approved`. GitHub
+     itself refuses an `APPROVE` review from the PR's own author, which this run's single
+     connected GitHub identity always is — a mechanical platform restriction, not a
+     judgment call, so it never becomes `needs-human`: on that specific rejection, resubmit
+     the identical body with `event: COMMENT` instead (noting in the body that every
+     reviewer approves but GitHub couldn't record a native approval for that reason) and
+     still set `status:approved` — the label, not GitHub's own review state, is what the
+     rest of PILOT reads.
    - At least one blocking point tagged `change`, none tagged `decision` → `event:
      REQUEST_CHANGES`; body lists every point; **no** `needs-human`; `status:changes-requested`
      — `/pilot-dev` may reclaim it right away, no human step needed.
