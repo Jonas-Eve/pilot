@@ -646,9 +646,9 @@ session ends before final approval, exactly like a claimed ticket left mid-phase
 5. Only after a successful claim does the phase's real work (the subagent call) start.
 
 Phase 5's claim only serializes separate *runs* of `/pilot-review` against the same
-ticket — the three (or two) reviewers **within** one claimed run still execute
-independently in parallel, never seeing each other's verdict
-(`.pilot/pilot-link-review-consensus.md`).
+ticket — the reviewers **within** one claimed run (three, two, or a human-narrowed subset,
+`pilot-review/SKILL.md` step 3) still execute independently in parallel, never seeing each
+other's verdict (`.pilot/pilot-link-review-consensus.md`).
 
 ### Picking the next ticket when none is specified
 

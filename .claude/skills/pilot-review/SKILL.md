@@ -1,7 +1,7 @@
 ---
 name: pilot-review
-description: "Phase 5 of PILOT (see .pilot/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, .pilot/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+architect+tech lead for type:feature/type:e2e, architect+tech lead only for type:tech/type:bug) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved; a pure code-level verdict moves straight to status:changes-requested with no needs-human, so /pilot-dev can reclaim it immediately; a verdict blocking on any judgment call (alone or alongside code-level points) adds needs-human too (status:in-review stays for a pure judgment call, status:changes-requested for a mixed one), gating /pilot-dev's reclaim on a human clearing it. Defaults to pair mode: an all-approve or pure-code-level verdict gets a live human's last look before it's submitted; a verdict carrying any judgment call always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. An optional --multi <N> runs N instances of each already-selected reviewer role independently on the one claimed PR instead of one, reconciling each role's own verdict before the usual cross-role aggregation, escalating to needs-human on a genuine, unresolved same-point disagreement (see .pilot/pilot-link-multi-consensus.md). Use once /pilot-dev has opened a PR ready for review."
-argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto] [--merge] [--multi [N]] | <issue number> --resume [--merge]"
+description: "Phase 5 of PILOT (see .pilot/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, .pilot/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+architect+tech lead for type:feature/type:e2e, architect+tech lead only for type:tech/type:bug) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved; a pure code-level verdict moves straight to status:changes-requested with no needs-human, so /pilot-dev can reclaim it immediately; a verdict blocking on any judgment call (alone or alongside code-level points) adds needs-human too (status:in-review stays for a pure judgment call, status:changes-requested for a mixed one), gating /pilot-dev's reclaim on a human clearing it. Defaults to pair mode: an all-approve or pure-code-level verdict gets a live human's last look before it's submitted; a verdict carrying any judgment call always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. An optional --multi <N> runs N instances of each already-selected reviewer role independently on the one claimed PR instead of one, reconciling each role's own verdict before the usual cross-role aggregation, escalating to needs-human on a genuine, unresolved same-point disagreement (see .pilot/pilot-link-multi-consensus.md). An optional --agents <pm|architect|techlead>[,...], valid only with an explicit PR/issue number (never a sweep) and never combined with --auto (it always keeps the pair-mode pre-submission pause as a check against picking the wrong role), overrides step 3's type-based reviewer set with exactly the given role(s) — the human's own call, typically on a reclaimed PR, that the other role(s)' prior approval still holds so only the flagged one(s) need to re-run; refused if the role(s) aren't part of the ticket's own type-based set, or if no review has been submitted on the PR yet. Use once /pilot-dev has opened a PR ready for review."
+argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto] [--merge] [--multi [N]] | <issue or PR number> --agents <pm|architect|techlead>[,...] [--merge] | <issue number> --resume [--merge]"
 ---
 
 # PILOT — Phase 5: Test & Validate
@@ -23,9 +23,14 @@ for a scheduled Routine, `.pilot/pilot-process.md` §4 "Scheduled sweeps"). `--m
 separate, orthogonal flag (step 12) usable with either mode — without it, this skill never
 merges. `--multi <N>` runs N instances of each role already selected in step 3 (PM
 and/or architect and/or tech lead, depending on `type:`) instead of one — composing with,
-not replacing, this skill's existing per-role parallelism: (2 or 3) roles × N instances
-simultaneous `Agent` calls, reconciled per role before step 6's cross-role aggregation.
-Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
+not replacing, this skill's existing per-role parallelism: (2, 3, or a `--agents`-narrowed
+count) roles × N instances simultaneous `Agent` calls, reconciled per role before step 6's
+cross-role aggregation.
+Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`. `--agents
+<list>` (step 3) is a separate, orthogonal override valid only with an explicit PR/issue
+number, never a sweep — combinable with `--multi` or `--merge`, but never `--auto`: it's
+inherently a human's own call on which role to drop, so it always keeps step 8's
+pre-submission pause as the last check against picking the wrong one.
 
 ## Steps
 
@@ -63,14 +68,26 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
    `.pilot/pilot-process.md` §2 "`type:` is never inherited") to pick the reviewer set:
    - `type:feature` or `type:e2e` → `pilot-pm`, `pilot-architect`, `pilot-techlead`
    - `type:tech` or `type:bug` → `pilot-architect`, `pilot-techlead` (no PM)
+   - Given `--agents <list>` (only valid with an explicit PR/issue number, never a sweep)
+     → first restrict `<list>` to roles already in this ticket's own type-based set above
+     (never `pm` on `type:tech`/`type:bug` — it was never selected in the first place, not
+     a role to narrow away from; invalid combination, refuse and report). Then confirm at
+     least one review was already submitted on this PR
+     (`mcp__github__pull_request_read` method `get_reviews`) — none found → refuse
+     `--agents` and report: there's no prior round for the dropped role(s)' approval to
+     still be holding, so this ticket needs the full set at least once first. Found → use
+     exactly `<list>` instead of the type-based set, dropping the rest — the human's own
+     call, typically on a reclaimed PR, that the dropped role(s)' prior verdict still holds
+     against this round's fix, so only the flagged role(s) actually re-run.
 
-   Together these cover every dimension phase 5 checks: PM — product fit / e2e-flow
-   validation; architect — conformance to recorded security/architecture decisions; tech
-   lead — spec conformance and code quality. If a future edit changes what any agent's
-   file checks, re-verify this still adds up to full coverage. All reviewers run **in
-   parallel, fully independent of each other** — none sees another's verdict — in both
-   pair and `--auto`; nothing later in the run reopens that isolation, not even the one
-   pair checkpoint.
+   Absent `--agents`, together these cover every dimension phase 5 checks: PM — product
+   fit / e2e-flow validation; architect — conformance to recorded security/architecture
+   decisions; tech lead — spec conformance and code quality. If a future edit changes what
+   any agent's file checks, re-verify this still adds up to full coverage — `--agents` is
+   the one deliberate, human-invoked exception to that coverage, not a bug in it. All
+   selected reviewers run **in parallel, fully independent of each other** — none sees
+   another's verdict — in both pair and `--auto`; nothing later in the run reopens that
+   isolation, not even the one pair checkpoint.
 4. Once this project has a CI workflow covering the affected area, check it's green on the
    PR's head commit before proceeding — red/pending CI is an automatic `change`-tagged
    block (step 6). Until then, this is a no-op and the tech lead's own re-run in step 5 is
@@ -140,7 +157,9 @@ Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`.
 9. Submit step 7's pending review (`mcp__github__pull_request_review_write`, method
    `submit_pending`) plus the matching label — the outcome's `event`
    (`.pilot/pilot-link-review-consensus.md`):
-   - All approved → `event: APPROVE`; body states all agents approve and, per step 12,
+   - All approved → `event: APPROVE`; body names exactly which role(s) approved this
+     round (every role in step 3's set — all of them, unless `--agents` narrowed it, in
+     which case say so explicitly rather than implying full coverage) and, per step 12,
      whether this run also merges or a human still needs to; `status:approved`.
    - At least one blocking point tagged `change`, none tagged `decision` → `event:
      REQUEST_CHANGES`; body lists every point; **no** `needs-human`; `status:changes-requested`
