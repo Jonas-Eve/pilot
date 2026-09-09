@@ -120,13 +120,14 @@ pre-submission pause as the last check against picking the wrong one.
    its own spec (it re-runs validation on the PR branch itself). When step 3 found a prior
    submitted review on this PR — whether reached via step 1's needs-human-resume branch or
    an ordinary reclaim after a pure-`change` fix — also pass its full body (every point,
-   change and decision alike, marked which is which) to every reviewer this round, plus
-   whatever's in the PR's comment thread after it: a specific reply, or "no reply — treat
-   as approved as proposed" if none, for a `decision` point
-   (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"); the dev's own reclaim
-   summary comment, if present, for a `change` point (`.pilot/pilot-process.md` §4
-   "Reclaiming a `status:changes-requested` ticket"). `.pilot/pilot-link-review-consensus.md`
-   has how each reviewer is expected to use this instead of starting blind.
+   change and decision alike, marked which is which) to every reviewer this round, plus,
+   if present: whatever's in the PR's comment thread after it — a specific reply resolving
+   a `decision` point, or "no reply — treat as approved as proposed" if none
+   (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket") — and the dev's own
+   reclaim summary comment on the ticket's *issue* (not the PR,
+   `.pilot/pilot-process.md` §4 "Reclaiming a `status:changes-requested` ticket").
+   `.pilot/pilot-link-review-consensus.md` has how each reviewer is expected to use this
+   instead of starting blind.
 5a. **Per-role reconciliation** (only when `--multi` ran more than one instance of a
     role): for each such role, reconcile its N verdicts yourself — no further `Agent`
     call — into that role's single point-list per `.pilot/pilot-link-multi-consensus.md`
