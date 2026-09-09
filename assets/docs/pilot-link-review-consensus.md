@@ -6,6 +6,16 @@ Injected whole by `pilot-review/SKILL.md` into each reviewer's prompt, and by
 which carry only identity now. See `.pilot/pilot-process.md` §2/§3/§4 for the generic
 labels, states, and claim protocol this builds on.
 
+**When passed a prior submitted review on this PR** (`pilot-review/SKILL.md` step 3/5 —
+this round follows a reclaim, not the PR's first review): read it before writing your own
+points. For each of its `change`-tagged points, check the PR's current head commit and
+drop it only if it's actually resolved there — otherwise re-raise it yourself, it never
+carries over on its own. For a `decision`-tagged point the thread shows a human already
+answered, take that resolution as given rather than re-litigating it; one still unanswered
+is still open and belongs in your list again. Knowing this round follows an earlier one is
+context, not a reason to look less carefully — the current head commit gets the same
+scrutiny as a first pass, including anything the earlier round never touched.
+
 Each reviewer returns a verdict: approve, or block with one or more points tagged either
 `change` — a concrete fix the reviewer can articulate, nothing for a human to weigh in on
 — or `decision` — a genuine judgment call with no fix to propose until a human weighs in.
