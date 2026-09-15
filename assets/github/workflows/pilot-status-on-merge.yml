@@ -101,17 +101,32 @@ jobs:
               const parentLabels = parent.labels.map(l => (typeof l === 'string' ? l : l.name));
 
               // An Epic carries no status: label — "done" is just every one of its
-              // stories being closed already, which the issue payload we already have
-              // (fetched above) reports natively via sub_issues_summary, no extra call
-              // needed. No further parent to check (pilot-process.md §2 "Three levels"
-              // caps the tree at Epic).
+              // stories being closed already. No further parent to check
+              // (pilot-process.md §2 "Three levels" caps the tree at Epic).
               if (parentLabels.includes('level:epic')) {
                 if (parent.state === 'closed') return;
+
+                // Cheap pre-check only, same as the status:split fast path below: skips
+                // the sub_issues call in the common case where this issue payload's own
+                // summary already shows an open story. Never the sole basis for actually
+                // closing the Epic below — sub_issues_summary's presence on this exact
+                // REST response isn't guaranteed, so the real close decision always
+                // re-verifies against the live sub-issue list, not this summary alone.
                 const summary = parent.sub_issues_summary;
-                if (!summary || summary.total === 0 || summary.completed < summary.total) {
+                if (summary && summary.completed < summary.total) {
                   core.info(`Epic #${parent.number} still has open stories; leaving open.`);
                   return;
                 }
+
+                const { data: children } = await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
+                  owner, repo, issue_number: parent.number,
+                });
+                const allClosed = children.length > 0 && children.every(child => child.state === 'closed');
+                if (!allClosed) {
+                  core.info(`Epic #${parent.number} still has open stories; leaving open.`);
+                  return;
+                }
+
                 core.info(`All of epic #${parent.number}'s stories are closed; closing the epic.` + (dryRun ? ' (dry run)' : ''));
                 if (!dryRun) {
                   await github.rest.issues.update({ owner, repo, issue_number: parent.number, state: 'closed', state_reason: 'completed' });
