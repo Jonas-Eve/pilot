@@ -151,10 +151,14 @@ conflate. Symmetric for both entry points:
   tickets under a shared theme, for categorization. Never itself scoped, spec'd, or
   built — no `status:` label. Created by the PM (`type:feature`) or the architect
   (`type:tech`) during phase 1, at the same moment a story would otherwise be created, the
-  instant it's clear the idea can't be delivered as a single story. **Stays open and is
-  closed by hand, always** — unlike a split story's tasks (a fixed set decided once, §3
-  "Cascading completion"), new stories can be added to an Epic at any point, so its
-  completeness is never something PILOT can prove on its own.
+  instant it's clear the idea can't be delivered as a single story. **Auto-closes once
+  every one of its current stories is closed** (`status:done` or `status:wont-do`) — same
+  cascading-completion mechanism as a split story's tasks (§3), one level up, driven by
+  GitHub's own sub-issue open/closed state rather than a `status:` label (it carries
+  none). Closing it this way is terminal, exactly like a split story reaching
+  `status:done`: an Epic's theme is defined by the stories ever linked under it, and once
+  every one of them is done or wont-do, that theme is realized. Further work in the same
+  area becomes a new Epic — never a story added back into a closed one.
 - **`level:story`** (`type:feature`/`type:tech`, `status:backlog` at creation — never
   `type:bug`, which is always `level:task` directly, below) — one functional or technical
   unit, exactly what phase 1 always produces for these two types. Whether or not it
@@ -337,9 +341,10 @@ the four fits that specific task, assigned by the architect at split time.
 - `level:epic` — groups several `level:story` tickets (§2 "Three levels"). Carries no
   `status:` label and never moves through the pipeline itself — its stories are linked to
   it as native GitHub sub-issues (`mcp__github__sub_issue_write`), not a hand-written
-  checklist. It stays **open indefinitely and is closed by hand** — new stories can be
-  added to it at any time, so unlike a split story (see "Cascading completion" below), it
-  never auto-closes.
+  checklist. It **auto-closes once every one of its stories is closed** (see "Cascading
+  completion" below) — same mechanism as a split story's tasks, one level up, and just as
+  terminal: further work in the same area becomes a new Epic, not a story reopening this
+  one.
 - `level:story` — the root unit phase 1 always produces for `type:feature`/`type:tech`
   (§2 "Three levels").
 - `level:task` — a dev-sized unit of a `status:split` story, or a standalone `type:bug`
@@ -448,9 +453,9 @@ when phase 5 blocks on something that needs an actual code change — see
   - Triggered on `pull_request: closed` (gated on `merged == true`): resolves the issue(s)
     the merge closes via `PullRequest.closingIssuesReferences`, sets `status:done` on each,
     and, for any that's a task, runs the cascading-completion check (§3 "Cascading
-    completion") against its `status:split` parent story (never a `level:epic` — that
-    always closes by hand). This is the only place `status:done` gets set on an actionable
-    ticket coming out of a merge.
+    completion") against its `status:split` parent story, then, if that story itself just
+    closed, against its own parent Epic in turn. This is the only place `status:done` gets
+    set on an actionable ticket coming out of a merge.
   - Also triggered on `issues: closed`, for completions that never go through a PR merge at
     all: `status:wont-do` (above), which the architect sets and closes directly in phase 2,
     and any hand-closed issue. This path only runs the cascading-completion check (§3
@@ -530,8 +535,10 @@ This applies to `status:split` stories only — a story's tasks are a fixed set 
 whichever round is currently in flight (the original split, or a later re-scope round,
 "Re-scoping a `type:feature` story after its split is done" above), so completeness at
 any given moment is provable from a live read of its current sub-issues — never a cached
-list. An Epic's stories are not — an Epic never auto-closes, a human always closes it by
-hand, regardless of how many of its current stories are done.
+list. An Epic's own story set can grow while it stays open — new stories are added under
+it at any point — but once every one of them is closed (`status:done` or `status:wont-do`),
+that's the Epic's own definition of done: the same live read, one level up, closes it too
+(below), and that closure is final — it is never reopened to take another story back in.
 
 Whenever a task reaches `status:done` or `status:wont-do`, check whether its parent
 is a `status:split` story and, if so, whether *all* of that story's other tasks are
@@ -544,14 +551,19 @@ levels") — this check simply finds none and does nothing further; the bug tick
   has a parent to check in the first place) → set the parent story itself to
   `status:done` **and close its issue** — it was never merged directly, so nothing else
   in the pipeline would otherwise ever close it (unlike a task, whose merging PR closes it
-  natively via `Closes #N`). This does not cascade any further: if that story belongs to
-  an Epic, the Epic still does not auto-close — a human closes it whenever they judge it
-  complete.
+  natively via `Closes #N`).
 - All done, parent is `type:feature` → set the parent to **`status:qa`** instead of
   `status:done` (§7 "Phase 6 — Human QA") — every `type:feature` split includes exactly
   one e2e task depending on all its dev siblings, so "all done" here is structurally the
   same moment the e2e task itself just finished. `status:done` for this story is set
   later, by `/pilot-qa` itself, once a human confirms the behavior.
+
+Whenever a story's own issue closes — cascaded to `status:done` just above, closed
+directly as `status:wont-do` (phase 2), or closed by `/pilot-qa` once QA'd — also check
+its own parent: if it belongs to an Epic and *every* one of that Epic's stories is now
+closed (`status:done` or `status:wont-do`), close the Epic's issue too. An Epic carries no
+`status:` label, so closing its issue is the whole of it — and it's terminal: a related
+need afterward starts a new Epic, never a story reopening this one.
 
 No periodic sweep exists beyond this — the check is event-driven, not polled. A
 `status:split` story whose last task was closed without ever carrying

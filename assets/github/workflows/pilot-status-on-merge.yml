@@ -99,7 +99,52 @@ jobs:
               if (!parent) return;
 
               const parentLabels = parent.labels.map(l => (typeof l === 'string' ? l : l.name));
+
+              // An Epic carries no status: label — "done" is just every one of its
+              // stories being closed already. No further parent to check
+              // (pilot-process.md §2 "Three levels" caps the tree at Epic).
+              if (parentLabels.includes('level:epic')) {
+                if (parent.state === 'closed') return;
+
+                // Cheap pre-check only, same as the status:split fast path below: skips
+                // the sub_issues call in the common case where this issue payload's own
+                // summary already shows an open story. Never the sole basis for actually
+                // closing the Epic below — sub_issues_summary's presence on this exact
+                // REST response isn't guaranteed, so the real close decision always
+                // re-verifies against the live sub-issue list, not this summary alone.
+                const summary = parent.sub_issues_summary;
+                if (summary && summary.completed < summary.total) {
+                  core.info(`Epic #${parent.number} still has open stories; leaving open.`);
+                  return;
+                }
+
+                const { data: children } = await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
+                  owner, repo, issue_number: parent.number,
+                });
+                const allClosed = children.length > 0 && children.every(child => child.state === 'closed');
+                if (!allClosed) {
+                  core.info(`Epic #${parent.number} still has open stories; leaving open.`);
+                  return;
+                }
+
+                core.info(`All of epic #${parent.number}'s stories are closed; closing the epic.` + (dryRun ? ' (dry run)' : ''));
+                if (!dryRun) {
+                  await github.rest.issues.update({ owner, repo, issue_number: parent.number, state: 'closed', state_reason: 'completed' });
+                }
+                return;
+              }
+
               if (!parentLabels.includes('status:split')) return;
+
+              // Cheap pre-check, using the summary already on the parent object fetched
+              // above (no extra call): status:done/wont-do both require the issue to be
+              // closed first, so if not everything is closed yet, it can't be all
+              // done/wont-do either — skip the sibling-label fetch below in that case.
+              const splitSummary = parent.sub_issues_summary;
+              if (splitSummary && splitSummary.completed < splitSummary.total) {
+                core.info(`Parent #${parent.number} is status:split but not all sub-issues are closed yet; leaving as-is.`);
+                return;
+              }
 
               const { data: siblings } = await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
                 owner, repo, issue_number: parent.number,
@@ -129,6 +174,12 @@ jobs:
               } else {
                 core.info(`All sub-issues of #${parent.number} are done/wont-do; cascading status:done to parent.`);
                 await swapToDone(parent.number, dryRun);
+                // The story itself just closed — check whether it was an Epic's last
+                // open story too (recurses into the level:epic branch above; a story
+                // parent, if any, is capped at one Epic, so this never loops further).
+                if (!dryRun) {
+                  await maybeCascadeParent(parent.number, dryRun);
+                }
               }
             }
 
