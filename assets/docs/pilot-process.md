@@ -437,8 +437,9 @@ when phase 5 blocks on something that needs an actual code change — see
   always `level:task` (§2 "Three levels"). Unclaimed, unassigned — the fresh-work pool
   `/pilot-qa` picks from.
 - `status:in-qa` — `pilot-qa` has claimed it for phase 6.
-- `status:done` — merged (or, for a `status:split` story, completed by cascade or, for a
-  `type:feature` one, by phase 6 — see below and §7). Not set by any phase skill directly
+- `status:done` — the ticket is closed, whether merged (a task, or an unsplit `type:tech`
+  story) or completed by cascade (a `status:split` story — §3 "Cascading completion") or,
+  for a `type:feature` one, by phase 6 (see below and §7). Not set by any phase skill directly
   for an actionable ticket coming out of a merge (merge is always a human action or, for
   phase 5, an explicit `--merge` run, `status:approved` above — either way outside PILOT's
   control at the moment it happens) — set instead by the
@@ -541,9 +542,11 @@ levels") — this check simply finds none and does nothing further; the bug tick
 - All done, parent is `type:tech` (the only root type that can reach `status:split`
   without being `type:feature` — `type:bug` is never even a `level:story`, so it never
   has a parent to check in the first place) → set the parent story itself to
-  `status:done` — it was never merged directly, but its work is now finished. This does
-  not cascade any further: if that story belongs to an Epic, the Epic still does not
-  auto-close — a human closes it whenever they judge it complete.
+  `status:done` **and close its issue** — it was never merged directly, so nothing else
+  in the pipeline would otherwise ever close it (unlike a task, whose merging PR closes it
+  natively via `Closes #N`). This does not cascade any further: if that story belongs to
+  an Epic, the Epic still does not auto-close — a human closes it whenever they judge it
+  complete.
 - All done, parent is `type:feature` → set the parent to **`status:qa`** instead of
   `status:done` (§7 "Phase 6 — Human QA") — every `type:feature` split includes exactly
   one e2e task depending on all its dev siblings, so "all done" here is structurally the
