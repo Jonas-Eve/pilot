@@ -99,6 +99,28 @@ jobs:
               if (!parent) return;
 
               const parentLabels = parent.labels.map(l => (typeof l === 'string' ? l : l.name));
+
+              // An Epic carries no status: label — "done" is just every one of its
+              // stories being closed already, so this reuses the same sub_issues call
+              // below rather than any label bookkeeping. No further parent to check
+              // (pilot-process.md §2 "Three levels" caps the tree at Epic).
+              if (parentLabels.includes('level:epic')) {
+                if (parent.state === 'closed') return;
+                const { data: children } = await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
+                  owner, repo, issue_number: parent.number,
+                });
+                const allClosed = children.length > 0 && children.every(child => child.state === 'closed');
+                if (!allClosed) {
+                  core.info(`Epic #${parent.number} still has open stories; leaving open.`);
+                  return;
+                }
+                core.info(`All of epic #${parent.number}'s stories are closed; closing the epic.` + (dryRun ? ' (dry run)' : ''));
+                if (!dryRun) {
+                  await github.rest.issues.update({ owner, repo, issue_number: parent.number, state: 'closed', state_reason: 'completed' });
+                }
+                return;
+              }
+
               if (!parentLabels.includes('status:split')) return;
 
               const { data: siblings } = await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
@@ -129,6 +151,12 @@ jobs:
               } else {
                 core.info(`All sub-issues of #${parent.number} are done/wont-do; cascading status:done to parent.`);
                 await swapToDone(parent.number, dryRun);
+                // The story itself just closed — check whether it was an Epic's last
+                // open story too (recurses into the level:epic branch above; a story
+                // parent, if any, is capped at one Epic, so this never loops further).
+                if (!dryRun) {
+                  await maybeCascadeParent(parent.number, dryRun);
+                }
               }
             }
 
