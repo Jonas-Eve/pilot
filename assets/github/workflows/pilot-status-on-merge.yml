@@ -101,16 +101,14 @@ jobs:
               const parentLabels = parent.labels.map(l => (typeof l === 'string' ? l : l.name));
 
               // An Epic carries no status: label — "done" is just every one of its
-              // stories being closed already, so this reuses the same sub_issues call
-              // below rather than any label bookkeeping. No further parent to check
-              // (pilot-process.md §2 "Three levels" caps the tree at Epic).
+              // stories being closed already, which the issue payload we already have
+              // (fetched above) reports natively via sub_issues_summary, no extra call
+              // needed. No further parent to check (pilot-process.md §2 "Three levels"
+              // caps the tree at Epic).
               if (parentLabels.includes('level:epic')) {
                 if (parent.state === 'closed') return;
-                const { data: children } = await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
-                  owner, repo, issue_number: parent.number,
-                });
-                const allClosed = children.length > 0 && children.every(child => child.state === 'closed');
-                if (!allClosed) {
+                const summary = parent.sub_issues_summary;
+                if (!summary || summary.total === 0 || summary.completed < summary.total) {
                   core.info(`Epic #${parent.number} still has open stories; leaving open.`);
                   return;
                 }
@@ -122,6 +120,16 @@ jobs:
               }
 
               if (!parentLabels.includes('status:split')) return;
+
+              // Cheap pre-check, using the summary already on the parent object fetched
+              // above (no extra call): status:done/wont-do both require the issue to be
+              // closed first, so if not everything is closed yet, it can't be all
+              // done/wont-do either — skip the sibling-label fetch below in that case.
+              const splitSummary = parent.sub_issues_summary;
+              if (splitSummary && splitSummary.completed < splitSummary.total) {
+                core.info(`Parent #${parent.number} is status:split but not all sub-issues are closed yet; leaving as-is.`);
+                return;
+              }
 
               const { data: siblings } = await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
                 owner, repo, issue_number: parent.number,
