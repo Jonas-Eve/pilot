@@ -41,13 +41,22 @@ jobs:
             const repo = context.repo.repo;
             const STATUS_PREFIX = 'status:';
 
-            async function getStatusLabels(issueNumber) {
-              const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+            function statusLabelsOf(issue) {
               return issue.labels.map(l => (typeof l === 'string' ? l : l.name)).filter(n => n && n.startsWith(STATUS_PREFIX));
             }
 
+            async function getIssue(issueNumber) {
+              const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+              return issue;
+            }
+
+            async function getStatusLabels(issueNumber) {
+              return statusLabelsOf(await getIssue(issueNumber));
+            }
+
             async function swapToDone(issueNumber, dryRun, targetStatus = 'status:done') {
-              const currentStatusLabels = await getStatusLabels(issueNumber);
+              const issue = await getIssue(issueNumber);
+              const currentStatusLabels = statusLabelsOf(issue);
               core.info(`Issue #${issueNumber}: removing [${currentStatusLabels.join(', ')}], adding ${targetStatus}` + (dryRun ? ' (dry run)' : ''));
               if (dryRun) return;
 
@@ -61,6 +70,18 @@ jobs:
               }
               if (!currentStatusLabels.includes(targetStatus)) {
                 await github.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels: [targetStatus] });
+              }
+
+              // A task reaching status:done here was itself the target of a merged
+              // PR's "Closes #N", so GitHub has already closed it by this point. A
+              // status:split parent cascaded to status:done, however, was never
+              // merged directly (pilot-process.md §3 "Cascading completion") — nothing
+              // else in the pipeline ever closes its issue, so it would otherwise sit
+              // open forever despite carrying status:done. Close explicitly, for
+              // either case, whenever the target is the terminal status — reusing the
+              // issue already fetched above instead of a second GET.
+              if (targetStatus === 'status:done' && issue.state !== 'closed') {
+                await github.rest.issues.update({ owner, repo, issue_number: issueNumber, state: 'closed', state_reason: 'completed' });
               }
             }
 
