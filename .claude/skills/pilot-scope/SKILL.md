@@ -13,6 +13,16 @@ mechanics of running phase 2.
 ## Steps
 
 1. Determine the input:
+   - Given an issue number (not `--resume`) that's a `level:epic` currently carrying open
+     sub-issues → don't resolve the number itself; search its whole sub-issue tree for
+     this phase's own ordinary bare-pool candidates instead
+     (`.pilot/pilot-link-epic-descent.md`), and claim/resolve whichever one that search
+     finds — never this step's other bullets, which this search doesn't reach into.
+     Nothing found anywhere in the tree → report nothing to do for this ticket. (A
+     `status:split` `level:story` given directly, still open, is never intercepted this
+     way — see "Otherwise" below: re-scoping it in place, adding more tasks to the
+     existing split, is this phase's own ordinary path, `.pilot/pilot-process.md` §2
+     "Re-scoping a `type:feature` story after its split is done".)
    - `--resume <issue>`: must be `status:in-scope`, assigned, **no** `needs-human`/
      `on-hold` — a ticket left mid-pair. Follow `.pilot/pilot-process.md` §4 "Resuming
      an orphaned claim", skipping step 2's claim (already claimed). If it
@@ -53,7 +63,9 @@ mechanics of running phase 2.
      scoped/re-scoped. Read it (`mcp__github__issue_read`) plus its parent Epic (if
      linked) and anything referenced via "Blocks #M"/"Depends on #N" or a sub-issue
      relationship, as context. If `level:epic`, there's nothing to scope on the epic
-     itself — stop and point at its stories.
+     itself — stop and point at its stories. (Only reaches this for an Epic once every
+     one of its stories is closed but its own issue is still open by hand — the sub-issue
+     search above already redirects to an open one instead, while any remain.)
    - No argument → per `.pilot/pilot-process.md` §4 "Picking the next ticket...": the
      merged pool of unclaimed `status:backlog` (fresh) and `status:in-scope` carrying
      `can-resume` (resumable — a mid-pair ticket is never in this pool, only reachable

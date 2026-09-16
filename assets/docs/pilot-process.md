@@ -694,6 +694,19 @@ orphaned claim (already assigned, still in that phase's in-progress `status:`, w
 claim" below; it resumes only via `can-resume` (once a human has verified it's safe) or an
 explicit `--resume <issue>`.
 
+### Given an explicit ticket that has open sub-issues (an Epic, or a `status:split` story)
+
+An explicit ticket number a phase is given isn't always the ticket it ends up acting on:
+`level:epic` never carries a `status:` of its own (§3) and is never any phase's
+territory. A `status:split` story is a tracker for its tasks (§3 "`status:split`") and
+is likewise never `/pilot-spec`, `/pilot-dev`, or `/pilot-review`'s territory — but
+`/pilot-scope` keeps its own direct path to re-scope one still in flight ("Re-scoping a
+`type:feature` story after its split is done" above), the one exception. Phases 2-5 each
+resolve an explicit container ticket before applying any of their own bullets below —
+see `.pilot/pilot-link-epic-descent.md` for the mechanism and that exception, shared
+across exactly those four skills (and, by delegation, `/pilot-auto`'s ticket-dispatch
+mode) rather than repeated here for every phase that doesn't need it.
+
 ### Blocked-by dependencies (mechanical gate, distinct from `on-hold`)
 
 A ticket's body may carry one or more "Depends on #N" references. Three places write

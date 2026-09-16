@@ -13,6 +13,12 @@ mechanics of running phase 3.
 ## Steps
 
 1. Resolve the ticket:
+   - Given issue number (not `--resume`) that currently has open sub-issues (an Epic, or
+     a `status:split` story) → don't resolve the number itself; search its whole
+     sub-issue tree for this phase's own ordinary bare-pool candidates instead
+     (`.pilot/pilot-link-epic-descent.md`), and claim/resolve whichever one that search
+     finds — never this step's other bullets, which this search doesn't reach into.
+     Nothing found anywhere in the tree → report nothing to do for this ticket.
    - Given issue number with `--resume`: must be `status:in-spec`, already assigned,
      with **no** `needs-human` and **no** `on-hold` — a ticket left mid-pair session.
      Follow `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" instead of steps
