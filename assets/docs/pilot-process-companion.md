@@ -75,6 +75,10 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-auto dev spec    → same, restricted to that subset (still tried in fixed order)
 /pilot-auto 48          → tries the same four phases against ticket #48 specifically,
                           stopping at whichever one currently claims it
+/pilot-auto 59          → same, and if #59 is a level:epic, each phase searches its
+                          whole sub-issue tree for its own next actionable candidate
+                          — drives whatever's really available anywhere under it, not
+                          just under its top story
 /pilot-auto 48 --merge  → same, and merges #48's PR itself once review's verdict is
                           all-approve
 /pilot-auto 48 --multi 3 → same, forwarding --multi 3 to whichever phase claims #48
