@@ -87,10 +87,26 @@ A different failure mode from a genuine disagreement above: nobody's actually st
 substantive point, but the conversation keeps going anyway — another round of wording
 tweaks, a re-litigated detail nobody actually changed their mind on, a "let me reconsider"
 that doesn't lead anywhere new. This isn't a turn-count check either — a long dialogue
-that's still visibly narrowing something real is fine, however many turns that takes. The
-signal is each side's own turns no longer changing the substance of the proposal — if
-you're about to add a turn and it would only rephrase what's already there, that's the
-tell to stop, not a reason to keep polishing. Unlike a genuine disagreement, this needs no
+that's still visibly narrowing something real is fine, however many turns that takes.
+
+Check this **after** a full round (both personas have had a turn), never by predicting
+whether your own next turn would be worth adding — that's a harder, less reliable
+question than looking at what a round just produced. Compare this round's resulting
+proposal to the one going into it: no substantive difference (only rephrasing, or a point
+already settled being revisited without new information) means the dialogue has already
+converged, even if neither side has explicitly said so — treat it as done rather than
+running another round hoping something changes. A round that *did* change something real
+— a scope boundary moved, a security concern added, a spec detail corrected — is real
+progress regardless of how small it looks; only a round that changed nothing substantive
+is the tell.
+
+The degenerate case of this — a round that produced a byte-for-byte identical proposal —
+is cheap enough that the calling skill can catch it directly, no judgment call needed
+(`.pilot/pilot-process.md` §5's "deterministic tool calls" principle): compare the
+before/after text itself before spending another turn on it. Anything short of that exact
+match still needs the personas' own judgment on whether the difference is substantive.
+
+Unlike a genuine disagreement, this needs no
 `needs-human` — there's nothing for a human to adjudicate, nobody disagrees — finalize with
 the current proposal as converged and move on to the phase's normal remaining steps.
 Applies the same way to `--multi`'s own reconciliation rounds (above): if a fresh round
