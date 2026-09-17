@@ -1,6 +1,6 @@
 ---
 name: pilot-spec
-description: "Phase 2 of PILOT (see .pilot/pilot-process.md): the architect and tech lead work an already-formalized level:story together, in dialogue (.pilot/pilot-link-agent-dialogue.md) rather than one handing a finished decomposition to the other — split it into dev-sized tasks (mandatory for type:feature, a judgment call for type:tech) and write each resulting ticket's technical spec, in one continuous pass, so a spec-time feasibility concern can reshape the split immediately instead of surfacing later. For type:feature, the PM also checks the proposed type:feature tasks (excluding tech/e2e siblings) against the story's acceptance criteria before finalizing. Given a level:task instead (a standalone type:bug ticket, dev-sized by nature, or a leftover from an earlier split), just writes its spec directly, no split decision. Given no ticket at all and a raw need (--tech, or --bug, explicit or auto-detected), originates it first — architect alone classifies/drafts it, then the same pass splits/specs it — the one way a type:tech or type:bug ticket ever reaches this phase without a prior /pilot-discovery pass (type:bug never goes through /pilot-discovery at all). Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. Defaults to pair mode (walks the decomposition/spec with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human) — except the no-ticket entry, which needs a human's raw input and so is pair in practice regardless. Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:in-spec then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. An optional --multi <N> runs an N-instance ensemble in dialogue with itself instead of one, converging with no fixed round cap, escalating to needs-human only on a genuine, unresolved disagreement (see .pilot/pilot-link-agent-dialogue.md). Use for splitting/speccing an already-created story, speccing a standalone task/bug, or originating and speccing a standalone technical need or bug report from scratch."
+description: "Phase 2 of PILOT (see .pilot/pilot-process.md): the architect and tech lead work an already-formalized level:story together, in dialogue (.pilot/pilot-link-agent-dialogue.md) rather than one handing a finished decomposition to the other — split it into dev-sized tasks (mandatory for type:feature, a judgment call for type:tech) and write each resulting ticket's technical spec, in one continuous pass, so a spec-time feasibility concern can reshape the split immediately instead of surfacing later. For type:feature, the PM also checks the proposed type:feature tasks (excluding tech/e2e siblings) against the story's acceptance criteria before finalizing. Given a level:task instead (always a standalone type:bug ticket, dev-sized by nature — the only level:task that ever waits on its own spec, since a freshly split-off task is always spec'd in the same pass that creates it), just writes its spec directly, no split decision. Given no ticket at all and a raw need (--tech, or --bug, explicit or auto-detected), originates it first — architect alone classifies/drafts it, then the same pass splits/specs it — the one way a type:tech or type:bug ticket ever reaches this phase without a prior /pilot-discovery pass (type:bug never goes through /pilot-discovery at all). Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. Defaults to pair mode (walks the decomposition/spec with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human) — except the no-ticket entry, which needs a human's raw input and so is pair in practice regardless. Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:in-spec then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. An optional --multi <N> runs an N-instance ensemble in dialogue with itself instead of one, converging with no fixed round cap, escalating to needs-human only on a genuine, unresolved disagreement (see .pilot/pilot-link-agent-dialogue.md). Use for splitting/speccing an already-created story, speccing a standalone task/bug, or originating and speccing a standalone technical need or bug report from scratch."
 argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto] [--multi [N]] | <issue number> --resume | --tech <raw need> | --bug <raw need>"
 ---
 
@@ -58,8 +58,8 @@ what `--multi` means here.
      — before continuing to step 3, passing that extra context alongside the ticket
      body. Skip step 2, already claimed here.
    - Otherwise → an existing, open ticket: a `level:story` (`type:feature`/`type:tech`)
-     being split/specced or re-split/re-specced, or a `level:task` (a standalone
-     `type:bug`, or a leftover from an earlier round) just needing a spec. Read it
+     being split/specced or re-split/re-specced, or a `level:task` (always a standalone
+     `type:bug`) just needing a spec. Read it
      (`mcp__github__issue_read`) plus its parent Epic (if linked) and anything referenced
      via "Blocks #M"/"Depends on #N" or a sub-issue relationship, as context. If
      `level:epic`, there's nothing to work on the epic itself — stop and point at its
@@ -94,7 +94,12 @@ what `--multi` means here.
     already holds the claim (assignee set at creation) — continue directly to step 3 with
     the newly created ticket, skipping step 2 (already claimed) and step 1's pool
     selection entirely: `status:draft` → `status:in-spec` at this point, no `status:backlog`
-    stop in between, since this same run is about to split/spec it. Never combine with
+    stop in between, since this same run is about to split/spec it. **If the rare
+    multi-story `--tech` case applies** (above), this run continues with only the first
+    (primary) story this way — the others are still real, valid tickets, but land on
+    `status:backlog` like any other standalone tech story, for a later `/pilot-spec` run to
+    claim on its own; don't try to split/spec more than one ticket in a single invocation.
+    Never combine with
     `--resume` (a fresh idea, not a paused session) — `--resume <issue>` instead recovers
     a no-ticket entry left mid-pair, `status:draft`, the same as `/pilot-discovery`'s own
     resume.
@@ -116,9 +121,9 @@ what `--multi` means here.
      architecture docs, and, for a `status:qa`/`status:in-qa` reclaim (step 1), which
      existing tasks are already `status:done` from the earlier round, including the e2e
      one. Not the conversation history.
-   - **`level:task`** (a standalone `type:bug`, or a leftover task from an earlier
-     round — never a fresh split-off task, which is already spec'd in the same pass that
-     created it, below): no split decision to make — call `Agent` with
+   - **`level:task`** (always a standalone `type:bug` — never a fresh split-off task,
+     which is already spec'd in the same pass that created it, below): no split decision
+     to make — call `Agent` with
      `subagent_type: "pilot-techlead"`, reading `.pilot/pilot-task-write-spec.md`, passing
      the ticket's body (for a bug: the architect's original diagnosis, recorded at
      creation) and this project's own coding standards. If the diagnosis doesn't hold up

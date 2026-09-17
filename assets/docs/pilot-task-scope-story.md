@@ -81,12 +81,17 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    - **Prerequisite (tech)** — the ticket (or one of its proposed tasks) depends on
      technical work that isn't part of it at all (infra, CI, a shared library, a
      migration) — no defect implied; applies to a `type:feature` ticket just as much
-     as a `type:tech` one. Propose it exactly the way you'd formalize a raw
-     `type:tech` need (`.pilot/pilot-task-formalize-tech-need.md`) — one story, or several
-     under a new/reused Epic, each its own `level:story` — **never** as a sub-issue of
-     the ticket you're scoping (`.pilot/pilot-process.md` §2 "Prerequisite tech
+     as a `type:tech` one. Write it exactly the way `.pilot/pilot-task-formalize-tech-need.md`
+     describes for a standalone need — one story, standalone, never grouped under an
+     Epic (there is no `type:tech` epic; several genuinely separate needs become several
+     standalone stories, cross-referenced with a plain "Related: #N") — **never** as a
+     sub-issue of
+     the ticket you're scoping (`.pilot/pilot-process.md` §2 "Prerequisite tech/bug
      tickets"): that would make it `level:task` and wrongly tie it to this ticket's
-     split-tracking lifecycle instead of its own phases 2-5. State whether it's a
+     split-tracking lifecycle instead of its own Spec/Dev/Review phases. Land it at
+     `status:backlog` for a later `/pilot-spec` run — never the live drafting loop that
+     doc's own no-ticket entry adds, that's for a human reporting a need directly. State
+     whether it's a
      **hard blocker** ("Depends on #N", `.pilot/pilot-process.md` §4 "Blocked-by
      dependencies") or a plain non-gating reference.
    - **Prerequisite (bug)** — while scoping, you instead run into something that

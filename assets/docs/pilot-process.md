@@ -119,7 +119,7 @@ ticket — every ticket is created by an agent, either Discovery (`type:feature`
 `type:tech` grouped with one) or Spec (a standalone `type:tech` need, a `type:bug` report,
 or the split-off `type:e2e` task). The exceptions: a prerequisite tech or bug ticket the
 architect originates itself, inline, mid-Spec pass (using Spec's own no-ticket entry —
-"Prerequisite tech tickets" below and `.pilot/pilot-link-bug-tickets.md`); and the PM's own
+"Prerequisite tech/bug tickets" below and `.pilot/pilot-link-bug-tickets.md`); and the PM's own
 involvement when a `type:feature` story gets split — see "Three levels" below.
 
 **`type:` is never inherited.** Each task the architect+tech lead create when splitting a
@@ -215,8 +215,12 @@ migration — exactly the kind of thing that would normally come in as a standal
 `type:tech` need (above), just discovered from inside another ticket's Spec pass instead
 of being reported directly. Spec is the one place this still originates a brand-new
 ticket itself — the architect already has full context loaded for this pass, so it
-creates the prerequisite inline, using the same mechanics its own no-ticket `--tech` entry
-uses for a standalone need.
+creates the prerequisite inline, writing it the same way `.pilot/pilot-task-formalize-tech-need.md`
+describes for a standalone need — never the live human drafting loop that doc's own
+no-ticket entry adds on top (`pilot-spec/SKILL.md` step 1a): a human live in this pass, if
+any, is there for the ticket actually being worked, not to co-draft this one. Land it
+directly at `status:backlog` for a later, separate `/pilot-spec` run to pick up, same as
+any other prerequisite.
 
 The same applies to a prerequisite **bug** discovered mid-Spec: classify it first
 (`.pilot/pilot-link-bug-tickets.md`), and if genuine, create it the same way a standalone

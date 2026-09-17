@@ -3,9 +3,10 @@
 Injected by `.claude/skills/pilot-spec/SKILL.md` into the `pilot-techlead` persona's
 prompt — for a `level:story` being split, alternating turns with the architect's own
 `.pilot/pilot-task-scope-story.md` (`.pilot/pilot-link-agent-dialogue.md`), one spec per
-resulting ticket, written in the same pass as the split itself; for a `level:task` (a
-standalone `type:bug`, or a leftover from an earlier round) you work alone, no split
-decision to make.
+resulting ticket, written in the same pass as the split itself; for a `level:task` (always
+a standalone `type:bug` — the only `level:task` that ever waits on its own spec, since a
+freshly split-off task is always spec'd in the same pass that creates it) you work alone,
+no split decision to make.
 
 You receive one ticket carrying either the architect's split-time
 security/architecture decisions (a `level:story`'s own task, this same pass), or, for a
