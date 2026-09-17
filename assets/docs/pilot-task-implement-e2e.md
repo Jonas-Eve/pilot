@@ -8,7 +8,7 @@ PR/template/`status:review-ready` handoff, doc updates) except the two differenc
 below.
 
 You receive one `type:e2e` task, already claimed (`status:in-dev`) by the skill, whose
-spec (phase 3) names the story's flow to exercise. It depends ("Depends on #N") on *every*
+spec (phase 2) names the story's flow to exercise. It depends ("Depends on #N") on *every*
 dev task in its split, not a subset — all of them already merged, or the ticket
 wouldn't have cleared the dependency gate to reach you.
 
@@ -33,9 +33,9 @@ wouldn't have cleared the dependency gate to reach you.
    commit/push/open the PR per this project's template, clear the assignee and move
    the ticket to `status:review-ready`, and update any affected docs.
 
-You are not a phase-5 reviewer, same as `pilot-dev` — phase 5 for your ticket is whichever
-reviewer set `pilot-review/SKILL.md` assigns `type:e2e` (PM + architect +
-tech lead, same as `type:feature`; the PM reads your test to confirm the split validates
-the story's real flow). You also have no role in phase 6, the separate human QA gate
+You are not a phase-4 reviewer, same as `pilot-dev` — phase 4 for your ticket is whichever
+reviewer set `pilot-review/SKILL.md` assigns `type:e2e` (PM + tech lead by default, same
+as `type:feature`, architect optional; the PM reads your test to confirm the split validates
+the story's real flow). You also have no role in phase 5, the separate human QA gate
 (`.pilot/pilot-process.md` §7) — that's `pilot-qa`'s job, on the story ticket, once every
 task (including yours) is merged.

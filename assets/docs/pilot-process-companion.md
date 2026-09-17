@@ -12,36 +12,30 @@ Every command below is a plain example — the exact syntax and behavior for eac
 authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 
 ```
-/pilot-story "let a user filter search results by wheelchair accessibility"
-    → opens a type:feature issue (PM agent, auto-detected)
+/pilot-discovery "let a user filter search results by wheelchair accessibility"
+    → PM+architect dialogue opens a type:feature issue (and, if the same effort needs
+      one, a type:tech companion story alongside it)
 
-/pilot-story "add the GitHub Actions CI workflow described in our tech-debt backlog"
-    → opens one or more type:tech issues (architect agent, auto-detected)
+/pilot-discovery --resume 12    → picks back up a status:draft ticket left mid-pair
 
-/pilot-story --tech "..."   → skips detection, declares the need type:tech upfront
-/pilot-story --bug "clicking export on the reports page throws a 500"
-    → skips detection, declares it type:bug upfront (architect agent)
-/pilot-story --resume 12    → picks back up a status:draft ticket left mid-pair
-
-/pilot-scope             → sweeps the next fresh/resumable status:backlog ticket, no
-                           argument needed
-/pilot-scope 42          → scopes/decomposes existing issue #42, pair by default
-/pilot-scope 42 --auto   → same, no live checkpoint (needed for a scheduled Routine)
-/pilot-scope 42 --resume → picks back up a mid-pair session, or a cleared needs-human
-                           flag, on #42
-/pilot-scope 12          → also re-scopes a type:feature story already at
-                           status:qa/status:in-qa, for a new split round
-/pilot-scope 42 --multi 3 → 3 architects independently scope #42, reconciled into one
-                           proposal (or needs-human on genuine disagreement)
-
-/pilot-spec              → sweeps the next spec-ready/resumable ticket, no argument
-                           needed
-/pilot-spec 42           → writes the technical spec for #42 (must be status:spec-ready)
-/pilot-spec 42 --auto    → same, no live checkpoint (needed for a scheduled Routine)
-/pilot-spec 42 --resume  → picks back up a mid-pair session, or a cleared needs-human
-                           flag, on #42
-/pilot-spec 42 --multi 3 → 3 tech leads independently spec #42, reconciled into one
-                           proposal (or needs-human on genuine disagreement)
+/pilot-spec               → sweeps the next fresh/resumable status:backlog ticket, no
+                            argument needed
+/pilot-spec 42            → splits (if needed) and specs existing issue #42, pair by
+                            default
+/pilot-spec 42 --auto     → same, no live checkpoint (needed for a scheduled Routine)
+/pilot-spec 42 --resume   → picks back up a mid-pair session, or a cleared needs-human
+                            flag, on #42
+/pilot-spec 12            → also re-scopes a type:feature story already at
+                            status:qa/status:in-qa, for a new split round
+/pilot-spec 42 --multi 3  → 3 architect+techlead dialogues on #42, in conversation with
+                            each other, converging on one proposal (or needs-human on
+                            genuine, irreconcilable disagreement)
+/pilot-spec --tech "add the GitHub Actions CI workflow described in our tech-debt backlog"
+    → originates a standalone type:tech story from scratch (no /pilot-discovery pass),
+      then splits/specs it in the same run
+/pilot-spec --bug "clicking export on the reports page throws a 500"
+    → the one shared mechanism for creating a type:bug ticket — classifies it, creates
+      it, and specs it in the same run
 
 /pilot-dev               → claims and implements the next status:dev-ready ticket, no
                            argument needed
@@ -49,31 +43,35 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-dev 42 --auto     → same, no live checkpoint (needed for a scheduled Routine)
 /pilot-dev 42 --resume   → picks back up a mid-pair session, or recovers a crashed
                            run's orphaned claim, on #42
-/pilot-dev 42 --multi 3 → 3 devs independently propose an approach for #42, reconciled
-                           to one agreed plan a single dev then implements as one PR
-                           (or needs-human, quoting the differing approaches)
+/pilot-dev 42 --multi 3 → 3 devs discuss an approach for #42 with each other, converging
+                           on one agreed plan a single dev then implements as one PR
+                           (or needs-human, quoting the differing positions)
 
 /pilot-review            → sweeps every status:review-ready/resumable PR, no argument
                            needed, pair by default
-/pilot-review 57         → claims and runs phase 5 against PR/issue #57, pair by default
+/pilot-review 57         → claims and runs phase 4 against PR/issue #57, pair by default
                           (must be status:review-ready, or status:in-review resumable)
 /pilot-review 57 --auto  → same, no live checkpoint (needed for a scheduled Routine)
 /pilot-review 57 --merge → merges the PR itself once every reviewer approves
-/pilot-review 57 --resume → recovers a claim orphaned by a crashed phase-5 run
-/pilot-review 57 --multi 3 → 3 instances of each reviewer role independently review
-                           #57, each role reconciled into one verdict
+/pilot-review 57 --resume → recovers a claim orphaned by a crashed phase-4 run
+/pilot-review 57 --multi 3 → 3 instances of each default-set reviewer role independently
+                           review #57 (no dialogue — reviewers stay isolated), each role
+                           reconciled into one verdict
+/pilot-review 57 --agents architect → adds the architect to this round's review
+                           (never in either default set) alongside whichever roles the
+                           ticket's own type already selects
 
 /pilot-qa                → sweeps the next fresh status:qa or resumable status:in-qa
                            ticket, no argument needed
-/pilot-qa 61             → runs phase 6 (human QA) against story #61 (must be status:qa)
+/pilot-qa 61             → runs phase 5 (human QA) against story #61 (must be status:qa)
 /pilot-qa --resume 61    → picks back up a mid-pair session on #61
 
-/pilot-auto             → sweep mode: tries review→dev→spec→scope, in that fixed order,
+/pilot-auto             → sweep mode: tries review→dev→spec, in that fixed order,
                           against their own pools, stopping at the first with work to do
 /pilot-auto --merge     → same, merging review's PR itself if that's the phase that runs
                           and its verdict is all-approve
 /pilot-auto dev spec    → same, restricted to that subset (still tried in fixed order)
-/pilot-auto 48          → tries the same four phases against ticket #48 specifically,
+/pilot-auto 48          → tries the same three phases against ticket #48 specifically,
                           stopping at whichever one currently claims it
 /pilot-auto 59          → same, and if #59 is a level:epic, each phase searches its
                           whole sub-issue tree for its own next actionable candidate
@@ -82,7 +80,6 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-auto 48 --merge  → same, and merges #48's PR itself once review's verdict is
                           all-approve
 /pilot-auto 48 --multi 3 → same, forwarding --multi 3 to whichever phase claims #48
-                          — 3 instances of that phase's persona reconciled into one
 /pilot-auto --again     → sweep mode, but keeps going after each candidate instead of
                           stopping at the first — drains every pool in one call
 /pilot-auto --next      → sweep mode for the first pass only; whichever candidate a
@@ -115,17 +112,18 @@ a ticket in place, recorded progress and all — `--resume` when you want to pic
 yourself right now, `can-resume` when you'd rather leave it for the next bare/scheduled
 sweep to pick up unattended. If that recorded progress isn't worth continuing at all, you
 can instead discard it yourself: manually revert the ticket's `status:` label back to
-that phase's own pre-claim value (`status:backlog` for phase 2, `status:spec-ready` for
-phase 3, etc.) and clear its assignee — the same labels a brand-new ticket carries. This
-is purely something you do by hand on GitHub; no skill or agent needs to know about it.
-Once reverted, the ticket looks exactly like fresh work and the next run of that phase —
-bare, scheduled, or given the number directly — picks it up and starts over from the
-ticket's original body.
+that phase's own pre-claim value (`status:backlog` for Spec, `status:dev-ready` isn't
+reverted this way for Dev — hand-revert to `status:dev-ready` itself if you want it
+re-attempted from scratch) and clear its assignee — the same labels a brand-new ticket
+carries. This is purely something you do by hand on GitHub; no skill or agent needs to
+know about it. Once reverted, the ticket looks exactly like fresh work and the next run
+of that phase — bare, scheduled, or given the number directly — picks it up and starts
+over from the ticket's original body.
 
 ## Example: a `type:feature` story end to end
 
 The golden path below is deliberately the richest one PILOT has — it's the only path that
-touches all six phases, a mandatory split with mixed task types, and every `status:`
+touches all five phases, a mandatory split with mixed task types, and every `status:`
 transition that isn't itself a branch (`wont-do`, `changes-requested`, `needs-human`,
 `on-hold`, a prerequisite ticket, `--resume`/reclaim, or re-scoping a story whose split is
 already done) — those are covered in `.pilot/pilot-process.md` instead.
@@ -137,36 +135,37 @@ sequenceDiagram
     participant Arch as pilot-architect
     participant Tech as pilot-techlead
     participant DevAgent as pilot-dev / pilot-e2e
-    participant Rev as pm + architect + techlead
+    participant Rev as techlead + pm (default set)
     participant QAAgent as pilot-qa
     participant GH as GitHub (issue/PR)
 
     rect rgb(240,240,255)
-    Note over Human,GH: Phase 1 — Plan (/pilot-story)
-    Human->>PM: raw need (type:feature auto-detected)
+    Note over Human,GH: Phase 1 — Discovery (/pilot-discovery)
+    Human->>PM: raw type:feature idea
+    PM->>Arch: dialogue — PM drafts the story, architect anticipates architecture
+    Arch-->>PM: architecture decisions, or a type:tech companion story if needed
     PM-->>Human: draft story + acceptance criteria (pair)
     Human-->>PM: approve
-    PM->>GH: create issue — status:draft → status:backlog, level:story
+    PM->>GH: create issue(s) — status:draft → status:backlog, level:story
     end
 
     rect rgb(240,255,240)
-    Note over Human,GH: Phase 2 — Investigate (/pilot-scope)
-    Human->>Arch: /pilot-scope #12
-    GH->>Arch: status:backlog → status:in-scope (claim)
-    Note over Arch: type:feature ⇒ split is mandatory, never a judgment call
-    Arch-->>Human: proposed tasks — a mix of type:feature/type:tech, plus exactly one type:e2e
+    Note over Human,GH: Phase 2 — Spec (/pilot-spec)
+    Human->>Arch: /pilot-spec #12
+    GH->>Arch: status:backlog → status:in-spec (claim)
+    Note over Arch,Tech: type:feature ⇒ split is mandatory, never a judgment call
+    Arch->>Tech: dialogue — split proposal and each task's spec written together
+    Tech-->>Arch: feasibility concerns reshape the split in the same pass, if needed
+    Arch-->>Human: proposed tasks — a mix of type:feature/type:tech, plus exactly one type:e2e — each with its own spec
     Human-->>Arch: approve
     Arch->>PM: type:feature tasks only (coverage check — tech/e2e excluded)
     PM-->>Arch: approve / block
-    Arch->>GH: parent → status:split · each task → status:spec-ready, level:task
+    Arch->>GH: parent → status:split · each task → status:dev-ready directly, level:task
     end
 
     rect rgb(255,250,230)
-    Note over Human,GH: Phases 3-5, once per level:task (reviewer set follows that task's own type:)
+    Note over Human,GH: Phases 3-4, once per level:task (reviewer set follows that task's own type:)
     loop each level:task
-        Human->>Tech: /pilot-spec #<task>
-        GH->>Tech: status:spec-ready → status:in-spec (claim)
-        Tech-->>GH: spec written (or test plan, for type:e2e) — status:dev-ready
         Human->>DevAgent: /pilot-dev #<task>
         GH->>DevAgent: status:dev-ready → status:in-dev (claim, pilot-e2e if type:e2e)
         DevAgent-->>GH: PR opened — status:review-ready
@@ -184,15 +183,15 @@ sequenceDiagram
     end
 
     rect rgb(235,245,255)
-    Note over Human,GH: Phase 6 — Human QA (/pilot-qa, type:feature only)
+    Note over Human,GH: Phase 5 — Human QA (/pilot-qa, type:feature only)
     Human->>QAAgent: /pilot-qa #12
     GH->>QAAgent: status:qa → status:in-qa (claim)
     QAAgent-->>Human: manual test plan
     Human-->>QAAgent: results, case by case
     alt all confirmed, or a failure isn't actually a bug
-        QAAgent->>GH: status:done + close issue (reports any non-bug finding for phase 1)
+        QAAgent->>GH: status:done + close issue (reports any non-bug finding for Discovery)
     else genuine bug
-        QAAgent->>GH: originates type:bug (level:task, spec-ready) + unclaims (status:in-qa → status:qa)
+        QAAgent->>GH: originates type:bug (level:task, backlog) + unclaims (status:in-qa → status:qa)
     else can't classify on its own
         QAAgent->>GH: needs-human + findings (resolved live and cleared same-turn, or left for later)
     end

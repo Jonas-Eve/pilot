@@ -21,8 +21,8 @@ Each reviewer returns a verdict: approve, or block with one or more points tagge
 — or `decision` — a genuine judgment call with no fix to propose until a human weighs in.
 Default to `change` whenever a fix can be named. Before returning it, re-read your own
 points against the PR's current head commit and the review as a whole, not just what
-prompted each one along the way, and drop or fix anything that no longer holds — phase 5
-has no incremental buildup to reconcile the way phases 1-4 do
+prompted each one along the way, and drop or fix anything that no longer holds — phase 4
+(Review) has no incremental buildup to reconcile the way phases 1-3 do
 (`.pilot/pilot-process.md` §4 "Interaction modes"), so this is its own one-shot equivalent.
 A validation/CI mismatch always counts as
 `change`: the tech lead re-runs this project's own build/test/lint commands directly
