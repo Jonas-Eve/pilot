@@ -49,9 +49,10 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
 4. Decide the split shape — this branches by `type:` (`.pilot/pilot-process.md` §2
    "Three levels"; `.pilot/pilot-link-e2e-tasks.md`):
    - **`type:tech`**: splitting is still your judgment call — fine to leave it as one
-     ticket through phases 3-4, in which case reconfirm or revise the `priority:` set at
-     phase 1 (`.pilot/pilot-process.md` §3 — it stays the ticket's own, since it's still
-     the one leaf). If you do split, propose one dev-sized task per unit,
+     ticket through phases 3-4, in which case reconfirm or revise the `priority:` set when
+     the story was created (Discovery, if grouped with a feature; this same phase's own
+     no-ticket entry, if standalone — `.pilot/pilot-process.md` §3, it stays the ticket's
+     own, since it's still the one leaf). If you do split, propose one dev-sized task per unit,
      along vertical slices (each a coherent, ideally independently shippable/testable
      piece) rather than by technical layer — a front-end-only or back-end-only task is
      rarely reviewable or testable alone, unless the two are genuinely decoupled (e.g.

@@ -72,7 +72,7 @@ parallel instances; the claim step below prevents collisions.
    `pilot-e2e`, also read and pass `.pilot/pilot-task-implement-e2e.md` alongside it, since
    it only documents that persona's differences from the base task. Also pass
    `.pilot/pilot-link-bug-tickets.md` in full — either persona may hit step 3a's bug case
-   mid-implementation, and the task doc covers only the phase-4-specific delta itself, not
+   mid-implementation, and the task doc covers only the phase-3-specific delta itself, not
    the classify/originate mechanic. Pass the ticket's
    spec and the architect's decisions, including any UI/UX description carried into it
    (`.pilot/pilot-task-scope-story.md`) — not the running conversation history or the state

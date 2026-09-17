@@ -8,7 +8,7 @@ split, each task with its own `type:` (`.pilot/pilot-process.md` §2 "`type:` is
 inherited" — typically a mix of `type:feature` tasks for the user-facing work, sometimes a
 `type:tech` enabler alongside them, and always exactly one `type:e2e` task). Confirm the
 **`type:feature` tasks only**, taken together, still cover every acceptance criterion the
-story promised — the one point before phase 5 checking a split didn't quietly drop part of
+story promised — the one point before phase 4 checking a split didn't quietly drop part of
 what the story committed to. Exclude `type:tech`/`type:e2e` from this coverage surface
 (`.pilot/pilot-link-e2e-tasks.md`): a tech task is a technical enabler,
 the e2e task only verifies criteria its `type:feature` siblings already cover — neither is
