@@ -1,4 +1,4 @@
-# PILOT link — Phase 5 review consensus
+# PILOT link — Phase 4 review consensus
 
 Injected whole by `pilot-review/SKILL.md` into each reviewer's prompt, and by
 `pilot-dev`/`pilot-e2e`'s task docs on reclaim. The reviewer set itself is
@@ -45,5 +45,5 @@ GitHub PR review event — never a plain issue comment for this:
   the same review are already actionable as-is.
 - Every blocking point tagged `decision`, none `change` → a plain comment (nothing
   code-level to request, and not an approval either); `needs-human` added,
-  `status:in-review` stays (`.pilot/pilot-process.md` §3) — this ticket re-enters phase 5's
+  `status:in-review` stays (`.pilot/pilot-process.md` §3) — this ticket re-enters phase 4's
   own pool once cleared, unless resolved live first (`pilot-review/SKILL.md`).
