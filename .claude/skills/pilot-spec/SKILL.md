@@ -78,27 +78,30 @@ what `--multi` means here.
     `.pilot/pilot-link-bug-tickets.md` in full), and pass its content with the raw need.
     - `--tech`: out of scope / not actionable → report, create nothing. Otherwise → a
       single `type:tech` `level:story` (standalone — never grouped under an epic, there
-      is no `type:tech` epic, `.pilot/pilot-process.md` §2 "Three levels"; if the
-      architect judges the need genuinely needs more than one story, create each as its
-      own standalone `level:story`, cross-referenced with a plain "Related: #N" — this is
-      rare enough not to warrant an epic mechanism of its own). Create it
+      is no `type:tech` epic, `.pilot/pilot-process.md` §2 "Three levels"), or, rarely, if
+      the architect judges the need genuinely needs more than one story, several —
+      each its own standalone `level:story`, cross-referenced with a plain "Related: #N"
+      (this is rare enough not to warrant an epic mechanism of its own). Create each
       `status:draft`, assigned, its own initial `priority:`.
     - `--bug`: not a bug / not actionable → report, create nothing (same as
       `.pilot/pilot-task-formalize-bug-report.md`'s own step 1). Genuine → create it
       directly, `type:bug` + `level:task` + `status:draft`, assigned, its own
-      `priority:` (`.pilot/pilot-link-bug-tickets.md`).
-    Either way, show the draft to the human (pair — a raw need has no live human
-    otherwise) and refine in place, writing each round into the ticket, until approved —
-    same discipline as `/pilot-discovery`'s own drafting loop
+      `priority:` (`.pilot/pilot-link-bug-tickets.md`) — always exactly one, a bug never
+      splits into several.
+    Either way, show the draft(s) to the human (pair — a raw need has no live human
+    otherwise) and refine in place, writing each round into every ticket involved, until
+    all are approved together — same discipline as `/pilot-discovery`'s own drafting loop
     (`.pilot/pilot-process.md` §4 "Interaction modes"). Once approved, this session
-    already holds the claim (assignee set at creation) — continue directly to step 3 with
-    the newly created ticket, skipping step 2 (already claimed) and step 1's pool
-    selection entirely: `status:draft` → `status:in-spec` at this point, no `status:backlog`
-    stop in between, since this same run is about to split/spec it. **If the rare
-    multi-story `--tech` case applies** (above), this run continues with only the first
-    (primary) story this way — the others are still real, valid tickets, but land on
-    `status:backlog` like any other standalone tech story, for a later `/pilot-spec` run to
-    claim on its own; don't try to split/spec more than one ticket in a single invocation.
+    already holds the claim on each (assignee set at creation) — continue directly to
+    step 3 with the **primary** ticket only (the `--bug` case's one ticket, or, for
+    `--tech`, whichever of the created stories the need centers on), skipping step 2
+    (already claimed) and step 1's pool selection entirely for that one:
+    `status:draft` → `status:in-spec` at this point, no `status:backlog`
+    stop in between, since this same run is about to split/spec it. Any *other* stories
+    from the rare multi-story `--tech` case finalize to `status:backlog` instead, right
+    alongside the primary one — real, valid, already-approved tickets, just not this run's
+    to split/spec; a later `/pilot-spec` run claims each on its own. Don't try to
+    split/spec more than one ticket in a single invocation.
     Never combine with
     `--resume` (a fresh idea, not a paused session) — `--resume <issue>` instead recovers
     a no-ticket entry left mid-pair, `status:draft`, the same as `/pilot-discovery`'s own
@@ -201,16 +204,22 @@ what `--multi` means here.
      a genuine disagreement, `.pilot/pilot-link-agent-dialogue.md`): add `needs-human`
      with a comment, keep `status:in-spec`.
    - Prerequisite tech ticket(s) flagged (alongside whichever of the above
-     applies): create each the way Spec's own no-ticket `--tech` entry does (step 1a),
-     its own `level:story` — **never** a sub-issue of the ticket being worked. Add a
-     "Blocks #M" comment on each new ticket, and a separate line in this ticket's
-     body naming it — "Depends on #N" if judged a hard blocker (the
+     applies): write each the same way `.pilot/pilot-task-formalize-tech-need.md`
+     describes for a standalone need — its own `level:story`, standalone, never grouped
+     under an Epic — but **never** step 1a's live drafting loop or its "continue directly
+     to step 3" behavior: no human is here to co-draft this one, and this run stays
+     focused on the ticket it already claimed. Create it directly at `status:backlog` for
+     a later, separate `/pilot-spec` run — **never** a sub-issue of
+     the ticket being worked. Add a "Blocks #M" comment on each new ticket, and a separate
+     line in this ticket's body naming it — "Depends on #N" if judged a hard blocker (the
      exact phrase `.pilot/pilot-process.md` §4 "Blocked-by dependencies" mechanically
      gates future phases on), else a plain non-gating reference. Several prerequisites
      means several separate lines, one `#N` each — never combined.
    - Prerequisite bug ticket(s) flagged (alongside whichever of the above applies):
-     create each the way Spec's own no-ticket `--bug` entry does (step 1a) —
-     `type:bug`, `level:task`, `status:backlog` — never a sub-issue — same linking rules,
+     same idea — write each per `.pilot/pilot-task-formalize-bug-report.md`'s content
+     steps, but skip its live-human classification loop (no one's here to confirm it live)
+     and create it directly at `status:backlog` —
+     `type:bug`, `level:task` — never a sub-issue — same linking rules,
      always a hard blocker here.
    - Either prerequisite case above, when step 1 found a parent Epic for the ticket
      being worked: also `mcp__github__add_issue_comment` on that Epic naming the
