@@ -90,14 +90,16 @@ parallel instances; the claim step below prevents collisions.
      reclaim): first ask for a proposed implementation approach, not the finished
      implementation — the pair-coding checkpoint. Show the human that plan as a normal
      reply, wait for their response, feed it back to the agent, repeat until approved,
-     writing each approved checkpoint into the ticket right away (a comment, or a partial
-     `issue_write`) rather than holding it in-conversation — this is what `--resume` picks
-     back up if the session ends before final approval (`.pilot/pilot-process.md` §4
-     "Resuming an orphaned claim"). Requires a human live in this session; a scheduled
-     Routine must pass `--auto` instead. Once approved, the same `Agent` call proceeds with
-     implementation below — the "ask live" behavior for a genuine blocker (§3) still
-     applies during implementation itself; pair mode doesn't replace it. **`--auto`**, with
-     neither pair nor `--multi` in play, skips straight to implementation in this one call.
+     keeping one scratch comment on the ticket updated in place
+     (`mcp__github__update_issue_comment` — create it once, edit it each round) rather than
+     holding it in-conversation or posting a new comment per round — this is what
+     `--resume` picks back up if the session ends before final approval
+     (`.pilot/pilot-process.md` §4 "Resuming an orphaned claim"). Requires a human live in
+     this session; a scheduled Routine must pass `--auto` instead. Once approved, the same
+     `Agent` call proceeds with implementation below — the "ask live" behavior for a
+     genuine blocker (§3) still applies during implementation itself; pair mode doesn't
+     replace it. **`--auto`**, with neither pair nor `--multi` in play, skips straight to
+     implementation in this one call (no scratch comment ever created).
    - **With `--multi <N>`** (a fresh claim, or a resume via `can-resume` per step 1 —
      never a reclaim, never the literal `--resume` flag): N instances, **each asked
      for a proposed implementation approach only, not the finished implementation** — same
@@ -111,7 +113,8 @@ parallel instances; the claim step below prevents collisions.
      to push or clean up either way. Once an approach is settled (reached by convergence,
      or by a live human resolving the escalation), **unless `--auto`**,
      show it to the human as the normal pair-coding checkpoint above (repeat until
-     approved, same checkpoint discipline) — then, whether via pair approval or `--auto`
+     approved, same checkpoint discipline, same single edited scratch comment) — then,
+     whether via pair approval or `--auto`
      straight through, make
      **one further, single** `Agent` call (never N again — the ensemble's job ends at the
      approach) with that approach as its explicit plan, to actually implement it.
@@ -125,7 +128,10 @@ parallel instances; the claim step below prevents collisions.
 5. Apply the result:
    - PR opened, or new commits pushed to an existing PR (reclaim case): clear the assignee
      and set `status:review-ready` on the ticket (phase 4's own pre-claim status — never
-     `status:in-review` directly, `.pilot/pilot-process.md` §4 "Claim Protocol").
+     `status:in-review` directly, `.pilot/pilot-process.md` §4 "Claim Protocol"). If step
+     3 left a scratch approach-checkpoint comment, collapse it to one concise line (e.g.
+     "Approach: <one-line summary> — see PR #<n>") — the PR itself is the real artifact
+     now, not the negotiation that led to it.
    - Blocking conflict: nothing further to set — the subagent already added
      `needs-human` and posted its comment itself (`status:in-dev` stays, per
      `.pilot/pilot-process.md` §3).

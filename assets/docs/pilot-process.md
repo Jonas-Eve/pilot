@@ -911,7 +911,12 @@ waits for their next message, feeds it back, and repeats until they approve.
 **The skill writes progress into the ticket immediately at every checkpoint** (a comment,
 or a partial `issue_write`) instead of holding it in-conversation until the whole phase is
 done — the ticket itself becomes the durable record of how far the pair session got, which
-is what makes `--resume` possible.
+is what makes `--resume` possible. Where the checkpoint is a comment (Spec, Dev, QA), it's
+typically **one comment kept up to date** — created once, then edited in place each round
+— rather than a new comment per round; whether that comment stays as-is once the phase
+finalizes (QA: it's the actual test log, the only record of what was tried) or gets
+collapsed to a short final note once the real artifact exists elsewhere (Spec: the
+sub-issues/spec; Dev: the PR) is each phase's own call, covered in its own `SKILL.md`.
 
 For Dev and Review a ticket already exists before the phase starts. **Discovery, and
 Spec's own no-ticket entry, are the cases where no ticket exists yet at the very first

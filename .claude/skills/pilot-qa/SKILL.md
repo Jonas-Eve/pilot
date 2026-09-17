@@ -56,10 +56,15 @@ this skill only covers the mechanics of running it.
    returns a manual test plan: concrete cases and how to test each.
 5. Walk the human through it (pair, always — no `--auto`): show the plan, then go case by
    case — ask them to run one, report what happened, feed that back to the agent, move to
-   the next — until every case is reported. Write progress into the ticket as you go (a
-   comment per case or a short batch), the same incremental-checkpoint discipline every
-   pair-mode phase follows (`.pilot/pilot-process.md` §4 "Interaction modes") — this is what
-   makes `--resume` possible if the session ends before a final verdict.
+   the next — until every case is reported. Keep one running comment updated in place
+   (`mcp__github__update_issue_comment` — create it once, append each case's result to it)
+   rather than posting a new comment per case, the same incremental-checkpoint discipline
+   every pair-mode phase follows (`.pilot/pilot-process.md` §4 "Interaction modes") — this
+   is what makes `--resume` possible if the session ends before a final verdict. Unlike
+   Spec's or Dev's scratch checkpoints, **don't collapse this one once the verdict lands**
+   — it's the actual test log (what was tried, case by case, and what happened), the one
+   place that record exists at all, not work-in-progress toward some other final
+   artifact.
 6. Apply the agent's verdict:
    - **Approved** (every case confirmed, or every failure resolved to "not actually a
      bug"): set `status:done` and close the issue (`mcp__github__issue_write`) — the one
