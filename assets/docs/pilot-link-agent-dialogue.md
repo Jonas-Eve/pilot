@@ -100,12 +100,6 @@ running another round hoping something changes. A round that *did* change someth
 progress regardless of how small it looks; only a round that changed nothing substantive
 is the tell.
 
-The degenerate case of this — a round that produced a byte-for-byte identical proposal —
-is cheap enough that the calling skill can catch it directly, no judgment call needed
-(`.pilot/pilot-process.md` §5's "deterministic tool calls" principle): compare the
-before/after text itself before spending another turn on it. Anything short of that exact
-match still needs the personas' own judgment on whether the difference is substantive.
-
 Unlike a genuine disagreement, this needs no
 `needs-human` — there's nothing for a human to adjudicate, nobody disagrees — finalize with
 the current proposal as converged and move on to the phase's normal remaining steps.
