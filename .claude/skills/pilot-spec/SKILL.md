@@ -76,33 +76,26 @@ what `--multi` means here.
     `.pilot/pilot-task-formalize-tech-need.md` (`--tech`) or
     `.pilot/pilot-task-formalize-bug-report.md` (`--bug`, alongside
     `.pilot/pilot-link-bug-tickets.md` in full), and pass its content with the raw need.
-    - `--tech`: out of scope / not actionable → report, create nothing. Otherwise → a
-      single `type:tech` `level:story` (standalone — never grouped under an epic, there
-      is no `type:tech` epic, `.pilot/pilot-process.md` §2 "Three levels"), or, rarely, if
-      the architect judges the need genuinely needs more than one story, several —
-      each its own standalone `level:story`, cross-referenced with a plain "Related: #N"
-      (this is rare enough not to warrant an epic mechanism of its own). Create each
+    - `--tech`: out of scope / not actionable → report, create nothing. Otherwise →
+      always exactly one `type:tech` `level:story` (standalone — never grouped under an
+      epic, there is no `type:tech` epic, `.pilot/pilot-process.md` §2 "Three levels") —
+      a need too big for one story is never several stories here, that's what step 3's
+      own split judgment call is for, right after this same story is approved. Create it
       `status:draft`, assigned, its own initial `priority:`.
     - `--bug`: not a bug / not actionable → report, create nothing (same as
       `.pilot/pilot-task-formalize-bug-report.md`'s own step 1). Genuine → create it
       directly, `type:bug` + `level:task` + `status:draft`, assigned, its own
       `priority:` (`.pilot/pilot-link-bug-tickets.md`) — always exactly one, a bug never
-      splits into several.
-    Either way, show the draft(s) to the human (pair — a raw need has no live human
-    otherwise) and refine in place, writing each round into every ticket involved, until
-    all are approved together — same discipline as `/pilot-discovery`'s own drafting loop
-    (`.pilot/pilot-process.md` §4 "Interaction modes"). Once approved, this session
-    already holds the claim on each (assignee set at creation) — continue directly to
-    step 3 with the **primary** ticket only (the `--bug` case's one ticket, or, for
-    `--tech`, whichever of the created stories the need centers on), skipping step 2
-    (already claimed) and step 1's pool selection entirely for that one:
-    `status:draft` → `status:in-spec` at this point, no `status:backlog`
-    stop in between, since this same run is about to split/spec it. Any *other* stories
-    from the rare multi-story `--tech` case finalize to `status:backlog` instead, right
-    alongside the primary one — real, valid, already-approved tickets, just not this run's
-    to split/spec; a later `/pilot-spec` run claims each on its own. Don't try to
-    split/spec more than one ticket in a single invocation.
-    Never combine with
+      splits.
+    Either way, exactly one ticket exists at this point. Show the draft to the human
+    (pair — a raw need has no live human otherwise) and refine in place, writing each
+    round into the ticket, until approved — same discipline as `/pilot-discovery`'s own
+    drafting loop (`.pilot/pilot-process.md` §4 "Interaction modes"). Once approved, this
+    session already holds the claim (assignee set at creation) — continue directly to
+    step 3 with this same ticket, skipping step 2 (already claimed) and step 1's pool
+    selection entirely: `status:draft` → `status:in-spec` at this point, no
+    `status:backlog` stop in between, since this same run is about to split (if the
+    `--tech` case needs it) and spec it. Never combine with
     `--resume` (a fresh idea, not a paused session) — `--resume <issue>` instead recovers
     a no-ticket entry left mid-pair, `status:draft`, the same as `/pilot-discovery`'s own
     resume.

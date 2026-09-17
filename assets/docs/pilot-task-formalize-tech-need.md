@@ -19,18 +19,15 @@ same skill invocation, once this ticket is drafted and approved.
 
 1. Write the story's issue body: what the need actually is and why, concrete enough
    that the split/spec pass that follows can work it without re-litigating what you meant.
-2. **Standalone, never grouped under an Epic** — there is no `type:tech` epic
-   (`.pilot/pilot-process.md` §2 "Three levels"); a need that genuinely can't be delivered
-   as one story is rare enough here that it's not worth an epic mechanism of its own —
-   create each as its own standalone `level:story` instead, cross-referenced with a plain
-   "Related: #N" note in each one's body if you do split it this way. If the need is tied
+2. **Always exactly one story, standalone, never grouped under an Epic** — there is no
+   `type:tech` epic (`.pilot/pilot-process.md` §2 "Three levels"), so a need too big for
+   one story is never several standalone stories either: that's what the split step right
+   after this one is for (mandatory-vs-judgment-call by `type:` — same as any `type:tech`
+   story, `.pilot/pilot-task-scope-story.md`), turning this one story into dev-sized tasks
+   instead of multiplying stories. If the need is tied
    to a product effort instead (it belongs alongside a `type:feature` story), it isn't
    standalone — point at `/pilot-discovery` instead, where the PM+architect dialogue can
    group it under that effort's own Epic.
-3. Label each story `type:tech`, `level:story`, `status:draft` (this skill's own no-ticket
+3. Label the story `type:tech`, `level:story`, `status:draft` (this skill's own no-ticket
    entry drafts it live with a human before finalizing, same as Discovery does), its own
-   initial `priority:P0/P1/P2` (above), assigned to this session. If you created more than
-   one (step 2's rare case), the skill continues splitting/speccing only the primary one
-   in this same run — the others still get drafted and approved right here, but land on
-   `status:backlog` for a later run, same as any other standalone tech story
-   (`pilot-spec/SKILL.md` step 1a).
+   initial `priority:P0/P1/P2` (above), assigned to this session.
