@@ -82,9 +82,10 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
      technical work that isn't part of it at all (infra, CI, a shared library, a
      migration) — no defect implied; applies to a `type:feature` ticket just as much
      as a `type:tech` one. Write it exactly the way `.pilot/pilot-task-formalize-tech-need.md`
-     describes for a standalone need — one story, standalone, never grouped under an
-     Epic (there is no `type:tech` epic; several genuinely separate needs become several
-     standalone stories, cross-referenced with a plain "Related: #N") — **never** as a
+     describes for a standalone need — always exactly one story, standalone, never
+     grouped under an Epic (there is no `type:tech` epic; if it turns out too big for one
+     story, that's its own future Spec pass's split judgment call to make, not something
+     to solve by creating several stories here) — **never** as a
      sub-issue of
      the ticket you're scoping (`.pilot/pilot-process.md` §2 "Prerequisite tech/bug
      tickets"): that would make it `level:task` and wrongly tie it to this ticket's
