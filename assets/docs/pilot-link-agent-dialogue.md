@@ -70,8 +70,12 @@ skipped.
 Keep exchanging turns as long as new information or a changed mind is actually moving the
 conversation. The signal to stop and escalate is a *substantive* point where every party
 involved — two personas in the base dialogue, or however many proposals/instances an
-ensemble is comparing — has restated its own position without anyone changing it or
-surfacing anything new — not a turn count. When that happens, add `needs-human`
+ensemble is comparing — holds an **incompatible** position (one clears it, another still
+blocks on it; one proposes A, another insists on B) and has restated that same position
+without anyone changing it or surfacing anything new — not a turn count. This is
+different from the next section's failure mode: there, nobody actually holds a competing
+position, the dialogue is just still talking after already agreeing. When incompatible
+positions are the case, add `needs-human`
 (`.pilot/pilot-process.md` §3) with a
 comment quoting every position verbatim, never summarized or reduced to "two sides" when
 more than two actually differ — a human decides
@@ -83,11 +87,12 @@ spot → the ticket stays blocked and waits, same as any other `needs-human` tic
 
 ### Recognizing unproductive length (not a disagreement)
 
-A different failure mode from a genuine disagreement above: nobody's actually stuck on a
-substantive point, but the conversation keeps going anyway — another round of wording
-tweaks, a re-litigated detail nobody actually changed their mind on, a "let me reconsider"
-that doesn't lead anywhere new. This isn't a turn-count check either — a long dialogue
-that's still visibly narrowing something real is fine, however many turns that takes.
+A different failure mode from a genuine disagreement above: no incompatible positions
+anywhere, nobody actually blocks on anything — but the conversation keeps going regardless,
+another round of wording tweaks, a detail revisited that both sides already agreed on, a
+"let me reconsider" that doesn't lead anywhere new. This isn't a turn-count check either —
+a long dialogue that's still visibly narrowing something real is fine, however many turns
+that takes.
 
 Check this **after** a full round (both personas have had a turn), never by predicting
 whether your own next turn would be worth adding — that's a harder, less reliable
