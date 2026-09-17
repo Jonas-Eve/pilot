@@ -29,17 +29,14 @@ not reproducible, an exact duplicate of an open bug ticket, or working as intend
 so and create nothing — a bug has no `status:wont-do` checkpoint to catch an invalid one
 later.
 
-**If it genuinely is a bug, create it directly**: `type:bug`, `level:task`,
-`status:backlog`, unassigned — never `level:story` (`.pilot/pilot-process.md` §2 "Three
-levels" — a bug never splits), never grouped under a `level:epic`. Write it directly (what's
+**If it genuinely is a bug, create it directly**: `type:bug`, `level:task`, unassigned —
+never `level:story` (`.pilot/pilot-process.md` §2 "Three levels" — a bug never splits),
+never grouped under a `level:epic`. Write it directly (what's
 broken, how to reproduce/observe it, best root-cause diagnosis and suggested fix location
 if known, severity/impact), with its own `priority:` (`.pilot/pilot-process.md` §3 — the
-architect's technical framing) set by whoever creates it. **`status:backlog`, not an
-immediate spec** — even when a human invoked `/pilot-spec --bug` directly, creating the
-ticket doesn't have to mean speccing it in the same breath (a bug is small enough that a
-later, ordinary `/pilot-spec` pass can pick it up ordinarily); this is also what lets
-`pilot-dev`/`pilot-e2e`/`pilot-qa` create one mid-work and leave it in the pool without
-blocking on writing its spec themselves.
+architect's technical framing) set by whoever creates it. Which `status:` it lands on, and
+whether it gets spec'd right away, is each invoker's own delta below — the shared
+mechanism is only the classification and the ticket's own content.
 
 **Linking, when discovered mid-another-ticket** (the prerequisite case, and the phase-3/5
 inline-discovery case alike): same mechanics as a prerequisite tech ticket
@@ -51,15 +48,22 @@ discovering ticket cannot be finished until the bug is fixed.
 Each invoker's own delta beyond this shared mechanism:
 
 - **A human, via `/pilot-spec --bug`**: no discovering ticket to link back to — just
-  create it standalone, per Spec's own no-ticket entry mechanics
-  (`pilot-spec/SKILL.md`).
-- **The architect, mid-Spec** (a prerequisite): finish splitting/speccing the ticket being
-  worked normally afterward — it isn't claimed by Dev yet, so recording the dependency is
-  enough, no unclaiming needed.
-- **`pilot-dev`/`pilot-e2e`, mid-implementation**: the discovering ticket is already
-  claimed and mid-phase, so unclaim it instead of leaving it stuck —
-  `.pilot/pilot-task-implement.md` covers the exact steps (push WIP to a branch, comment,
-  clear assignee, back to `status:dev-ready`).
-- **`pilot-qa`, mid-manual-test**: same idea, no branch/commit involved —
-  `.pilot/pilot-task-human-qa.md` covers the exact steps (comment naming the new
-  ticket(s), clear assignee, back to `status:qa`).
+  create it standalone, `status:draft` while the human confirms the classification live
+  (this entry always has a human right there), then this same run continues straight
+  into speccing it — `status:draft` → `status:in-spec` directly, no `status:backlog` stop
+  in between (`pilot-spec/SKILL.md` step 1a) — a bug is small enough that running
+  `/pilot-spec --bug` is naturally a single "report and spec it" pass, not two separate
+  ones.
+- **The architect, mid-Spec** (a prerequisite): no live drafting session of its own — the
+  human present, if any, is focused on the ticket actually being worked, not this one —
+  so create it straight at `status:backlog`, for a later, separate `/pilot-spec` run to
+  pick up. Finish splitting/speccing the ticket being worked normally afterward — it isn't
+  claimed by Dev yet, so recording the dependency is enough, no unclaiming needed.
+- **`pilot-dev`/`pilot-e2e`, mid-implementation**: same as the architect's prerequisite
+  case — straight to `status:backlog`, left for a later `/pilot-spec` run, never spec'd in
+  this pass. The discovering ticket is already claimed and mid-phase, so unclaim it
+  instead of leaving it stuck — `.pilot/pilot-task-implement.md` covers the exact steps
+  (push WIP to a branch, comment, clear assignee, back to `status:dev-ready`).
+- **`pilot-qa`, mid-manual-test**: same idea, straight to `status:backlog`, no branch/commit
+  involved — `.pilot/pilot-task-human-qa.md` covers the exact steps (comment naming the
+  new ticket(s), clear assignee, back to `status:qa`).

@@ -46,16 +46,11 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    create nothing); a single story (with or without a `type:tech` companion story for a
    technical enabler the PM and architect agree the same effort needs); or several stories
    plus an existing Epic to reuse or a new Epic to create.
-3a. **With `--multi <N>`**: run N independent instances of step 3's own dialogue in
-    parallel, each its own isolated PM+architect conversation converging on its own
-    proposal. Compare the N resulting proposals the same way the base dialogue judges its
-    own convergence (`.pilot/pilot-link-agent-dialogue.md`) — no fixed round cap; if they
-    don't converge on their own, run one further round where a fresh instance of each
-    persona sees every prior instance's proposal and the disagreement, and keep going as
-    long as that's still productive. A disagreement neither side changes its mind on,
-    across enough rounds that nothing new is surfacing, is genuinely irreconcilable — show
-    the human the differing proposals verbatim and let them decide, right there in this
-    same pair session (never a silent pick).
+3a. **With `--multi <N>`**: run N independent instances of step 3's own dialogue instead
+    of one, converging on a single proposal with no fixed round cap
+    (`.pilot/pilot-link-agent-dialogue.md`) before continuing to step 4. A genuinely
+    irreconcilable disagreement surfaces to the human right there in this same pair
+    session, differing proposals quoted verbatim (never a silent pick).
 4. **Create the draft ticket(s) right away** (`mcp__github__issue_write`,
    `mcp__github__sub_issue_write`), before showing anything to the human — this is what
    makes `--resume` possible if the session ends before final approval
