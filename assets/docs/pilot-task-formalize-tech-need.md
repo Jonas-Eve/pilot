@@ -27,6 +27,10 @@ same skill invocation, once this ticket is drafted and approved.
    to a product effort instead (it belongs alongside a `type:feature` story), it isn't
    standalone — point at `/pilot-discovery` instead, where the PM+architect dialogue can
    group it under that effort's own Epic.
-3. Label the story `type:tech`, `level:story`, `status:draft` (this skill's own no-ticket
+3. Label each story `type:tech`, `level:story`, `status:draft` (this skill's own no-ticket
    entry drafts it live with a human before finalizing, same as Discovery does), its own
-   initial `priority:P0/P1/P2` (above), assigned to this session.
+   initial `priority:P0/P1/P2` (above), assigned to this session. If you created more than
+   one (step 2's rare case), the skill continues splitting/speccing only the primary one
+   in this same run — the others still get drafted and approved right here, but land on
+   `status:backlog` for a later run, same as any other standalone tech story
+   (`pilot-spec/SKILL.md` step 1a).

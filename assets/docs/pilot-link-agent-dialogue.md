@@ -30,11 +30,17 @@ skill-mediated, capped mechanism (`.pilot/pilot-link-multi-consensus.md`).
 
 `--multi <N>` on Discovery or Spec runs N independent instances of the *whole two-persona
 dialogue* (not N instances of one persona) — each its own isolated PM+architect, or
-architect+tech lead, conversation converging on its own proposal — then compares the N
-resulting proposals the same way a single dialogue judges its own convergence: no fixed
-round cap, converge or escalate. `--multi` on Dev instead ensembles N instances of the
-*same* persona (`pilot-dev`/`pilot-e2e`) as direct peers in one exchange, per
-`pilot-dev/SKILL.md` step 3.
+architect+tech lead, conversation converging on its own proposal first. Once all N have
+their own proposal, compare them: every substantive point agrees across all N → adopt any
+one verbatim, done. Any point genuinely diverges → that's a second round, not a skill-side
+comparison — call `Agent` again for each persona involved, a fresh instance of each seeing
+every one of the N proposals and exactly where they diverged, and let them converge on a
+single reconciled proposal the same way the base dialogue would; repeat as long as new
+rounds are actually narrowing the disagreement, no fixed cap. `--multi` on Dev instead
+ensembles N instances of the *same* persona (`pilot-dev`/`pilot-e2e`) as direct peers in
+one exchange from the start, per `pilot-dev/SKILL.md` step 3 — no separate "N independent
+runs, then reconcile" stage, since there's only one persona to instantiate N times in the
+first place.
 
 ## Mechanics
 
@@ -62,10 +68,13 @@ skipped.
 ### Recognizing a genuine disagreement
 
 Keep exchanging turns as long as new information or a changed mind is actually moving the
-conversation. The signal to stop and escalate is a *substantive* point where both sides
-have restated their position without either changing it or surfacing anything new — not a
-turn count. When that happens, add `needs-human` (`.pilot/pilot-process.md` §3) with a
-comment quoting each side's position verbatim, never summarized away — a human decides
+conversation. The signal to stop and escalate is a *substantive* point where every party
+involved — two personas in the base dialogue, or however many proposals/instances an
+ensemble is comparing — has restated its own position without anyone changing it or
+surfacing anything new — not a turn count. When that happens, add `needs-human`
+(`.pilot/pilot-process.md` §3) with a
+comment quoting every position verbatim, never summarized or reduced to "two sides" when
+more than two actually differ — a human decides
 directly, including the "a human is live in the same session" path (`.pilot/pilot-process.md`
 §3): pair mode running this dialogue is still pair mode, so a human present right then
 answers immediately. Once they do, the agents proceed with that answer as the converged
