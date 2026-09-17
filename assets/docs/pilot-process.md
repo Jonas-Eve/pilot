@@ -226,8 +226,10 @@ The same applies to a prerequisite **bug** discovered mid-Spec: classify it firs
 (`.pilot/pilot-link-bug-tickets.md`), and if genuine, create it the same way a standalone
 bug is created via Spec's own `--bug` entry.
 
-The architect creates the tech prerequisite — one story, or several under a new/reused
-Epic, each its own `level:story` — **never** as a sub-issue of the ticket being worked: a
+The architect creates the tech prerequisite — always exactly one `level:story`, standalone,
+never grouped under an Epic (there is no `type:tech` epic; if it turns out too big for one
+story, that's its own future Spec pass's split judgment call, not a reason to create
+several here) — **never** as a sub-issue of the ticket being worked: a
 sub-issue would make it `level:task` and tie its lifecycle to the parent's split-tracking,
 which is wrong for a ticket that is its own root and goes through Spec/Dev/Review
 independently. Instead, link the two directions with a plain issue reference: a comment on
