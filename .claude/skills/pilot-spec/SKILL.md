@@ -173,9 +173,9 @@ what `--multi` means here.
     spec — security/architecture decisions, dependencies, any e2e task, wont-do
     verdict, prerequisite need(s) and blocker status, the PM's coverage check if
     run — as a normal reply, wait for their response, feed it back into the dialogue —
-    repeat until approved. Write each approved checkpoint into the ticket right away (a
-    comment, or a partial `issue_write`) rather than holding it in-conversation — this is
-    what `--resume` picks back up if the session ends first
+    repeat until approved. Keep updating step 3's same scratch comment as each round is
+    approved, rather than holding it in-conversation or starting a second comment — this
+    is what `--resume` picks back up if the session ends first
     (`.pilot/pilot-process.md` §4 "Resuming an orphaned claim"). Requires a live human;
     a scheduled Routine must pass `--auto`. Once approved, continue to step 4c.
 4c. **Final consolidation pass** (`.pilot/pilot-process.md` §4 "Interaction modes"):
