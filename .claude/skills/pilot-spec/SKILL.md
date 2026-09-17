@@ -23,11 +23,11 @@ what `--multi` means here.
      step 1a.
    - `--resume <issue>`: must be `status:in-spec`, assigned, **no** `needs-human`/
      `on-hold` — a ticket left mid-pair. Follow `.pilot/pilot-process.md` §4 "Resuming
-     an orphaned claim", skipping step 3's claim. If it
+     an orphaned claim", skipping step 2's claim. If it
      doesn't match, report and stop.
    - No `--resume`, `status:in-spec`, **no** `needs-human`/`on-hold`, carrying
      `can-resume` → a resume, not a fresh claim. Follow
-     `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket", skipping step 3's
+     `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket", skipping step 2's
      claim.
    - No `--resume`, `status:in-spec`, assigned, **no** `needs-human`/`on-hold`, and
      no `can-resume` → looks like a ticket left mid-pair. Report and ask the human to
@@ -116,7 +116,17 @@ what `--multi` means here.
      if any, pointers to this project's own coding standards/security conventions and
      architecture docs, and, for a `status:qa`/`status:in-qa` reclaim (step 1), which
      existing tasks are already `status:done` from the earlier round, including the e2e
-     one. Not the conversation history.
+     one. Not the conversation history. **Checkpoint as the dialogue progresses, not only
+     once it converges**: this pass can produce a split decision plus several full specs
+     before a human ever sees any of it, all before the sub-issues themselves exist to
+     write into (step 5) — so post each piece to the *parent story's* own comment thread
+     the moment it's settled between the two personas (the split shape once agreed, then
+     each task's spec as it's drafted), the same "write immediately, don't hold it in
+     conversation" discipline pair mode already applies everywhere else
+     (`.pilot/pilot-process.md` §4 "Interaction modes"). This is what an orphaned-claim
+     `--resume` reconstructs from (`.pilot/pilot-process.md` §4 "Resuming an orphaned
+     claim") if the session dies partway through this step, instead of restarting the
+     whole dialogue from nothing.
    - **`level:task`** (always a standalone `type:bug` — never a fresh split-off task,
      which is already spec'd in the same pass that created it, below): no split decision
      to make — call `Agent` with
