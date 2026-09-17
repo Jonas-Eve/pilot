@@ -81,6 +81,22 @@ answers immediately. Once they do, the agents proceed with that answer as the co
 position, and the phase continues to its normal remaining steps. No live human on the
 spot → the ticket stays blocked and waits, same as any other `needs-human` ticket.
 
+### Recognizing unproductive length (not a disagreement)
+
+A different failure mode from a genuine disagreement above: nobody's actually stuck on a
+substantive point, but the conversation keeps going anyway — another round of wording
+tweaks, a re-litigated detail nobody actually changed their mind on, a "let me reconsider"
+that doesn't lead anywhere new. This isn't a turn-count check either — a long dialogue
+that's still visibly narrowing something real is fine, however many turns that takes. The
+signal is each side's own turns no longer changing the substance of the proposal — if
+you're about to add a turn and it would only rephrase what's already there, that's the
+tell to stop, not a reason to keep polishing. Unlike a genuine disagreement, this needs no
+`needs-human` — there's nothing for a human to adjudicate, nobody disagrees — finalize with
+the current proposal as converged and move on to the phase's normal remaining steps.
+Applies the same way to `--multi`'s own reconciliation rounds (above): if a fresh round
+isn't actually closing the gap between the N proposals, adopt the strongest one rather
+than running another round hoping it converges on its own.
+
 ### Once converged
 
 The converged proposal is what pair mode's own checkpoint shows the human (§4
