@@ -119,14 +119,19 @@ what `--multi` means here.
      one. Not the conversation history. **Checkpoint as the dialogue progresses, not only
      once it converges**: this pass can produce a split decision plus several full specs
      before a human ever sees any of it, all before the sub-issues themselves exist to
-     write into (step 5) — so post each piece to the *parent story's* own comment thread
-     the moment it's settled between the two personas (the split shape once agreed, then
-     each task's spec as it's drafted), the same "write immediately, don't hold it in
-     conversation" discipline pair mode already applies everywhere else
-     (`.pilot/pilot-process.md` §4 "Interaction modes"). This is what an orphaned-claim
-     `--resume` reconstructs from (`.pilot/pilot-process.md` §4 "Resuming an orphaned
+     write into (step 5) — so keep the *parent story's* current state in **one** scratch
+     comment, updated in place (`mcp__github__update_issue_comment` — create it once,
+     from then on edit that same comment) each time a piece settles between the two
+     personas (the split shape once agreed, then each task's spec as it's drafted), rather
+     than posting a new one per milestone: that comment's latest edit is always the whole
+     current state, not a trail to reconstruct from piece by piece. Same "write
+     immediately, don't hold it in conversation" discipline pair mode already applies
+     everywhere else (`.pilot/pilot-process.md` §4 "Interaction modes"), just one comment
+     kept current instead of one comment per round. This is what an orphaned-claim
+     `--resume` reads (`.pilot/pilot-process.md` §4 "Resuming an orphaned
      claim") if the session dies partway through this step, instead of restarting the
-     whole dialogue from nothing.
+     whole dialogue from nothing. Once step 5 actually applies the result, this scratch
+     comment has done its job — see step 5's own note on retiring it.
    - **`level:task`** (always a standalone `type:bug` — never a fresh split-off task,
      which is already spec'd in the same pass that created it, below): no split decision
      to make — call `Agent` with
@@ -184,7 +189,10 @@ what `--multi` means here.
      a `type:feature` story is never this case, step 4): update the ticket body with the
      spec and decisions, set `status:dev-ready`, and write the reconfirmed/revised
      `priority:` (for a `level:story` — still the ticket's own, since it's still the one
-     leaf).
+     leaf). If step 3 left a scratch comment, edit it down to one concise line (e.g.
+     "Spec written, status:dev-ready") — the content now lives in the ticket body itself,
+     so the comment's job is done; same retirement as the split case below, just with
+     nothing to link to.
    - Split into tasks: create the sub-issues, link to the parent as native
      sub-issues, each labeled `level:task` plus its own `type:` as decided in step 4
      (never the parent's — `.pilot/pilot-process.md` §2 "`type:` is never
@@ -198,7 +206,11 @@ what `--multi` means here.
      recorded). Set the parent's `status:` to `split` (its `level:` stays
      `level:story`) and remove its own `priority:` label
      (`.pilot/pilot-process.md` §3 — superseded by its tasks'), leave it open and
-     unassigned as a tracker.
+     unassigned as a tracker. **Retire step 3's scratch comment**: its whole purpose was
+     letting a crash mid-dialogue recover the in-progress split/specs before the
+     sub-issues existed — now that they do, and hold the real content, edit that same
+     comment down to one concise line (e.g. "Split into #A, #B, #C — see each for its own
+     spec") instead of leaving the full in-progress draft sitting on the parent.
    - Won't-do (clear-cut only): label `status:wont-do`, close the issue. If not
      clear-cut, add `needs-human` with the reasoning instead (keep
      `status:in-spec`) — don't close it. Never for a `type:bug` ticket past creation —
