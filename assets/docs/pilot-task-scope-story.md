@@ -118,7 +118,15 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    convention instead, if it already has one that differs.
 7. Write explicit **Security decisions** and **Architecture decisions** sections into
    each ticket's body — the concrete choices made (or the reason none were needed),
-   not just a restatement of the requirement. These are what the tech lead's own spec
+   not just a restatement of the requirement. If the story itself carries an
+   **Architecture notes** section from Discovery
+   (`.pilot/pilot-task-anticipate-architecture.md`), start from what it already
+   anticipated rather than deciding blind — confirm it still holds, sharpen it into a
+   concrete decision, or explicitly revise it if the split itself changes the picture;
+   don't silently ignore it either way. A `type:tech` story reaching Spec via its own
+   no-ticket entry (`.pilot/pilot-task-formalize-tech-need.md`) carries no such section —
+   there was no Discovery pass — so this is the first time its architecture gets decided.
+   These decisions are what the tech lead's own spec
    (this same dialogue) builds against, and what you check conformance against in Review
    if added (`.pilot/pilot-task-review-architecture.md`).
    If the story carries a UI/UX description or a mockup attached as a comment

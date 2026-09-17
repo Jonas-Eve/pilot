@@ -980,13 +980,17 @@ documented, reviewers never converse (§6). Full mechanics —
 
 Keeping token cost down per ticket is central to PILOT's design. Two rules keep it cheap:
 
-1. **Each phase is a separate agent context**, not one context that accumulates every
-   prior phase's transcript. A phase skill reads only what that phase needs from the
-   ticket (its current body, linked parent/children, the relevant `docs/` files) and
-   hands that — not the pipeline's history — to a fresh `Agent` call using the matching
-   persona in `.claude/agents/pilot-*.md`. Discovery and Spec each still run as one such
-   isolated context even though two personas converse inside it (§4 "Agent dialogue") —
-   the isolation boundary is the phase, not the persona.
+1. **No phase carries a prior phase's transcript.** A phase skill reads only what that
+   phase needs from the ticket (its current body, linked parent/children, the relevant
+   `docs/` files) and hands that — never the pipeline's history — to a fresh `Agent` call
+   using the matching persona in `.claude/agents/pilot-*.md`. This isolation is across
+   phases, not within one: Discovery and Spec's own dialogue (§4 "Agent dialogue") is
+   several separate `Agent` calls, one per turn, each one a genuinely fresh context that
+   re-reads whatever it needs (this file included) — the running conversation is passed
+   as explicit text, not shared memory, so a longer dialogue costs more, turn for turn,
+   the same as any other `Agent` call would. The isolation boundary this rule actually
+   buys is between phases (and, within Review, between reviewers) — never a claim that a
+   multi-turn dialogue is somehow free.
 2. **Claim/label bookkeeping is deterministic tool calls in the skill itself**, not
    something the agent reasons about. Only the actual thinking — writing the story,
    splitting/speccing the ticket, writing the code, reviewing the PR — goes

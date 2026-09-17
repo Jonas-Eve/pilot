@@ -17,7 +17,15 @@ finalized. Here, contribute what genuinely belongs at story-formation time:
    feature that's naturally two independently-shippable pieces, or one that depends on a
    third-party API with real limitations). Raise this while the PM is still shaping the
    story, not as a note appended after — if a technical constraint changes what the story
-   should actually promise, say so now.
+   should actually promise, say so now. **Write what you anticipate into the story's own
+   body**, as an explicit **Architecture notes** section (high-level shape and
+   constraints, not a full design) — this dialogue's own turns are never passed to Spec,
+   and Spec's own architect+tech lead may be a different session entirely
+   (`.pilot/pilot-process.md` §5), so if it isn't on the ticket, it doesn't exist for
+   them: they'd start the story's actual **Architecture decisions**
+   (`.pilot/pilot-task-scope-story.md` step 7) cold, exactly what this dialogue exists to
+   avoid. A thin or empty section is fine when there's genuinely nothing to anticipate yet
+   — never pad it to seem thorough.
 2. **Flag a technical enabler as its own `type:tech` story**, alongside the feature
    story/stories, when the same effort genuinely can't be delivered without one first (a
    migration, shared infra, an API that doesn't exist yet) — write that story's own body
