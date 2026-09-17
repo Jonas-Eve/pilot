@@ -73,7 +73,7 @@ itself.
   two-or-more skills/agents it names rather than all of them — the opposite of a
   companion, which is human-only and read by none. Copied verbatim into a consuming
   project as `.pilot/pilot-link-<topic>.md` the same way as `pilot-process.md`. Holds
-  content that connects a subset of skills (e.g. how phase 5's reviewers and phase 4's
+  content that connects a subset of skills (e.g. how phase 4's reviewers and phase 3's
   reclaim need to agree on something) — see §3 below for when content belongs here
   instead of `pilot-process.md` or a single `SKILL.md`.
 - `assets/docs/pilot-task-<duty>.md` — one persona's instructions for one specific duty
