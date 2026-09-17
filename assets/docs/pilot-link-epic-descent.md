@@ -1,42 +1,42 @@
 # PILOT link — Resolving an explicit ticket that's actually a container
 
-Injected whole by `.claude/skills/pilot-scope/SKILL.md`, `pilot-spec/SKILL.md`,
-`pilot-dev/SKILL.md`, and `pilot-review/SKILL.md` — the one place each of these four
+Injected whole by `.claude/skills/pilot-spec/SKILL.md`,
+`pilot-dev/SKILL.md`, and `pilot-review/SKILL.md` — the one place each of these three
 checks this before applying its own status-based bullets to a freshly-given ticket
-number. Not phase 1 (no such ticket to resolve, it starts from a raw need or
-`--resume`) or phase 6 (`status:qa`/`status:in-qa` stories never have open sub-issues,
+number. Not Discovery (no such ticket to resolve, it starts from a raw idea or
+`--resume`) or phase 5/QA (`status:qa`/`status:in-qa` stories never have open sub-issues,
 `.pilot/pilot-process.md` §3 "Cascading completion"). `/pilot-auto` needs no awareness
 of this at all — giving it an Epic or a split story's number still just means "try the
-fixed order against that one ticket" (`pilot-auto/SKILL.md`); it's each of the four
+fixed order against that one ticket" (`pilot-auto/SKILL.md`); it's each of the three
 phases above that resolves what "that one ticket" actually is, the same delegation
 `/pilot-auto` already relies on for everything else. See `.pilot/pilot-process.md`
 §2/§3/§4 for the generic ticket levels, labels, and claim protocol this builds on.
 
-**Not symmetric across all four.** `level:epic` never carries a `status:` of its own
-and is never any of the four's own territory, so all four trigger on it the same way.
-A `status:split` `level:story` is different: once split, it's never `/pilot-spec`,
-`/pilot-dev`, or `/pilot-review`'s own territory either (an unsplit `type:tech` story,
+**Not symmetric across all three.** `level:epic` never carries a `status:` of its own
+and is never any of the three's own territory, so all three trigger on it the same way.
+A `status:split` `level:story` is different: once split, it's never `/pilot-dev` or
+`/pilot-review`'s own territory either (an unsplit `type:tech` story,
 with no sub-issues at all, `.pilot/pilot-process.md` §2 "Three levels", is unaffected
-and still claimed by those three directly, same as always) — so those three trigger on
-a `status:split` story too — but `/pilot-scope` is the one phase that keeps a
+and still claimed by those two directly, same as always) — so those two trigger on
+a `status:split` story too — but `/pilot-spec` is the one phase that keeps a
 legitimate, documented direct path to a still-open `status:split` story: re-scoping it
 in place, adding more tasks to the existing split
 (`.pilot/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split is
 done", "`status:split`, original e2e task not yet done"). This mechanism must never
-intercept that case, so `/pilot-scope` only triggers it for a `level:epic` — never for a
+intercept that case, so `/pilot-spec` only triggers it for a `level:epic` — never for a
 `status:split` story, which it resolves through its own ordinary bullets untouched.
 
 Before applying its own status-based resolution to a freshly-given ticket number, a
 phase skill checks whether it's a container it should search into rather than act on
-directly — for `/pilot-scope`, a `level:epic`; for the other three, a `level:epic` or a
+directly — for `/pilot-spec`, a `level:epic`; for the other two, a `level:epic` or a
 `status:split` `level:story` — and, if so, whether it currently has any open sub-issues
 (`mcp__github__issue_read` method `get_sub_issues`, filtered to still-open):
 - **Not that kind of container, or no open sub-issues** → resolve it exactly as the
   phase's own step normally would, no detour. This is also what a fresh `level:story`
-  still at `status:backlog` hits — `/pilot-scope`'s own resolution is what actually does
+  still at `status:backlog` hits — `/pilot-spec`'s own resolution is what actually does
   something with it, e.g. splitting it into tasks that become its own open sub-issues
   for a later call to search; and what a still-open `status:split` story hits for
-  `/pilot-scope` specifically, per the asymmetry above.
+  `/pilot-spec` specifically, per the asymmetry above.
 - **Open sub-issues found** → don't act on the given ticket itself. Instead, collect
   every ticket in its sub-issue tree, at every depth — an Epic's open stories, plus, for
   any of those that's itself `status:split`, that story's own open tasks in turn
@@ -64,5 +64,5 @@ candidate at all, wherever it sits.
 
 An Epic whose every story is closed but whose own issue is still open by hand has no
 open sub-issues to search, so it falls through to the ordinary resolution above — the
-one case `pilot-scope/SKILL.md`'s own "there's nothing to scope on the epic itself"
+one case `pilot-spec/SKILL.md`'s own "there's nothing to scope on the epic itself"
 line still fires.

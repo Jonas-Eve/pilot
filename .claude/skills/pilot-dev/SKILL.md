@@ -1,13 +1,13 @@
 ---
 name: pilot-dev
-description: "Phase 4 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. An optional --multi <N> runs N devs independently proposing an implementation approach for the one claimed ticket and reconciles them into a single agreed approach before a single dev actually implements it, escalating to needs-human quoting the differing approaches on genuine, unresolved disagreement (see .pilot/pilot-link-multi-consensus.md) — no effect on a reclaim, which always implements the phase-5 review's fix directly with no approach stage to ensemble on. Use once /pilot-spec has produced a technical spec."
+description: "Phase 3 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. An optional --multi <N> runs N devs proposing an implementation approach for the one claimed ticket, in direct dialogue with each other rather than one-shot outputs the skill reconciles, converging on a single agreed approach (no fixed round cap — they judge for themselves when they've converged) before a single dev actually implements it, escalating to needs-human quoting the differing approaches only on a genuine, irreconcilable disagreement (see .pilot/pilot-link-agent-dialogue.md) — no effect on a reclaim, which always implements the phase-4 review's fix directly with no approach stage to ensemble on. Use once /pilot-spec has produced a technical spec."
 argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto] [--multi [N]] | <issue number> --resume"
 ---
 
-# PILOT — Phase 4: Operate
+# PILOT — Phase 3: Dev
 
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
-protocol; this skill covers only phase 4's mechanics. Most likely phase to run as several
+protocol; this skill covers only phase 3's mechanics. Most likely phase to run as several
 parallel instances; the claim step below prevents collisions.
 
 ## Steps
@@ -35,7 +35,7 @@ parallel instances; the claim step below prevents collisions.
    - `status:in-dev` still carrying `needs-human` or `on-hold` → unresolved; report and
      stop.
    - `status:changes-requested`, no `needs-human`/`on-hold` → **reclaim**, distinct from
-     both above (a PR already exists; phase 5, not this skill, sent it back). Follow
+     both above (a PR already exists; phase 4, not this skill, sent it back). Follow
      `.pilot/pilot-process.md` §4 "Reclaiming a `status:changes-requested` ticket" instead
      of steps 2-6 — claim per that section (an existing assignee doesn't block this claim,
      unlike step 2's normal rule) and skip straight to step 3, passing the phase-5
@@ -99,17 +99,17 @@ parallel instances; the claim step below prevents collisions.
      applies during implementation itself; pair mode doesn't replace it. **`--auto`**, with
      neither pair nor `--multi` in play, skips straight to implementation in this one call.
    - **With `--multi <N>`** (a fresh claim, or a resume via `can-resume` per step 1 —
-     never a reclaim, never the literal `--resume` flag): N instances run in parallel, **each asked
+     never a reclaim, never the literal `--resume` flag): N instances, **each asked
      for a proposed implementation approach only, not the finished implementation** — same
-     content as the pair-coding checkpoint above, never code. **Reconcile the N approaches
-     yourself** — no further `Agent` call (`.pilot/pilot-link-multi-consensus.md` has the
-     comparison criteria, and the escalation mechanics — including what happens if a
-     human is live in this pair session when the second round still disagrees — for
-     what follows): every substantive point agrees → adopt one verbatim; genuine
-     disagreement → run one more round of N instances with the disagreement noted, then
-     compare again; still unresolved → follow that escalation — nothing was implemented
-     yet, so nothing to push or clean up either way. Once an approach is settled (reached
-     by consensus, or by a live human resolving the escalation), **unless `--auto`**,
+     content as the pair-coding checkpoint above, never code — discuss the tradeoffs
+     directly with each other instead of proposing in isolation (`.pilot/pilot-link-agent-dialogue.md`
+     has the turn-taking mechanics and the escalation criteria — including what happens if
+     a human is live in this pair session when they can't converge): no fixed number of
+     turns, the instances themselves judge when they've converged on one approach, and
+     escalate `needs-human` (quoting the differing positions verbatim) only once a
+     disagreement looks genuinely irreconcilable — nothing was implemented yet, so nothing
+     to push or clean up either way. Once an approach is settled (reached by convergence,
+     or by a live human resolving the escalation), **unless `--auto`**,
      show it to the human as the normal pair-coding checkpoint above (repeat until
      approved, same checkpoint discipline) — then, whether via pair approval or `--auto`
      straight through, make
@@ -124,13 +124,13 @@ parallel instances; the claim step below prevents collisions.
    stops without a PR (or without pushing, for a reclaim).
 5. Apply the result:
    - PR opened, or new commits pushed to an existing PR (reclaim case): clear the assignee
-     and set `status:review-ready` on the ticket (phase 5's own pre-claim status — never
+     and set `status:review-ready` on the ticket (phase 4's own pre-claim status — never
      `status:in-review` directly, `.pilot/pilot-process.md` §4 "Claim Protocol").
    - Blocking conflict: nothing further to set — the subagent already added
      `needs-human` and posted its comment itself (`status:in-dev` stays, per
      `.pilot/pilot-process.md` §3).
    - Bug discovered mid-implementation (`.pilot/pilot-process.md` §2 "Prerequisite bug
-     tickets (phase 2, phase 4, or phase 6)"): nothing further to set — the subagent
+     tickets (`.pilot/pilot-link-bug-tickets.md`)"): nothing further to set — the subagent
      (`pilot-dev` or `pilot-e2e`) already originated the new `type:bug` ticket, linked it
      ("Blocks #M"/"Depends on #N"), pushed its WIP to a branch with a comment naming it,
      cleared the assignee, and moved the ticket back to `status:dev-ready` itself. It's

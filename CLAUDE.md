@@ -38,13 +38,15 @@ itself.
 ## 2. STRUCTURE
 - `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
   consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
-  sync by `/pilot-update`) — same path on both sides. All eleven carry the `pilot-`
+  sync by `/pilot-update`) — same path on both sides. All ten carry the `pilot-`
   prefix a project-local skill needs to avoid colliding with the project's own — there's
   no plugin namespace to rely on instead. `pilot-init`, `pilot-init-archi`,
-  `pilot-update` are this repo's own bootstrap/maintenance commands; `pilot-story`,
-  `pilot-scope`, `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa` are the six PILOT
-  phases; `pilot-auto` is a dispatcher over the four auto-capable phase sweeps (review,
-  dev, spec, scope) — not itself a phase, adds nothing to `pilot-process.md`'s state
+  `pilot-update` are this repo's own bootstrap/maintenance commands; `pilot-discovery`,
+  `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa` are the five PILOT
+  phases (`pilot-spec` covers splitting a story into dev-sized tasks and writing each
+  one's technical spec, in one continuous pass); `pilot-auto` is a dispatcher over the
+  three auto-capable phase sweeps (review, dev, spec) — not itself a phase, adds nothing
+  to `pilot-process.md`'s state
   machine (see that skill's own file for its mechanics); `pilot-help` is a read-only
   discovery layer over all of the above plus the six agents below (lists the commands,
   explains one command/flag/agent in detail, turns a described goal into the exact
@@ -125,7 +127,7 @@ the skill files) — never a fixed path, there is no installed location.
   by *every* phase skill/agent (the label taxonomy, claim protocol, state-machine
   transitions, the pair/`--auto` contract) — goes in `pilot-process.md`, and only there.
   Link — needed by *two or more but not all* skills/agents to coordinate with each other
-  (e.g. how phase 5's submitted review and phase 4's reclaim must read the same tags) —
+  (e.g. how phase 4's submitted review and phase 3's reclaim must read the same tags) —
   goes in its own `assets/docs/pilot-link-<topic>.md` (§2), never bloating
   `pilot-process.md` with something most phases never read. Single-skill — everything else,
   including how one specific phase claims, what it does mid-run, and how it wraps up, even
@@ -134,7 +136,7 @@ the skill files) — never a fixed path, there is no installed location.
   now. `grep` for which other files would actually need to cite it (the check below
   already asks you to grep after editing — run it *before* deciding where new content
   goes, not just after): zero others → single-skill; some but not all → a link doc; all
-  six phases → `pilot-process.md`. Tool names and API-call-level detail belong in the
+  five phases → `pilot-process.md`. Tool names and API-call-level detail belong in the
   owning `SKILL.md` regardless of tier, never in `pilot-process.md` or a link doc.
 - **A link doc's own content must be identical across every consumer, not just topically
   adjacent:** the test is whether every consuming duty reads the *exact same text*, not
@@ -143,7 +145,7 @@ the skill files) — never a fixed path, there is no installed location.
   same subject — promoting it into the link doc "for tidy organization" smuggles
   single-skill content back into the link tier the rule above already excludes it from.
   (Caught mid-edit once: `pilot-link-bug-tickets.md`'s classify/originate mechanic is
-  genuinely identical across phase 2/4/6, but each phase's own unclaiming delta, drafted
+  genuinely identical across phase 2/3/5, but each phase's own unclaiming delta, drafted
   right next to it, was actually read by only one of the three — moved back to that
   phase's own task doc.)
 - **Inject a link doc whole, never by asking a skill to pick sections per caller:** when a

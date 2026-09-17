@@ -1,26 +1,29 @@
-# PILOT task — Scope an already-created story
+# PILOT task — Split an already-created story
 
-Injected by `.claude/skills/pilot-scope/SKILL.md` into the `pilot-architect` persona's
-prompt, alongside `.pilot/pilot-link-bug-tickets.md` in full for step 5's "Prerequisite
-(bug)" case.
+Injected by `.claude/skills/pilot-spec/SKILL.md` into the `pilot-architect` persona's
+prompt, alternating turns with the tech lead's own `.pilot/pilot-task-write-spec.md`
+(`.pilot/pilot-link-agent-dialogue.md`), alongside `.pilot/pilot-link-bug-tickets.md` in
+full for step 5's "Prerequisite (bug)" case. You're not deciding the split in isolation
+for the tech lead to spec afterward — a spec-time feasibility concern from its side of
+the dialogue can send your own split proposal back for a rethink, in the same pass.
 
-**Challenging it first**: push back where it matters before deciding how to scope —
+**Challenging it first**: push back where it matters before deciding how to split —
 ambiguous requirements, technical risk, anything touching this project's own
 identity/security/architecture boundaries, or anything out of step with its recorded
 system design, network topology, or multi-tenancy model (your own identity's project-doc
 habit is what surfaces these). If something needs a human decision to scope responsibly,
 say so — don't guess and move on.
 
-You receive an existing `type:feature` or `type:tech` story (its current body — already
-scoped once before, if this is a re-scope) — never `type:bug`: a bug is always created
-directly as `level:task`, `status:spec-ready`, so it never reaches you here
-(`.pilot/pilot-process.md` §2 "Three levels"). You may also be given its parent Epic and
-linked tickets for context; feel free to read further related tickets yourself (a
-sibling story under the same Epic, something referenced via "Blocks #M"/"Depends on
+You receive an existing `type:feature` or `type:tech` `level:story` (its current body —
+already scoped once before, if this is a re-scope) — never `type:bug`: a bug is always
+`level:task` directly and never split, so it's spec'd on its own by the tech lead alone,
+without this dialogue (`.pilot/pilot-process.md` §2 "Three levels"). You may also be given
+its parent Epic and linked tickets for context; feel free to read further related tickets
+yourself (a sibling story under the same Epic, something referenced via "Blocks #M"/"Depends on
 #N") — e.g. to avoid proposing a prerequisite a sibling ticket already covers.
 
 **If this is a re-scope of a story whose split already finished once** (the skill
-claimed it from `status:qa`/`status:in-qa` into `status:in-scope` before calling you —
+claimed it from `status:qa`/`status:in-qa` into `status:in-spec` before calling you —
 the one deliberate backward transition in the state machine, `.pilot/pilot-process.md`
 §2 "Re-scoping a `type:feature` story after its split is done") — you're also given
 which tasks from the earlier round(s) are already `status:done`, including the
@@ -30,7 +33,7 @@ existing e2e coverage rather than duplicating it (never reopen or touch the
 already-done one), and run the PM coverage check (step 4a) against this round's new
 `type:feature` tasks only — the earlier ones were already checked when proposed.
 
-1. The claim (assignee + `status:in-scope`) is handled before you are invoked — assume
+1. The claim (assignee + `status:in-spec`) is handled before you are invoked — assume
    it's already yours.
 2. Challenge it (above).
 3. Decide whether it needs building at all: if challenging it convinces you it's out
@@ -91,7 +94,7 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
      scope, not an ambiguity within it. Classify and, if genuine, originate it per
      the mechanic passed alongside this task doc (`.pilot/pilot-link-bug-tickets.md`)
      — then finish scoping this ticket normally afterward: it isn't claimed by
-     phase 3/4 yet, so recording the dependency is enough, no unclaiming needed.
+     Dev yet, so recording the dependency is enough, no unclaiming needed.
    - **Between tasks of the same split** — if two of the tasks you're proposing
      depend on each other (e.g. a front-end one consuming an API a back-end one
      creates), record it the same way ("Depends on #N" on the dependent one,
@@ -109,9 +112,10 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    convention instead, if it already has one that differs.
 7. Write explicit **Security decisions** and **Architecture decisions** sections into
    each ticket's body — the concrete choices made (or the reason none were needed),
-   not just a restatement of the requirement. These are what phase 3 builds against
-   and what you check conformance against in phase 5 (`.pilot/pilot-task-review-architecture.md`).
+   not just a restatement of the requirement. These are what the tech lead's own spec
+   (this same dialogue) builds against, and what you check conformance against in Review
+   if added (`.pilot/pilot-task-review-architecture.md`).
    If the story carries a UI/UX description or a mockup attached as a comment
    (`.pilot/pilot-task-write-story.md`), also carry the relevant part into each task that
-   actually implements that UI — phases 3-4 read only the task's own body, not the
+   actually implements that UI — Dev and Review read only the task's own body, not the
    parent story, so it goes stale the moment you don't.

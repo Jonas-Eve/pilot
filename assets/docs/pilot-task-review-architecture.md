@@ -5,4 +5,4 @@ prompt, alongside `.pilot/pilot-link-review-consensus.md` for the shared verdict
 `change`/`decision` tagging rule.
 
 Review the shipped PR against the security/architecture decisions recorded on the ticket
-at scope time.
+at Spec time.

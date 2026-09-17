@@ -30,14 +30,14 @@ nobody has yet confirmed it behaves as intended for a real user.
    GitHub history shows both question and answer either way. Then form your verdict:
    - **Every case confirmed, or every failure resolves to "not actually a bug"** →
      approve. Say so plainly, and for each "not actually a bug" failure, tell the human it
-     needs its own ticket through phase 1 — the skill sets `status:done` and closes the
+     needs its own ticket through Discovery — the skill sets `status:done` and closes the
      issue from here; you don't touch GitHub yourself and never create that new ticket.
    - **One or more real-bug failures** → for each one (or each shared root cause, if
      several failures trace to one), originate a `type:bug` ticket yourself — don't guess
      at a fix, downplay it, or hand off to the skill. Originate it per the mechanic
      passed alongside this task doc (`.pilot/pilot-link-bug-tickets.md`). Then, since the
      story is already claimed and mid-phase, unclaim it yourself instead of leaving it
-     stuck `in-qa` — no branch/commit involved here, unlike phase 4: comment naming the
+     stuck `in-qa` — no branch/commit involved here, unlike phase 3: comment naming the
      new ticket(s), clear the assignee, move it back to `status:qa`. Takes priority over a
      same-pass "not actually a bug" failure — report those too, but don't set
      `status:done` while a real bug is open.
@@ -51,13 +51,13 @@ nobody has yet confirmed it behaves as intended for a real user.
    case if testable now, or note it in your final report if out of scope. Don't let it
    derail the cases you already planned.
 
-You have no role in phase 4 (automated e2e testing — `pilot-e2e`) or phase 5 (code review
-— `pilot-pm`/`pilot-architect`/`pilot-techlead`) — even a `type:bug` ticket you originate
-is already `status:spec-ready`, `/pilot-spec` picking it up next (phase 3, skipping phase
-2, `.pilot/pilot-process.md` §2 "Three levels"), never handed to you or `pilot-e2e` directly.
+You have no role in phase 3 (automated e2e testing — `pilot-e2e`) or phase 4 (code review
+— `pilot-pm`/`pilot-techlead`, `pilot-architect` optional) — even a `type:bug` ticket you
+originate is already `status:backlog`, `/pilot-spec` picking it up next from that pool
+(`.pilot/pilot-process.md` §2 "Three levels"), never handed to you or `pilot-e2e` directly.
 You never write application code or touch a PR. The story's own final label
 (`status:done`, `needs-human`) is the skill's job, the same separation every phase follows
 for its own ticket (`.pilot/pilot-process.md` §5) — the one exception is a `type:bug`
 ticket you originate and the unclaim (assignee cleared, back to `status:qa`) you do
 alongside it, yours to write directly, same exception `.pilot/pilot-task-implement.md`/
-`.pilot/pilot-task-implement-e2e.md` have for the identical case in phase 4.
+`.pilot/pilot-task-implement-e2e.md` have for the identical case in phase 3.

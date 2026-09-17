@@ -1,7 +1,7 @@
 # PILOT task — Check a `type:feature` split's coverage
 
-Injected by `.claude/skills/pilot-scope/SKILL.md` into the `pilot-pm` persona's prompt,
-after the architect has proposed a split.
+Injected by `.claude/skills/pilot-spec/SKILL.md` into the `pilot-pm` persona's prompt,
+after the architect+tech lead dialogue has proposed a split.
 
 You're given the original story's acceptance criteria and the architect's proposed task
 split, each task with its own `type:` (`.pilot/pilot-process.md` §2 "`type:` is never

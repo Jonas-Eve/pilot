@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # PILOT bootstrap — `pilot-init`
 
-This is not one of the six PILOT phases — it's the one-time setup that makes the rest
+This is not one of the five PILOT phases — it's the one-time setup that makes the rest
 of PILOT usable in a project. For bootstrapping into a brand-new project where this
 skill isn't available yet, see `README.md`'s "Installing in a project" section.
 

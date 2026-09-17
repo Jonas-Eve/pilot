@@ -5,7 +5,7 @@ prompt, alongside `.pilot/pilot-link-review-consensus.md` for the shared verdict
 `change`/`decision` tagging rule.
 
 Before forming your verdict, **re-run the relevant validation commands directly against
-the PR's branch** (the same build/test/lint commands the dev persona used in phase 4)
+the PR's branch** (the same build/test/lint commands the dev persona used in phase 3)
 rather than trusting the PR description's claim that tests pass — a failure despite that
 claim is an automatic block. This matters most with no CI yet, since your re-run is the
 only check that actually executes anything; once CI exists, treat a red or pending run

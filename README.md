@@ -1,8 +1,8 @@
 # PILOT
 
-PILOT is a lightweight, in-house ticket-process framework: `plan` → `investigate` →
-`lay out` → `operate` → `test & validate`, each its own isolated, low-token agent context
-instead of one accumulating one — plus a mandatory sixth phase, human QA, for every
+PILOT is a lightweight, in-house ticket-process framework: `discovery` → `spec` →
+`dev` → `review`, each its own isolated, low-token agent context
+instead of one accumulating one — plus a mandatory fifth phase, human QA, for every
 `type:feature` story once every task (including its automated end-to-end test) has
 merged. It was built inside a single monorepo and is packaged here as a standalone,
 reusable repo any project can copy from.
@@ -25,11 +25,14 @@ of other skills on, and its own `SKILL.md` for everything specific to that one p
 actual judgment work happens in a separate `Agent` call to one of the six personas below,
 each carrying only a small, stable identity — the skill reads a `pilot-task-<duty>.md`
 doc (below) and passes it into that call, so a persona is told what to do fresh each
-time instead of carrying every one of its duties' instructions on every invocation.
+time instead of carrying every one of its duties' instructions on every invocation. Two
+phases — Discovery and Spec — pair up two different personas in a genuine back-and-forth
+dialogue rather than one handing a finished draft to the other
+(`.pilot/pilot-link-agent-dialogue.md`).
 
 ## What this repo ships
 
-- **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, the six
+- **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, the five
   PILOT phase commands, a dispatcher, and a help command — copied verbatim into a
   consuming project's `.claude/skills/`
   (see "Installing in a project" below), so all of them, `pilot-init`/`pilot-init-archi`/
@@ -48,23 +51,29 @@ time instead of carrying every one of its duties' instructions on every invocati
     `CLAUDE.md`/`README.md`, the GitHub labels) from a fresh clone of this repo into
     your project. Overwrites, no merge — see the warning in
     `.claude/skills/pilot-update/SKILL.md`.
-  - `/pilot-story`, `/pilot-scope`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
-    `/pilot-qa` — the six phases themselves.
+  - `/pilot-discovery`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
+    `/pilot-qa` — the five phases themselves. `/pilot-discovery` (PM+architect, in
+    dialogue) formalizes a `type:feature` idea into one or more stories; `/pilot-spec`
+    (architect+techlead, in dialogue) splits an already-formalized story into dev-sized
+    tasks and writes each one's technical spec in the same pass, or, given no ticket at
+    all, originates a standalone technical need or a bug report first (the one shared
+    bug-creation mechanism every phase reuses).
   - `/pilot-auto` — dispatcher: tries `/pilot-review --auto`, `/pilot-dev --auto`,
-    `/pilot-spec --auto`, `/pilot-scope --auto`, in that order, stopping at the first one
-    that finds work (an optional `--merge` forwards to `/pilot-review` only, `--multi
-    <N>` forwards to whichever phase claims a ticket, running N instances of its persona on
-    that one ticket and reconciling them, `--again` keeps sweeping until a full pass finds
+    `/pilot-spec --auto`, in that order, stopping at the first one that finds work (an
+    optional `--merge` forwards to `/pilot-review` only, `--multi
+    <N>` forwards to whichever phase claims a ticket, running an N-instance ensemble on
+    that one ticket — a converging dialogue for spec/dev, the older skill-mediated
+    reconciliation for review — `--again` keeps sweeping until a full pass finds
     nothing instead of stopping at the first candidate). Bare (or a
-    subset like `/pilot-auto spec scope`), each phase works its own pool. Given a single
-    issue number instead (`/pilot-auto 48`), the same four are tried against that one
+    subset like `/pilot-auto dev spec`), each phase works its own pool. Given a single
+    issue number instead (`/pilot-auto 48`), the same three are tried against that one
     ticket rather than a pool — each phase's own claim protocol reports nothing to do when
     the ticket isn't currently theirs, so this command never reads the ticket's `status:`
     itself. `--next` (alias `--continue`) keeps re-dispatching one ticket through the full
     chain until nothing's left, `needs-human`, it closes, or it looks orphaned — given an
     issue number, that ticket; given none, whichever candidate the first sweep pass
     claims. Not a phase itself, and never invokes
-    `/pilot-story`/`/pilot-qa` (pair-only).
+    `/pilot-discovery`/`/pilot-qa` (pair-only).
     Lets one scheduled Routine drive the whole pipeline, or several Routines split it by
     cadence, or a human/Routine hand it one ticket without knowing which phase it's in —
     see `.claude/skills/pilot-auto/SKILL.md`.
@@ -76,9 +85,9 @@ time instead of carrying every one of its duties' instructions on every invocati
     responsible for a kind of judgment, whichever was actually asked. Never claims a
     ticket or invokes another skill/agent itself — see `.claude/skills/pilot-help/SKILL.md`.
 - **Agents** (`.claude/agents/`): the six personas the phase skills delegate to —
-  `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 4's
+  `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 3's
   persona for an end-to-end-test task, `type:e2e`, instead of `pilot-dev`), and
-  `pilot-qa` (phase 6's persona, a human-paired manual QA gate for every `type:feature`
+  `pilot-qa` (phase 5's persona, a human-paired manual QA gate for every `type:feature`
   story once its tasks are all done). Each file is just that persona's identity — its
   duty instructions (how it scopes, how it reviews, ...) live in `pilot-task-<duty>.md`
   instead, below.
@@ -88,12 +97,12 @@ time instead of carrying every one of its duties' instructions on every invocati
 - **Templates** (`assets/templates/`): the doc skeletons `/pilot-init` fills in.
 
 See [`assets/docs/pilot-process-companion.md`](./assets/docs/pilot-process-companion.md) for a
-sequence diagram of a `type:feature` story moving through all six phases — a purely
+sequence diagram of a `type:feature` story moving through all five phases — a purely
 human-facing companion to `pilot-process.md`, kept in sync the same way.
 
 `assets/docs/pilot-link-<topic>.md` files are the third kind: operational like
 `pilot-process.md` itself but scoped to the specific two-or-more skills/agents that need
-to coordinate on something, rather than all six phases — synced the same way, as
+to coordinate on something, rather than all five phases — synced the same way, as
 `.pilot/pilot-link-<topic>.md`. See `assets/docs/` for the current set.
 
 `assets/docs/pilot-task-<duty>.md` files are the fourth: one persona's instructions for
