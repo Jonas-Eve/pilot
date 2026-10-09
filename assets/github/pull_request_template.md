@@ -9,7 +9,7 @@
 
 Closes #
 
-- Type: `type:feature` / `type:tech`
+- Type: `type:feature` / `type:tech` / `type:bug` / `type:e2e`
 - Spec deviations from phase 2 (if any): none / see ticket comment
 
 ## Test plan
