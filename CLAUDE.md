@@ -120,7 +120,8 @@ itself.
   `doctor` (preflight each phase skill runs as its step 0, once per session: python, gh auth,
   repo access and push permission, the 27 PILOT labels). Every command prints one JSON
   object; `claim`/`set`/`flag`/`unflag` also return the `event` (and `claim` the `activity`)
-  the phase skills push to the dashboard (`pilot-link-dashboard.md`). Judgment (which agent
+  the phase skills push to the dashboard (`pilot-link-dashboard.md`), and `event` builds one
+  for a ticket a skill changed itself (Discovery, the tasks Spec creates). Judgment (which agent
   to call, what a spec or review says, pair dialogue) never lives in it. Copied verbatim into
   a consuming project as `.pilot/pilot.py` by `/pilot-init` and re-synced by `/pilot-update`;
   `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa` run it for their step-1 ticket

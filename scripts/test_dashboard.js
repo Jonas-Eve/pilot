@@ -364,6 +364,29 @@ const STUB = (opts) => `
   await page.screenshot({ path: path.join(TMP, 'kids.png') });
   await page.close();
 
+  // ---- events that carry a parent and a PR (a ticket created, or a PR opened, since the snapshot) ----
+  const EV_SNAP = snapshot([
+    ticket(10, ['type:feature', 'level:epic'], { t: 'Epic', k: [0, 1] }),
+    ticket(11, ['type:feature', 'level:story', 'status:split', 'priority:P1'], { t: 'Story A', p: 10, k: [0, 1] }),
+    ticket(13, ['type:tech', 'level:task', 'status:in-dev'], { t: 'Tâche en cours', p: 11, a: 'alice' }),
+  ], 120);
+  page = await open({ preload: [EV_SNAP], events: [
+    ev({ n: 30, title: 'Tâche créée par un split', labels: ['type:tech', 'level:task', 'status:dev-ready'], assignees: [], action: 'created', phase: 'spec', parent: 11, at: iso(10) }),
+    ev({ n: 13, title: 'Tâche en cours', labels: ['type:tech', 'level:task', 'status:review-ready'], assignees: [], action: 'set', phase: null, pr: 77, at: iso(5) }),
+    ev({ n: 40, title: 'Idée approuvée', labels: ['type:feature', 'level:story', 'status:backlog'], assignees: [], action: 'approved', phase: 'discovery', at: iso(3) }),
+  ] });
+  await tab(page, 'Recherche');
+  const evRow = (n) => page.locator('#view > .list > .row', { has: page.locator(`:scope > .main > .t:has-text("#${n} ")`) });
+  check('a ticket created since the snapshot is nested under its parent from the event alone', (await evRow(11).locator('button:has-text("Sous-tickets (2)")').count()) === 1, await evRow(11).textContent());
+  await evRow(11).locator('button:has-text("Sous-tickets")').click(); await page.waitForTimeout(100);
+  check('both sub-tickets are listed under the story', JSON.stringify(await page.$$eval('#view > .list > .row:has(.kids) .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim().split(' ')[0]).sort())) === JSON.stringify(['#13', '#30']));
+  const prLinks = (n) => evRow(n).locator('a:has-text("PR #")').evaluateAll((as) => as.map((a) => a.href));
+  check('an event carrying a PR gives the ticket its PR link', JSON.stringify(await prLinks(13)) === JSON.stringify([`https://github.com/${REPO}/pull/77`]), JSON.stringify(await prLinks(13)));
+  view = await tab(page, 'Activité');
+  check('activity feed words a created and an approved ticket', /créé \(prêt à coder\)/.test(view) && /approuvé \(à spécifier\)/.test(view), view);
+  check('events: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+
   // ---- search: keyword (case/accent-insensitive contains) + level + type ----
   const SEARCH_SNAP = snapshot([
     ticket(10, ['type:feature', 'level:epic'], { t: 'Profil d\'accessibilité : page profil' }),

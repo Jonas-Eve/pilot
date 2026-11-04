@@ -113,7 +113,7 @@ what `--multi` means here.
    already holds its claim. Exit 1 with `reason: lost-race` →
    stand down and return to step 1 for a different ticket (bare pool only); any other
    refusal → report `reason` and stop.
-2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
+2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag|event` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Branch on `level:`:
    - **`level:story`**: run the architect+tech lead dialogue
      (`.pilot/pilot-link-agent-dialogue.md`) — or, with `--multi <N>`, an N-instance
@@ -212,7 +212,9 @@ what `--multi` means here.
      inherited": `type:feature`/`type:tech` for a dev task, `type:e2e` for the
      end-to-end one), its own written spec, and **`status:dev-ready` directly** — split
      and spec happen in the same pass, so a fresh task never stops at an intermediate
-     "scoped but not yet spec'd" status. For a
+     "scoped but not yet spec'd" status. Once a task is linked, `python3 .pilot/pilot.py event
+     <task> --action created --phase spec` gives its dashboard event (step 2a; it carries the
+     parent). For a
      recorded dependency between two tasks, add a "Depends on #N" line to the
      dependent one's body (`.pilot/pilot-process.md` §2 "Dependencies between tasks of
      the same split" — also how the e2e task's dependencies on every sibling get

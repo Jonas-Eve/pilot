@@ -398,6 +398,35 @@ class DashboardPayloadTests(unittest.TestCase):
         ev = m.set(1, status="done", close=True)["event"]
         self.assertEqual(ev["state"], "closed")
 
+    def test_events_carry_the_parent_and_the_pr_the_caller_just_opened(self):
+        child = issue(2, ["status:dev-ready"]); child["parent_issue_url"] = "https://api.github.com/repos/o/r/issues/1"
+        m, _ = machine([issue(1, ["level:epic"]), child, issue(3, ["status:in-dev"], assignees=["bot"])])
+        ev = m.claim("dev", 2, "fresh")["event"]
+        self.assertEqual(ev["parent"], 1)
+        self.assertNotIn("pr", ev)
+        ev = m.set(3, status="review-ready", assign="none", pr=44)["event"]
+        self.assertEqual(ev["pr"], 44)
+        self.assertNotIn("parent", ev)
+
+    def test_event_command_reports_a_ticket_the_skill_changed_itself(self):
+        story = issue(5, ["type:feature", "level:story", "status:draft"], assignees=["bot"])
+        story["parent_issue_url"] = "https://api.github.com/repos/o/r/issues/4"
+        m, gh = machine([story])
+        got = m.event(5, "created", "discovery")
+        ev = got["event"]
+        self.assertEqual((ev["kind"], ev["n"], ev["action"], ev["phase"], ev["parent"], ev["by"]), ("ticket", 5, "created", "discovery", 4, "bot"))
+        self.assertEqual(ev["labels"], ["level:story", "status:draft", "type:feature"])
+        self.assertEqual(gh.calls, [])  # read-only
+        with self.assertRaises(pilot.Refused) as ctx:
+            m.event(99, "created")
+        self.assertEqual(ctx.exception.payload["reason"], "not-found")
+
+    def test_cli_accepts_the_new_arguments(self):
+        args = pilot.build_parser().parse_args(["event", "7", "--action", "approved", "--phase", "discovery"])
+        self.assertEqual((args.cmd, args.issue, args.action, args.phase), ("event", 7, "approved", "discovery"))
+        args = pilot.build_parser().parse_args(["set", "7", "--status", "review-ready", "--unassign", "--pr", "12"])
+        self.assertEqual(args.pr, 12)
+
     def test_snapshot_lists_open_tickets_newest_first_without_prs(self):
         a = issue(1, ["status:qa"]); a["updated_at"] = "2026-01-01T00:00:00Z"
         b = issue(2, ["type:tech", "status:dev-ready"]); b["updated_at"] = "2026-02-01T00:00:00Z"

@@ -84,6 +84,8 @@ no-ticket entry, `pilot-spec/SKILL.md`).
      `status:` label, unassigned — an Epic is never itself a draft, and never carries a
      `priority:`) first, then each story linked as its sub-issue, its own `type:` +
      `level:story` + `status:draft` + its own `priority:` + assigned.
+   Each ticket created (the Epic included), once linked, gets its dashboard event:
+   `python3 .pilot/pilot.py event <n> --action created --phase discovery` (best-effort, step 7a).
 5. This phase always runs paired (`.pilot/pilot-process.md` §4 "Interaction modes" —
    `/pilot-discovery` has no `--auto`): show the human the drafted story/stories (and epic
    decision, if any) and the architecture already anticipated — pointing at the real
@@ -118,6 +120,12 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    split contradicts).
 7. Finalize (`mcp__github__issue_write`): flip each story from `status:draft` to
    `status:backlog`, unassigned.
+7a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push, with `ArtifactData`
+   (`ToolSearch` loads it if deferred), the `event` that `python3 .pilot/pilot.py event <n>
+   --action approved --phase discovery` returns for each story just finalized — and the
+   `created` ones of step 4, and `--action closed` for a draft closed as `wont-do`. Skipped
+   silently when `dashboardUrl` is absent from `.pilot/state.json`, or `.pilot/pilot.py` is
+   missing: Discovery never stops for the dashboard.
 8. Report the issue number(s)/URL(s) back to the human.
 
 Do not decide whether a story needs splitting into tasks, record a dependency, or write a

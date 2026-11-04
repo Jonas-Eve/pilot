@@ -111,9 +111,9 @@ parallel instances; the claim step below prevents collisions.
    stops without a PR (or without pushing, for a reclaim).
 5. Apply the result:
    - PR opened, or new commits pushed to an existing PR (reclaim case): `python3
-     .pilot/pilot.py set <issue> --status review-ready --unassign` (phase 4's own pre-claim
-     status — never `status:in-review` directly, `.pilot/pilot-process.md` §4 "Claim
-     Protocol"). If step
+     .pilot/pilot.py set <issue> --status review-ready --unassign --pr <PR number>` (phase 4's
+     own pre-claim status — never `status:in-review` directly, `.pilot/pilot-process.md` §4
+     "Claim Protocol"; `--pr` puts the PR's link in the event the dashboard shows). If step
      3 left a scratch approach-checkpoint comment, collapse it to one concise line (e.g.
      "Approach: <one-line summary> — see PR #<n>") — the PR itself is the real artifact
      now, not the negotiation that led to it.
