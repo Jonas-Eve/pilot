@@ -99,20 +99,22 @@ itself.
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
   the file already exists there.
 
-- `scripts/pilot.py` — PILOT's deterministic ticket mechanics as a CLI, implementing
-  `assets/docs/pilot-process.md` §3-§4: `pool` (pools, `can-resume`, exclusions,
-  priority/blocks/age order), `resolve` (classify an explicitly-given ticket: claim, resume,
-  reclaim, descend into an Epic, stop — and why), `claim` (assignee + status swap, re-read),
-  `set` (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with
-  its mandatory comment). Every command prints one JSON object; judgment (which agent to
-  call, what a spec or review says, pair dialogue) never lives in it. Copied verbatim into a
+- `scripts/pilot.py` — PILOT's deterministic ticket mechanics as a CLI, and **the
+  reference for them**: `pool` (pools, `can-resume`, exclusions, priority/blocks/age order),
+  `resolve` (classify an explicitly-given ticket: claim, resume, reclaim, re-scope, descend
+  into an Epic, stop — and why), `claim` (assignee + status swap, re-read), `set`
+  (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with its
+  mandatory comment). Every command prints one JSON object; judgment (which agent to call,
+  what a spec or review says, pair dialogue) never lives in it. Copied verbatim into a
   consuming project as `.pilot/pilot.py` by `/pilot-init` and re-synced by `/pilot-update`;
   `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa` run it for their step-1 ticket
-  resolution, step-2 claim and mechanical status transitions, falling back to
-  `pilot-process.md` §3-§4 by hand if it's missing or fails. The doc stays the source of
-  truth: a change to §3/§4 rules (labels, pools, claim, resume/reclaim) must be mirrored in
-  the script and in `scripts/test_pilot.py` (offline tests,
-  `python3 -m unittest scripts/test_pilot.py`).
+  resolution, step-2 claim and mechanical status transitions, and stop with a report if it is
+  missing or fails (no by-hand fallback). `pilot-process.md` §3-§4 keeps only the contract
+  and the agent-facing semantics (labels' meaning, what to read when resuming, the
+  "Depends on #N" format writers must follow); an exact condition (what makes a ticket
+  claimable, how the pool is ordered, how the dependency gate reads) is changed in the
+  script and `scripts/test_pilot.py` (offline tests, `python3 -m unittest
+  scripts/test_pilot.py`) first, then the contract text if it no longer matches.
 
 Within a skill file, reference this repo's own assets via a fresh clone of
 `https://github.com/Jonas-Eve/pilot` into a scratch directory (called `$PILOT_SRC` in

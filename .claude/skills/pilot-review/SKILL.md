@@ -63,8 +63,8 @@ pre-submission pause as the last check against picking the wrong one.
      resolve `pick.number` the same way. `pick: null` → report nothing to do for this ticket.
    - `stop` → report `reason` and stop (`flagged`: unresolved `needs-human`/`on-hold`;
      `resume-mismatch`; `wrong-status`; `assigned`; `closed`; `not-found`).
-   Script missing or exiting 2 → resolve and claim by hand per `.pilot/pilot-process.md` §4
-   with this phase's statuses: fresh `status:review-ready`, in-progress `status:in-review`.
+   Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
+   `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
 2. **Claim** it: `python3 .pilot/pilot.py claim review <issue> --mode <mode>` (the mode named
    in step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-review`, re-read to confirm). Exit 1 with `reason: lost-race` → stand down and

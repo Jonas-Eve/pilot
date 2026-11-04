@@ -38,6 +38,7 @@ STATUSES = {
     "draft", "backlog", "in-spec", "dev-ready", "in-dev", "review-ready", "in-review",
     "changes-requested", "approved", "wont-do", "split", "qa", "in-qa", "done",
 }
+RESCOPABLE = ("status:qa", "status:in-qa", "status:split")  # spec re-scopes these in place
 PRIORITY = {"priority:P0": 0, "priority:P1": 1, "priority:P2": 2}
 NO_PRIORITY = 9
 FLAGS = ("needs-human", "on-hold")
@@ -277,7 +278,7 @@ class Machine:
                             "candidate_count": found["candidate_count"]}
                 if phase == "spec" and kind == "epic":
                     return {"action": "stop", "reason": "epic-without-open-subissues", **base}
-        if phase == "spec" and not resume and status in ("status:qa", "status:in-qa"):
+        if phase == "spec" and not resume and status in RESCOPABLE:
             return {"action": "rescope", **base}
         flags = sorted(f for f in FLAGS if f in labels)
         assigned = issue["assignees"]
@@ -304,8 +305,6 @@ class Machine:
                 if deps:
                     return {"action": "stop", "reason": "depends-on-open", "depends_on": deps, **base}
             return {"action": "claim-fresh", **base}
-        if phase == "spec":
-            return {"action": "manual", "reason": "other-status", **base}
         return {"action": "stop", "reason": "wrong-status", **base}
 
     # ---- writes --------------------------------------------------------------------------
@@ -348,8 +347,8 @@ class Machine:
                 refuse("not-claimable", expected=cfg["inprog"] + " + can-resume")
             new_assignees = None  # already claimed: only the one-time signal is consumed
         elif mode == "rescope":
-            if phase != "spec" or status not in ("status:qa", "status:in-qa"):
-                refuse("not-claimable", expected="status:qa or status:in-qa (spec only)")
+            if phase != "spec" or status not in RESCOPABLE:
+                refuse("not-claimable", expected="status:qa, status:in-qa or status:split (spec only)")
             labels = {l for l in labels if not l.startswith("status:")} | {cfg["inprog"]}
         else:
             refuse("unknown-mode")

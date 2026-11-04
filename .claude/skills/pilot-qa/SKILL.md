@@ -34,8 +34,8 @@ this skill only covers the mechanics of running it.
      `flagged` (unresolved `needs-human`/`on-hold`), `wrong-status` (not `status:qa` —
      `status:split`, `status:done`, a type that never reaches it, `.pilot/pilot-process.md`
      §7 "When it fires"), `assigned`, `closed`, `not-found`.
-   Script missing or exiting 2 → resolve and claim by hand per `.pilot/pilot-process.md` §4
-   with this phase's statuses: fresh `status:qa`, in-progress `status:in-qa`.
+   Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
+   `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
 2. **Claim** it: `python3 .pilot/pilot.py claim qa <issue> --mode <mode>` (the mode named in
    step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-qa`, re-read to confirm). Any refusal (`lost-race`, `not-claimable`, …) →

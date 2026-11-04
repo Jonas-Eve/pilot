@@ -232,7 +232,8 @@ class ResolveTests(unittest.TestCase):
         self.assertEqual(self.act("spec", [issue(1, ["status:in-qa"], assignees=["a"])], 1)["action"], "rescope")
         # a still-open status:split story is spec's own territory, never descended into
         self.assertEqual(self.act("spec", [issue(1, ["level:story", "status:split"]), issue(2)], 1,
-                                  subs={1: [2]})["action"], "manual")
+                                  subs={1: [2]})["action"], "rescope")
+        self.assertEqual(self.act("spec", [issue(1, ["status:dev-ready"])], 1)["reason"], "wrong-status")
 
 
 class ClaimTests(unittest.TestCase):
@@ -289,6 +290,9 @@ class ClaimTests(unittest.TestCase):
         m, gh = machine([issue(1, ["status:qa", "type:feature"])])
         m.claim("spec", 1, "rescope")
         self.assertEqual(names(gh.store[1]), ["status:in-spec", "type:feature"])
+        m, gh = machine([issue(1, ["status:split", "level:story"], assignees=["x"])])
+        m.claim("spec", 1, "rescope")
+        self.assertEqual(names(gh.store[1]), ["level:story", "status:in-spec"])
         m, _ = machine([issue(1, ["status:qa"])])
         with self.assertRaises(pilot.Refused):
             m.claim("dev", 1, "rescope")

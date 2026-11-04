@@ -37,10 +37,8 @@ parallel instances; the claim step below prevents collisions.
    - `stop` → report `reason` and stop: `depends-on-open` (name the `depends_on` ticket),
      `flagged` (`flags`: `needs-human`/`on-hold`, unresolved), `assigned`, `wrong-status`,
      `in-progress-unassigned`, `closed`, `not-found`.
-   Script missing or exiting 2 → resolve and claim by hand per `.pilot/pilot-process.md` §4
-   (claim protocol, "Blocked-by dependencies", resuming, reclaiming) with this phase's
-   statuses: fresh `status:dev-ready`, in-progress `status:in-dev`, reclaimable
-   `status:changes-requested`.
+   Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
+   `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
 2. **Claim** it: `python3 .pilot/pilot.py claim dev <issue> --mode <mode>` (the mode named in
    step 1: `fresh`, `reclaim`, `resume-orphaned` or `resume-cleared`) — it applies
    `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee + `status:in-dev`, re-read to

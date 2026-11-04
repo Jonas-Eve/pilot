@@ -29,21 +29,18 @@ what `--multi` means here.
      what a scheduled cron Routine drives with `--auto`, §4 "Scheduled sweeps"). `pick: null`
      → report nothing to do; otherwise resolve `pick.number` the same way. Act on the
      returned `action`:
-     - `claim-fresh` or `manual` → an existing, open ticket: a `level:story`
-       (`type:feature`/`type:tech`) being split/specced or re-split/re-specced, or a
-       `level:task` (always a standalone `type:bug`) just needing a spec. Read it
-       (`mcp__github__issue_read`) plus its parent Epic (if linked) and anything referenced
-       via "Blocks #M"/"Depends on #N" or a sub-issue relationship, as context. `claim-fresh`
-       → step 2 (mode `fresh`); `manual` (e.g. a still-open `status:split` story re-scoped in
-       place, `.pilot/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split
-       is done") → claim it by hand per §4 instead of step 2.
-     - `rescope` → a story at `status:qa`/`status:in-qa`, a valid re-scope entry point
-       (`.pilot/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split is
-       done"). Read the ticket, its parent Epic (if linked), and its tasks (which are
-       `status:done`, including the original e2e task) for context, comment why (new scope
-       found; any `status:in-qa` session set aside), then step 2 (mode `rescope`: overwrites
-       any assignee and sets `status:in-spec`), passing that extra context alongside the
-       ticket body.
+     - `claim-fresh` → an existing, open ticket: a `level:story` (`type:feature`/`type:tech`)
+       being split/specced, or a `level:task` (always a standalone `type:bug`) just needing a
+       spec. Read it (`mcp__github__issue_read`) plus its parent Epic (if linked) and anything
+       referenced via "Blocks #M"/"Depends on #N" or a sub-issue relationship, as context,
+       then step 2 (mode `fresh`).
+     - `rescope` → a story at `status:qa`/`status:in-qa`, or a still-open `status:split` one:
+       a valid re-scope entry point (`.pilot/pilot-process.md` §2 "Re-scoping a
+       `type:feature` story after its split is done"). Read the ticket, its parent Epic (if
+       linked), and its tasks (`status:done` ones included, such as the original e2e task) for
+       context; for a `status:qa`/`status:in-qa` story, comment why (new scope found; any
+       `status:in-qa` session set aside). Then step 2 (mode `rescope`: overwrites any assignee
+       and sets `status:in-spec`), passing that extra context alongside the ticket body.
      - `resume-orphaned` (`--resume`; also a no-ticket entry left mid-pair at `status:draft`,
        step 1a) or `resume-cleared` (`can-resume`) → step 2 (mode of the same name), then
        `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" / "Resuming a `needs-human`
@@ -60,8 +57,8 @@ what `--multi` means here.
        `epic-without-open-subissues`: there's nothing to work on the epic itself — point at
        its stories. Otherwise (`flagged`: unresolved `needs-human`/`on-hold`,
        `resume-mismatch`, `assigned`, `not-found`) report it.
-     Script missing or exiting 2 → resolve and claim by hand per `.pilot/pilot-process.md` §4
-     with this phase's statuses: fresh `status:backlog`, in-progress `status:in-spec`.
+     Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
+     `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
 1a. **No-ticket entry** (`--tech`/`--bug`, explicit or auto-detected): call `Agent` with
     `subagent_type: "pilot-architect"` alone — read the matching task doc,
     `.pilot/pilot-task-formalize-tech-need.md` (`--tech`) or
@@ -93,7 +90,7 @@ what `--multi` means here.
 2. **Claim** the ticket: `python3 .pilot/pilot.py claim spec <issue> --mode <mode>` (the mode
    named in step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-spec`, re-read to confirm). Skipped for the no-ticket entry (step 1a), which
-   already holds its claim, and for a `manual` claim. Exit 1 with `reason: lost-race` →
+   already holds its claim. Exit 1 with `reason: lost-race` →
    stand down and return to step 1 for a different ticket (bare pool only); any other
    refusal → report `reason` and stop.
 3. Branch on `level:`:
