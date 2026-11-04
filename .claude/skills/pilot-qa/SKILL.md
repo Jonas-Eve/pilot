@@ -13,40 +13,33 @@ this skill only covers the mechanics of running it.
 
 ## Steps
 
-1. Determine the input:
-   - `--resume <issue>`: must be `status:in-qa`, assigned, **no** `needs-human`/`on-hold`
-     — a session left mid-pair (`.pilot/pilot-process.md` §4 "Resuming an orphaned
-     claim"). Read the ticket and thread to reconstruct which cases were already
-     confirmed, claim it (overwrite assignee), skip to step 5 with that state. If it
-     doesn't match, report and stop.
-   - Issue number without `--resume`, `status:in-qa`, **no** `needs-human`/`on-hold`,
-     carrying `can-resume` → a resume, not a fresh claim
-     (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"); skip the claim in
-     step 2, it's already claimed. Read the ticket and thread to reconstruct which cases
-     were already confirmed and the blocking point's resolution, then skip to step 5 with
-     that state, same as the `--resume` bullet above — never restart the test plan from
-     step 3/4.
-   - Issue number without `--resume`, `status:in-qa`, assigned, **no**
-     `needs-human`/`on-hold`, no `can-resume` → looks like a
-     session left mid-pair; report and ask the human to re-run with `--resume`, or add
-     `can-resume` themselves.
-   - Issue number still carrying `needs-human` or `on-hold` → not resolved yet; report and
-     stop.
-   - Any other issue number: must be `status:qa` (else — `status:split`, `status:done`, a
-     type that never reaches `status:qa`, `.pilot/pilot-process.md` §7 "When it fires") and
-     carry no open "Depends on #N" (`.pilot/pilot-process.md` §4 "Blocked-by dependencies" —
-     applies to an explicitly-given ticket here too, not just the pool) — report which
-     ticket it's still blocked on and stop rather than claiming it, if one's still open.
-   - No argument → run `python3 .pilot/pilot-pool.py qa`: it prints the pool of
-     `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:qa`, resumable
-     `status:in-qa` + `can-resume`; dependency, `needs-human` and `on-hold` exclusions;
-     priority, then "Blocks #M", then oldest) as JSON. `pick: null` → report nothing to do.
-     Otherwise handle `pick.number` exactly as if it had been given explicitly, through the
-     bullets above. Script missing or exiting non-zero → build that pool by hand per §4
-     instead (`mcp__github__search_issues`). No `--auto`, never Routine-driven
-     (`.pilot/pilot-process.md` §4 "Interaction modes", "Scheduled sweeps").
-2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-qa`, re-read to
-   confirm the claim held.
+1. Determine the input: `python3 .pilot/pilot.py resolve qa <issue> [--resume]`. With no issue
+   given, run `python3 .pilot/pilot.py pool qa` first — the pool of
+   `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:qa`, resumable
+   `status:in-qa` + `can-resume`; `needs-human`, `on-hold` and open "Depends on #N" excluded;
+   priority, then "Blocks #M", then oldest). `pick: null` → report nothing to do; otherwise
+   resolve `pick.number` the same way. No `--auto`, never Routine-driven
+   (`.pilot/pilot-process.md` §4 "Interaction modes", "Scheduled sweeps"). Act on the
+   returned `action`:
+   - `claim-fresh` → step 2 (mode `fresh`).
+   - `resume-orphaned` (`--resume`: a session left mid-pair) or `resume-cleared`
+     (`can-resume`: a human cleared `needs-human`) → step 2 (mode of the same name), then
+     read the ticket and thread to reconstruct which cases were already confirmed (and, for
+     `resume-cleared`, the blocking point's resolution) and skip to step 5 with that state —
+     never restart the test plan from step 3/4 (`.pilot/pilot-process.md` §4 "Resuming an
+     orphaned claim", "Resuming a `needs-human` ticket").
+   - `ask-resume` → looks like a session left mid-pair; report and ask the human to re-run
+     with `--resume`, or add `can-resume` themselves.
+   - `stop` → report `reason` and stop: `depends-on-open` (name the `depends_on` ticket),
+     `flagged` (unresolved `needs-human`/`on-hold`), `wrong-status` (not `status:qa` —
+     `status:split`, `status:done`, a type that never reaches it, `.pilot/pilot-process.md`
+     §7 "When it fires"), `assigned`, `closed`, `not-found`.
+   Script missing or exiting 2 → resolve and claim by hand per `.pilot/pilot-process.md` §4
+   with this phase's statuses: fresh `status:qa`, in-progress `status:in-qa`.
+2. **Claim** it: `python3 .pilot/pilot.py claim qa <issue> --mode <mode>` (the mode named in
+   step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
+   `status:in-qa`, re-read to confirm). Any refusal (`lost-race`, `not-claimable`, …) →
+   report `reason` and stop.
 3. Gather context: the story's own body (acceptance criteria) and, for each of its dev and
    e2e tasks, the spec (phase 2) and the merged PR (`mcp__github__issue_read`,
    `mcp__github__pull_request_read`) — not the running conversation history.
@@ -68,7 +61,7 @@ this skill only covers the mechanics of running it.
    artifact.
 6. Apply the agent's verdict:
    - **Approved** (every case confirmed, or every failure resolved to "not actually a
-     bug"): set `status:done` and close the issue (`mcp__github__issue_write`) — the one
+     bug"): `python3 .pilot/pilot.py set <issue> --status done --close` — the one
      phase that sets `status:done` directly, since there's no PR merge here for
      `.github/workflows/pilot-status-on-merge.yml` to react to, and nothing to cascade (a
      `type:feature` story is never itself a task of another `status:split` parent).

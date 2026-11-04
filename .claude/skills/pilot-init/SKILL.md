@@ -104,9 +104,9 @@ see `.claude/skills/pilot-update/SKILL.md`.
    identity now, never a duty's mechanics. Copy all four kinds regardless of how many exist
    right now — all are PILOT-owned from here on, never hand-edit any of them;
    `/pilot-update` overwrites them from a fresh `$PILOT_SRC`. Also copy
-   `$PILOT_SRC/scripts/pilot-pool.py` to `.pilot/pilot-pool.py` and `chmod +x` it —
+   `$PILOT_SRC/scripts/pilot.py` to `.pilot/pilot.py` and `chmod +x` it —
    PILOT-owned the same way; the `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa`
-   skills run it to pick the next ticket.
+   skills run it for ticket selection, claiming and status transitions.
 
 7. **Copy the status-cascade workflow.** Copy
    `$PILOT_SRC/assets/github/workflows/pilot-status-on-merge.yml` to

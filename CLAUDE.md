@@ -99,17 +99,20 @@ itself.
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
   the file already exists there.
 
-- `scripts/pilot-pool.py` — read-only candidate selection for phases 2-5 (`spec`, `dev`,
-  `review`, `qa`), implementing `assets/docs/pilot-process.md` §4 "Picking the next ticket..."
-  and "Blocked-by dependencies" (pools, `can-resume`, exclusions, priority/blocks/age order)
-  and printing one compact JSON object. Never writes to GitHub — claiming and labels stay
-  with the calling skill. Copied verbatim into a consuming project as `.pilot/pilot-pool.py`
-  by `/pilot-init` and re-synced by `/pilot-update`; `pilot-spec`, `pilot-dev`,
-  `pilot-review` and `pilot-qa` each run it for their bare/no-argument pool (falling back to
-  `pilot-process.md` §4 by hand if it's missing or fails). The spec stays in
-  `pilot-process.md` and is the source of truth: a change to §4's pool rules must be
-  mirrored in the script and in `scripts/test_pilot_pool.py` (offline tests,
-  `python3 -m unittest scripts/test_pilot_pool.py`).
+- `scripts/pilot.py` — PILOT's deterministic ticket mechanics as a CLI, implementing
+  `assets/docs/pilot-process.md` §3-§4: `pool` (pools, `can-resume`, exclusions,
+  priority/blocks/age order), `resolve` (classify an explicitly-given ticket: claim, resume,
+  reclaim, descend into an Epic, stop — and why), `claim` (assignee + status swap, re-read),
+  `set` (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with
+  its mandatory comment). Every command prints one JSON object; judgment (which agent to
+  call, what a spec or review says, pair dialogue) never lives in it. Copied verbatim into a
+  consuming project as `.pilot/pilot.py` by `/pilot-init` and re-synced by `/pilot-update`;
+  `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa` run it for their step-1 ticket
+  resolution, step-2 claim and mechanical status transitions, falling back to
+  `pilot-process.md` §3-§4 by hand if it's missing or fails. The doc stays the source of
+  truth: a change to §3/§4 rules (labels, pools, claim, resume/reclaim) must be mirrored in
+  the script and in `scripts/test_pilot.py` (offline tests,
+  `python3 -m unittest scripts/test_pilot.py`).
 
 Within a skill file, reference this repo's own assets via a fresh clone of
 `https://github.com/Jonas-Eve/pilot` into a scratch directory (called `$PILOT_SRC` in

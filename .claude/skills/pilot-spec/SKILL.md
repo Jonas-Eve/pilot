@@ -21,57 +21,47 @@ what `--multi` means here.
      behavior that's broken/regressed → bug; genuinely ambiguous, or reads as a product
      idea instead → say so and point at `/pilot-discovery`) → **no-ticket entry**, skip to
      step 1a.
-   - `--resume <issue>`: must be `status:in-spec`, assigned, **no** `needs-human`/
-     `on-hold` — a ticket left mid-pair. Follow `.pilot/pilot-process.md` §4 "Resuming
-     an orphaned claim", skipping step 2's claim. If it
-     doesn't match, report and stop.
-   - No `--resume`, `status:in-spec`, **no** `needs-human`/`on-hold`, carrying
-     `can-resume` → a resume, not a fresh claim. Follow
-     `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket", skipping step 2's
-     claim.
-   - No `--resume`, `status:in-spec`, assigned, **no** `needs-human`/`on-hold`, and
-     no `can-resume` → looks like a ticket left mid-pair. Report and ask the human to
-     re-run with `--resume`, or add `can-resume` themselves.
-   - `status:in-spec` still carrying `needs-human` or `on-hold` → not resolved yet,
-     report and stop.
-   - Given an issue number that's a `level:epic` currently carrying open
-     sub-issues → don't resolve the number itself; search its whole sub-issue tree for
-     this phase's own ordinary bare-pool candidates instead
-     (`.pilot/pilot-link-epic-descent.md`), and claim/resolve whichever one that search
-     finds — never this step's other bullets, which this search doesn't reach into.
-     Nothing found anywhere in the tree → report nothing to do for this ticket. (A
-     `status:split` `level:story` given directly, still open, is never intercepted this
-     way — see "Otherwise" below.)
-   - GitHub issue **closed** (`status:done`/`status:wont-do`) → terminal, refuse
-     (`.pilot/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split is
-     done"): report it's closed, point at opening a new ticket instead. Never claim it.
-     Check the issue's actual open/closed state, not just the `status:` label —
-     `status:qa`/`status:in-qa` below are still *open*, which is what distinguishes them
-     from this.
-   - `status:qa` (unclaimed) or `status:in-qa` (assigned, any owner) → a valid
-     re-scope entry point, not an ordinary claim (`.pilot/pilot-process.md` §2
-     "Re-scoping a `type:feature` story after its split is done"). Read the ticket, its
-     parent Epic (if linked), and its tasks (which are `status:done`, including the
-     original e2e task) for context, comment why (new scope found; any `status:in-qa`
-     session set aside), then claim it — overwrite the assignee if any (same non-conflict
-     exception a `status:changes-requested` reclaim gets, below) and set `status:in-spec`
-     — before continuing to step 3, passing that extra context alongside the ticket
-     body. Skip step 2, already claimed here.
-   - Otherwise → an existing, open ticket: a `level:story` (`type:feature`/`type:tech`)
-     being split/specced or re-split/re-specced, or a `level:task` (always a standalone
-     `type:bug`) just needing a spec. Read it
-     (`mcp__github__issue_read`) plus its parent Epic (if linked) and anything referenced
-     via "Blocks #M"/"Depends on #N" or a sub-issue relationship, as context. If
-     `level:epic`, there's nothing to work on the epic itself — stop and point at its
-     stories.
-   - No argument → run `python3 .pilot/pilot-pool.py spec`: it prints the pool of
-     `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:backlog`,
-     resumable `status:in-spec` + `can-resume`; dependency, `needs-human` and `on-hold`
-     exclusions; priority, then "Blocks #M", then oldest) as JSON. `pick: null` → report
-     nothing to do. Otherwise handle `pick.number` exactly as if it had been given
-     explicitly, through the bullets above. Script missing or exiting non-zero → build that
-     pool by hand per §4 instead (`mcp__github__search_issues`). What a scheduled cron
-     Routine drives with `--auto` (`.pilot/pilot-process.md` §4 "Scheduled sweeps").
+   - Anything else — an issue number, `--resume <issue>`, or none → `python3 .pilot/pilot.py
+     resolve spec <issue> [--resume]`. With no issue given, run `python3 .pilot/pilot.py pool
+     spec` first — the pool of `.pilot/pilot-process.md` §4 "Picking the next ticket..."
+     (fresh `status:backlog`, resumable `status:in-spec` + `can-resume`; `needs-human`,
+     `on-hold` and open "Depends on #N" excluded; priority, then "Blocks #M", then oldest;
+     what a scheduled cron Routine drives with `--auto`, §4 "Scheduled sweeps"). `pick: null`
+     → report nothing to do; otherwise resolve `pick.number` the same way. Act on the
+     returned `action`:
+     - `claim-fresh` or `manual` → an existing, open ticket: a `level:story`
+       (`type:feature`/`type:tech`) being split/specced or re-split/re-specced, or a
+       `level:task` (always a standalone `type:bug`) just needing a spec. Read it
+       (`mcp__github__issue_read`) plus its parent Epic (if linked) and anything referenced
+       via "Blocks #M"/"Depends on #N" or a sub-issue relationship, as context. `claim-fresh`
+       → step 2 (mode `fresh`); `manual` (e.g. a still-open `status:split` story re-scoped in
+       place, `.pilot/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split
+       is done") → claim it by hand per §4 instead of step 2.
+     - `rescope` → a story at `status:qa`/`status:in-qa`, a valid re-scope entry point
+       (`.pilot/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split is
+       done"). Read the ticket, its parent Epic (if linked), and its tasks (which are
+       `status:done`, including the original e2e task) for context, comment why (new scope
+       found; any `status:in-qa` session set aside), then step 2 (mode `rescope`: overwrites
+       any assignee and sets `status:in-spec`), passing that extra context alongside the
+       ticket body.
+     - `resume-orphaned` (`--resume`; also a no-ticket entry left mid-pair at `status:draft`,
+       step 1a) or `resume-cleared` (`can-resume`) → step 2 (mode of the same name), then
+       `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" / "Resuming a `needs-human`
+       ticket".
+     - `ask-resume` → looks like a ticket left mid-pair; report and ask the human to re-run
+       with `--resume`, or add `can-resume` themselves.
+     - `descend` → the number was an Epic: `pick` is this phase's own bare-pool pick across
+       its open sub-issue tree (`.pilot/pilot-link-epic-descent.md`; a `status:split` story is
+       never intercepted this way); resolve `pick.number` the same way. `pick: null` →
+       report nothing to do for this ticket.
+     - `stop` → report `reason` and stop. `closed` is terminal
+       (`.pilot/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split is
+       done"): say it's closed, point at opening a new ticket instead, never claim it.
+       `epic-without-open-subissues`: there's nothing to work on the epic itself — point at
+       its stories. Otherwise (`flagged`: unresolved `needs-human`/`on-hold`,
+       `resume-mismatch`, `assigned`, `not-found`) report it.
+     Script missing or exiting 2 → resolve and claim by hand per `.pilot/pilot-process.md` §4
+     with this phase's statuses: fresh `status:backlog`, in-progress `status:in-spec`.
 1a. **No-ticket entry** (`--tech`/`--bug`, explicit or auto-detected): call `Agent` with
     `subagent_type: "pilot-architect"` alone — read the matching task doc,
     `.pilot/pilot-task-formalize-tech-need.md` (`--tech`) or
@@ -100,9 +90,12 @@ what `--multi` means here.
     `--resume` (a fresh idea, not a paused session) — `--resume <issue>` instead recovers
     a no-ticket entry left mid-pair, `status:draft`, the same as `/pilot-discovery`'s own
     resume.
-2. **Claim** the ticket per `.pilot/pilot-process.md` §4: set assignee + `status:in-spec`,
-   re-read to confirm the claim held. (Skipped for the no-ticket entry, step 1a, and for
-   a resume/re-scope case per step 1's own bullets.)
+2. **Claim** the ticket: `python3 .pilot/pilot.py claim spec <issue> --mode <mode>` (the mode
+   named in step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
+   `status:in-spec`, re-read to confirm). Skipped for the no-ticket entry (step 1a), which
+   already holds its claim, and for a `manual` claim. Exit 1 with `reason: lost-race` →
+   stand down and return to step 1 for a different ticket (bare pool only); any other
+   refusal → report `reason` and stop.
 3. Branch on `level:`:
    - **`level:story`**: run the architect+tech lead dialogue
      (`.pilot/pilot-link-agent-dialogue.md`) — or, with `--multi <N>`, an N-instance
@@ -188,9 +181,10 @@ what `--multi` means here.
 5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`):
    - No split (`type:tech` `level:story` only, or a `level:task` needing just a spec —
      a `type:feature` story is never this case, step 4): update the ticket body with the
-     spec and decisions, set `status:dev-ready`, and write the reconfirmed/revised
-     `priority:` (for a `level:story` — still the ticket's own, since it's still the one
-     leaf). If step 3 left a scratch comment, edit it down to one concise line (e.g.
+     spec and decisions, write the reconfirmed/revised `priority:` (for a `level:story` —
+     still the ticket's own, since it's still the one leaf), then `python3 .pilot/pilot.py
+     set <issue> --status dev-ready --unassign` (a claimed ticket must be unassigned to
+     enter phase 3's pool). If step 3 left a scratch comment, edit it down to one concise line (e.g.
      "Spec written, status:dev-ready") — the content now lives in the ticket body itself,
      so the comment's job is done; same retirement as the split case below, just with
      nothing to link to.
@@ -205,20 +199,21 @@ what `--multi` means here.
      dependent one's body (`.pilot/pilot-process.md` §2 "Dependencies between tasks of
      the same split" — also how the e2e task's dependencies on every sibling get
      recorded). Set the parent's `status:` to `split` (its `level:` stays
-     `level:story`) and remove its own `priority:` label
+     `level:story`), remove its own `priority:` label
      (`.pilot/pilot-process.md` §3 — superseded by its tasks'), leave it open and
-     unassigned as a tracker. **Retire step 3's scratch comment**: its whole purpose was
+     unassigned as a tracker: `python3 .pilot/pilot.py set <parent> --status split
+     --unassign --remove priority:P<n>`. **Retire step 3's scratch comment**: its whole purpose was
      letting a crash mid-dialogue recover the in-progress split/specs before the
      sub-issues existed — now that they do, and hold the real content, edit that same
      comment down to one concise line (e.g. "Split into #A, #B, #C — see each for its own
      spec") instead of leaving the full in-progress draft sitting on the parent.
-   - Won't-do (clear-cut only): label `status:wont-do`, close the issue. If not
-     clear-cut, add `needs-human` with the reasoning instead (keep
-     `status:in-spec`) — don't close it. Never for a `type:bug` ticket past creation —
+   - Won't-do (clear-cut only): `python3 .pilot/pilot.py set <issue> --status wont-do
+     --close`. If not clear-cut, `python3 .pilot/pilot.py flag <issue> --comment "<why;
+     what's needed>"` with the reasoning instead (`status:in-spec` stays) — don't close it. Never for a `type:bug` ticket past creation —
      that's a human call from here (`.pilot/pilot-process.md` §3 `status:wont-do`).
    - Needs-human (a `level:task`'s diagnosis doesn't hold, or the dialogue can't resolve
-     a genuine disagreement, `.pilot/pilot-link-agent-dialogue.md`): add `needs-human`
-     with a comment, keep `status:in-spec`.
+     a genuine disagreement, `.pilot/pilot-link-agent-dialogue.md`): `python3
+     .pilot/pilot.py flag <issue> --comment "<why; what's needed>"`, `status:in-spec` stays.
    - Prerequisite tech ticket(s) flagged (alongside whichever of the above
      applies): write each the same way `.pilot/pilot-task-formalize-tech-need.md`
      describes for a standalone need — its own `level:story`, standalone, never grouped
