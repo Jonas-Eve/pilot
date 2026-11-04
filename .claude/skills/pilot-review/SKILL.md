@@ -34,43 +34,43 @@ pre-submission pause as the last check against picking the wrong one.
 
 ## Steps
 
-1. Resolve the ticket:
-   - Given a PR or issue number (not `--resume`) that currently has open sub-issues (an
-     Epic, or a `status:split` story — never a PR itself) → don't resolve the number
-     itself; search its whole sub-issue tree for this phase's own ordinary bare-pool
-     candidates instead (`.pilot/pilot-link-epic-descent.md`), and claim/resolve
-     whichever one that search finds — never this step's other bullets, which this
-     search doesn't reach into. Nothing found anywhere in the tree → report nothing to
-     do for this ticket.
-   - Given `--resume`: must be `status:in-review`, assigned, no `needs-human`/`on-hold`.
-     Follow `.pilot/pilot-process.md` §4 "Resuming an orphaned claim" instead of step 2 below
-     — already claimed. Check for an existing pending review under this run's own identity
-     (`mcp__github__pull_request_read` method `get_reviews`): still pinned to the PR's
-     current head commit → skip straight to step 8 with its already-computed outcome
-     (step 8 itself routes on/around the pair pause exactly as it would for a fresh run) —
-     no need to re-run reviewers. Stale (commit no longer matches) or none found → discard
-     any stale one (`mcp__github__pull_request_review_write` method `delete_pending`) and
-     resume normally from step 3. Mismatch → report and stop.
-   - Given (or pooled) without `--resume`, `status:in-review`, assigned, no
-     `needs-human`/`on-hold`, carrying `can-resume` → resume,
-     not a fresh claim. Follow `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"
-     instead of step 2 — already claimed.
-   - Given without `--resume`, `status:in-review`, assigned, no `needs-human`/`on-hold`, no
-     `can-resume` → looks orphaned; report and ask the human to re-run with
-     `--resume`, or add `can-resume` themselves.
-   - `status:in-review` still carrying `needs-human`/`on-hold` → not resolved yet; report
-     and stop.
-   - Otherwise, or none given → per `.pilot/pilot-process.md` §4 "Picking the next
-     ticket...": the given ticket, or the merged pool of unclaimed `status:review-ready`
-     (fresh) and `status:in-review` carrying `can-resume` (resumable — handled by
-     the second bullet above, not here), excluding `on-hold`, ordered by highest
-     `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
-     isn't, then oldest first (`mcp__github__search_issues`). `status:changes-requested`
-     tickets are never in this pool — `/pilot-dev` reclaims those (§4).
-2. **Claim** it (fresh case only, above) per `.pilot/pilot-process.md` §4: assignee +
-   `status:in-review`, re-read to confirm. If the assignee changed (race lost), stand down
-   and return to step 1 for a different candidate (bare pool only — report nothing to do if
-   a specific ticket was requested).
+0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation. `ok: false` (exit 1) or a failure (exit 2, script missing) → report each entry of `failed` (or the error) and stop here, before anything has changed.
+1. Resolve the ticket: `python3 .pilot/pilot.py resolve review <issue> [--resume]`. With none
+   given, run `python3 .pilot/pilot.py pool review` first — the pool of
+   `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:review-ready`,
+   resumable `status:in-review` + `can-resume`; `needs-human`, `on-hold` and open "Depends on
+   #N" excluded; priority, then "Blocks #M", then oldest; `status:changes-requested` tickets
+   are never in it — `/pilot-dev` reclaims those, §4). `pick: null` → report nothing to do;
+   otherwise resolve `pick.number` the same way. Act on the returned `action`:
+   - `manual` (`reason: pr-number`: a PR number was given) → find the ticket it closes
+     (`mcp__github__pull_request_read`, its `Closes #N`) and resolve that ticket here instead.
+   - `claim-fresh` → step 2 (mode `fresh`).
+   - `resume-orphaned` (`--resume`) → step 2 (mode `resume-orphaned`;
+     `.pilot/pilot-process.md` §4 "Resuming an orphaned claim"), then check for an existing
+     pending review under this run's own identity (`mcp__github__pull_request_read` method
+     `get_reviews`): still pinned to the PR's current head commit → skip straight to step 8
+     with its already-computed outcome (step 8 itself routes on/around the pair pause
+     exactly as it would for a fresh run) — no need to re-run reviewers. Stale (commit no
+     longer matches) or none found → discard any stale one
+     (`mcp__github__pull_request_review_write` method `delete_pending`) and resume normally
+     from step 3.
+   - `resume-cleared` (`can-resume`) → step 2 (mode `resume-cleared`;
+     `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"), then continue from
+     step 3.
+   - `ask-resume` → looks orphaned; report and ask the human to re-run with `--resume`, or
+     add `can-resume` themselves.
+   - `descend` → the number was an Epic or a `status:split` story: `pick` is this phase's own
+     bare-pool pick across its open sub-issue tree (`.pilot/pilot-link-epic-descent.md`);
+     resolve `pick.number` the same way. `pick: null` → report nothing to do for this ticket.
+   - `stop` → report `reason` and stop (`flagged`: unresolved `needs-human`/`on-hold`;
+     `resume-mismatch`; `wrong-status`; `assigned`; `closed`; `not-found`).
+   Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
+   `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
+2. **Claim** it: `python3 .pilot/pilot.py claim review <issue> --mode <mode>` (the mode named
+   in step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
+   `status:in-review`, re-read to confirm). Exit 1 with `reason: lost-race` → stand down and
+   return to step 1 for a different candidate (bare pool only — report nothing to do if a
+   specific ticket was requested). Any other refusal → report `reason` and stop.
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's,
    `.pilot/pilot-process.md` §2 "`type:` is never inherited") to pick the **default**
    reviewer set — the architect is never part of either default, added only via
@@ -202,6 +202,11 @@ pre-submission pause as the last check against picking the wrong one.
      reclaims once the `decision` point(s) are cleared.
    - Blocking points all `decision` → `event: COMMENT`; body lists every point grouped by
      reviewer; `needs-human` added; `status:in-review` stays.
+
+   Apply each label with `python3 .pilot/pilot.py set <issue> --status approved` or
+   `--status changes-requested`, adding `--add needs-human` wherever the bullet says
+   `needs-human` (the decision-only bullet keeps `status:in-review`: `--add needs-human`
+   alone).
 
    If GitHub rejects an `APPROVE`/`REQUEST_CHANGES` submission above because this run's
    connected identity is the PR's own author, retry `submit_pending` on that same pending

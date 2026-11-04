@@ -103,7 +103,10 @@ see `.claude/skills/pilot-update/SKILL.md`.
    prompt for one specific persona duty — the `.claude/agents/pilot-*.md` files carry only
    identity now, never a duty's mechanics. Copy all four kinds regardless of how many exist
    right now — all are PILOT-owned from here on, never hand-edit any of them;
-   `/pilot-update` overwrites them from a fresh `$PILOT_SRC`.
+   `/pilot-update` overwrites them from a fresh `$PILOT_SRC`. Also copy
+   `$PILOT_SRC/scripts/pilot.py` to `.pilot/pilot.py` and `chmod +x` it —
+   PILOT-owned the same way; the `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa`
+   skills run it for ticket selection, claiming and status transitions.
 
 7. **Copy the status-cascade workflow.** Copy
    `$PILOT_SRC/assets/github/workflows/pilot-status-on-merge.yml` to
@@ -138,5 +141,6 @@ see `.claude/skills/pilot-update/SKILL.md`.
     `lastSkillsSyncAt`/`lastIntroSyncAt`/`lastProcessDocSyncAt`/`lastLabelsSyncAt` set to
     now (or left null for whichever of labels was skipped in step 9).
 
-11. **Report.** Summarize what was created/updated/skipped, and suggest running
+11. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result. Summarize what
+    was created/updated/skipped, and suggest running
     `/pilot-init-archi` next to describe the monorepo's apps and generate their scaffolds.

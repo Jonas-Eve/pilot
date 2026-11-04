@@ -12,56 +12,39 @@ parallel instances; the claim step below prevents collisions.
 
 ## Steps
 
-1. Resolve the ticket:
-   - Given an issue number (not `--resume`) that currently has open sub-issues (an Epic,
-     or a `status:split` story) → don't resolve the number itself; search its whole
-     sub-issue tree for this phase's own ordinary bare-pool candidates instead
-     (`.pilot/pilot-link-epic-descent.md`), and claim/resolve whichever one that search
-     finds — never this step's other bullets, which this search doesn't reach into.
-     Nothing found anywhere in the tree → report nothing to do for this ticket.
-   - With `--resume`: must be `status:in-dev`, assigned, no `needs-human`/`on-hold` (a
-     ticket left mid-pair session). Follow `.pilot/pilot-process.md` §4 "Resuming an
-     orphaned claim" instead of steps 2-6 — already claimed; its own "the phase's `Agent`
-     call" is this skill's own step 3, invoked with the recovered context as input.
-     Mismatch → report and stop.
-   - Without `--resume`, `status:in-dev`, no `needs-human`/`on-hold`, carrying
-     `can-resume` → resume, not a fresh claim. Follow
-     `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" instead of steps 2-6 —
-     already claimed; its own "the phase's `Agent` call" is this skill's own step 3,
-     invoked with the original blocking context as input.
-   - Without `--resume`, `status:in-dev`, assigned, no `needs-human`/`on-hold`, no
-     `can-resume` → likely mid-pair-session; report and ask the human to re-run
-     with `--resume`, or add `can-resume` themselves.
-   - `status:in-dev` still carrying `needs-human` or `on-hold` → unresolved; report and
-     stop.
-   - `status:changes-requested`, no `needs-human`/`on-hold` → **reclaim**, distinct from
-     both above (a PR already exists; phase 4, not this skill, sent it back). Follow
-     `.pilot/pilot-process.md` §4 "Reclaiming a `status:changes-requested` ticket" instead
-     of steps 2-6 — claim per that section (an existing assignee doesn't block this claim,
-     unlike step 2's normal rule) and skip straight to step 3, passing the phase-5
-     blocking review instead of a fresh spec.
-   - `status:changes-requested` still carrying `needs-human` or `on-hold` → unresolved;
-     report and stop.
-   - `status:dev-ready`, unclaimed, body carries an open "Depends on #N" → not ready yet;
-     report which ticket it's blocked on and stop rather than claim (`.pilot/pilot-process.md`
-     §4 "Blocked-by dependencies" — applies to an explicitly-given ticket exactly as to
-     bare-pool selection below, not just the pool).
-   - Otherwise, or no issue given → per `.pilot/pilot-process.md` §4 "Picking the next
-     ticket...": the given ticket, or the merged pool of unclaimed `status:dev-ready`
-     (fresh), `status:in-dev` carrying `can-resume` (resumable), and
-     `status:changes-requested` with no `needs-human`/`on-hold` (reclaimable — immediately,
-     for a review verdict that was purely code-level and so never carried `needs-human`
-     to begin with, or once a human clears it for one that also blocked on a judgment
-     call, `.pilot/pilot-link-review-consensus.md`) —
-     a mid-pair-session ticket is never in this pool, only reachable via an explicit
-     `--resume <issue>` — excluding any with an unresolved "Depends on #N"
-     (`.pilot/pilot-process.md` §4 "Blocked-by dependencies"), ordered by highest
-     `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
-     isn't, then oldest first (`mcp__github__search_issues`). A scheduled cron Routine
-     drives this with `--auto` added (`.pilot/pilot-process.md` §4 "Scheduled sweeps").
-2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-dev`, then
-   re-read the ticket. If the assignee changed (another instance won the race), stand
-   down and return to step 1 for a different ticket.
+0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation. `ok: false` (exit 1) or a failure (exit 2, script missing) → report each entry of `failed` (or the error) and stop here, before anything has changed.
+1. Resolve the ticket: `python3 .pilot/pilot.py resolve dev <issue> [--resume]`. With no issue
+   given, run `python3 .pilot/pilot.py pool dev` first — the pool of `.pilot/pilot-process.md`
+   §4 "Picking the next ticket..." (fresh `status:dev-ready`, resumable `can-resume`,
+   reclaimable `status:changes-requested`; `needs-human`, `on-hold` and open "Depends on #N"
+   excluded; priority, then "Blocks #M", then oldest; a scheduled cron Routine drives this
+   with `--auto` added, §4 "Scheduled sweeps"). `pick: null` → report nothing to do;
+   otherwise resolve `pick.number` the same way. Act on the returned `action`:
+   - `claim-fresh` → step 2 (mode `fresh`).
+   - `reclaim` → step 2 (mode `reclaim`): a PR already exists, phase 4 sent it back
+     (`.pilot/pilot-process.md` §4 "Reclaiming a `status:changes-requested` ticket"). Then
+     skip straight to step 3, passing the phase-4 blocking review instead of a fresh spec.
+   - `resume-orphaned` (`--resume`: a ticket left mid-pair session) → step 2 (mode
+     `resume-orphaned`), then step 3 invoked with the recovered context as input
+     (`.pilot/pilot-process.md` §4 "Resuming an orphaned claim").
+   - `resume-cleared` (`can-resume`: a human cleared `needs-human`) → step 2 (mode
+     `resume-cleared`), then step 3 invoked with the original blocking context as input
+     (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket").
+   - `ask-resume` → likely mid-pair-session; report and ask the human to re-run with
+     `--resume`, or add `can-resume` themselves.
+   - `descend` → the number was an Epic or a `status:split` story: `pick` is this phase's own
+     bare-pool pick across its open sub-issue tree (`.pilot/pilot-link-epic-descent.md`);
+     resolve `pick.number` the same way. `pick: null` → report nothing to do for this ticket.
+   - `stop` → report `reason` and stop: `depends-on-open` (name the `depends_on` ticket),
+     `flagged` (`flags`: `needs-human`/`on-hold`, unresolved), `assigned`, `wrong-status`,
+     `in-progress-unassigned`, `closed`, `not-found`.
+   Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
+   `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
+2. **Claim** it: `python3 .pilot/pilot.py claim dev <issue> --mode <mode>` (the mode named in
+   step 1: `fresh`, `reclaim`, `resume-orphaned` or `resume-cleared`) — it applies
+   `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee + `status:in-dev`, re-read to
+   confirm). Exit 1 with `reason: lost-race` → another instance won; stand down and return
+   to step 1 for a different ticket. Any other refusal → report `reason` and stop.
 2a. **Pick the persona**: ticket's own `type:e2e` (`.pilot/pilot-link-e2e-tasks.md` — never
     inherited, read off the ticket, not its story) →
     `subagent_type: "pilot-e2e"`; otherwise `"pilot-dev"`. The only thing `type:e2e`
@@ -126,9 +109,10 @@ parallel instances; the claim step below prevents collisions.
    opening a new one — or hits a genuine blocking conflict it can't resolve alone and
    stops without a PR (or without pushing, for a reclaim).
 5. Apply the result:
-   - PR opened, or new commits pushed to an existing PR (reclaim case): clear the assignee
-     and set `status:review-ready` on the ticket (phase 4's own pre-claim status — never
-     `status:in-review` directly, `.pilot/pilot-process.md` §4 "Claim Protocol"). If step
+   - PR opened, or new commits pushed to an existing PR (reclaim case): `python3
+     .pilot/pilot.py set <issue> --status review-ready --unassign` (phase 4's own pre-claim
+     status — never `status:in-review` directly, `.pilot/pilot-process.md` §4 "Claim
+     Protocol"). If step
      3 left a scratch approach-checkpoint comment, collapse it to one concise line (e.g.
      "Approach: <one-line summary> — see PR #<n>") — the PR itself is the real artifact
      now, not the negotiation that led to it.

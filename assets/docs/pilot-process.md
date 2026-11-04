@@ -664,16 +664,18 @@ ticket left mid-phase; see "Resuming an orphaned claim" below. Spec's own no-tic
 ticket is created and assigned the instant a first draft exists, before any human
 approval.
 
-1. Read the ticket's current `status:` and assignee.
-2. If it's not in the expected pre-claim status, or already has an assignee, stop — it's
-   being worked or has moved on; pick a different ticket (or report nothing to do, if a
-   specific ticket number was requested explicitly).
-3. Otherwise, immediately set the assignee to the current agent/session and swap the
-   `status:` label to the in-progress one for this phase.
-4. Re-read the ticket once more. If the assignee is no longer this agent, another run won
-   the race — stand down and pick something else. This is optimistic, not a real lock:
-   cheap insurance against the common case, not a guarantee under true concurrent writes.
-5. Only after a successful claim does the phase's real work (the subagent call(s)) start.
+The mechanics are `.pilot/pilot.py claim <phase> <issue> --mode ...` (`pool` and `resolve` decide
+what to claim); its source is the reference for the exact conditions. The contract:
+
+- A ticket is claimable only in the phase's pre-claim `status:` and unassigned — or, for the
+  explicit modes below (resume, reclaim, re-scope), in the status that mode names. Anything
+  else is refused, never overwritten silently.
+- A claim sets the assignee to the current session's GitHub user and swaps `status:` to the
+  phase's in-progress one in one write, then re-reads the ticket. If the assignee is no
+  longer this session, another run won the race — stand down and pick something else.
+  Optimistic, not a real lock: cheap insurance against the common case, not a guarantee
+  under true concurrent writes.
+- The phase's real work (the subagent call(s)) starts only after a successful claim.
 
 Phase 4's claim only serializes separate *runs* of `/pilot-review` against the same
 ticket — the reviewers **within** one claimed run (two, or a human-narrowed subset,
@@ -683,31 +685,22 @@ other's verdict (`.pilot/pilot-link-review-consensus.md`).
 ### Picking the next ticket when none is specified
 
 Discovery has no such pool at all — it always starts from a raw idea in free text (or an
-explicit `--resume <issue>`). When any other phase skill is invoked without an explicit
-ticket number, it builds its candidate pool from **two** queries, not one:
-1. **Fresh work** — tickets in its own pre-claim `status:`, no assignee.
-2. **Resumable work** — tickets already in its own *in-progress* `status:`, still carrying
-   the assignee from when they were originally claimed, now also carrying `can-resume`
-   (§3) — a human's explicit signal that this one's safe to hand to the next sweep. A
-   plain label check, same as any other pool query here — never something the subagent
-   has to infer from a comment thread.
+explicit `--resume <issue>`). Every other phase builds its pool with
+`.pilot/pilot.py pool <phase>` (its source is the reference):
 
-`/pilot-dev` alone has a **third** pool: tickets in `status:changes-requested` with
-`needs-human` no longer present — phase 4 sent these back for an actual code fix
-(`.pilot/pilot-link-review-consensus.md`). See
-"Reclaiming a `status:changes-requested` ticket" below.
+- **Fresh work** — tickets in the phase's own pre-claim `status:`, no assignee.
+- **Resumable work** — tickets in the phase's own in-progress `status:` carrying
+  `can-resume` (§3), a human's explicit signal that this one is safe to hand to the next
+  sweep.
+- **Reclaimable work** (`/pilot-dev` only) — `status:changes-requested` tickets without
+  `needs-human`/`on-hold`: phase 4 sent them back for a code fix
+  (`.pilot/pilot-link-review-consensus.md`).
 
-All pools that apply to a given phase skill are merged and picked from together: highest
-`priority:` first, then a ticket referenced by another open ticket's "Blocks #M" comment
-before one that isn't, then oldest by creation date to break ties; a ticket carrying no
-`priority:` at all sorts last. A ticket still carrying
-`needs-human` or `on-hold` is never a candidate in any pool, and neither is one whose body
-has an unresolved "Depends on #N" reference (below, "Blocked-by dependencies") — both
-re-enter automatically once resolved, no flag to remove for the dependency case. An
-orphaned claim (already assigned, still in that phase's in-progress `status:`, without
-`can-resume`) is likewise never a candidate in any bare pool — see "Resuming an orphaned
-claim" below; it resumes only via `can-resume` (once a human has verified it's safe) or an
-explicit `--resume <issue>`.
+A ticket carrying `needs-human` or `on-hold`, or with an unresolved "Depends on #N" (below),
+is never a candidate. An orphaned claim (in-progress `status:`, assigned, no `can-resume`) is
+never in a bare pool either: it resumes only via `can-resume` or an explicit `--resume <issue>`
+(below). Order: highest `priority:` first (a ticket with none sorts last), then a ticket
+carrying a "Blocks #M" comment on a still-open #M, then oldest by creation date.
 
 ### Given an explicit ticket that has open sub-issues (an Epic, or a `status:split` story)
 
@@ -728,36 +721,22 @@ A ticket's body may carry one or more "Depends on #N" references. Two places wri
 them today: the architect, when Spec spins out a prerequisite tech or bug ticket it
 judges a hard blocker (§2 "Prerequisite tech/bug tickets"); and
 `pilot-dev`/`pilot-e2e` (phase 3) or `pilot-qa` (phase 5), into their own ticket's body
-when they originate a bug inline (same doc — always a hard blocker there). The
-mechanism itself isn't specific to any of them; anything that writes the same phrase gets
-the same gate for free.
+when they originate a bug inline (same doc — always a hard blocker there). The mechanism
+itself isn't specific to any of them; anything that writes the same phrase gets the same
+gate for free.
 
 **Format: one dependency per line, always.** Multiple dependencies are multiple separate
 "Depends on #N" lines, one issue number each — never several numbers combined onto one
-line. This keeps the check a trivial per-line literal match, not a list/prose parse.
+line. This keeps the check a per-line literal match, not a list/prose parse.
 
-Whenever a phase builds a candidate pool from its own `status:` pools (above), it also
-reads each candidate's body for this exact phrase and, for each `#N` found, checks whether
-that issue is still open — plain open/closed, not its `status:` label. A candidate with at
-least one still-open dependency is excluded from the pool for this run, the same as
-`needs-human`/`on-hold` above — but unlike those two, nothing needs removing by hand: the
-moment the referenced ticket closes, the next run of that phase picks the ticket back up
-as an ordinary candidate. This is a deterministic tool-call check the skill performs
-directly (§5), never something the subagent reasons about.
-
-**In phases 3 (Dev) and 5 (QA), the gate applies to an explicitly-given ticket number too,
-not just bare-pool selection.** `/pilot-dev` and `/pilot-qa` each run this same
-check before claiming any ticket, whether it got there via the pool or because a human
-named it directly — the same principle already applied to an explicit ticket number still
-carrying `needs-human`/`on-hold`.
-
-**Spec (`/pilot-spec`) is the deliberate exception, same as before.** Re-splitting/re-speccing
-a ticket doesn't need its own prerequisite resolved first — only Dev does; `/pilot-spec`
-doesn't check this gate on an explicitly-given ticket number, and it never meaningfully
-fires from its own bare pool either, since nothing writes "Depends on #N" onto a ticket
-before Spec has worked it at least once.
-
-The same reference feeds the ordering tie-break above.
+The gate is `.pilot/pilot.py`'s — a deterministic check, never a subagent's reasoning; its
+source is the reference. A ticket with at least one dependency still open (plain open/closed,
+not its `status:` label; an unreadable reference counts as open) is excluded from every
+phase's pool and, in phases 3 (Dev) and 5 (QA), refused when given explicitly. Spec is the
+deliberate exception: re-splitting/re-speccing a ticket doesn't need its own prerequisite
+resolved first, so `/pilot-spec` doesn't apply it to an explicitly-given number. Nothing
+needs removing by hand — the ticket is a normal candidate again the moment the referenced
+ticket closes.
 
 ### Resuming a `needs-human` ticket
 
@@ -771,7 +750,8 @@ bare/scheduled-sweep candidate or only reachable by ticket number.
 
 A phase skill treats a ticket as **resuming**, not a fresh claim, whenever it's already
 in that phase's in-progress `status:` (whether picked up via `can-resume` or given
-explicitly) — skip the claim, it's already claimed:
+explicitly) — already claimed, so no new claim (`.pilot/pilot.py claim --mode resume-cleared`
+only consumes the one-time `can-resume` signal, §3):
 1. Read the full blocking context, not just the ticket body — the blocking comment and
    everything posted after it, for every phase except Review. Review's own block is a
    submitted PR review, not a comment (`.pilot/pilot-link-review-consensus.md`) —
@@ -780,7 +760,7 @@ explicitly) — skip the claim, it's already claimed:
 2. If `needs-human` is still present, it isn't resolved yet — report that and stop (this
    only matters when a ticket number was given explicitly; the bare pool above already
    excludes these).
-3. Otherwise, remove `can-resume` if present (§3) and proceed with the phase's `Agent`
+3. Otherwise proceed with the phase's `Agent`
    call(s), passing both the original blocking context and whatever's in the thread after it
    (a specific reply, or "no reply — treat as approved as proposed" if none). The agent(s)
    proceed, correct, or block again if that still doesn't actually resolve things.
@@ -817,8 +797,8 @@ To resume via `--resume`:
    restart the reviewers fresh, the tech lead's re-validation needs the actual current code
    regardless. For an `--auto` run of any other phase, there's nothing to reconstruct — a
    plain restart from the ticket's original inputs.
-2. Claim it the same way a `status:changes-requested` reclaim does (below) — an existing
-   assignee doesn't count as a conflict here. Overwrite it (assignee → this session);
+2. Claim it with `.pilot/pilot.py claim --mode resume-orphaned` — an existing assignee
+   doesn't count as a conflict here: it is overwritten (assignee → this session) and
    `status:` stays at its current in-progress value.
 3. Pass whatever step 1 recovered to the phase's `Agent` call(s) as its starting context,
    and continue: the normal pair loop where one exists, otherwise a fresh pass.
@@ -833,10 +813,9 @@ Unlike "Resuming a `needs-human` ticket" or "Resuming an orphaned claim" above,
 ticket already has an open PR, and whatever assignee is still on it is phase 4's own
 claiming session (§4 "Claim Protocol"), not necessarily whoever runs `/pilot-dev` next.
 
-Reclaiming one follows the standard claim protocol above with a single, deliberate
-exception: an existing assignee doesn't count as "already claimed" for this status — the
-claiming session simply overwrites it (assignee → itself, `status:` → `in-dev`) and
-re-reads to confirm the overwrite held.
+Reclaiming one is `.pilot/pilot.py claim --mode reclaim`: an existing assignee doesn't
+count as "already claimed" for this status — the claiming session overwrites it (assignee →
+itself, `status:` → `in-dev`) and re-reads to confirm the overwrite held.
 
 Once claimed, pass the subagent the phase-4 blocking review — its submitted PR review,
 read from the PR's reviews rather than the issue's comment thread
