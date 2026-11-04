@@ -420,7 +420,7 @@ function vFile(){
   var mine=tickets().filter(function(t){
     if(!phaseOf(t.status))return false;
     if(S.scope==='moi')return !!S.me&&t.assignee===S.me;
-    if(S.scope==='prendre')return inRole(t)&&!has(t,'needs-human')&&!has(t,'on-hold')&&(!t.assignee||t.status==='changes-requested'); /* a review verdict keeps the reviewer as assignee, and /pilot-dev reclaims changes-requested over it */
+    if(S.scope==='prendre')return inRole(t)&&!t.assignee&&!has(t,'needs-human')&&!has(t,'on-hold');
     return inRole(t);
   }).sort(byUrgency);
   var pages=Math.max(1,Math.ceil(mine.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;

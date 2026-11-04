@@ -204,10 +204,11 @@ pre-submission pause as the last check against picking the wrong one.
    - Blocking points all `decision` → `event: COMMENT`; body lists every point grouped by
      reviewer; `needs-human` added; `status:in-review` stays.
 
-   Apply each label with `python3 .pilot/pilot.py set <issue> --status approved` or
-   `--status changes-requested`, adding `--add needs-human` wherever the bullet says
-   `needs-human` (the decision-only bullet keeps `status:in-review`: `--add needs-human`
-   alone).
+   Apply each label with `python3 .pilot/pilot.py set <issue> --status approved --unassign` or
+   `--status changes-requested --unassign` (the verdict ends this run's claim, like any
+   other phase's hand-off), adding `--add needs-human` wherever the bullet says
+   `needs-human` (the decision-only bullet keeps `status:in-review` and its assignee, the
+   claim still being held: `--add needs-human` alone).
 
    If GitHub rejects an `APPROVE`/`REQUEST_CHANGES` submission above because this run's
    connected identity is the PR's own author, retry `submit_pending` on that same pending

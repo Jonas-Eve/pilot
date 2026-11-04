@@ -416,14 +416,13 @@ when phase 4 blocks on something that needs an actual code change — see
   points needs no human decision, so it skips `needs-human` altogether and
   `/pilot-dev` may claim it right away, same as any other pre-claim status. When
   `needs-human` is present (a mixed review), `/pilot-dev` claims it only once a human
-  clears that flag (§4 "Reclaiming a `status:changes-requested` ticket") — reclaiming
-  either way is expected to find an existing assignee (phase 4's own claiming session, §4
-  "Claim Protocol") and overwrite it rather than treat that as a conflict. The dev pushes
+  clears that flag (§4 "Reclaiming a `status:changes-requested` ticket"). Phase 4 unassigns
+  the ticket with its verdict, like every phase's hand-off. The dev pushes
   new commits to the *same* already-open PR (never a second PR for the same ticket) and
   moves the ticket to `status:review-ready` when done — never `status:in-review` directly,
   phase 4 claims it fresh.
 - `status:approved` — phase 4 ran and every reviewer approved
-  (`.pilot/pilot-link-review-consensus.md`) — set instead of
+  (`.pilot/pilot-link-review-consensus.md`) — set, unassigned, instead of
   leaving `status:in-review`. This is the "ready to merge, nothing outstanding" signal.
   Without `--merge`, a human still performs the actual merge — PILOT's default is never to
   merge on its own. Given `--merge` (§4 "Interaction modes"), the same run merges the PR
@@ -810,12 +809,11 @@ Finalization behaves exactly as any other run of that phase from here.
 Unlike "Resuming a `needs-human` ticket" or "Resuming an orphaned claim" above,
 `status:changes-requested` is set by *phase 4*
 (`.pilot/pilot-link-review-consensus.md`), not by `/pilot-dev` itself — the
-ticket already has an open PR, and whatever assignee is still on it is phase 4's own
-claiming session (§4 "Claim Protocol"), not necessarily whoever runs `/pilot-dev` next.
+ticket already has an open PR, and phase 4 unassigned it with its verdict.
 
-Reclaiming one is `.pilot/pilot.py claim --mode reclaim`: an existing assignee doesn't
-count as "already claimed" for this status — the claiming session overwrites it (assignee →
-itself, `status:` → `in-dev`) and re-reads to confirm the overwrite held.
+Reclaiming one is `.pilot/pilot.py claim --mode reclaim`: assignee → this session,
+`status:` → `in-dev`, re-read to confirm. An assignee an older verdict left on the ticket
+doesn't count as "already claimed" for this status: it is overwritten.
 
 Once claimed, pass the subagent the phase-4 blocking review — its submitted PR review,
 read from the PR's reviews rather than the issue's comment thread
