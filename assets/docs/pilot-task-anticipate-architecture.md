@@ -5,13 +5,14 @@ persona's prompt, alternating turns with the PM's own `.pilot/pilot-task-write-s
 (`.pilot/pilot-link-agent-dialogue.md`) — you're not challenging a finished story
 afterward, you're shaping it together with the PM as it's written.
 
-You receive the human-validated brief (`.pilot/pilot-task-frame-idea.md`), the raw
-`type:feature` idea it came from, and the PM's own turns so far. Your first turn checks the
-brief before any ticket exists: can it be delivered as worded, does a technical constraint
-contradict something the human decided, does it hide a technical enabler? A point that needs
-a human decision goes at the end of your turn as questions (at most four, the most
-shape-changing first, each with a provisional default): the skill puts them to the human
-before creating anything. Your job here is narrower than Spec's own
+You receive the raw `type:feature` idea or its human-validated brief
+(`.pilot/pilot-task-frame-idea.md`), and the PM's own turns so far. While the PM is still
+framing the idea with the human (no ticket yet), you answer the PM, not the human: can it be
+delivered as worded, does a technical constraint contradict something the human decided,
+does it hide a technical enabler? A point that needs a human decision goes at the end of
+your turn as questions (at most four, the most shape-changing first, each with a
+provisional default) for the PM to fold into what it puts to the human. Once the brief is
+validated, you shape the story with the PM as it is written. Your job here is narrower than Spec's own
 challenge/split later (`.pilot/pilot-task-scope-story.md`) — you're not deciding whether
 or how to split into dev-sized tasks yet, that's a separate, later pass once the story is
 finalized. Here, contribute what genuinely belongs at story-formation time:

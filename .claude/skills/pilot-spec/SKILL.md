@@ -63,18 +63,21 @@ what `--multi` means here.
 1a. **No-ticket entry** (`--tech`/`--bug`, explicit or auto-detected).
     **Frame the need first, with the human, before any ticket exists** — this stage needs a
     human live, so it never runs when another phase applies the shared bug mechanism on its
-    own (`.pilot/pilot-link-bug-tickets.md`). Run `pilot-architect`, then `pilot-techlead`,
-    round by round (`.pilot/pilot-task-challenge-need.md` and
-    `.pilot/pilot-task-verify-need.md`, one passed into each call's prompt): each call gets the
-    raw need and the framing conversation so far, the human's answers included — nothing else
-    from this conversation. After each round, show the human what they raised and put their
-    questions to them (at most four at a time, the most shape-changing first, through whatever
-    question tool you have, each with its provisional default as the recommended option); feed
-    the answers back and call them again. Stop when both say the need is ready and the human
-    has confirmed it (or says to go with the provisional defaults), or when it turns out not to
-    belong here (out of scope, a product idea for `/pilot-discovery`, not a real defect or a
-    duplicate): report and create nothing. No ticket exists during this stage, so an
-    interrupted framing is simply run again.
+    own (`.pilot/pilot-link-bug-tickets.md`). The architect is the only voice the human
+    hears; behind it, the architect and tech lead talk first. Each round: run the
+    architect+tech lead dialogue (`.pilot/pilot-link-agent-dialogue.md`) — `pilot-architect`
+    with `.pilot/pilot-task-challenge-need.md`, `pilot-techlead` with
+    `.pilot/pilot-task-verify-need.md`, alternating, each call passed the raw need and the
+    framing conversation so far (the human's answers included) — nothing else from this
+    conversation. Once they have converged for this round, show the human only the
+    architect's last turn (classification, challenges, what the tech lead found in the code)
+    and put its questions to them (at most four at a time, the most shape-changing first,
+    through whatever question tool you have, each with its provisional default as the
+    recommended option); feed the answers back and run the dialogue again. Stop when both say
+    the need is ready and the human has confirmed it (or says to go with the provisional
+    defaults), or when it turns out not to belong here (out of scope, a product idea for
+    `/pilot-discovery`, not a real defect or a duplicate): report and create nothing. No
+    ticket exists during this stage, so an interrupted framing is simply run again.
     Then call `Agent` with `subagent_type: "pilot-architect"` alone — read the matching task
     doc, `.pilot/pilot-task-formalize-tech-need.md` (`--tech`) or
     `.pilot/pilot-task-formalize-bug-report.md` (`--bug`, alongside

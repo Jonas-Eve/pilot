@@ -900,9 +900,10 @@ sub-issues/spec; Dev: the PR) is each phase's own call, covered in its own `SKIL
 For Dev and Review a ticket already exists before the phase starts. **Discovery, and
 Spec's own no-ticket entry, are the cases where no ticket exists yet at the very first
 checkpoint**. Before creating anything, the skill runs a framing stage with the human:
-in Discovery the PM challenges the idea and restates it as a brief the human validates;
-in Spec's no-ticket entry (human live) the architect and tech lead challenge and verify
-the raw need. Only then does the agents' dialogue start, and the skill creates the ticket
+in Discovery the PM, after talking with the architect, challenges the idea and restates it
+as a brief the human validates; in Spec's no-ticket entry (human live) the architect, after
+talking with the tech lead, challenges the raw need and relays what the code shows. One
+persona speaks to the human each round. Only then does the agents' dialogue start, and the skill creates the ticket
 (`status:draft`, §3) as soon as the first draft is ready to show the human, instead of
 holding it in-conversation. There is nothing to `--resume` during framing.
 Either way, the very last thing pair mode does — setting the phase's completion `status:`

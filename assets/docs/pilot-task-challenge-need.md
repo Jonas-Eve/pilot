@@ -1,9 +1,11 @@
 # PILOT task — Challenge a raw technical need or bug report with the human (Spec's no-ticket entry, before any ticket)
 
 Injected by `.claude/skills/pilot-spec/SKILL.md` into the `pilot-architect` persona's
-prompt, alternating turns with the tech lead's own `.pilot/pilot-task-verify-need.md`, once
-per round of the framing stage: a human is live, you speak to them through the skill, and
-no ticket exists yet. The formalizing duties (`.pilot/pilot-task-formalize-tech-need.md`,
+prompt, alternating turns with the tech lead's own `.pilot/pilot-task-verify-need.md`
+(`.pilot/pilot-link-agent-dialogue.md`), inside each round of the framing stage: a human is
+live and you are the only voice they hear, no ticket exists yet. Settle what you can with
+the tech lead first; your last turn of the round is the one shown to the human, so fold in
+what the tech lead found. The formalizing duties (`.pilot/pilot-task-formalize-tech-need.md`,
 `.pilot/pilot-task-formalize-bug-report.md`) come only after this stage.
 
 You receive the raw need (`--tech`, `--bug`, or auto-detected) and the framing conversation
