@@ -149,18 +149,19 @@ const STUB = (opts) => `
   page = await open({ preload: [QA_SNAP] });
   await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
   const links = await hrefs(page, '#view .row a.btn');
-  const base = 'https://claude.ai/code?prompt=';
-  const find = (cmd) => links.find((l) => l.href === base + encodeURIComponent(cmd) + '&repositories=' + REPO);
+  const base = 'https://claude.ai/code/new?q=';
+  const repoParam = '&repo=' + encodeURIComponent(REPO);
+  const find = (cmd) => links.find((l) => l.href === base + encodeURIComponent(cmd) + repoParam);
   check('auto-capable ticket: open links for auto and pair', find('/pilot-dev 99 --auto') && find('/pilot-dev 99'), JSON.stringify(links));
   check('pair-only ticket (QA): a single open link, no --auto', find('/pilot-qa 50') && !links.some((l) => /pilot-qa%2050%20--auto/.test(l.href)), JSON.stringify(links));
   check('links open in a new tab without opener', links.length >= 3 && links.every((l) => l.target === '_blank' && /noopener/.test(l.rel)), JSON.stringify(links));
-  check('the command is URL-encoded, the repository path keeps its slash', links.every((l) => !/ /.test(l.href)) && links.every((l) => l.href.endsWith('&repositories=' + REPO)));
+  check('the command and the repository are URL-encoded (documented claude.ai/code/new?q=&repo= form)', links.every((l) => !/ /.test(l.href)) && links.every((l) => l.href.endsWith(repoParam)) && links.every((l) => l.href.startsWith(base)));
   check('copy buttons stay as a fallback', /Copier auto/.test(await text(page, '#view')) && /Copier pair/.test(await text(page, '#view')));
   await page.screenshot({ path: path.join(TMP, 'links.png') });
   await page.close();
 
   page = await open({ preload: [snapshot([ticket(1, ['status:backlog'])], 60 * 30)] });
-  check('stale snapshot: open link for the refresh command', (await hrefs(page, '#banner a.btn')).some((l) => l.href === base + encodeURIComponent('/pilot-dashboard --refresh') + '&repositories=' + REPO));
+  check('stale snapshot: open link for the refresh command', (await hrefs(page, '#banner a.btn')).some((l) => l.href === base + encodeURIComponent('/pilot-dashboard --refresh') + repoParam));
   await page.close();
   page = await open({});
   check('no snapshot: open link for the refresh command', (await hrefs(page, '#banner a.btn')).some((l) => /pilot-dashboard%20--refresh/.test(l.href)));

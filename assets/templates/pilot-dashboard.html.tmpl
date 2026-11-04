@@ -294,8 +294,10 @@ function ticketChips(t){
 }
 function ghLink(t,text){return h('a',{class:'btn',href:'https://github.com/'+S.repo+'/issues/'+t.n,target:'_blank',rel:'noopener'},text);}
 
-/* opens a Claude Code web session on this project with the command typed in (not sent: the person presses Enter) */
-function claudeCodeUrl(cmd){return 'https://claude.ai/code?prompt='+encodeURIComponent(cmd)+'&repositories='+encodeURIComponent(S.repo).replace(/%2F/g,'/');}
+/* Anthropic's universal link for a new Claude Code session: opens the app if installed, else the browser,
+   with the command typed in (not sent: the person presses Enter). `repo` is ignored if it isn't in the
+   viewer's connected GitHub account. */
+function claudeCodeUrl(cmd){return 'https://claude.ai/code/new?q='+encodeURIComponent(cmd)+'&repo='+encodeURIComponent(S.repo);}
 function openLink(cmd,label,primary){return h('a',{class:'btn'+(primary?' primary':''),href:claudeCodeUrl(cmd),target:'_blank',rel:'noopener'},label);}
 function copyCmd(text,btn){
   var orig=btn.textContent;
