@@ -508,5 +508,46 @@ class MiscTests(unittest.TestCase):
         self.assertTrue(pilot.run(args, gh)["claimed"])
 
 
+class DemoSnapshotTests(unittest.TestCase):
+    """scripts/demo_snapshot.py feeds the demo dashboard: its document must look like pilot.py's."""
+
+    def setUp(self):
+        demo_spec = importlib.util.spec_from_file_location("demo_snapshot", pathlib.Path(__file__).with_name("demo_snapshot.py"))
+        self.demo = importlib.util.module_from_spec(demo_spec)
+        demo_spec.loader.exec_module(self.demo)
+        self.doc = self.demo.snapshot()
+
+    def test_document_has_the_snapshot_shape_and_fits_a_database_document(self):
+        self.assertEqual((self.doc["repo"], self.doc["truncated"], self.doc["total"]), ("Jonas-Eve/pilot", False, len(self.doc["issues"])))
+        self.assertLessEqual(len(json.dumps(self.doc, ensure_ascii=False).encode()), pilot.SNAPSHOT_MAX_BYTES)
+        numbers = [r["n"] for r in self.doc["issues"]]
+        self.assertEqual(len(numbers), len(set(numbers)))
+        for row in self.doc["issues"]:
+            self.assertTrue({"n", "t", "l", "u"} <= set(row))
+
+    def test_parents_progress_and_every_phase_are_covered(self):
+        rows = {r["n"]: r for r in self.doc["issues"]}
+        for row in rows.values():
+            if "p" in row:
+                self.assertIn(row["p"], rows)
+            if "k" in row:
+                self.assertLessEqual(row["k"][0], row["k"][1])
+        statuses = {l for r in rows.values() for l in r["l"] if l.startswith("status:")}
+        self.assertTrue({f"status:{s}" for s in ("draft", "backlog", "in-spec", "dev-ready", "in-dev", "changes-requested",
+                                                 "review-ready", "in-review", "approved", "qa", "in-qa", "split")} <= statuses)
+        self.assertTrue(any("level:epic" in r["l"] and "k" in r for r in rows.values()))
+        self.assertTrue(any("r" in r for r in rows.values()) and any("a" in r for r in rows.values()))
+        self.assertTrue(any("needs-human" in r["l"] for r in rows.values()) and any("on-hold" in r["l"] for r in rows.values()))
+
+    def test_a_changes_requested_ticket_is_unassigned_like_the_review_leaves_it(self):
+        for row in self.doc["issues"]:
+            if "status:changes-requested" in row["l"] or "status:approved" in row["l"]:
+                self.assertNotIn("a", row)
+
+    def test_live_documents(self):
+        docs = self.demo.live_documents()
+        self.assertEqual({d["kind"] for d in docs.values()}, {"activity", "ticket"})
+
+
 if __name__ == "__main__":
     unittest.main()
