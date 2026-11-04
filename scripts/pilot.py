@@ -377,8 +377,15 @@ class Machine:
         rows = []
         for raw in self.gh.open_issues():
             t = normalize(raw)
-            rows.append({"n": t["number"], "t": t["title"], "l": sorted(t["labels"]),
-                         "u": raw.get("updated_at", "")})
+            row = {"n": t["number"], "t": t["title"], "l": sorted(t["labels"]),
+                   "u": raw.get("updated_at", "")}
+            parent = str(raw.get("parent_issue_url") or "").rsplit("/", 1)[-1]
+            if parent.isdigit():
+                row["p"] = int(parent)  # parent issue number: lets the dashboard nest sub-issues
+            summary = raw.get("sub_issues_summary") or {}
+            if summary.get("total"):
+                row["k"] = [summary.get("completed", 0), summary["total"]]  # sub-issues done / total
+            rows.append(row)
         rows.sort(key=lambda r: r["u"], reverse=True)
         doc = {"repo": self.gh.repo, "at": now_iso(), "source": "pilot.py", "total": len(rows),
                "truncated": False, "issues": rows}

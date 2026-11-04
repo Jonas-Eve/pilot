@@ -403,6 +403,15 @@ class DashboardPayloadTests(unittest.TestCase):
         self.assertEqual(doc["issues"][0], {"n": 2, "t": "t2", "l": ["status:dev-ready", "type:tech"], "u": "2026-02-01T00:00:00Z"})
         self.assertEqual((doc["total"], doc["truncated"], doc["source"]), (2, False, "pilot.py"))
 
+    def test_snapshot_carries_the_parent_and_the_sub_issue_progress(self):
+        epic = issue(1, ["level:epic"]); epic["sub_issues_summary"] = {"total": 10, "completed": 4}
+        child = issue(2, ["level:story"]); child["parent_issue_url"] = "https://api.github.com/repos/o/r/issues/1"
+        m, _ = machine([epic, child, issue(3)])
+        rows = {r["n"]: r for r in m.snapshot()["issues"]}
+        self.assertEqual((rows[1].get("k"), rows[1].get("p")), ([4, 10], None))
+        self.assertEqual((rows[2].get("p"), rows[2].get("k")), (1, None))
+        self.assertNotIn("p", rows[3]); self.assertNotIn("k", rows[3])
+
     def test_snapshot_is_truncated_to_fit_a_database_document(self):
         issues = [issue(n, ["status:backlog"]) for n in range(1, 2600)]
         for i in issues:

@@ -91,6 +91,8 @@ nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent
 .fold .chev{display:inline-block;width:1em;color:var(--accent)}
 .fold .sum{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400}
 .foldbody{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.kids{grid-column:1/-1;display:flex;flex-direction:column;gap:8px;margin-left:10px;padding-left:10px;border-left:2px solid var(--line)}
+.kids .row{background:var(--bg)}
 .row .opts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;border-top:1px dashed var(--line);padding-top:8px}
 .row .opts .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .idea .cmd{overflow-wrap:anywhere}
@@ -223,7 +225,7 @@ function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.a
 
 /* ---------- snapshots (db): written by Claude from GitHub, read by everyone ---------- */
 function snapId(repo){return String(repo).replace('/','__');}
-function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||''};t.status=lab(t,'status:');return t;}
+function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||'',p:i.p||0,k:i.k||null};t.status=lab(t,'status:');return t;}
 function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
@@ -253,7 +255,7 @@ function overlay(list,baseAt){
   Object.keys(S.events).forEach(function(k){
     var e=S.events[k]; if(baseAt&&String(e.at)<=String(baseAt))return;
     if(e.state==='closed'){delete by[e.n];return;}
-    var old=by[e.n], t={n:e.n,title:e.title||(old&&old.title)||('#'+e.n),labels:e.labels||[],updated:e.at,assignee:(e.assignees||[])[0]||''};
+    var old=by[e.n], t={n:e.n,title:e.title||(old&&old.title)||('#'+e.n),labels:e.labels||[],updated:e.at,assignee:(e.assignees||[])[0]||'',p:(old&&old.p)||0,k:(old&&old.k)||null};
     t.status=lab(t,'status:'); by[e.n]=t;
   });
   return Object.keys(by).map(function(k){return by[k];});
@@ -359,7 +361,12 @@ function foldCard(box,key,title){
 }
 /* what one ticket row can launch, given its chosen options: --next rides it through every phase via /pilot-auto,
    --multi N has N agents converge on the approach first (never on a resume, nor on QA) */
-function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0});}
+function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false});}
+/* open sub-issues of a ticket (the snapshot gives each ticket's parent); closed ones are only counted, in t.k */
+function kidsOf(n){
+  if(!S._km){S._km={};tickets().forEach(function(t){if(t.p)(S._km[t.p]=S._km[t.p]||[]).push(t);});}
+  return (S._km[n]||[]).slice().sort(byUrgency);
+}
 function rowCmds(t,a,o){
   if(a.container)return {canAuto:true,multiOK:true,container:true,auto:a.cmd+(o.multi?' --multi '+o.multi:'')+(o.next?' --next':''),pair:null};
   var canAuto=a.kind==='run'&&!a.pairOnly, multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
@@ -368,14 +375,17 @@ function rowCmds(t,a,o){
     auto:canAuto?(o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu):null,
     pair:a.cmd+mu};
 }
-function ticketRow(t,withLevel){
+function ticketRow(t,withLevel,depth){
   var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), hasOpts=rc.canAuto||rc.multiOK;
+  depth=depth||0;
+  var kids=depth<3?kidsOf(t.n):[];
   function set(k,v){o[k]=v;render();}
   return h('div',{class:'row'+(has(t,'needs-human')?' flag':'')},
         h('div',{class:'main'},
           h('div',{class:'t'},h('span',{class:'num'},'#'+t.n+' '),t.title),
           h('div',{class:'meta'},withLevel&&lab(t,'level:')?h('span',{class:'chip'},LEVEL_FR[lab(t,'level:')]||lab(t,'level:')):null,ticketChips(t),
             rc.canAuto&&o.next?h('span',{class:'chip acc'},'enchaîné'):null,rc.multiOK&&o.multi?h('span',{class:'chip acc'},'multi '+o.multi):null,
+            t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
             h('span',{class:'note'},ago(t.updated)),
             a.kind==='run'?h('span',{class:'cmd'},(rc.auto||rc.pair)+(rc.canAuto?'':'  (pair)')):null)),
         h('div',{class:'acts'},
@@ -385,13 +395,15 @@ function ticketRow(t,withLevel){
             rc.canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.auto,e.target);}},'Copier auto'):null,
             rc.pair?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.pair,e.target);}},rc.canAuto?'Copier pair':'Copier'):null,
             hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
-          a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null),
+          a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
+          kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
           rc.canAuto?h('div',{class:'grp'},
             h('button',{class:'tog',type:'button','aria-pressed':String(o.next),onclick:function(){set('next',!o.next);}},'Enchaîner (--next)'),
             h('span',{class:'note'},rc.container?'traite ce qui est prêt dans cette arborescence, ticket après ticket, jusqu’à la fin ou un blocage':'suit ce ticket dans toutes les phases suivantes, jusqu’à la fin ou un blocage')):null,
           rc.multiOK?h('div',{class:'grp'},h('span',{class:'note'},'Multi'),multiSeg(o.multi,function(m){set('multi',m);},'Multi'),
-            h('span',{class:'note'},'N agents dialoguent avant d’agir')):null):null);
+            h('span',{class:'note'},'N agents dialoguent avant d’agir')):null):null,
+        kids.length&&o.kids?h('div',{class:'kids'},kids.map(function(c){return ticketRow(c,true,depth+1);})):null);
 }
 
 function vFile(){
@@ -593,6 +605,7 @@ function renderChrome(){
     return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
+  S._km=null;
   renderChrome();renderConn();renderBanner();
   document.getElementById('idea').hidden=S.tab!=='file';updateIdea();
   document.getElementById('batch').hidden=S.tab!=='file';
