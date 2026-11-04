@@ -84,6 +84,11 @@ nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent
 .note{color:var(--muted);font-size:13px;margin:0}
 .note.ok{color:var(--ok)} .note.crit{color:var(--crit)}
 .refresh{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.idea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.idea textarea{width:100%;min-height:72px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font:inherit;color:inherit;resize:vertical}
+.idea .cmd{overflow-wrap:anywhere}
+.idea .seg{align-self:flex-start;max-width:100%;overflow-x:auto}
+a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
 .pager{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
 .overlay{position:fixed;inset:0;background:rgba(8,12,18,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
 .dlg{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:520px;width:100%;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow:auto}
@@ -107,6 +112,7 @@ nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent
   <div class="chips" id="conn" aria-label="État des connecteurs"></div>
   <nav class="tabs" id="tabs"></nav>
   <div id="banner"></div>
+  <section id="idea" class="idea" aria-label="Nouvelle demande" hidden></section>
   <main id="view"></main>
 </div>
 <div id="modal"></div>
@@ -368,6 +374,40 @@ function vOverview(){
     h('p',{class:'note'},'Tickets ouverts hors file : '+split+' story suivie par ses tâches (split)'+(off?', '+off+' sans statut PILOT.':'.')));
 }
 
+/* ---------- new request: start Discovery, a tech Spec or a bug Spec from scratch ---------- */
+var KINDS=[
+  {key:'produit',label:'Idée produit',prefix:'/pilot-discovery ',hint:'Discovery : le PM et l’architecte en font une ou plusieurs stories.'},
+  {key:'tech',label:'Besoin technique',prefix:'/pilot-spec --tech ',hint:'Spec : l’architecte et le tech lead cadrent et spécifient le besoin.'},
+  {key:'bug',label:'Bug',prefix:'/pilot-spec --bug ',hint:'Spec : l’architecte qualifie le défaut, puis crée le ticket.'}
+];
+var ideaKind=null; /* null: follow the role */
+function kindNow(){var key=ideaKind||(S.role==='tech'?'tech':'produit');return KINDS.filter(function(k){return k.key===key;})[0];}
+function ideaText(){var el=document.getElementById('ideaText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
+function buildIdea(){
+  var box=document.getElementById('idea');
+  box.append(
+    h('h2',{},'Nouvelle demande'),
+    h('label',{for:'ideaText',class:'note'},'Décrivez l’idée, le besoin technique ou le bug.'),
+    h('textarea',{id:'ideaText',rows:3,maxlength:1500,placeholder:'Ex. : signaler un ascenseur en panne sur le trajet',oninput:updateIdea}),
+    h('div',{class:'seg',role:'group','aria-label':'Type de demande',id:'kindSeg'}),
+    h('p',{class:'note',id:'ideaHint'}),
+    h('div',{class:'cmd',id:'ideaCmd'}),
+    h('div',{class:'refresh'},
+      h('a',{class:'btn primary',id:'ideaOpen',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
+      h('button',{class:'btn ghost',type:'button',id:'ideaCopy',onclick:function(e){var t=ideaText();if(t)copyCmd(kindNow().prefix+t,e.target);}},'Copier la commande')));
+  updateIdea();
+}
+function updateIdea(){
+  var k=kindNow(), text=ideaText(), seg=document.getElementById('kindSeg'), open=document.getElementById('ideaOpen');
+  seg.replaceChildren.apply(seg,KINDS.map(function(x){
+    return h('button',{type:'button','aria-pressed':String(x.key===k.key),onclick:function(){ideaKind=x.key;updateIdea();}},x.label);}));
+  document.getElementById('ideaHint').textContent=k.hint+' La commande est écrite, pas envoyée.';
+  document.getElementById('ideaCmd').textContent=k.prefix+(text||'…');
+  if(text){open.setAttribute('href',claudeCodeUrl(k.prefix+text));open.removeAttribute('aria-disabled');}
+  else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}
+  document.getElementById('ideaCopy').disabled=!text;
+}
+
 /* ---------- banner, chips, chrome ---------- */
 var REFRESH_CMD='/pilot-dashboard --refresh';
 function note(kind,text){return h('span',{class:'note '+kind,role:'status'},text);}
@@ -412,6 +452,7 @@ function renderChrome(){
 }
 function render(){
   renderChrome();renderConn();renderBanner();
+  document.getElementById('idea').hidden=S.tab!=='file';updateIdea();
   var v=document.getElementById('view');
   v.replaceChildren(S.tab==='ensemble'?vOverview():S.tab==='activite'?vActivity():vFile());
 }
@@ -420,6 +461,7 @@ function render(){
 function fromHash(){var t=(location.hash||'').slice(1); if(t==='file'||t==='ensemble'||t==='activite')S.tab=t;}
 window.addEventListener('hashchange',function(){fromHash();render();});
 fromHash();
+buildIdea();
 render();
 if(window.claude&&window.claude.use){
   window.claude.use('db').then(function(d){S.db=d;watchSnapshots();watchLive();}).catch(function(){S.db=null;watchSnapshots();});

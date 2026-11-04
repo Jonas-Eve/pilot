@@ -167,6 +167,51 @@ const STUB = (opts) => `
   check('no snapshot: open link for the refresh command', (await hrefs(page, '#banner a.btn')).some((l) => /pilot-dashboard%20--refresh/.test(l.href)));
   await page.close();
 
+  // ---- new request: Discovery / tech Spec / bug Spec from scratch ----
+  page = await open({ preload: [BASE] });
+  const ideaOpen = () => page.$eval('#ideaOpen', (a) => ({ href: a.getAttribute('href'), disabled: a.getAttribute('aria-disabled'), target: a.target, rel: a.rel }));
+  const encBase = 'https://claude.ai/code/new?q=';
+  const encRepo = '&repo=' + encodeURIComponent(REPO);
+  check('new request card is shown on "Ma file" and hidden on the other tabs',
+        !(await page.$eval('#idea', (e) => e.hidden)) && (await tab(page, 'Vue d’ensemble')) !== null && (await page.$eval('#idea', (e) => e.hidden)) &&
+        (await tab(page, 'Ma file')) !== null && !(await page.$eval('#idea', (e) => e.hidden)));
+  check('empty text: link disabled without a target, copy disabled, command previewed',
+        (await ideaOpen()).href === null && (await ideaOpen()).disabled === 'true' && (await page.isDisabled('#ideaCopy')) &&
+        /^\/pilot-spec --tech …$/.test(await text(page, '#ideaCmd')), JSON.stringify(await ideaOpen()) + await text(page, '#ideaCmd'));
+  await page.fill('#ideaText', 'Mon besoin');
+  let o = await ideaOpen();
+  check('tech role defaults to the tech Spec command, link carries command and repo',
+        o.href === encBase + encodeURIComponent('/pilot-spec --tech Mon besoin') + encRepo && o.disabled === null && o.target === '_blank' && /noopener/.test(o.rel), JSON.stringify(o));
+  await page.click('#kindSeg >> text=Idée produit');
+  check('product idea -> /pilot-discovery', (await ideaOpen()).href === encBase + encodeURIComponent('/pilot-discovery Mon besoin') + encRepo && /^\/pilot-discovery Mon besoin$/.test(await text(page, '#ideaCmd')));
+  await page.click('#kindSeg >> text=Bug');
+  check('bug -> /pilot-spec --bug', (await ideaOpen()).href === encBase + encodeURIComponent('/pilot-spec --bug Mon besoin') + encRepo);
+  await page.click('#roleSeg >> text=Produit');
+  check('a kind chosen by hand is kept when the role changes', (await ideaOpen()).href.includes(encodeURIComponent('/pilot-spec --bug')));
+  await page.fill('#ideaText', 'ligne 1\n   ligne 2\n\nligne 3');
+  check('multi-line text becomes a single-line command', (await text(page, '#ideaCmd')) === '/pilot-spec --bug ligne 1 ligne 2 ligne 3', await text(page, '#ideaCmd'));
+  check('text length is capped', (await page.getAttribute('#ideaText', 'maxlength')) === '1500');
+  check('new request: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.screenshot({ path: path.join(TMP, 'idea.png') });
+  await page.close();
+
+  page = await open({ preload: [BASE] });
+  await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
+  await page.fill('#ideaText', 'Idée');
+  check('product role defaults to /pilot-discovery', (await page.$eval('#ideaOpen', (a) => a.getAttribute('href'))).includes(encodeURIComponent('/pilot-discovery Idée')));
+  await page.close();
+
+  // typing is not lost nor interrupted by a live update
+  page = await open({ preload: [BASE] });
+  await page.click('#ideaText'); await page.keyboard.type('texte en cours');
+  await page.evaluate((e) => window.__push('events', 'live2', e), ev({}));
+  await page.waitForTimeout(250);
+  check('a live update keeps the typed text and the focus',
+        (await page.inputValue('#ideaText')) === 'texte en cours' && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'ideaText');
+  await page.keyboard.type('!');
+  check('typing continues after the update', (await page.inputValue('#ideaText')) === 'texte en cours!');
+  await page.close();
+
   // ---- pagination of "Ma file" ----
   const many = [];
   for (let n = 1; n <= 45; n++) many.push(ticket(n, ['type:tech', 'status:dev-ready', n === 30 ? 'priority:P0' : 'priority:P2']));
