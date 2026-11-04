@@ -40,6 +40,9 @@ button{cursor:pointer}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;min-height:34px}
 .btn:hover{border-color:var(--accent)}
 a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted);padding-inline:8px}
+.btn.ghost:hover{border-color:var(--line)}
+a.btn.primary{color:var(--accent-fg)}
 .btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .btn.danger{color:var(--crit);border-color:var(--crit)}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
@@ -291,6 +294,9 @@ function ticketChips(t){
 }
 function ghLink(t,text){return h('a',{class:'btn',href:'https://github.com/'+S.repo+'/issues/'+t.n,target:'_blank',rel:'noopener'},text);}
 
+/* opens a Claude Code web session on this project with the command typed in (not sent: the person presses Enter) */
+function claudeCodeUrl(cmd){return 'https://claude.ai/code?prompt='+encodeURIComponent(cmd)+'&repositories='+encodeURIComponent(S.repo).replace(/%2F/g,'/');}
+function openLink(cmd,label,primary){return h('a',{class:'btn'+(primary?' primary':''),href:claudeCodeUrl(cmd),target:'_blank',rel:'noopener'},label);}
 function copyCmd(text,btn){
   var orig=btn.textContent;
   function done(ok){btn.textContent=ok?'Copié':'Copie impossible : sélectionnez la commande';setTimeout(function(){btn.textContent=orig;},2500);}
@@ -318,7 +324,7 @@ function vFile(){
   var roleTxt=S.role==='produit'?'Discovery et QA humaine':S.role==='tech'?'Spec, Dev et Review':'Toutes les phases';
   return h('div',{class:'list'},
     h('h2',{},'Ma file · '+roleTxt+' · '+mine.length),
-    h('p',{class:'note'},'Copiez la commande, puis collez-la dans une session Claude Code ouverte sur '+S.repo+'. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'),
+    h('p',{class:'note'},'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'),
     pager(mine.length),
     shown.length?shown.map(function(t){
       var a=actionFor(t), canAuto=a.kind==='run'&&!a.pairOnly;
@@ -329,8 +335,10 @@ function vFile(){
             a.kind==='run'?h('span',{class:'cmd'},a.cmd+(canAuto?'':'  (pair)')):null)),
         h('div',{class:'acts'},
           a.kind==='run'?[
-            h('button',{class:'btn'+(canAuto?'':' primary'),type:'button',onclick:function(e){copyCmd(a.cmd,e.target);}},canAuto?'Copier (pair)':'Copier la commande'),
-            canAuto?h('button',{class:'btn primary',type:'button',onclick:function(e){copyCmd(a.cmd+' --auto',e.target);}},'Copier (auto)'):null]:null,
+            canAuto?openLink(a.cmd+' --auto','Ouvrir (auto)',true):null,
+            openLink(a.cmd,canAuto?'Ouvrir (pair)':'Ouvrir en pair',!canAuto),
+            canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd+' --auto',e.target);}},'Copier auto'):null,
+            h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd,e.target);}},canAuto?'Copier pair':'Copier')]:null,
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null));
     }):h('div',{class:'empty'},'Rien n’attend ce rôle pour le moment.'),
     shown.length>5?pager(mine.length):null);
@@ -372,12 +380,14 @@ function renderBanner(){
         (applied?' · '+applied+' changement'+(applied>1?'s':'')+' appliqué'+(applied>1?'s':'')+' depuis':'')+
         (g.truncated?' · liste tronquée ('+g.total+' au total)':'')+'.'),
       hours>24?h('div',{class:'refresh'},note('','Instantané ancien : relancez la mise à jour depuis une session du projet.'),
-        h('button',{class:'btn primary',type:'button',onclick:copyBtn},'Copier '+REFRESH_CMD)):null);
+        openLink(REFRESH_CMD,'Ouvrir dans Claude Code',true),
+        h('button',{class:'btn ghost',type:'button',onclick:copyBtn},'Copier '+REFRESH_CMD)):null);
   }else if(g.state==='loading'||g.state==='init'){
     n=h('div',{class:'banner sample'},h('p',{},'Lecture des données en cours. Exemples affichés en attendant.'));
   }else{
     n=h('div',{class:'banner sample'},h('p',{},h('strong',{},'Données d’exemple. '),(g.msg||'')+' Lancez la mise à jour depuis une session du projet.'),
-      h('button',{class:'btn primary',type:'button',onclick:copyBtn},'Copier '+REFRESH_CMD));
+      h('div',{class:'refresh'},openLink(REFRESH_CMD,'Ouvrir dans Claude Code',true),
+        h('button',{class:'btn ghost',type:'button',onclick:copyBtn},'Copier '+REFRESH_CMD)));
   }
   el.replaceChildren(n);
 }

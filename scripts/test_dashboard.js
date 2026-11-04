@@ -143,6 +143,29 @@ const STUB = (opts) => `
   check('activity: empty states', /Aucune session/.test(view) && /Aucun changement/.test(view), view);
   await page.close();
 
+  // ---- open in Claude Code: links with the command typed in ----
+  const hrefs = (page, sel) => page.$$eval(sel, (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel, text: a.textContent.trim() })));
+  const QA_SNAP = snapshot([ticket(99, ['type:tech', 'status:dev-ready', 'priority:P1']), ticket(50, ['type:feature', 'status:qa', 'priority:P1'])], 120);
+  page = await open({ preload: [QA_SNAP] });
+  await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
+  const links = await hrefs(page, '#view .row a.btn');
+  const base = 'https://claude.ai/code?prompt=';
+  const find = (cmd) => links.find((l) => l.href === base + encodeURIComponent(cmd) + '&repositories=' + REPO);
+  check('auto-capable ticket: open links for auto and pair', find('/pilot-dev 99 --auto') && find('/pilot-dev 99'), JSON.stringify(links));
+  check('pair-only ticket (QA): a single open link, no --auto', find('/pilot-qa 50') && !links.some((l) => /pilot-qa%2050%20--auto/.test(l.href)), JSON.stringify(links));
+  check('links open in a new tab without opener', links.length >= 3 && links.every((l) => l.target === '_blank' && /noopener/.test(l.rel)), JSON.stringify(links));
+  check('the command is URL-encoded, the repository path keeps its slash', links.every((l) => !/ /.test(l.href)) && links.every((l) => l.href.endsWith('&repositories=' + REPO)));
+  check('copy buttons stay as a fallback', /Copier auto/.test(await text(page, '#view')) && /Copier pair/.test(await text(page, '#view')));
+  await page.screenshot({ path: path.join(TMP, 'links.png') });
+  await page.close();
+
+  page = await open({ preload: [snapshot([ticket(1, ['status:backlog'])], 60 * 30)] });
+  check('stale snapshot: open link for the refresh command', (await hrefs(page, '#banner a.btn')).some((l) => l.href === base + encodeURIComponent('/pilot-dashboard --refresh') + '&repositories=' + REPO));
+  await page.close();
+  page = await open({});
+  check('no snapshot: open link for the refresh command', (await hrefs(page, '#banner a.btn')).some((l) => /pilot-dashboard%20--refresh/.test(l.href)));
+  await page.close();
+
   // ---- pagination of "Ma file" ----
   const many = [];
   for (let n = 1; n <= 45; n++) many.push(ticket(n, ['type:tech', 'status:dev-ready', n === 30 ? 'priority:P0' : 'priority:P2']));
