@@ -2,6 +2,7 @@
 """Offline tests for scripts/pilot.py. Run: python3 -m unittest scripts/test_pilot.py"""
 import copy
 import importlib.util
+import json
 import pathlib
 import unittest
 
@@ -26,6 +27,7 @@ class FakeGh:
     """In-memory GitHub: applies PATCHes, records writes in order."""
 
     def __init__(self, issues, comments=None, subs=None, me="bot"):
+        self.repo = "o/r"
         self.store = {i["number"]: copy.deepcopy(i) for i in issues}
         self.comment_map, self.subs, self._me = comments or {}, subs or {}, me
         self.calls, self.posted, self.after_patch = [], [], None
@@ -52,6 +54,10 @@ class FakeGh:
         if self._me is None:
             raise pilot.GhError("gh: not authenticated")
         return self._me
+
+    def open_issues(self):
+        return [copy.deepcopy(i) for i in self.store.values()
+                if i["state"] == "open" and "pull_request" not in i]
 
     def repo_info(self):
         return {"full_name": "o/r", "permissions": getattr(self, "perms", {"push": True})}
@@ -364,6 +370,50 @@ class FlagTests(unittest.TestCase):
         self.assertNotIn("needs-human", names(gh.store[1]))
 
 
+class DashboardPayloadTests(unittest.TestCase):
+    def test_claim_returns_event_and_activity(self):
+        m, gh = machine([issue(7, ["status:dev-ready", "type:tech"])])
+        got = m.claim("dev", 7, "fresh")
+        ev, act = got["event"], got["activity"]
+        self.assertEqual((ev["kind"], ev["n"], ev["action"], ev["phase"], ev["by"], ev["state"]),
+                         ("ticket", 7, "claim:fresh", "dev", "bot", "open"))
+        self.assertEqual(ev["labels"], ["status:in-dev", "type:tech"])
+        self.assertEqual(ev["assignees"], ["bot"])
+        self.assertRegex(ev["at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
+        self.assertEqual((act["kind"], act["phase"], act["n"], act["mode"], act["by"]), ("activity", "dev", 7, "fresh", "bot"))
+        self.assertTrue(act["id"].startswith("dev-7-"))
+
+    def test_set_flag_unflag_return_the_resulting_state(self):
+        m, gh = machine([issue(1, ["status:in-dev"], assignees=["bot"])])
+        ev = m.set(1, status="review-ready", assign="none")["event"]
+        self.assertEqual((ev["action"], ev["assignees"], ev["labels"]), ("set", [], ["status:review-ready"]))
+        ev = m.flag(1, "Why: x. Needed: y.")["event"]
+        self.assertEqual((ev["action"], "needs-human" in ev["labels"]), ("flag", True))
+        ev = m.unflag(1, "Resolved")["event"]
+        self.assertEqual((ev["action"], "needs-human" in ev["labels"]), ("unflag", False))
+        ev = m.set(1, status="done", close=True)["event"]
+        self.assertEqual(ev["state"], "closed")
+
+    def test_snapshot_lists_open_tickets_newest_first_without_prs(self):
+        a = issue(1, ["status:qa"]); a["updated_at"] = "2026-01-01T00:00:00Z"
+        b = issue(2, ["type:tech", "status:dev-ready"]); b["updated_at"] = "2026-02-01T00:00:00Z"
+        m, _ = machine([a, b, issue(3, pr=True), issue(4, state="closed")])
+        doc = m.snapshot()
+        self.assertEqual([r["n"] for r in doc["issues"]], [2, 1])
+        self.assertEqual(doc["issues"][0], {"n": 2, "t": "t2", "l": ["status:dev-ready", "type:tech"], "u": "2026-02-01T00:00:00Z"})
+        self.assertEqual((doc["total"], doc["truncated"], doc["source"]), (2, False, "pilot.py"))
+
+    def test_snapshot_is_truncated_to_fit_a_database_document(self):
+        issues = [issue(n, ["status:backlog"]) for n in range(1, 2600)]
+        for i in issues:
+            i["title"] = "x" * 120
+            i["updated_at"] = f"2026-01-01T00:{i['number'] % 60:02d}:00Z"
+        m, _ = machine(issues)
+        doc = m.snapshot()
+        self.assertTrue(doc["truncated"])
+        self.assertLessEqual(len(pilot.json.dumps(doc, ensure_ascii=False).encode()), pilot.SNAPSHOT_MAX_BYTES)
+
+
 class DoctorTests(unittest.TestCase):
     def report(self, **attrs):
         gh = FakeGh([])
@@ -408,8 +458,19 @@ class MiscTests(unittest.TestCase):
             self.assertEqual(pilot.repo_from_remote(url), "Jonas-Eve/pilot", url)
         self.assertIsNone(pilot.repo_from_remote("/some/local/path"))
 
-    def test_decode_concatenated_pages(self):
-        self.assertEqual(pilot.GhClient._decode('[{"a":1}]\n[{"a":2}]'), [{"a": 1}, {"a": 2}])
+    def test_pages_are_requested_by_number_until_a_short_page(self):
+        requested = []
+
+        class Client(pilot.GhClient):
+            def _run(self, path, params=None, method="GET", body=None):
+                requested.append((path, params["page"]))
+                size = {1: 100, 2: 100, 3: 37}[params["page"]]
+                return json.dumps([{"number": params["page"] * 1000 + k} for k in range(size)])
+
+        got = Client("o/r")._pages("repos/o/r/issues", {"state": "open"})
+        self.assertEqual(len(got), 237)
+        self.assertEqual([p for _, p in requested], [1, 2, 3])
+        self.assertTrue(all(path.startswith("repos/o/r/") for path, _ in requested))  # never repositories/{id}
 
     def test_repo_flag_accepted_before_and_after_the_subcommand(self):
         parser = pilot.build_parser()

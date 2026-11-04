@@ -38,10 +38,11 @@ itself.
 ## 2. STRUCTURE
 - `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
   consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
-  sync by `/pilot-update`) — same path on both sides. All ten carry the `pilot-`
+  sync by `/pilot-update`) — same path on both sides. All eleven carry the `pilot-`
   prefix a project-local skill needs to avoid colliding with the project's own — there's
   no plugin namespace to rely on instead. `pilot-init`, `pilot-init-archi`,
-  `pilot-update` are this repo's own bootstrap/maintenance commands; `pilot-discovery`,
+  `pilot-update`, `pilot-dashboard` are this repo's own bootstrap/maintenance commands
+  (`pilot-dashboard` publishes the project's dashboard artifact from a template, below); `pilot-discovery`,
   `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa` are the five PILOT
   phases (`pilot-spec` covers splitting a story into dev-sized tasks and writing each
   one's technical spec, in one continuous pass); `pilot-auto` is a dispatcher over the
@@ -93,7 +94,13 @@ itself.
   `CLAUDE.md.tmpl`/`README.md.tmpl` belongs inside a `PILOT:<name>` marker with a
   matching canonical snippet here — never bare in the template** — that's what keeps a
   consuming project's own prose free of content only PILOT can keep current (see
-  §3 below).
+  §3 below). `pilot-dashboard.html.tmpl` is different: the page `/pilot-dashboard`
+  renders (`{{PROJECT_NAME}}`, `{{REPO}}`) and publishes as one private Artifact per
+  project; `/pilot-update` republishes it at the same address, so a page change ships
+  with a PILOT release and the project's data (snapshot, events, activity) is kept. It
+  is checked by `scripts/test_dashboard.js` (renders it, loads it in headless Chromium with
+  stubbed `window.claude` capabilities; `node scripts/test_dashboard.js`, needs `playwright`):
+  change the page, change that test.
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot-init` and `/pilot-update`; also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
@@ -104,10 +111,13 @@ itself.
   `resolve` (classify an explicitly-given ticket: claim, resume, reclaim, re-scope, descend
   into an Epic, stop — and why), `claim` (assignee + status swap, re-read), `set`
   (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with its
-  mandatory comment), `doctor` (preflight each phase skill runs as its step 0, once per session: python,
-  gh auth, repo access and push permission, the 27 PILOT labels). Every command prints one JSON object; judgment (which agent to call,
-  what a spec or review says, pair dialogue) never lives in it. Copied verbatim into a
-  consuming project as `.pilot/pilot.py` by `/pilot-init` and re-synced by `/pilot-update`;
+  mandatory comment), `snapshot` (every open ticket as the dashboard's snapshot document) and
+  `doctor` (preflight each phase skill runs as its step 0, once per session: python, gh auth,
+  repo access and push permission, the 27 PILOT labels). Every command prints one JSON
+  object; `claim`/`set`/`flag`/`unflag` also return the `event` (and `claim` the `activity`)
+  the phase skills push to the dashboard (`pilot-link-dashboard.md`). Judgment (which agent
+  to call, what a spec or review says, pair dialogue) never lives in it. Copied verbatim into
+  a consuming project as `.pilot/pilot.py` by `/pilot-init` and re-synced by `/pilot-update`;
   `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa` run it for their step-1 ticket
   resolution, step-2 claim and mechanical status transitions, and stop with a report if it is
   missing or fails (no by-hand fallback). `pilot-process.md` §3-§4 keeps only the contract

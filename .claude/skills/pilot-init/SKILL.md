@@ -37,6 +37,9 @@ This skill's idempotency is tracked in `.pilot/state.json` at the project root:
 }
 ```
 
+`/pilot-dashboard` later adds `dashboardUrl`, `dashboardHash` and `dashboardSyncedAt` (the
+project's dashboard artifact); `pilot-init` never writes them.
+
 `lastIntroSyncAt` covers every marked block (`PILOT:INTRO`, `PILOT:MAINTENANCE`, and any
 later one) — the name predates `PILOT:MAINTENANCE`, but the field wasn't split since both
 are always diffed and stamped together. `lastSkillsSyncAt` is when
@@ -143,4 +146,6 @@ see `.claude/skills/pilot-update/SKILL.md`.
 
 11. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result. Summarize what
     was created/updated/skipped, and suggest running
-    `/pilot-init-archi` next to describe the monorepo's apps and generate their scaffolds.
+    `/pilot-init-archi` next to describe the monorepo's apps and generate their scaffolds, and
+    offer `/pilot-dashboard` (a private team page: tickets by phase, each role's queue, live
+    sessions) — run it only if the human accepts, since it publishes a page.

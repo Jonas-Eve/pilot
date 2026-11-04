@@ -50,6 +50,7 @@ parallel instances; the claim step below prevents collisions.
     `subagent_type: "pilot-e2e"`; otherwise `"pilot-dev"`. The only thing `type:e2e`
     changes here — claim, pool selection, and everything below apply identically either
     way.
+2b. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Call the `Agent` tool with the `subagent_type` chosen in step 2a. Read
    `.pilot/pilot-task-implement.md` and pass its content as part of the prompt — for
    `pilot-e2e`, also read and pass `.pilot/pilot-task-implement-e2e.md` alongside it, since

@@ -1,0 +1,419 @@
+<title>Cockpit {{PROJECT_NAME}}</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky control strip on top, three views below (ma file / vue d'ensemble / workflows). Cool paper neutrals, cobalt accent, semantic colors kept separate. */
+:root{
+  --bg:#F2F5F8; --surface:#FFFFFF; --surface2:#E9EEF3; --line:#D5DDE5;
+  --fg:#121C26; --muted:#566677; --accent:#1747C9; --accent-fg:#FFFFFF; --accent-soft:#E3EBFD;
+  --ok:#17803D; --ok-soft:#DFF3E6; --warn:#8F5200; --warn-soft:#FDEFD3; --crit:#B42318; --crit-soft:#FDE4E1;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E141B; --surface:#151D26; --surface2:#1C2631; --line:#2A3745;
+  --fg:#E6ECF2; --muted:#93A3B3; --accent:#7EA2FF; --accent-fg:#0B1220; --accent-soft:#1B2A4D;
+  --ok:#4CC27A; --ok-soft:#133323; --warn:#E3A23B; --warn-soft:#3A2B10; --crit:#FF8B7E; --crit-soft:#42201C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E141B; --surface:#151D26; --surface2:#1C2631; --line:#2A3745;
+  --fg:#E6ECF2; --muted:#93A3B3; --accent:#7EA2FF; --accent-fg:#0B1220; --accent-soft:#1B2A4D;
+  --ok:#4CC27A; --ok-soft:#133323; --warn:#E3A23B; --warn-soft:#3A2B10; --crit:#FF8B7E; --crit-soft:#42201C; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--font);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:22px;line-height:1.2;margin:0;font-weight:600;letter-spacing:-.01em}
+h2{font-size:13px;margin:0;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.mono{font-family:var(--mono)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
+.top .sub{color:var(--muted);margin:2px 0 0}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:6px 12px;min-height:34px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.repo{display:flex;gap:6px;align-items:center}
+.repo input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;min-height:34px;width:min(220px,100%);font-family:var(--mono);font-size:13px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;min-height:34px}
+.btn:hover{border-color:var(--accent)}
+a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.danger{color:var(--crit);border-color:var(--crit)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:1px 9px;font-size:12px;line-height:20px;background:var(--surface2);color:var(--muted);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.crit{background:var(--crit-soft);color:var(--crit)} .chip.acc{background:var(--accent-soft);color:var(--accent)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+nav.tabs a{padding:8px 14px;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
+nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent);font-weight:600}
+.banner{border:1px solid var(--line);border-left-width:4px;background:var(--surface);border-radius:8px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.banner.live{border-left-color:var(--ok)} .banner.sample{border-left-color:var(--warn)}
+.banner p{margin:0;min-width:0}
+.list{display:flex;flex-direction:column;gap:8px}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.row.flag{border-color:var(--warn)}
+.row .main{min-width:0}
+.row .t{font-weight:500;overflow-wrap:anywhere}
+.row .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;align-items:center}
+.row .num{font-family:var(--mono);color:var(--muted)}
+.row .acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.row input[type=checkbox]{width:18px;height:18px}
+.cmd{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.batch{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--accent-soft);border-radius:10px;padding:10px 14px}
+.batch input{width:64px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 8px}
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;align-items:start}
+.col{background:var(--surface2);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.col header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.col .own{font-size:12px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.card.flag{border-color:var(--warn)}
+.card .t{font-size:13px;overflow-wrap:anywhere}
+.card .meta{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.empty{color:var(--muted);font-size:13px;padding:14px;border:1px dashed var(--line);border-radius:10px;text-align:center}
+.sess{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.sess .head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.sess .title{font-weight:500;overflow-wrap:anywhere;min-width:0}
+.sess pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 var(--mono);background:var(--surface2);border-radius:8px;padding:8px 10px;max-height:220px;overflow:auto}
+.note{color:var(--muted);font-size:13px;margin:0}
+.note.ok{color:var(--ok)} .note.crit{color:var(--crit)}
+.refresh{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.pager{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.overlay{position:fixed;inset:0;background:rgba(8,12,18,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+.dlg{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:520px;width:100%;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow:auto}
+.dlg h3{margin:0;font-size:16px}
+.dlg ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.dlg .bar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+@media (max-width:560px){.row{grid-template-columns:1fr}.row .acts{justify-content:flex-start}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Cockpit {{PROJECT_NAME}}</h1>
+      <p class="sub">Tickets par phase et file d’actions selon votre rôle, avec la commande PILOT prête à copier.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Rôle" id="roleSeg"></div>
+    </div>
+  </div>
+  <div class="chips" id="conn" aria-label="État des connecteurs"></div>
+  <nav class="tabs" id="tabs"></nav>
+  <div id="banner"></div>
+  <main id="view"></main>
+</div>
+<div id="modal"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- helpers ---------- */
+function h(tag,attrs){
+  var e=document.createElement(tag), a=attrs||{}, k;
+  for(k in a){var v=a[k]; if(v==null||v===false)continue;
+    if(k==='class')e.className=v; else if(k.slice(0,2)==='on')e.addEventListener(k.slice(2),v);
+    else e.setAttribute(k,v===true?'':v);}
+  for(var i=2;i<arguments.length;i++){(function add(c){
+    if(c==null||c===false)return; if(Array.isArray(c)){c.forEach(add);return;}
+    e.append(c.nodeType?c:document.createTextNode(String(c)));})(arguments[i]);}
+  return e;
+}
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
+function ago(iso){
+  if(!iso)return ''; var d=(Date.now()-new Date(iso).getTime())/1000;
+  if(!isFinite(d))return ''; if(d<3600)return 'il y a '+Math.max(1,Math.round(d/60))+' min';
+  if(d<86400)return 'il y a '+Math.round(d/3600)+' h'; return 'il y a '+Math.round(d/86400)+' j';
+}
+/* ---------- PILOT model (from pilot-process.md §1, §3, §4) ---------- */
+var PHASES=[
+  {key:'discovery',name:'Discovery',n:1,role:'produit',statuses:['draft']},
+  {key:'spec',name:'Spec',n:2,role:'tech',statuses:['backlog','in-spec']},
+  {key:'dev',name:'Dev',n:3,role:'tech',statuses:['dev-ready','in-dev','changes-requested']},
+  {key:'review',name:'Review',n:4,role:'tech',statuses:['review-ready','in-review','approved']},
+  {key:'qa',name:'QA humaine',n:5,role:'produit',statuses:['qa','in-qa']}
+];
+var STATUS_FR={'draft':'brouillon','backlog':'à spécifier','in-spec':'spec en cours','dev-ready':'prêt à coder','in-dev':'dev en cours','changes-requested':'corrections demandées','review-ready':'à relire','in-review':'relecture en cours','approved':'approuvé, à merger','qa':'à tester','in-qa':'test en cours'};
+function phaseOf(status){for(var i=0;i<PHASES.length;i++)if(PHASES[i].statuses.indexOf(status)>-1)return PHASES[i];return null;}
+
+function lab(t,p){for(var i=0;i<t.labels.length;i++)if(t.labels[i].indexOf(p)===0)return t.labels[i].slice(p.length);return '';}
+function has(t,l){return t.labels.indexOf(l)>-1;}
+
+/* what a person can launch for a ticket; pairOnly phases never run unattended */
+function actionFor(t){
+  var s=t.status, n=t.n;
+  if(has(t,'on-hold'))return {kind:'hold',label:'En pause'};
+  if(has(t,'needs-human'))return {kind:'human',label:'Attend un humain'};
+  switch(s){
+    case 'draft': return {kind:'run',cmd:'/pilot-discovery --resume '+n,pairOnly:true,label:'Reprendre'};
+    case 'backlog': return {kind:'run',cmd:'/pilot-spec '+n,label:'Spécifier'};
+    case 'in-spec': return {kind:'run',cmd:'/pilot-spec --resume '+n,pairOnly:true,label:'Reprendre'};
+    case 'dev-ready': return {kind:'run',cmd:'/pilot-dev '+n,label:'Coder'};
+    case 'in-dev': return {kind:'run',cmd:'/pilot-dev --resume '+n,pairOnly:true,label:'Reprendre'};
+    case 'changes-requested': return {kind:'run',cmd:'/pilot-dev '+n,label:'Corriger'};
+    case 'review-ready': return {kind:'run',cmd:'/pilot-review '+n,label:'Relire'};
+    case 'in-review': return {kind:'run',cmd:'/pilot-review --resume '+n,pairOnly:true,label:'Reprendre'};
+    case 'approved': return {kind:'merge',label:'Merger sur GitHub'};
+    case 'qa': return {kind:'run',cmd:'/pilot-qa '+n,pairOnly:true,label:'Tester'};
+    case 'in-qa': return {kind:'run',cmd:'/pilot-qa --resume '+n,pairOnly:true,label:'Reprendre'};
+  }
+  return {kind:'none'};
+}
+
+/* ---------- example data, shown only while no snapshot exists ---------- */
+function ex(n,title,labels,age){return {n:n,title:title,labels:labels,updated:new Date(Date.now()-age*3600e3).toISOString(),sample:true};}
+var SAMPLE=[
+  ex(101,'Itinéraire sans escalier entre deux correspondances',['type:feature','level:story','priority:P1','status:draft'],5),
+  ex(102,'Alerte ascenseur en panne sur le trajet',['type:feature','level:story','priority:P0','status:backlog'],20),
+  ex(103,'Cache des états d’équipements',['type:tech','level:story','priority:P1','status:backlog'],50),
+  ex(104,'Écran de préférences d’accessibilité',['type:feature','level:task','priority:P1','status:dev-ready'],8),
+  ex(105,'API des horaires de passage',['type:tech','level:task','priority:P0','status:in-dev'],3),
+  ex(106,'Bug : pictogramme PMR masqué en mode sombre',['type:bug','level:task','priority:P2','status:changes-requested'],30),
+  ex(107,'Notification de relais humain',['type:feature','level:task','priority:P1','status:review-ready'],12),
+  ex(108,'E2E : parcours de réservation assistée',['type:e2e','level:task','priority:P1','status:in-review','needs-human'],26),
+  ex(109,'Migration du stockage des profils',['type:tech','level:task','priority:P2','status:approved'],2),
+  ex(110,'Profil voyageur senior',['type:feature','level:story','priority:P1','status:qa'],40)
+].map(function(t){t.status=lab(t,'status:');return t;});
+
+/* ---------- state ---------- */
+var S={
+  repo:'{{REPO}}',
+  role:store('cp.role')||'tech',
+  tab:'file', page:0, expanded:{},
+  db:null, snaps:{}, events:{}, evlist:[], activity:[],
+  gh:{state:'init',msg:'',live:[],at:null}
+};
+var unGh=null;
+/* what the page shows: the shared snapshot, else examples; live events are folded in by tickets() */
+function cur(){
+  if(S.gh.state==='live')return {src:'snapshot',list:S.gh.live,at:S.gh.at,truncated:S.gh.truncated,total:S.gh.total};
+  return {src:'sample',list:SAMPLE};
+}
+function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.at);}
+
+/* ---------- snapshots (db): written by Claude from GitHub, read by everyone ---------- */
+function snapId(repo){return String(repo).replace('/','__');}
+function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||''};t.status=lab(t,'status:');return t;}
+function pickSnapshot(){
+  var s=S.snaps[snapId(S.repo)];
+  if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
+  S.gh={state:'live',msg:'',live:(s.issues||[]).map(normSnap),at:s.at,total:s.total,truncated:!!s.truncated};
+}
+function watchSnapshots(){
+  if(unGh){try{unGh();}catch(e){} unGh=null;}
+  if(!S.db){S.gh={state:'none',msg:'La base partagée n’est pas disponible dans cette vue.',live:[],at:null};render();return;}
+  S.gh={state:'loading',msg:'',live:[],at:null};
+  var timer=setTimeout(function(){if(S.gh.state==='loading'){S.gh={state:'error',msg:'La base ne répond pas pour le moment.',live:[],at:null};render();}},10000);
+  unGh=S.db.collection('snapshots').onSnapshot(function(snap){
+    clearTimeout(timer);
+    S.snaps={};
+    snap.docs.forEach(function(d){var v=d.data();if(v&&v.repo)S.snaps[snapId(v.repo)]=v;});
+    pickSnapshot();render();
+  },function(e){
+    clearTimeout(timer);
+    S.gh={state:'error',msg:'Lecture de la base impossible ('+((e&&e.code)||'erreur')+').',live:[],at:null};render();
+  });
+}
+
+/* ---------- live layers: events and activity written by the project's PILOT sessions ---------- */
+var PHASE_FR={spec:'Spec',dev:'Dev',review:'Review',qa:'QA humaine'}, STALE_MIN=60;
+/* a ticket event newer than the base list (snapshot or direct read) replaces that ticket's state */
+function overlay(list,baseAt){
+  var by={}; list.forEach(function(t){by[t.n]=t;});
+  Object.keys(S.events).forEach(function(k){
+    var e=S.events[k]; if(baseAt&&String(e.at)<=String(baseAt))return;
+    if(e.state==='closed'){delete by[e.n];return;}
+    var old=by[e.n], t={n:e.n,title:e.title||(old&&old.title)||('#'+e.n),labels:e.labels||[],updated:e.at,assignee:(e.assignees||[])[0]||''};
+    t.status=lab(t,'status:'); by[e.n]=t;
+  });
+  return Object.keys(by).map(function(k){return by[k];});
+}
+function watchLive(){
+  if(!S.db)return;
+  S.db.collection('events').orderBy('at','desc').limit(500).onSnapshot(function(snap){
+    var latest={}, list=[];
+    snap.docs.forEach(function(d){var v=d.data(); if(!v||v.kind!=='ticket'||!v.n)return; list.push(v);
+      if(!latest[v.n]||String(v.at)>String(latest[v.n].at))latest[v.n]=v;});
+    S.events=latest; S.evlist=list.sort(function(a,b){return String(b.at).localeCompare(String(a.at));}); render();
+  },function(){});
+  S.db.collection('activity').onSnapshot(function(snap){
+    S.activity=snap.docs.map(function(d){var v=d.data(); return v&&v.kind==='activity'?v:null;}).filter(Boolean); render();
+  },function(){});
+}
+function minutesSince(iso){var d=(Date.now()-new Date(iso).getTime())/60000; return isFinite(d)?d:1e9;}
+function beat(a){return a.lastBeat||a.startedAt||'';}
+function isAlive(a){return minutesSince(beat(a))<STALE_MIN;}
+function eventText(e){
+  var st=lab({labels:e.labels||[]},'status:');
+  if(/^claim/.test(e.action))return 'pris en charge ('+(PHASE_FR[e.phase]||e.phase||'')+')';
+  if(e.action==='flag')return 'attend un humain';
+  if(e.action==='unflag')return 'blocage levé';
+  return e.state==='closed'?'fermé':'statut : '+(STATUS_FR[st]||st||'sans statut');
+}
+function vActivity(){
+  var acts=S.activity.filter(function(a){return minutesSince(beat(a))<24*60;})
+    .sort(function(a,b){return beat(b).localeCompare(beat(a));});
+  var alive=acts.filter(isAlive).length;
+  return h('div',{class:'list'},
+    h('h2',{},'Sessions en cours · '+alive),
+    acts.length?acts.map(function(a){
+      var ok=isAlive(a);
+      return h('div',{class:'row'+(ok?'':' flag')},
+        h('div',{class:'main'},
+          h('div',{class:'t'},h('span',{class:'num'},'#'+a.n+' '),a.title||''),
+          h('div',{class:'meta'},h('span',{class:'chip acc'},PHASE_FR[a.phase]||a.phase||'?'),
+            a.auto===true?h('span',{class:'chip'},'auto'):a.auto===false?h('span',{class:'chip'},'pair'):null,
+            a.by?h('span',{class:'note'},a.by):null,
+            h('span',{class:'note'},'démarré '+ago(a.startedAt)+' · dernier signe '+ago(beat(a))))),
+        h('div',{class:'acts'},h('span',{class:'chip '+(ok?'ok':'warn')},h('span',{class:'dot'}),ok?'en cours':'sans signe de vie')));
+    }):h('div',{class:'empty'},'Aucune session n’a signalé d’activité récemment.'),
+    h('h2',{style:'margin-top:8px'},'Derniers changements'),
+    S.evlist.length?h('div',{class:'list'},S.evlist.slice(0,15).map(function(e){
+      return h('div',{class:'row'},h('div',{class:'main'},
+        h('div',{class:'t'},h('span',{class:'num'},'#'+e.n+' '),e.title||''),
+        h('div',{class:'meta'},h('span',{class:'note'},ago(e.at)+' · '+eventText(e)+(e.by?' · '+e.by:'')))));
+    })):h('div',{class:'empty'},'Aucun changement signalé par les sessions pour le moment.'));
+}
+
+/* ---------- views ---------- */
+function ticketChips(t){
+  var out=[], ty=lab(t,'type:'), pr=lab(t,'priority:');
+  if(ty)out.push(h('span',{class:'chip'},ty));
+  if(pr)out.push(h('span',{class:'chip '+(pr==='P0'?'crit':pr==='P1'?'warn':'')},pr));
+  if(t.status)out.push(h('span',{class:'chip acc'},STATUS_FR[t.status]||t.status));
+  if(has(t,'needs-human'))out.push(h('span',{class:'chip warn'},h('span',{class:'dot'}),'attend un humain'));
+  if(has(t,'on-hold'))out.push(h('span',{class:'chip'},'en pause'));
+  return out;
+}
+function ghLink(t,text){return h('a',{class:'btn',href:'https://github.com/'+S.repo+'/issues/'+t.n,target:'_blank',rel:'noopener'},text);}
+
+function copyCmd(text,btn){
+  var orig=btn.textContent;
+  function done(ok){btn.textContent=ok?'Copié':'Copie impossible : sélectionnez la commande';setTimeout(function(){btn.textContent=orig;},2500);}
+  try{navigator.clipboard.writeText(text).then(function(){done(true);},function(){done(false);});}catch(e){done(false);}
+}
+
+var PAGE_SIZE=20, COL_LIMIT=8, PRIO={P0:0,P1:1,P2:2};
+function prioRank(t){var r=PRIO[lab(t,'priority:')];return r==null?9:r;}
+function byUrgency(a,b){
+  var fa=has(a,'needs-human')?0:1, fb=has(b,'needs-human')?0:1; if(fa!==fb)return fa-fb;
+  return prioRank(a)-prioRank(b)||String(b.updated).localeCompare(String(a.updated));
+}
+function pager(total){
+  var pages=Math.ceil(total/PAGE_SIZE); if(pages<2)return null;
+  function go(p){S.page=p;render();try{document.getElementById('view').scrollIntoView({block:'start'});}catch(e){}}
+  return h('div',{class:'pager',role:'navigation','aria-label':'Pagination'},
+    h('button',{class:'btn',type:'button',disabled:S.page<=0,onclick:function(){go(S.page-1);}},'Précédent'),
+    h('span',{class:'note'},'Page '+(S.page+1)+' sur '+pages+' · '+total+' tickets'),
+    h('button',{class:'btn',type:'button',disabled:S.page>=pages-1,onclick:function(){go(S.page+1);}},'Suivant'));
+}
+function vFile(){
+  var mine=tickets().filter(function(t){var p=phaseOf(t.status);return p&&(S.role==='tous'||p.role===S.role);}).sort(byUrgency);
+  var pages=Math.max(1,Math.ceil(mine.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
+  var shown=mine.slice(S.page*PAGE_SIZE,(S.page+1)*PAGE_SIZE);
+  var roleTxt=S.role==='produit'?'Discovery et QA humaine':S.role==='tech'?'Spec, Dev et Review':'Toutes les phases';
+  return h('div',{class:'list'},
+    h('h2',{},'Ma file · '+roleTxt+' · '+mine.length),
+    h('p',{class:'note'},'Copiez la commande, puis collez-la dans une session Claude Code ouverte sur '+S.repo+'. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'),
+    pager(mine.length),
+    shown.length?shown.map(function(t){
+      var a=actionFor(t), canAuto=a.kind==='run'&&!a.pairOnly;
+      return h('div',{class:'row'+(has(t,'needs-human')?' flag':'')},
+        h('div',{class:'main'},
+          h('div',{class:'t'},h('span',{class:'num'},'#'+t.n+' '),t.title),
+          h('div',{class:'meta'},ticketChips(t),h('span',{class:'note'},ago(t.updated)),
+            a.kind==='run'?h('span',{class:'cmd'},a.cmd+(canAuto?'':'  (pair)')):null)),
+        h('div',{class:'acts'},
+          a.kind==='run'?[
+            h('button',{class:'btn'+(canAuto?'':' primary'),type:'button',onclick:function(e){copyCmd(a.cmd,e.target);}},canAuto?'Copier (pair)':'Copier la commande'),
+            canAuto?h('button',{class:'btn primary',type:'button',onclick:function(e){copyCmd(a.cmd+' --auto',e.target);}},'Copier (auto)'):null]:null,
+          a.kind==='human'||a.kind==='merge'||a.kind==='hold'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null));
+    }):h('div',{class:'empty'},'Rien n’attend ce rôle pour le moment.'),
+    shown.length>5?pager(mine.length):null);
+}
+
+function vOverview(){
+  var all=tickets();
+  var cols=PHASES.map(function(p){
+    var items=all.filter(function(t){return p.statuses.indexOf(t.status)>-1;}).sort(byUrgency);
+    var open=!!S.expanded[p.key], shown=open?items:items.slice(0,COL_LIMIT);
+    return h('section',{class:'col','aria-label':p.name},
+      h('header',{},h('strong',{},p.n+' · '+p.name),h('span',{class:'chip'},items.length)),
+      h('span',{class:'own'},p.role==='produit'?'Produit':'Tech'),
+      shown.length?shown.map(function(t){
+        return h('div',{class:'card'+(has(t,'needs-human')?' flag':'')},
+          h('div',{class:'t'},h('span',{class:'num mono'},'#'+t.n+' '),t.title),
+          h('div',{class:'meta'},ticketChips(t)));
+      }):h('div',{class:'empty'},'Aucun ticket'),
+      items.length>COL_LIMIT?h('button',{class:'btn',type:'button',onclick:function(){S.expanded[p.key]=!open;render();}},
+        open?'Réduire':'Afficher les '+(items.length-COL_LIMIT)+' autres'):null);
+  });
+  var split=all.filter(function(t){return t.status==='split';}).length;
+  var off=all.filter(function(t){return !t.status&&!has(t,'level:epic');}).length;
+  return h('div',{class:'list'},h('h2',{},'Vue d’ensemble'),h('div',{class:'board'},cols),
+    h('p',{class:'note'},'Tickets ouverts hors file : '+split+' story suivie par ses tâches (split)'+(off?', '+off+' sans statut PILOT.':'.')));
+}
+
+/* ---------- banner, chips, chrome ---------- */
+var REFRESH_CMD='/pilot-dashboard --refresh';
+function note(kind,text){return h('span',{class:'note '+kind,role:'status'},text);}
+function renderBanner(){
+  var g=S.gh, el=document.getElementById('banner'), n;
+  function copyBtn(e){copyCmd(REFRESH_CMD,e.target);}
+  if(g.state==='live'){
+    var hours=(Date.now()-new Date(g.at).getTime())/3600e3;
+    var applied=Object.keys(S.events).filter(function(k){return String(S.events[k].at)>String(g.at);}).length;
+    n=h('div',{class:'banner '+(hours>24?'sample':'live')},
+      h('p',{},h('strong',{},S.repo),' · '+tickets().length+' tickets ouverts · instantané pris '+ago(g.at)+
+        (applied?' · '+applied+' changement'+(applied>1?'s':'')+' appliqué'+(applied>1?'s':'')+' depuis':'')+
+        (g.truncated?' · liste tronquée ('+g.total+' au total)':'')+'.'),
+      hours>24?h('div',{class:'refresh'},note('','Instantané ancien : relancez la mise à jour depuis une session du projet.'),
+        h('button',{class:'btn primary',type:'button',onclick:copyBtn},'Copier '+REFRESH_CMD)):null);
+  }else if(g.state==='loading'||g.state==='init'){
+    n=h('div',{class:'banner sample'},h('p',{},'Lecture des données en cours. Exemples affichés en attendant.'));
+  }else{
+    n=h('div',{class:'banner sample'},h('p',{},h('strong',{},'Données d’exemple. '),(g.msg||'')+' Lancez la mise à jour depuis une session du projet.'),
+      h('button',{class:'btn primary',type:'button',onclick:copyBtn},'Copier '+REFRESH_CMD));
+  }
+  el.replaceChildren(n);
+}
+function renderConn(){
+  var g=S.gh, chips=[], age=g.at?(Date.now()-new Date(g.at).getTime())/3600e3:null;
+  if(g.state==='live')chips.push(h('span',{class:'chip '+(age>24?'warn':'ok')},h('span',{class:'dot'}),'Instantané · '+ago(g.at)));
+  else chips.push(h('span',{class:'chip '+(g.state==='loading'||g.state==='init'?'':'warn')},h('span',{class:'dot'}),'Instantané · '+(g.state==='loading'||g.state==='init'?'lecture…':'absent')));
+  var alive=S.activity.filter(isAlive).length;
+  if(alive)chips.push(h('span',{class:'chip ok'},h('span',{class:'dot'}),'Sessions · '+alive+' en cours'));
+  var c=document.getElementById('conn'); c.replaceChildren.apply(c,chips);
+}
+function renderChrome(){
+  var seg=document.getElementById('roleSeg');
+  seg.replaceChildren.apply(seg,[['produit','Produit'],['tech','Tech'],['tous','Tous']].map(function(r){
+    return h('button',{type:'button','aria-pressed':String(S.role===r[0]),onclick:function(){S.role=r[0];S.page=0;store('cp.role',r[0]);render();}},r[1]);}));
+  var alive=S.activity.filter(isAlive).length;
+  var tabs=document.getElementById('tabs');
+  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['activite','Activité'+(alive?' ('+alive+')':'')]].map(function(t){
+    return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
+}
+function render(){
+  renderChrome();renderConn();renderBanner();
+  var v=document.getElementById('view');
+  v.replaceChildren(S.tab==='ensemble'?vOverview():S.tab==='activite'?vActivity():vFile());
+}
+
+/* ---------- boot ---------- */
+function fromHash(){var t=(location.hash||'').slice(1); if(t==='file'||t==='ensemble'||t==='activite')S.tab=t;}
+window.addEventListener('hashchange',function(){fromHash();render();});
+fromHash();
+render();
+if(window.claude&&window.claude.use){
+  window.claude.use('db').then(function(d){S.db=d;watchSnapshots();watchLive();}).catch(function(){S.db=null;watchSnapshots();});
+}else{
+  S.gh={state:'none',msg:'Ouvrez cette page dans claude.ai pour lire les données.',live:[],at:null};render();
+}
+})();
+</script>
+

@@ -51,6 +51,10 @@ dialogue rather than one handing a finished draft to the other
     `CLAUDE.md`/`README.md`, the GitHub labels) from a fresh clone of this repo into
     your project. Overwrites, no merge — see the warning in
     `.claude/skills/pilot-update/SKILL.md`.
+  - `/pilot-dashboard` — publish (or update) the project's team page as a private Claude
+    Artifact with its own data: tickets by phase, each role's queue, and the PILOT sessions
+    working right now. Run it again, or let `/pilot-update` do it, to get the latest page at
+    the same address.
   - `/pilot-discovery`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
     `/pilot-qa` — the five phases themselves. `/pilot-discovery` (PM+architect, in
     dialogue) formalizes a `type:feature` idea into one or more stories; `/pilot-spec`

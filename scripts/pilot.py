@@ -8,15 +8,20 @@
   pilot.py flag    <issue> --comment TEXT      # needs-human + the mandatory why/what's-needed comment
   pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
   pilot.py doctor  [--verbose]                 # preflight: can the commands above work here?
+  pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
 (JSON says why), 2 GitHub or usage failure.
 
+claim/set/flag/unflag also return an `event` (and claim an `activity`): the ready-made payloads
+the phase skills forward to the project's dashboard (pilot-link-dashboard.md).
+
 Judgment never lives here: which agent to call, what a story/spec/review says, and pair
 dialogue stay with the skills. Requires the `gh` CLI and Python 3.
 """
 import argparse
+import datetime
 import json
 import re
 import subprocess
@@ -62,10 +67,8 @@ class GhClient:
         self.repo = repo
         self._me = None
 
-    def _run(self, path, params=None, paginate=False, method="GET", body=None):
+    def _run(self, path, params=None, method="GET", body=None):
         cmd = ["gh", "api", "-X", method, path]
-        if paginate:
-            cmd.append("--paginate")
         if body is not None:
             cmd += ["--input", "-"]
         for key, value in (params or {}).items():
@@ -78,23 +81,24 @@ class GhClient:
             raise GhError((proc.stderr or proc.stdout).strip())
         return proc.stdout
 
-    @staticmethod
-    def _decode(text):
-        """`gh api --paginate` prints one JSON array per page, back to back."""
-        decoder, pos, out = json.JSONDecoder(), 0, []
-        while pos < len(text):
-            while pos < len(text) and text[pos].isspace():
-                pos += 1
-            if pos >= len(text):
+    def _pages(self, path, params=None, per_page=100, max_pages=50):
+        """All items of a list endpoint. Pages are requested by number: `gh --paginate` follows
+        links that use numeric repository ids, which Claude Code sessions' proxy refuses."""
+        out = []
+        for page in range(1, max_pages + 1):
+            data = json.loads(self._run(path, {**(params or {}), "per_page": per_page, "page": page}))
+            out.extend(data)
+            if len(data) < per_page:
                 break
-            value, pos = decoder.raw_decode(text, pos)
-            out.extend(value) if isinstance(value, list) else out.append(value)
         return out
 
     def issues_with_label(self, label):
-        text = self._run(f"repos/{self.repo}/issues",
-                         {"state": "open", "labels": label, "per_page": 100}, paginate=True)
-        return [i for i in self._decode(text) if "pull_request" not in i]
+        items = self._pages(f"repos/{self.repo}/issues", {"state": "open", "labels": label})
+        return [i for i in items if "pull_request" not in i]
+
+    def open_issues(self):
+        items = self._pages(f"repos/{self.repo}/issues", {"state": "open"})
+        return [i for i in items if "pull_request" not in i]
 
     def get_issue(self, number):
         """The raw issue (a PR carries a `pull_request` key), or None when it doesn't exist."""
@@ -114,21 +118,16 @@ class GhClient:
         return None if issue is None else issue.get("state") == "open"
 
     def comments(self, number):
-        text = self._run(f"repos/{self.repo}/issues/{number}/comments",
-                         {"per_page": 100}, paginate=True)
-        return [c.get("body") or "" for c in self._decode(text)]
+        return [c.get("body") or "" for c in self._pages(f"repos/{self.repo}/issues/{number}/comments")]
 
     def sub_issues(self, number):
-        text = self._run(f"repos/{self.repo}/issues/{number}/sub_issues",
-                         {"per_page": 100}, paginate=True)
-        return self._decode(text)
+        return self._pages(f"repos/{self.repo}/issues/{number}/sub_issues")
 
     def repo_info(self):
         return json.loads(self._run(f"repos/{self.repo}"))
 
     def label_names(self):
-        text = self._run(f"repos/{self.repo}/labels", {"per_page": 100}, paginate=True)
-        return {l["name"] for l in self._decode(text)}
+        return {l["name"] for l in self._pages(f"repos/{self.repo}/labels")}
 
     def me(self):
         if self._me is None:
@@ -169,6 +168,13 @@ def public(issue, **extra):
            "status": status_of(issue["labels"]), "priority": prio}
     out.update(extra)
     return out
+
+
+def now_iso():
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+SNAPSHOT_MAX_BYTES = 240_000  # a database document holds at most 256 KiB
 
 
 class Refused(Exception):
@@ -359,6 +365,28 @@ class Machine:
         failed = [c for c in checks if not c["ok"]]
         return {"ok": not failed, "login": login, "failed": failed, "checks": checks}
 
+    # ---- dashboard payloads --------------------------------------------------------------
+    def _event(self, issue, action, phase=None):
+        return {"kind": "ticket", "n": issue["number"], "title": issue["title"],
+                "labels": sorted(issue["labels"]), "assignees": issue["assignees"],
+                "state": issue["state"], "action": action, "phase": phase,
+                "by": self.gh.me(), "at": now_iso()}
+
+    def snapshot(self):
+        """Every open ticket as the dashboard's `snapshots/<owner>__<repo>` document."""
+        rows = []
+        for raw in self.gh.open_issues():
+            t = normalize(raw)
+            rows.append({"n": t["number"], "t": t["title"], "l": sorted(t["labels"]),
+                         "u": raw.get("updated_at", "")})
+        rows.sort(key=lambda r: r["u"], reverse=True)
+        doc = {"repo": self.gh.repo, "at": now_iso(), "source": "pilot.py", "total": len(rows),
+               "truncated": False, "issues": rows}
+        while len(json.dumps(doc, ensure_ascii=False).encode()) > SNAPSHOT_MAX_BYTES and rows:
+            del rows[max(1, len(rows) * 9 // 10):]
+            doc["truncated"] = True
+        return doc
+
     # ---- writes --------------------------------------------------------------------------
     def _write(self, number, labels, assignees=None, extra=None):
         body = {"labels": sorted(labels)}
@@ -413,7 +441,11 @@ class Machine:
             raise Refused({"claimed": False, "reason": "lost-race", "issue": number,
                            "assignees": after["assignees"]})
         return {"claimed": True, "mode": mode, "issue": number, "assignee": me,
-                "status": status_of(after["labels"]), "labels": sorted(after["labels"])}
+                "status": status_of(after["labels"]), "labels": sorted(after["labels"]),
+                "event": self._event(after, "claim:" + mode, phase),
+                "activity": {"kind": "activity", "id": f"{phase}-{number}-{int(datetime.datetime.now().timestamp())}",
+                             "phase": phase, "n": number, "title": after["title"], "mode": mode,
+                             "by": me, "startedAt": now_iso()}}
 
     def set(self, number, status=None, assign=None, add=(), remove=(), close=False):
         raw = self.gh.get_issue(number)
@@ -435,7 +467,7 @@ class Machine:
         after = self._write(number, labels, assignees, extra)
         return {"ok": True, "issue": number, "status": status_of(after["labels"]),
                 "labels": sorted(after["labels"]), "assignees": after["assignees"],
-                "state": after["state"]}
+                "state": after["state"], "event": self._event(after, "set")}
 
     def flag(self, number, comment):
         if not comment.strip():
@@ -445,8 +477,8 @@ class Machine:
             raise Refused({"ok": False, "reason": "not-found", "issue": number})
         labels = normalize(raw)["labels"]
         self.gh.post_comment(number, comment)  # comment first: a flag never exists without one
-        self._write(number, labels | {"needs-human"})
-        return {"ok": True, "issue": number, "flagged": True}
+        after = self._write(number, labels | {"needs-human"})
+        return {"ok": True, "issue": number, "flagged": True, "event": self._event(after, "flag")}
 
     def unflag(self, number, comment):
         if not comment.strip():
@@ -456,8 +488,8 @@ class Machine:
             raise Refused({"ok": False, "reason": "not-found", "issue": number})
         labels = normalize(raw)["labels"]
         self.gh.post_comment(number, comment)  # the resolution is always on the record first
-        self._write(number, labels - {"needs-human"})
-        return {"ok": True, "issue": number, "flagged": False}
+        after = self._write(number, labels - {"needs-human"})
+        return {"ok": True, "issue": number, "flagged": False, "event": self._event(after, "unflag")}
 
 
 def repo_from_remote(url):
@@ -508,6 +540,8 @@ def build_parser():
     p.add_argument("--add", action="append", default=[])
     p.add_argument("--remove", action="append", default=[])
     p.add_argument("--close", action="store_true")
+    p = sub.add_parser("snapshot")
+    p.add_argument("--out", help="write the document to this file and print only a summary")
     p = sub.add_parser("doctor")
     p.add_argument("--verbose", action="store_true", help="list every check, not only failures")
     for name in ("flag", "unflag"):
@@ -528,6 +562,13 @@ def run(args, gh):
     if args.cmd == "set":
         assign = "me" if args.assign_me else "none" if args.unassign else None
         return machine.set(args.issue, args.status, assign, args.add, args.remove, args.close)
+    if args.cmd == "snapshot":
+        doc = machine.snapshot()
+        if not args.out:
+            return doc
+        with open(args.out, "w", encoding="utf-8") as handle:
+            json.dump(doc, handle, ensure_ascii=False, separators=(",", ":"))
+        return {"ok": True, "file": args.out, "total": doc["total"], "truncated": doc["truncated"]}
     if args.cmd == "doctor":
         report = machine.doctor()
         if not args.verbose:
