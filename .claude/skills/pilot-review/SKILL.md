@@ -60,13 +60,17 @@ pre-submission pause as the last check against picking the wrong one.
      `--resume`, or add `can-resume` themselves.
    - `status:in-review` still carrying `needs-human`/`on-hold` → not resolved yet; report
      and stop.
-   - Otherwise, or none given → per `.pilot/pilot-process.md` §4 "Picking the next
-     ticket...": the given ticket, or the merged pool of unclaimed `status:review-ready`
-     (fresh) and `status:in-review` carrying `can-resume` (resumable — handled by
-     the second bullet above, not here), excluding `on-hold`, ordered by highest
-     `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
-     isn't, then oldest first (`mcp__github__search_issues`). `status:changes-requested`
-     tickets are never in this pool — `/pilot-dev` reclaims those (§4).
+   - None given → run `python3 .pilot/pilot-pool.py review`: it prints the pool of
+     `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:review-ready`,
+     resumable `status:in-review` + `can-resume`; dependency, `needs-human` and `on-hold`
+     exclusions; priority, then "Blocks #M", then oldest) as JSON. `pick: null` → report
+     nothing to do. Otherwise handle `pick.number` exactly as if it had been given
+     explicitly, through the bullets above and below — a resumable pick takes the
+     `can-resume` bullet, not a fresh claim. Script missing or exiting non-zero → build that
+     pool by hand per §4 instead (`mcp__github__search_issues`).
+     `status:changes-requested` tickets are never in this pool — `/pilot-dev` reclaims those
+     (§4).
+   - Otherwise (a given ticket) → step 2, the fresh case.
 2. **Claim** it (fresh case only, above) per `.pilot/pilot-process.md` §4: assignee +
    `status:in-review`, re-read to confirm. If the assignee changed (race lost), stand down
    and return to step 1 for a different candidate (bare pool only — report nothing to do if

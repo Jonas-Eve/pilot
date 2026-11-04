@@ -37,13 +37,14 @@ this skill only covers the mechanics of running it.
      carry no open "Depends on #N" (`.pilot/pilot-process.md` §4 "Blocked-by dependencies" —
      applies to an explicitly-given ticket here too, not just the pool) — report which
      ticket it's still blocked on and stop rather than claiming it, if one's still open.
-   - No argument → per `.pilot/pilot-process.md` §4 "Picking the next ticket...": merged
-     pool of unclaimed `status:qa` (fresh) and `status:in-qa` carrying `can-resume`
-     (resumable — a mid-pair ticket is only reachable via explicit `--resume`),
-     excluding `on-hold` and any with an unresolved "Depends on #N"
-     (`.pilot/pilot-process.md` §4 "Blocked-by dependencies"), highest `priority:` then
-     oldest first. No `--auto`, never Routine-driven (`.pilot/pilot-process.md` §4
-     "Interaction modes", "Scheduled sweeps").
+   - No argument → run `python3 .pilot/pilot-pool.py qa`: it prints the pool of
+     `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:qa`, resumable
+     `status:in-qa` + `can-resume`; dependency, `needs-human` and `on-hold` exclusions;
+     priority, then "Blocks #M", then oldest) as JSON. `pick: null` → report nothing to do.
+     Otherwise handle `pick.number` exactly as if it had been given explicitly, through the
+     bullets above. Script missing or exiting non-zero → build that pool by hand per §4
+     instead (`mcp__github__search_issues`). No `--auto`, never Routine-driven
+     (`.pilot/pilot-process.md` §4 "Interaction modes", "Scheduled sweeps").
 2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-qa`, re-read to
    confirm the claim held.
 3. Gather context: the story's own body (acceptance criteria) and, for each of its dev and

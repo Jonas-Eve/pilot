@@ -105,7 +105,8 @@ see `.claude/skills/pilot-update/SKILL.md`.
    right now — all are PILOT-owned from here on, never hand-edit any of them;
    `/pilot-update` overwrites them from a fresh `$PILOT_SRC`. Also copy
    `$PILOT_SRC/scripts/pilot-pool.py` to `.pilot/pilot-pool.py` and `chmod +x` it —
-   PILOT-owned the same way; `pilot-dev` runs it to pick the next ticket.
+   PILOT-owned the same way; the `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa`
+   skills run it to pick the next ticket.
 
 7. **Copy the status-cascade workflow.** Copy
    `$PILOT_SRC/assets/github/workflows/pilot-status-on-merge.yml` to

@@ -104,8 +104,9 @@ itself.
   and "Blocked-by dependencies" (pools, `can-resume`, exclusions, priority/blocks/age order)
   and printing one compact JSON object. Never writes to GitHub — claiming and labels stay
   with the calling skill. Copied verbatim into a consuming project as `.pilot/pilot-pool.py`
-  by `/pilot-init` and re-synced by `/pilot-update`; today only `pilot-dev` runs it (the
-  other three phases still derive their pool from `pilot-process.md` §4). The spec stays in
+  by `/pilot-init` and re-synced by `/pilot-update`; `pilot-spec`, `pilot-dev`,
+  `pilot-review` and `pilot-qa` each run it for their bare/no-argument pool (falling back to
+  `pilot-process.md` §4 by hand if it's missing or fails). The spec stays in
   `pilot-process.md` and is the source of truth: a change to §4's pool rules must be
   mirrored in the script and in `scripts/test_pilot_pool.py` (offline tests,
   `python3 -m unittest scripts/test_pilot_pool.py`).

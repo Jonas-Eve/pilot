@@ -33,8 +33,8 @@ from a previous run — the whole point is picking up upstream changes.
   audience), every **`.pilot/pilot-task-*.md`** per-duty task doc (read by exactly one
   phase skill and injected into an `Agent` call's prompt — the `.claude/agents/pilot-*.md`
   persona files carry only identity, never a duty's mechanics),
-  **`.pilot/pilot-pool.py`** (the script `pilot-dev` runs to pick the next ticket, from
-  `$PILOT_SRC/scripts/pilot-pool.py`), and
+  **`.pilot/pilot-pool.py`** (the script the `pilot-spec`/`pilot-dev`/`pilot-review`/
+  `pilot-qa` skills run to pick the next ticket, from `$PILOT_SRC/scripts/pilot-pool.py`), and
   **`.github/workflows/pilot-status-on-merge.yml`** are the same kind of PILOT-owned
   file, made by `pilot-init` from `$PILOT_SRC`.
 - **The `<!-- PILOT:INTRO:START -->`/`END` and `<!-- PILOT:MAINTENANCE:START -->`/`END`

@@ -64,13 +64,14 @@ what `--multi` means here.
      via "Blocks #M"/"Depends on #N" or a sub-issue relationship, as context. If
      `level:epic`, there's nothing to work on the epic itself — stop and point at its
      stories.
-   - No argument → per `.pilot/pilot-process.md` §4 "Picking the next ticket...": the
-     merged pool of unclaimed `status:backlog` (fresh — a story from Discovery, or a
-     standalone bug/tech ticket) and `status:in-spec` carrying
-     `can-resume` (resumable — a mid-pair ticket is never in this pool, only reachable
-     via `--resume <issue>`), highest `priority:` then oldest first. What a scheduled
-     cron Routine drives with `--auto` (`.pilot/pilot-process.md` §4 "Scheduled
-     sweeps").
+   - No argument → run `python3 .pilot/pilot-pool.py spec`: it prints the pool of
+     `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:backlog`,
+     resumable `status:in-spec` + `can-resume`; dependency, `needs-human` and `on-hold`
+     exclusions; priority, then "Blocks #M", then oldest) as JSON. `pick: null` → report
+     nothing to do. Otherwise handle `pick.number` exactly as if it had been given
+     explicitly, through the bullets above. Script missing or exiting non-zero → build that
+     pool by hand per §4 instead (`mcp__github__search_issues`). What a scheduled cron
+     Routine drives with `--auto` (`.pilot/pilot-process.md` §4 "Scheduled sweeps").
 1a. **No-ticket entry** (`--tech`/`--bug`, explicit or auto-detected): call `Agent` with
     `subagent_type: "pilot-architect"` alone — read the matching task doc,
     `.pilot/pilot-task-formalize-tech-need.md` (`--tech`) or
