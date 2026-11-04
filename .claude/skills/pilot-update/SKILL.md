@@ -32,7 +32,9 @@ from a previous run — the whole point is picking up upstream changes.
   companion — read by the specific skills/agents it names, not every phase, not a human
   audience), every **`.pilot/pilot-task-*.md`** per-duty task doc (read by exactly one
   phase skill and injected into an `Agent` call's prompt — the `.claude/agents/pilot-*.md`
-  persona files carry only identity, never a duty's mechanics), and
+  persona files carry only identity, never a duty's mechanics),
+  **`.pilot/pilot-pool.py`** (the script `pilot-dev` runs to pick the next ticket, from
+  `$PILOT_SRC/scripts/pilot-pool.py`), and
   **`.github/workflows/pilot-status-on-merge.yml`** are the same kind of PILOT-owned
   file, made by `pilot-init` from `$PILOT_SRC`.
 - **The `<!-- PILOT:INTRO:START -->`/`END` and `<!-- PILOT:MAINTENANCE:START -->`/`END`
@@ -68,7 +70,9 @@ from a previous run — the whole point is picking up upstream changes.
 
 3. **Diff the PILOT-owned root files.** Compare the project's `.pilot/pilot-process.md`,
    every `.pilot/pilot-process-*.md`, `.pilot/pilot-link-*.md`, and `.pilot/pilot-task-*.md` the
-   project has, and `.github/workflows/pilot-status-on-merge.yml` against `$PILOT_SRC`'s
+   project has, `.pilot/pilot-pool.py` (against `$PILOT_SRC/scripts/pilot-pool.py`; new
+   upstream if missing, `chmod +x` after copying), and
+   `.github/workflows/pilot-status-on-merge.yml` against `$PILOT_SRC`'s
    copies (for the three glob sets, that means every such file currently under
    `$PILOT_SRC/assets/docs/` — treat each as its own set, not a fixed list of names,
    however many exist today). For each one that differs, show a diff and ask for

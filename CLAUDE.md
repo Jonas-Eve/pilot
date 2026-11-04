@@ -103,9 +103,12 @@ itself.
   `review`, `qa`), implementing `assets/docs/pilot-process.md` §4 "Picking the next ticket..."
   and "Blocked-by dependencies" (pools, `can-resume`, exclusions, priority/blocks/age order)
   and printing one compact JSON object. Never writes to GitHub — claiming and labels stay
-  with the calling skill. `scripts/test_pilot_pool.py` holds its offline tests
-  (`python3 -m unittest scripts/test_pilot_pool.py`); a change to §4's pool rules must be
-  mirrored there and in the script.
+  with the calling skill. Copied verbatim into a consuming project as `.pilot/pilot-pool.py`
+  by `/pilot-init` and re-synced by `/pilot-update`; today only `pilot-dev` runs it (the
+  other three phases still derive their pool from `pilot-process.md` §4). The spec stays in
+  `pilot-process.md` and is the source of truth: a change to §4's pool rules must be
+  mirrored in the script and in `scripts/test_pilot_pool.py` (offline tests,
+  `python3 -m unittest scripts/test_pilot_pool.py`).
 
 Within a skill file, reference this repo's own assets via a fresh clone of
 `https://github.com/Jonas-Eve/pilot` into a scratch directory (called `$PILOT_SRC` in

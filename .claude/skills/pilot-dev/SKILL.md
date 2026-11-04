@@ -46,19 +46,17 @@ parallel instances; the claim step below prevents collisions.
      report which ticket it's blocked on and stop rather than claim (`.pilot/pilot-process.md`
      §4 "Blocked-by dependencies" — applies to an explicitly-given ticket exactly as to
      bare-pool selection below, not just the pool).
-   - Otherwise, or no issue given → per `.pilot/pilot-process.md` §4 "Picking the next
-     ticket...": the given ticket, or the merged pool of unclaimed `status:dev-ready`
-     (fresh), `status:in-dev` carrying `can-resume` (resumable), and
-     `status:changes-requested` with no `needs-human`/`on-hold` (reclaimable — immediately,
-     for a review verdict that was purely code-level and so never carried `needs-human`
-     to begin with, or once a human clears it for one that also blocked on a judgment
-     call, `.pilot/pilot-link-review-consensus.md`) —
-     a mid-pair-session ticket is never in this pool, only reachable via an explicit
-     `--resume <issue>` — excluding any with an unresolved "Depends on #N"
-     (`.pilot/pilot-process.md` §4 "Blocked-by dependencies"), ordered by highest
-     `priority:`, then a ticket named in another open ticket's "Blocks #M" before one that
-     isn't, then oldest first (`mcp__github__search_issues`). A scheduled cron Routine
-     drives this with `--auto` added (`.pilot/pilot-process.md` §4 "Scheduled sweeps").
+   - No issue given → run `python3 .pilot/pilot-pool.py dev`: it prints the pool of
+     `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:dev-ready`,
+     resumable `can-resume`, reclaimable `status:changes-requested`; dependency, `needs-human`
+     and `on-hold` exclusions; priority, then "Blocks #M", then oldest) as JSON. `pick: null`
+     → report nothing to do. Otherwise handle `pick.number` exactly as if it had been given
+     explicitly, through the bullets above and below. Script missing or exiting non-zero →
+     build that pool by hand per §4 instead (`mcp__github__search_issues`). A scheduled cron
+     Routine drives this with `--auto` added (`.pilot/pilot-process.md` §4 "Scheduled
+     sweeps").
+   - Otherwise (a given ticket) → step 2; its claim check rejects a ticket that isn't in
+     `status:dev-ready`.
 2. **Claim** it per `.pilot/pilot-process.md` §4: set assignee + `status:in-dev`, then
    re-read the ticket. If the assignee changed (another instance won the race), stand
    down and return to step 1 for a different ticket.
