@@ -211,7 +211,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, ro:{}, ideaMulti:0, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, ro:{}, ideaMulti:0, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -428,6 +428,9 @@ function matches(t){
   var lv=LEVELS.filter(function(k){return S.levels[k];}), ty=TYPES.filter(function(k){return S.types[k];});
   if(lv.length&&lv.indexOf(lab(t,'level:'))<0)return false;
   if(ty.length&&ty.indexOf(lab(t,'type:'))<0)return false;
+  var st=Object.keys(S.states).filter(function(k){return S.states[k];}), fl=Object.keys(S.flags).filter(function(k){return S.flags[k];});
+  if(st.length&&st.indexOf(t.status||'none')<0)return false;
+  if(fl.length&&!fl.some(function(k){return has(t,k);}))return false;
   return true;
 }
 function buildSearch(){
@@ -439,19 +442,28 @@ function buildSearch(){
     h('div',{class:'filters',id:'searchFilters'}));
   updateSearch();
 }
+var STATE_ORDER=['draft','backlog','in-spec','dev-ready','in-dev','changes-requested','review-ready','in-review','approved','qa','in-qa','split'];
+var FLAG_FR={'needs-human':'attend un humain','on-hold':'en pause'};
+function stateKeys(){
+  /* the PILOT statuses in process order, then any other status present in the tickets, then "sans statut" (epics) */
+  var extra={};
+  tickets().forEach(function(t){if(t.status&&STATE_ORDER.indexOf(t.status)<0)extra[t.status]=1;});
+  return STATE_ORDER.concat(Object.keys(extra).sort(),['none']);
+}
 function updateSearch(){
-  var f=document.getElementById('searchFilters');
-  if(!f.firstChild){
-    var grp=function(label,keys,mapName,names){
+  var f=document.getElementById('searchFilters'), keys=stateKeys(), sig=keys.join(',');
+  if(!f.firstChild||S._sk!==sig){
+    S._sk=sig;
+    var grp=function(label,ks,mapName,names){
       return h('div',{class:'grp',role:'group','aria-label':label},h('span',{class:'note'},label),
-        keys.map(function(k){return h('button',{class:'tog',type:'button','data-map':label,'data-key':k,'aria-pressed':'false',onclick:function(){S[mapName][k]=!S[mapName][k];S.page=0;render();}},names?names[k]:k);}));
+        ks.map(function(k){return h('button',{class:'tog',type:'button','data-map':mapName,'data-key':k,'aria-pressed':'false',onclick:function(){S[mapName][k]=!S[mapName][k];S.page=0;render();}},names&&names[k]?names[k]:k);}));
     };
-    f.append(grp('Niveau',LEVELS,'levels',LEVEL_FR),grp('Type',TYPES,'types'),
-      h('button',{class:'btn ghost',type:'button',onclick:function(){S.q='';S.levels={};S.types={};S.page=0;document.getElementById('searchText').value='';render();}},'Réinitialiser'));
+    var stNames={none:'sans statut'}; keys.forEach(function(k){if(STATUS_FR[k])stNames[k]=STATUS_FR[k];});
+    f.replaceChildren(grp('Niveau',LEVELS,'levels',LEVEL_FR),grp('Type',TYPES,'types'),grp('État',keys,'states',stNames),grp('Drapeau',['needs-human','on-hold'],'flags',FLAG_FR),
+      h('button',{class:'btn ghost',type:'button',onclick:function(){S.q='';S.levels={};S.types={};S.states={};S.flags={};S.page=0;document.getElementById('searchText').value='';render();}},'Réinitialiser'));
   }
   Array.prototype.forEach.call(f.querySelectorAll('.tog'),function(b){
-    var m=b.getAttribute('data-map')==='Niveau'?S.levels:S.types;
-    b.setAttribute('aria-pressed',String(!!m[b.getAttribute('data-key')]));
+    b.setAttribute('aria-pressed',String(!!S[b.getAttribute('data-map')][b.getAttribute('data-key')]));
   });
 }
 function vSearch(){

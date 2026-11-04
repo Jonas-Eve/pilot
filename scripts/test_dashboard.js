@@ -425,6 +425,51 @@ const STUB = (opts) => `
   check('search results are paginated', (await rows(page)) === 20 && /Page 1 sur 3 · 45 tickets/.test(await text(page, '#view')));
   await page.close();
 
+  // ---- search: state filter (and flags) ----
+  const STATE_SNAP = snapshot([
+    ticket(10, ['type:feature', 'level:epic'], { t: 'Epic sans statut' }),
+    ticket(11, ['type:feature', 'level:story', 'status:qa'], { t: 'Story à tester' }),
+    ticket(12, ['type:tech', 'level:story', 'status:backlog'], { t: 'Story backlog' }),
+    ticket(13, ['type:bug', 'level:task', 'status:backlog', 'needs-human'], { t: 'Bug backlog bloqué' }),
+    ticket(14, ['type:feature', 'level:task', 'status:dev-ready', 'on-hold'], { t: 'Tâche en pause' }),
+    ticket(15, ['type:feature', 'level:story', 'status:split'], { t: 'Story découpée' }),
+    ticket(16, ['type:tech', 'level:task', 'status:scoping'], { t: 'Statut hors processus' }),
+  ], 120);
+  page = await open({ preload: [STATE_SNAP] });
+  await tab(page, 'Recherche');
+  const stBtn = (grp, key) => page.locator(`#searchFilters button[data-map="${grp}"][data-key="${key}"]`);
+  const nums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
+  const setOf = (...a) => JSON.stringify(a.sort());
+  check('state filter: one chip per PILOT status in process order, "sans statut", and a status found in the tickets but not in the process',
+        (await stBtn('states', 'qa').count()) === 1 && (await stBtn('states', 'none').count()) === 1 && (await stBtn('states', 'scoping').count()) === 1 &&
+        (await page.locator('#searchFilters button[data-map="states"]').first().getAttribute('data-key')) === 'draft');
+  check('state chips use the French names', /à tester/.test(await stBtn('states', 'qa').textContent()) && /sans statut/.test(await stBtn('states', 'none').textContent()));
+  await stBtn('states', 'qa').click(); await page.waitForTimeout(100);
+  check('one state: only those tickets', JSON.stringify(await nums()) === setOf('#11'), JSON.stringify(await nums()));
+  await stBtn('states', 'backlog').click(); await page.waitForTimeout(100);
+  check('several states are OR-ed', JSON.stringify(await nums()) === setOf('#11', '#12', '#13'), JSON.stringify(await nums()));
+  await page.locator('#searchFilters button[data-map="types"][data-key="bug"]').click(); await page.waitForTimeout(100);
+  check('state + type are AND-ed', JSON.stringify(await nums()) === setOf('#13'), JSON.stringify(await nums()));
+  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await stBtn('states', 'none').click(); await page.waitForTimeout(100);
+  check('"sans statut" finds the epics', JSON.stringify(await nums()) === setOf('#10'), JSON.stringify(await nums()));
+  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await stBtn('states', 'scoping').click(); await page.waitForTimeout(100);
+  check('a status outside the process still filters', JSON.stringify(await nums()) === setOf('#16'), JSON.stringify(await nums()));
+  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await stBtn('flags', 'needs-human').click(); await page.waitForTimeout(100);
+  check('flag "attend un humain"', JSON.stringify(await nums()) === setOf('#13'), JSON.stringify(await nums()));
+  await stBtn('flags', 'on-hold').click(); await page.waitForTimeout(100);
+  check('flags are OR-ed', JSON.stringify(await nums()) === setOf('#13', '#14'), JSON.stringify(await nums()));
+  await stBtn('states', 'backlog').click(); await page.waitForTimeout(100);
+  check('flag + state are AND-ed', JSON.stringify(await nums()) === setOf('#13'), JSON.stringify(await nums()));
+  check('chips reflect their state', (await stBtn('states', 'backlog').getAttribute('aria-pressed')) === 'true' && (await stBtn('states', 'qa').getAttribute('aria-pressed')) === 'false');
+  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  check('reset clears state and flag filters', (await nums()).length === 7 && (await stBtn('states', 'backlog').getAttribute('aria-pressed')) === 'false' && (await stBtn('flags', 'on-hold').getAttribute('aria-pressed')) === 'false');
+  check('state filter: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.screenshot({ path: path.join(TMP, 'states.png') });
+  await page.close();
+
   // ---- renderer: the project name is HTML-escaped ----
   const escaped = render('A<b>"x"&y', 'o/r', path.join(TMP, 'escaped.html'));
   page = await browser.newPage(); await page.goto(escaped);
