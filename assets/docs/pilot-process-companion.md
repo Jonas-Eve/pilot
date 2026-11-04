@@ -142,6 +142,11 @@ sequenceDiagram
     rect rgb(240,240,255)
     Note over Human,GH: Phase 1 — Discovery (/pilot-discovery)
     Human->>PM: raw type:feature idea
+    loop framing — nothing created yet
+        PM-->>Human: challenge, restated brief, at most 4 questions
+        Human-->>PM: answers
+    end
+    Human->>PM: validates the brief
     PM->>Arch: dialogue — PM drafts the story, architect anticipates architecture
     Arch-->>PM: architecture decisions, or a type:tech companion story if needed
     PM-->>Human: draft story + acceptance criteria (pair)
