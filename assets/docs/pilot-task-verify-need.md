@@ -17,8 +17,8 @@ Each turn, in your turn's text:
    would be tested, obvious blockers. Say if it is really bigger than it reads (several
    stories), or smaller (already done, or a duplicate of an open ticket — check the open
    issues).
-3. End with what the human must decide, for the architect to put to them: at most four
-   questions, the most shape-changing first, each with a provisional default.
+3. End with what the human must decide, for the architect to put to them, each with a
+   provisional default where one helps (possibly nothing).
 4. Say whether, from the code's side, the need is **ready** to be formalized.
 
 Do not write the ticket, a split or a spec, and do not write code.

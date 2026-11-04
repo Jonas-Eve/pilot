@@ -38,9 +38,9 @@ no-ticket entry, `pilot-spec/SKILL.md`).
     (`.pilot/pilot-task-frame-idea.md`): call `Agent` for `pilot-pm` with it, passing the raw
     idea, step 2's Epic list and the framing conversation so far, the human's answers
     included — nothing else from this conversation. Each round, show the human the PM's
-    challenges and restated brief, and put its questions to them (at most four at a time, the
-    most shape-changing first, through whatever question tool you have, each with its
-    provisional default as the recommended option); feed the answers back and call the PM
+    challenges and restated brief as a natural conversation — questions only where useful, no
+    set number or format (through whatever question tool you have, a provisional default as
+    the recommended option, when one helps); feed the human's replies back and call the PM
     again. Stop when the PM says the brief is ready and the human has confirmed it (or says to
     go with the provisional defaults), or when the idea turns out to be out of scope or not a
     product idea (`/pilot-spec --tech`/`--bug`): report and create nothing. Only then does

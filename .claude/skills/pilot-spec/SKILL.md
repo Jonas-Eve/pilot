@@ -67,9 +67,9 @@ what `--multi` means here.
     by round (`.pilot/pilot-task-challenge-need.md`): call `Agent` for `pilot-architect` with
     it, passing the raw need and the framing conversation so far, the human's answers
     included — nothing else from this conversation. Each round, show the human the
-    architect's classification and challenges and put its questions to them (at most four at
-    a time, the most shape-changing first, through whatever question tool you have, each
-    with its provisional default as the recommended option); feed the answers back and call
+    architect's classification and challenges as a natural conversation — questions only where
+    useful, no set number or format (through whatever question tool you have, a provisional
+    default as the recommended option, when one helps); feed the human's replies back and call
     it again. Stop when the architect says the need is ready and the human has confirmed it
     (or says to go with the provisional defaults), or when it turns out not to belong here
     (out of scope, a product idea for `/pilot-discovery`, not a real defect or a duplicate):

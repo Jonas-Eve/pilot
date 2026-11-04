@@ -143,7 +143,7 @@ sequenceDiagram
     Note over Human,GH: Phase 1 — Discovery (/pilot-discovery)
     Human->>PM: raw type:feature idea
     loop framing — nothing created yet
-        PM-->>Human: challenge, restated brief, at most 4 questions
+        PM-->>Human: challenge, restated brief, questions if useful
         Human-->>PM: answers
     end
     Human->>PM: validates the brief

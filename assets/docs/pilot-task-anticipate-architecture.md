@@ -9,8 +9,8 @@ You receive the human-validated brief (`.pilot/pilot-task-frame-idea.md`), the r
 `type:feature` idea it came from, and the PM's own turns so far. Your first turn checks the
 brief before any ticket exists: can it be delivered as worded, does a technical constraint
 contradict something the human decided, does it hide a technical enabler? A point that needs
-a human decision goes at the end of your turn as questions (at most four, the most
-shape-changing first, each with a provisional default): the skill puts them to the human
+a human decision goes at the end of your turn as questions, each with a provisional
+default where one helps: the skill puts them to the human
 before creating anything. Your job here is narrower than Spec's own
 challenge/split later (`.pilot/pilot-task-scope-story.md`) — you're not deciding whether
 or how to split into dev-sized tasks yet, that's a separate, later pass once the story is
