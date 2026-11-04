@@ -100,7 +100,12 @@ itself.
   with a PILOT release and the project's data (snapshot, events, activity) is kept. It
   is checked by `scripts/test_dashboard.js` (renders it, loads it in headless Chromium with
   stubbed `window.claude` capabilities; `node scripts/test_dashboard.js`, needs `playwright`):
-  change the page, change that test.
+  change the page, change that test. **While developing the page, publish it to the demo
+  artifact "Cockpit pilot (démo)" (private, fake data from `scripts/demo_snapshot.py`; find it
+  with the `Artifact` tool's `list`), never to a real project's dashboard** — those are only
+  republished by `/pilot-update`, or when the human asks for it explicitly. Refresh the demo
+  data with `python3 scripts/demo_snapshot.py --dir DIR` and `ArtifactData` (`snapshots`
+  `Jonas-Eve__pilot`, plus the `activity`/`events` files it writes).
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot-init` and `/pilot-update`; also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
