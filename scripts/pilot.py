@@ -4,7 +4,8 @@
   pilot.py pool    <spec|dev|review|qa> [--limit N]
   pilot.py resolve <phase> <issue> [--resume]
   pilot.py claim   <phase> <issue> --mode fresh|reclaim|resume-orphaned|resume-cleared|rescope
-  pilot.py set     <issue> [--status S] [--assign-me|--unassign] [--add L]... [--remove L]... [--close]
+  pilot.py set     <issue> [--status S] [--assign-me|--unassign] [--add L]... [--remove L]... [--close] [--pr N]
+  pilot.py event   <issue>... --action NAME [--phase P]  # those tickets' current state as dashboard events, no write
   pilot.py flag    <issue> --comment TEXT      # needs-human + the mandatory why/what's-needed comment
   pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
   pilot.py doctor  [--verbose]                 # preflight: can the commands above work here?
@@ -14,8 +15,10 @@ Every command takes `--repo owner/repo` (default: the git remote of the current 
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
 (JSON says why), 2 GitHub or usage failure.
 
-claim/set/flag/unflag also return an `event` (and claim an `activity`): the ready-made payloads
-the phase skills forward to the project's dashboard (pilot-link-dashboard.md).
+claim/set/flag/unflag also return an `event` (and claim an `activity`), and `event` builds them for
+tickets the skill changed itself (Discovery, one call for all of them): the ready-made payloads the skills forward to the
+project's dashboard (pilot-link-dashboard.md). An event carries the ticket's parent, and the open
+PR (`set --pr N`) when the caller just opened one.
 
 Judgment never lives here: which agent to call, what a story/spec/review says, and pair
 dialogue stay with the skills. Requires the `gh` CLI and Python 3.
@@ -147,6 +150,11 @@ class GhClient:
 CLOSES_RE = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+#(\d+)", re.I)
 
 
+def trailing_number(url):
+    tail = str(url or "").rsplit("/", 1)[-1]
+    return int(tail) if tail.isdigit() else 0
+
+
 def normalize(raw):
     return {
         "number": raw["number"],
@@ -157,6 +165,7 @@ def normalize(raw):
         "body": raw.get("body") or "",
         "created_at": raw.get("created_at", ""),
         "is_pr": "pull_request" in raw,
+        "parent": trailing_number(raw.get("parent_issue_url")),
     }
 
 
@@ -372,11 +381,25 @@ class Machine:
         return {"ok": not failed, "login": login, "failed": failed, "checks": checks}
 
     # ---- dashboard payloads --------------------------------------------------------------
-    def _event(self, issue, action, phase=None):
-        return {"kind": "ticket", "n": issue["number"], "title": issue["title"],
-                "labels": sorted(issue["labels"]), "assignees": issue["assignees"],
-                "state": issue["state"], "action": action, "phase": phase,
-                "by": self.gh.me(), "at": now_iso()}
+    def _event(self, issue, action, phase=None, pr=None):
+        event = {"kind": "ticket", "n": issue["number"], "title": issue["title"],
+                 "labels": sorted(issue["labels"]), "assignees": issue["assignees"],
+                 "state": issue["state"], "action": action, "phase": phase,
+                 "by": self.gh.me(), "at": now_iso()}
+        if issue.get("parent"):
+            event["parent"] = issue["parent"]  # lets the dashboard nest a ticket created since its snapshot
+        if pr:
+            event["pr"] = pr
+        return event
+
+    def events(self, numbers, action, phase=None):
+        events = []
+        for number in numbers:
+            raw = self.gh.get_issue(number)
+            if raw is None:
+                raise Refused({"ok": False, "reason": "not-found", "issue": number})
+            events.append(self._event(normalize(raw), action, phase))
+        return {"ok": True, "issues": list(numbers), "events": events}
 
     def snapshot(self):
         """Every open ticket as the dashboard's `snapshots/<owner>__<repo>` document."""
@@ -467,7 +490,7 @@ class Machine:
                              "phase": phase, "n": number, "title": after["title"], "mode": mode,
                              "by": me, "startedAt": now_iso()}}
 
-    def set(self, number, status=None, assign=None, add=(), remove=(), close=False):
+    def set(self, number, status=None, assign=None, add=(), remove=(), close=False, pr=None):
         raw = self.gh.get_issue(number)
         if raw is None:
             raise Refused({"ok": False, "reason": "not-found", "issue": number})
@@ -487,7 +510,7 @@ class Machine:
         after = self._write(number, labels, assignees, extra)
         return {"ok": True, "issue": number, "status": status_of(after["labels"]),
                 "labels": sorted(after["labels"]), "assignees": after["assignees"],
-                "state": after["state"], "event": self._event(after, "set")}
+                "state": after["state"], "event": self._event(after, "set", pr=pr)}
 
     def flag(self, number, comment):
         if not comment.strip():
@@ -560,6 +583,11 @@ def build_parser():
     p.add_argument("--add", action="append", default=[])
     p.add_argument("--remove", action="append", default=[])
     p.add_argument("--close", action="store_true")
+    p.add_argument("--pr", type=int, help="the open PR that closes this ticket, forwarded in the event")
+    p = sub.add_parser("event")
+    p.add_argument("issues", type=int, nargs="+")
+    p.add_argument("--action", required=True, help="what happened, e.g. created or approved")
+    p.add_argument("--phase", help="e.g. discovery")
     p = sub.add_parser("snapshot")
     p.add_argument("--out", help="write the document to this file and print only a summary")
     p = sub.add_parser("doctor")
@@ -581,7 +609,9 @@ def run(args, gh):
         return machine.claim(args.phase, args.issue, args.mode)
     if args.cmd == "set":
         assign = "me" if args.assign_me else "none" if args.unassign else None
-        return machine.set(args.issue, args.status, assign, args.add, args.remove, args.close)
+        return machine.set(args.issue, args.status, assign, args.add, args.remove, args.close, args.pr)
+    if args.cmd == "event":
+        return machine.events(args.issues, args.action, args.phase)
     if args.cmd == "snapshot":
         doc = machine.snapshot()
         if not args.out:

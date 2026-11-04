@@ -254,14 +254,14 @@ function watchSnapshots(){
 }
 
 /* ---------- live layers: events and activity written by the project's PILOT sessions ---------- */
-var PHASE_FR={spec:'Spec',dev:'Dev',review:'Review',qa:'QA humaine'}, STALE_MIN=60;
+var PHASE_FR={discovery:'Discovery',spec:'Spec',dev:'Dev',review:'Review',qa:'QA humaine'}, STALE_MIN=60;
 /* a ticket event newer than the base list (snapshot or direct read) replaces that ticket's state */
 function overlay(list,baseAt){
   var by={}; list.forEach(function(t){by[t.n]=t;});
   Object.keys(S.events).forEach(function(k){
     var e=S.events[k]; if(baseAt&&String(e.at)<=String(baseAt))return;
     if(e.state==='closed'){delete by[e.n];return;}
-    var old=by[e.n], t={n:e.n,title:e.title||(old&&old.title)||('#'+e.n),labels:e.labels||[],updated:e.at,assignee:(e.assignees||[])[0]||'',p:(old&&old.p)||0,k:(old&&old.k)||null,r:(old&&old.r)||0};
+    var old=by[e.n], t={n:e.n,title:e.title||(old&&old.title)||('#'+e.n),labels:e.labels||[],updated:e.at,assignee:(e.assignees||[])[0]||'',p:e.parent||(old&&old.p)||0,k:(old&&old.k)||null,r:e.pr||(old&&old.r)||0};
     t.status=lab(t,'status:'); by[e.n]=t;
   });
   return Object.keys(by).map(function(k){return by[k];});
@@ -284,6 +284,8 @@ function isAlive(a){return minutesSince(beat(a))<STALE_MIN;}
 function eventText(e){
   var st=lab({labels:e.labels||[]},'status:');
   if(/^claim/.test(e.action))return 'pris en charge ('+(PHASE_FR[e.phase]||e.phase||'')+')';
+  if(e.action==='created')return 'créé ('+(STATUS_FR[st]||st||'sans statut')+')';
+  if(e.action==='approved')return 'approuvé ('+(STATUS_FR[st]||st||'sans statut')+')';
   if(e.action==='flag')return 'attend un humain';
   if(e.action==='unflag')return 'blocage levé';
   return e.state==='closed'?'fermé':'statut : '+(STATUS_FR[st]||st||'sans statut');
