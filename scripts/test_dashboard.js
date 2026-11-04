@@ -375,6 +375,9 @@ const STUB = (opts) => `
   ], 120);
   page = await open({ preload: [SEARCH_SNAP] });
   view = await tab(page, 'Recherche');
+  check('filters are folded by default behind a chevron, with no count', (await page.getAttribute('#filtersToggle', 'aria-expanded')) === 'false' && (await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.$eval('#filtersCount', (e) => e.hidden)));
+  await page.click('#filtersToggle');
+  check('the chevron opens the filter panel: four groups', !(await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.locator('#searchFilters .fgrp').count()) === 4);
   check('search tab: shown, hash route, search card visible, new-request card hidden',
         !(await page.$eval('#search', (e) => e.hidden)) && (await page.$eval('#idea', (e) => e.hidden)) && (await page.evaluate(() => location.hash)) === '#recherche');
   check('no filter: every ticket is listed, epics and split stories included', (await rows(page)) === 6 && /6 sur 6 tickets ouverts/.test(view), view);
@@ -394,14 +397,14 @@ const STUB = (opts) => `
   check('level filter: epic only', (await rows(page)) === 1 && /#10/.test((await names())[0]) && /epic/.test(await text(page, '#view .row .meta')), JSON.stringify(await names()));
   await page.click('#searchFilters >> text=story'); await page.waitForTimeout(100);
   check('level filter: several levels are OR-ed (epic + story)', (await rows(page)) === 4, String(await rows(page)));
-  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
   await page.click('#searchFilters >> text=bug'); await page.waitForTimeout(100);
   check('type filter: bug only', (await rows(page)) === 1 && /#13/.test((await names())[0]), JSON.stringify(await names()));
   await page.click('#searchFilters >> text=bug');
   await page.click('#searchFilters >> text=feature'); await page.click('#searchFilters >> text=tâche'); await page.fill('#searchText', 'profil'); await page.waitForTimeout(100);
   check('keyword + type + level are AND-ed', (await rows(page)) === 1 && /#14/.test((await names())[0]), JSON.stringify(await names()));
   check('filter buttons reflect their state', (await page.getAttribute('#searchFilters >> text=feature', 'aria-pressed')) === 'true' && (await page.getAttribute('#searchFilters >> text=bug', 'aria-pressed')) === 'false');
-  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
   check('reset clears the keyword and the filters', (await page.inputValue('#searchText')) === '' && (await rows(page)) === 6);
   check('search results: levels shown as chips', /story/.test(await text(page, '#view')) && /epic/.test(await text(page, '#view')));
   const searchCmds = () => page.$$eval('#view .row a.btn', (as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
@@ -411,7 +414,7 @@ const STUB = (opts) => `
   await epicRow.locator('button:has-text("Options")').click(); await page.waitForTimeout(100);
   await epicRow.locator('.opts >> text=Enchaîner').click(); await epicRow.locator('.opts .seg button', { hasText: /^3$/ }).click(); await page.waitForTimeout(100);
   check('epic options: /pilot-auto 10 --multi 3 --next', (await searchCmds()).includes('/pilot-auto 10 --multi 3 --next'), JSON.stringify(await searchCmds()));
-  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  check('no active filter and no keyword: no chip, no reset button', (await page.locator('#activeFilters').textContent()) === '');
   await page.click('#searchText'); await page.keyboard.type('profil');
   await page.evaluate((e) => window.__push('events', 'live3', e), ev({}));
   await page.waitForTimeout(250);
@@ -437,6 +440,7 @@ const STUB = (opts) => `
   ], 120);
   page = await open({ preload: [STATE_SNAP] });
   await tab(page, 'Recherche');
+  await page.click('#filtersToggle');
   const stBtn = (grp, key) => page.locator(`#searchFilters button[data-map="${grp}"][data-key="${key}"]`);
   const nums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
   const setOf = (...a) => JSON.stringify(a.sort());
@@ -450,13 +454,13 @@ const STUB = (opts) => `
   check('several states are OR-ed', JSON.stringify(await nums()) === setOf('#11', '#12', '#13'), JSON.stringify(await nums()));
   await page.locator('#searchFilters button[data-map="types"][data-key="bug"]').click(); await page.waitForTimeout(100);
   check('state + type are AND-ed', JSON.stringify(await nums()) === setOf('#13'), JSON.stringify(await nums()));
-  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
   await stBtn('states', 'none').click(); await page.waitForTimeout(100);
   check('"sans statut" finds the epics', JSON.stringify(await nums()) === setOf('#10'), JSON.stringify(await nums()));
-  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
   await stBtn('states', 'scoping').click(); await page.waitForTimeout(100);
   check('a status outside the process still filters', JSON.stringify(await nums()) === setOf('#16'), JSON.stringify(await nums()));
-  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
   await stBtn('flags', 'needs-human').click(); await page.waitForTimeout(100);
   check('flag "attend un humain"', JSON.stringify(await nums()) === setOf('#13'), JSON.stringify(await nums()));
   await stBtn('flags', 'on-hold').click(); await page.waitForTimeout(100);
@@ -464,7 +468,15 @@ const STUB = (opts) => `
   await stBtn('states', 'backlog').click(); await page.waitForTimeout(100);
   check('flag + state are AND-ed', JSON.stringify(await nums()) === setOf('#13'), JSON.stringify(await nums()));
   check('chips reflect their state', (await stBtn('states', 'backlog').getAttribute('aria-pressed')) === 'true' && (await stBtn('states', 'qa').getAttribute('aria-pressed')) === 'false');
-  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  check('active filters are listed as removable chips with a count, even when the panel is folded',
+        (await page.locator('#activeFilters .chip.rm').allTextContents()).map((x) => x.trim()).sort().join('|') === 'Drapeau : attend un humain ✕|Drapeau : en pause ✕|État : à spécifier ✕' &&
+        (await text(page, '#filtersCount')) === '3', await page.locator('#activeFilters').textContent());
+  await page.click('#filtersToggle');
+  check('folding the panel keeps the chips and the count', (await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.locator('#activeFilters .chip.rm').count()) === 3 && (await text(page, '#filtersCount')) === '3');
+  await page.locator('#activeFilters .chip.rm', { hasText: 'en pause' }).click(); await page.waitForTimeout(100);
+  check('a chip removes its filter', JSON.stringify(await nums()) === setOf('#13') && (await text(page, '#filtersCount')) === '2' && (await page.locator('#activeFilters .chip.rm').count()) === 2, JSON.stringify(await nums()));
+  await page.click('#filtersToggle');
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
   check('reset clears state and flag filters', (await nums()).length === 7 && (await stBtn('states', 'backlog').getAttribute('aria-pressed')) === 'false' && (await stBtn('flags', 'on-hold').getAttribute('aria-pressed')) === 'false');
   check('state filter: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'states.png') });

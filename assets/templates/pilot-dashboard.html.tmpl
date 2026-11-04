@@ -99,6 +99,9 @@ nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent
 .search input[type=search]{width:100%;min-height:38px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;font:inherit;color:inherit}
 .filters{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
 .filters .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fpanel{display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--line);padding-top:10px}
+.fgrp{display:flex;flex-direction:column;gap:6px}
+.chip.rm{border:0;cursor:pointer;font:inherit;font-size:12px;line-height:20px}
 .tog{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 12px;min-height:30px}
 .tog[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .idea .seg{align-self:flex-start;max-width:100%;overflow-x:auto}
@@ -433,13 +436,29 @@ function matches(t){
   if(fl.length&&!fl.some(function(k){return has(t,k);}))return false;
   return true;
 }
+var FGROUPS=[['levels','Niveau'],['types','Type'],['states','État'],['flags','Drapeau']];
+function filterName(map,k){
+  if(map==='levels')return LEVEL_FR[k]||k;
+  if(map==='states')return k==='none'?'sans statut':(STATUS_FR[k]||k);
+  if(map==='flags')return FLAG_FR[k]||k;
+  return k;
+}
+function activeFilters(){
+  var out=[]; FGROUPS.forEach(function(g){Object.keys(S[g[0]]).forEach(function(k){if(S[g[0]][k])out.push({map:g[0],group:g[1],key:k});});}); return out;
+}
+function clearSearch(){S.q='';S.levels={};S.types={};S.states={};S.flags={};S.page=0;document.getElementById('searchText').value='';render();}
 function buildSearch(){
-  var box=document.getElementById('search');
+  var box=document.getElementById('search'), open=store('cp.fold.filters')==='1';
+  var chev=h('span',{class:'chev','aria-hidden':'true'},open?'▾':'▸'), panel=h('div',{class:'fpanel',id:'searchFilters',hidden:open?null:true});
+  var tog=h('button',{type:'button',class:'btn',id:'filtersToggle','aria-expanded':String(open),'aria-controls':'searchFilters',
+    onclick:function(){var o=panel.hidden;panel.hidden=!o;tog.setAttribute('aria-expanded',String(o));chev.textContent=o?'▾':'▸';store('cp.fold.filters',o?'1':'0');}},
+    chev,' Filtres ',h('span',{class:'chip acc',id:'filtersCount',hidden:true},'0'));
   box.append(
     h('h2',{},'Recherche'),
     h('label',{for:'searchText',class:'note'},'Mot-clé dans le titre ou le numéro (majuscules et accents ignorés). Plusieurs mots : tous doivent y figurer.'),
     h('input',{type:'search',id:'searchText',autocomplete:'off',placeholder:'Ex. : profil, #418, mot de passe',oninput:function(e){S.q=e.target.value;S.page=0;render();}}),
-    h('div',{class:'filters',id:'searchFilters'}));
+    h('div',{class:'filters'},tog,h('div',{class:'filters',id:'activeFilters'})),
+    panel);
   updateSearch();
 }
 var STATE_ORDER=['draft','backlog','in-spec','dev-ready','in-dev','changes-requested','review-ready','in-review','approved','qa','in-qa','split'];
@@ -454,17 +473,21 @@ function updateSearch(){
   var f=document.getElementById('searchFilters'), keys=stateKeys(), sig=keys.join(',');
   if(!f.firstChild||S._sk!==sig){
     S._sk=sig;
-    var grp=function(label,ks,mapName,names){
-      return h('div',{class:'grp',role:'group','aria-label':label},h('span',{class:'note'},label),
-        ks.map(function(k){return h('button',{class:'tog',type:'button','data-map':mapName,'data-key':k,'aria-pressed':'false',onclick:function(){S[mapName][k]=!S[mapName][k];S.page=0;render();}},names&&names[k]?names[k]:k);}));
+    var grp=function(label,ks,mapName){
+      return h('div',{class:'fgrp',role:'group','aria-label':label},h('span',{class:'note'},label),
+        h('div',{class:'chips'},ks.map(function(k){return h('button',{class:'tog',type:'button','data-map':mapName,'data-key':k,'aria-pressed':'false',onclick:function(){S[mapName][k]=!S[mapName][k];S.page=0;render();}},filterName(mapName,k));})));
     };
-    var stNames={none:'sans statut'}; keys.forEach(function(k){if(STATUS_FR[k])stNames[k]=STATUS_FR[k];});
-    f.replaceChildren(grp('Niveau',LEVELS,'levels',LEVEL_FR),grp('Type',TYPES,'types'),grp('État',keys,'states',stNames),grp('Drapeau',['needs-human','on-hold'],'flags',FLAG_FR),
-      h('button',{class:'btn ghost',type:'button',onclick:function(){S.q='';S.levels={};S.types={};S.states={};S.flags={};S.page=0;document.getElementById('searchText').value='';render();}},'Réinitialiser'));
+    f.replaceChildren(grp('Niveau',LEVELS,'levels'),grp('Type',TYPES,'types'),grp('État',keys,'states'),grp('Drapeau',['needs-human','on-hold'],'flags'));
   }
   Array.prototype.forEach.call(f.querySelectorAll('.tog'),function(b){
     b.setAttribute('aria-pressed',String(!!S[b.getAttribute('data-map')][b.getAttribute('data-key')]));
   });
+  var act=activeFilters(), cnt=document.getElementById('filtersCount'), box=document.getElementById('activeFilters');
+  cnt.textContent=String(act.length); cnt.hidden=!act.length;
+  box.replaceChildren.apply(box,act.map(function(a){
+    return h('button',{class:'chip acc rm',type:'button','aria-label':'Retirer le filtre '+a.group+' '+filterName(a.map,a.key),
+      onclick:function(){S[a.map][a.key]=false;S.page=0;render();}},a.group+' : '+filterName(a.map,a.key)+' ✕');
+  }).concat(act.length||S.q?[h('button',{class:'btn ghost',type:'button',onclick:clearSearch},'Réinitialiser')]:[]));
 }
 function vSearch(){
   var res=tickets().filter(matches).sort(function(a,b){return String(b.updated).localeCompare(String(a.updated));});
