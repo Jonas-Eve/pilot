@@ -129,11 +129,14 @@ from a previous run — the whole point is picking up upstream changes.
 
 6. **Update the state marker.** Set `lastSkillsSyncAt` (if step 2 changed anything),
    `lastProcessDocSyncAt` (if step 3 changed any of its files), and
-   `lastIntroSyncAt` (if step 4 changed anything) in `.pilot/state.json` to now.
+   `lastIntroSyncAt` (if step 4 changed anything) in `.pilot/state.json` to now, and
+   `pilotVersion` to the contents of `$PILOT_SRC/VERSION` (remember the previous value for
+   the report; a project without one predates versioning).
    `lastLabelsSyncAt` needs no action here — step 5's script bumps it itself when it runs
    successfully; `/pilot-dashboard` writes its own `dashboard*` fields.
 
-7. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result (a failed
+7. **Report.** Say which PILOT version the project moved from and to (`pilotVersion`). Run
+   `python3 .pilot/pilot.py doctor` and include its result (a failed
    `pilot-labels` check means step 5's label sync did not complete). Summarize what changed across steps 2-5: skills/agents added, updated,
    flagged as orphaned (and whether removed), each root file added, updated, flagged as
    orphaned (and whether removed), or left as-is and why, intro blocks resynced or

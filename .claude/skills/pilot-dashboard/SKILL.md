@@ -23,8 +23,9 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
 2. **Render.** Project name = `projectName` from `state.json`, HTML-escaped (`& < > " '`).
    Repo = `owner/repo` from `git config --get remote.origin.url`; it must match
    `[\w.-]+/[\w.-]+`, else stop and ask the human. Replace `{{PROJECT_NAME}}` and `{{REPO}}`
-   in the template, write the result to a temporary file, check no `{{` remains, and take
-   its `sha256sum`.
+   and `{{PILOT_VERSION}}` (the contents of `$PILOT_SRC/VERSION`, shown in the page's footer) in
+   the template, write the result to a temporary file, check no `{{` remains, and take its
+   `sha256sum`.
 3. **Publish** (skipped by `--refresh` when the hash is unchanged):
    - No `dashboardUrl` → ask the human to confirm creating a private artifact named
      "Cockpit <project name>", then publish the file with `icon: "board"`, a one-sentence

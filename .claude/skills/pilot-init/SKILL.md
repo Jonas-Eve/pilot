@@ -27,6 +27,7 @@ This skill's idempotency is tracked in `.pilot/state.json` at the project root:
 {
   "pilotInitialized": true,
   "pilotInitializedAt": "<ISO8601>",
+  "pilotVersion": "<MAJOR.MINOR.PATCH, from $PILOT_SRC/VERSION>",
   "projectName": "<name>",
   "archInitialized": false,
   "archInitializedAt": null,
@@ -140,7 +141,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
    command to run themselves later — don't block the rest of this skill on it.
 
 10. **Write the state marker.** Create `.pilot/state.json` per the schema above, with
-    `pilotInitialized: true`, the current timestamp, the project name, and
+    `pilotInitialized: true`, the current timestamp, the project name, `pilotVersion`, and
     `lastSkillsSyncAt`/`lastIntroSyncAt`/`lastProcessDocSyncAt`/`lastLabelsSyncAt` set to
     now (or left null for whichever of labels was skipped in step 9).
 
