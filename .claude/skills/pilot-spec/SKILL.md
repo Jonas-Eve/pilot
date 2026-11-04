@@ -212,9 +212,9 @@ what `--multi` means here.
      inherited": `type:feature`/`type:tech` for a dev task, `type:e2e` for the
      end-to-end one), its own written spec, and **`status:dev-ready` directly** — split
      and spec happen in the same pass, so a fresh task never stops at an intermediate
-     "scoped but not yet spec'd" status. Once a task is linked, `python3 .pilot/pilot.py event
-     <task> --action created --phase spec` gives its dashboard event (step 2a; it carries the
-     parent). For a
+     "scoped but not yet spec'd" status. Once the tasks are linked, one `python3 .pilot/pilot.py event
+     <task> <task>... --action created --phase spec` gives their dashboard events (step 2a;
+     they carry the parent). For a
      recorded dependency between two tasks, add a "Depends on #N" line to the
      dependent one's body (`.pilot/pilot-process.md` §2 "Dependencies between tasks of
      the same split" — also how the e2e task's dependencies on every sibling get

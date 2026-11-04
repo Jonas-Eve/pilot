@@ -8,9 +8,11 @@ source of truth, and a push that fails or is skipped never blocks, delays or cha
 database is available. Otherwise skip everything below, silently. Decide once per session.
 
 **What to push** (to the dashboard at `dashboardUrl`):
-- Every `event` returned by `.pilot/pilot.py claim|set|flag|unflag|event`: a new document in the
-  `events` collection, id `<epoch milliseconds>-<issue number>`, body = the event object as
-  returned. Always a new document, never an update.
+- Every `event` returned by `.pilot/pilot.py claim|set|flag|unflag`, and every entry of the
+  `events` list `.pilot/pilot.py event` returns for several tickets at once (write those in one
+  `ArtifactData` `batch`): a new document in the `events` collection, id `<epoch
+  milliseconds>-<issue number>`, body = the event object as returned. Always a new document,
+  never an update.
 - After a successful `claim`: its `activity` object as a document in the `activity`
   collection, id = its `id`, with two fields added: `auto` (`true` when this run is `--auto`,
   else `false`) and `lastBeat` (now, UTC ISO 8601, e.g. `date -u +%Y-%m-%dT%H:%M:%SZ`). Keep

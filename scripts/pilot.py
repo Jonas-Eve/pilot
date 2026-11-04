@@ -5,7 +5,7 @@
   pilot.py resolve <phase> <issue> [--resume]
   pilot.py claim   <phase> <issue> --mode fresh|reclaim|resume-orphaned|resume-cleared|rescope
   pilot.py set     <issue> [--status S] [--assign-me|--unassign] [--add L]... [--remove L]... [--close] [--pr N]
-  pilot.py event   <issue> --action NAME [--phase P]   # the ticket's current state as a dashboard event, no write
+  pilot.py event   <issue>... --action NAME [--phase P]  # those tickets' current state as dashboard events, no write
   pilot.py flag    <issue> --comment TEXT      # needs-human + the mandatory why/what's-needed comment
   pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
   pilot.py doctor  [--verbose]                 # preflight: can the commands above work here?
@@ -15,8 +15,8 @@ Every command takes `--repo owner/repo` (default: the git remote of the current 
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
 (JSON says why), 2 GitHub or usage failure.
 
-claim/set/flag/unflag also return an `event` (and claim an `activity`), and `event` builds one for a
-ticket the skill changed itself (Discovery): the ready-made payloads the skills forward to the
+claim/set/flag/unflag also return an `event` (and claim an `activity`), and `event` builds them for
+tickets the skill changed itself (Discovery, one call for all of them): the ready-made payloads the skills forward to the
 project's dashboard (pilot-link-dashboard.md). An event carries the ticket's parent, and the open
 PR (`set --pr N`) when the caller just opened one.
 
@@ -392,11 +392,14 @@ class Machine:
             event["pr"] = pr
         return event
 
-    def event(self, number, action, phase=None):
-        raw = self.gh.get_issue(number)
-        if raw is None:
-            raise Refused({"ok": False, "reason": "not-found", "issue": number})
-        return {"ok": True, "issue": number, "event": self._event(normalize(raw), action, phase)}
+    def events(self, numbers, action, phase=None):
+        events = []
+        for number in numbers:
+            raw = self.gh.get_issue(number)
+            if raw is None:
+                raise Refused({"ok": False, "reason": "not-found", "issue": number})
+            events.append(self._event(normalize(raw), action, phase))
+        return {"ok": True, "issues": list(numbers), "events": events}
 
     def snapshot(self):
         """Every open ticket as the dashboard's `snapshots/<owner>__<repo>` document."""
@@ -582,7 +585,7 @@ def build_parser():
     p.add_argument("--close", action="store_true")
     p.add_argument("--pr", type=int, help="the open PR that closes this ticket, forwarded in the event")
     p = sub.add_parser("event")
-    p.add_argument("issue", type=int)
+    p.add_argument("issues", type=int, nargs="+")
     p.add_argument("--action", required=True, help="what happened, e.g. created or approved")
     p.add_argument("--phase", help="e.g. discovery")
     p = sub.add_parser("snapshot")
@@ -608,7 +611,7 @@ def run(args, gh):
         assign = "me" if args.assign_me else "none" if args.unassign else None
         return machine.set(args.issue, args.status, assign, args.add, args.remove, args.close, args.pr)
     if args.cmd == "event":
-        return machine.event(args.issue, args.action, args.phase)
+        return machine.events(args.issues, args.action, args.phase)
     if args.cmd == "snapshot":
         doc = machine.snapshot()
         if not args.out:

@@ -412,18 +412,25 @@ class DashboardPayloadTests(unittest.TestCase):
         story = issue(5, ["type:feature", "level:story", "status:draft"], assignees=["bot"])
         story["parent_issue_url"] = "https://api.github.com/repos/o/r/issues/4"
         m, gh = machine([story])
-        got = m.event(5, "created", "discovery")
-        ev = got["event"]
+        got = m.events([5], "created", "discovery")
+        ev = got["events"][0]
         self.assertEqual((ev["kind"], ev["n"], ev["action"], ev["phase"], ev["parent"], ev["by"]), ("ticket", 5, "created", "discovery", 4, "bot"))
         self.assertEqual(ev["labels"], ["level:story", "status:draft", "type:feature"])
         self.assertEqual(gh.calls, [])  # read-only
         with self.assertRaises(pilot.Refused) as ctx:
-            m.event(99, "created")
-        self.assertEqual(ctx.exception.payload["reason"], "not-found")
+            m.events([5, 99], "created")
+        self.assertEqual((ctx.exception.payload["reason"], ctx.exception.payload["issue"]), ("not-found", 99))
+
+    def test_event_command_builds_one_event_per_ticket_in_one_call(self):
+        m, gh = machine([issue(1, ["level:epic"]), issue(2, ["status:draft"], assignees=["bot"]), issue(3, ["status:draft"])])
+        got = m.events([1, 2, 3], "approved", "discovery")
+        self.assertEqual([e["n"] for e in got["events"]], [1, 2, 3])
+        self.assertEqual(got["issues"], [1, 2, 3])
+        self.assertTrue(all(e["action"] == "approved" and e["phase"] == "discovery" for e in got["events"]))
 
     def test_cli_accepts_the_new_arguments(self):
-        args = pilot.build_parser().parse_args(["event", "7", "--action", "approved", "--phase", "discovery"])
-        self.assertEqual((args.cmd, args.issue, args.action, args.phase), ("event", 7, "approved", "discovery"))
+        args = pilot.build_parser().parse_args(["event", "7", "8", "--action", "approved", "--phase", "discovery"])
+        self.assertEqual((args.cmd, args.issues, args.action, args.phase), ("event", [7, 8], "approved", "discovery"))
         args = pilot.build_parser().parse_args(["set", "7", "--status", "review-ready", "--unassign", "--pr", "12"])
         self.assertEqual(args.pr, 12)
 
