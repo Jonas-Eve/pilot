@@ -94,6 +94,7 @@ what `--multi` means here.
    already holds its claim. Exit 1 with `reason: lost-race` →
    stand down and return to step 1 for a different ticket (bare pool only); any other
    refusal → report `reason` and stop.
+2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Branch on `level:`:
    - **`level:story`**: run the architect+tech lead dialogue
      (`.pilot/pilot-link-agent-dialogue.md`) — or, with `--multi <N>`, an N-instance

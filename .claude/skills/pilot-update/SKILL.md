@@ -1,6 +1,6 @@
 ---
 name: pilot-update
-description: "Re-syncs everything PILOT-owned in a project from a fresh clone of github.com/Jonas-Eve/pilot — every skill under .claude/skills/ and agent under .claude/agents/, .pilot/pilot-process.md, its human-facing companion doc(s) (.pilot/pilot-process-*.md), its cross-skill link doc(s) (.pilot/pilot-link-*.md), its per-duty task doc(s) (.pilot/pilot-task-*.md, injected into an Agent call's prompt by the phase skill that owns that duty), the status-cascade GitHub Actions workflow, the PILOT:INTRO/PILOT:MAINTENANCE marked blocks in CLAUDE.md/README.md, and the GitHub labels. Overwrites, with no merge: any local edits to a PILOT-owned file are lost, so it diffs and confirms before overwriting each one, and flags any locally-copied skill/agent, .pilot/pilot-process-*.md, .pilot/pilot-link-*.md, or .pilot/pilot-task-*.md file no longer existing upstream (renamed or removed) for removal. Use periodically, or whenever you suspect PILOT's own skills/docs/labels have changed upstream, to pick up those changes in the project."
+description: "Re-syncs everything PILOT-owned in a project from a fresh clone of github.com/Jonas-Eve/pilot — every skill under .claude/skills/ and agent under .claude/agents/, .pilot/pilot-process.md, its human-facing companion doc(s) (.pilot/pilot-process-*.md), its cross-skill link doc(s) (.pilot/pilot-link-*.md), its per-duty task doc(s) (.pilot/pilot-task-*.md, injected into an Agent call's prompt by the phase skill that owns that duty), the status-cascade GitHub Actions workflow, the PILOT:INTRO/PILOT:MAINTENANCE marked blocks in CLAUDE.md/README.md, the GitHub labels, and the project's dashboard artifact when it has one. Overwrites, with no merge: any local edits to a PILOT-owned file are lost, so it diffs and confirms before overwriting each one, and flags any locally-copied skill/agent, .pilot/pilot-process-*.md, .pilot/pilot-link-*.md, or .pilot/pilot-task-*.md file no longer existing upstream (renamed or removed) for removal. Use periodically, or whenever you suspect PILOT's own skills/docs/labels have changed upstream, to pick up those changes in the project."
 disable-model-invocation: true
 ---
 
@@ -21,7 +21,7 @@ from a previous run — the whole point is picking up upstream changes.
 - **Every skill under `.claude/skills/`** whose directory name matches one that exists
   under `$PILOT_SRC/.claude/skills/` (i.e. every PILOT skill: `pilot-discovery`,
   `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa`, `pilot-auto`, `pilot-help`,
-  `pilot-init`, `pilot-init-archi`, `pilot-update`) — and every agent under `.claude/agents/` matching
+  `pilot-init`, `pilot-init-archi`, `pilot-update`, `pilot-dashboard`) — and every agent under `.claude/agents/` matching
   `$PILOT_SRC/.claude/agents/pilot-*.md` — are PILOT-owned. This command re-copies all of them
   verbatim from `$PILOT_SRC`, **overwriting with no merge**. If a project-local skill or
   agent directory doesn't match anything under `$PILOT_SRC` (the project's own, unrelated
@@ -42,6 +42,9 @@ from a previous run — the whole point is picking up upstream changes.
   blocks** in the project's `CLAUDE.md` and `README.md` are PILOT-owned content embedded
   inside otherwise project-owned files —
   see step 4.
+- **The dashboard artifact**, when `.pilot/state.json` has a `dashboardUrl`, is PILOT-owned
+  too: it is republished from the current template at the same address (step 5b); its data
+  (snapshot, events, activity) is kept, and anything edited in the page itself is lost.
 - **GitHub labels** are re-applied idempotently (create-or-update, never delete) — safe
   to always re-run.
 - **`.github/pull_request_template.md`** is explicitly **not** PILOT-owned, even though
@@ -117,11 +120,18 @@ from a previous run — the whole point is picking up upstream changes.
    exact command to run themselves later — don't block steps 2-4 or 6 on it, and leave
    `lastLabelsSyncAt` as whatever it already was.
 
+5b. **Update the dashboard.** Only when `.pilot/state.json` has a `dashboardUrl`: run
+   `/pilot-dashboard` (reusing this `$PILOT_SRC`), after asking the human whether to
+   republish — it does nothing if the rendered page is unchanged, and a refusal or failure
+   there (e.g. the current user can't edit the artifact) never blocks the rest of the update.
+   Without a `dashboardUrl`, don't create one here: mention in the report that
+   `/pilot-dashboard` can.
+
 6. **Update the state marker.** Set `lastSkillsSyncAt` (if step 2 changed anything),
    `lastProcessDocSyncAt` (if step 3 changed any of its files), and
    `lastIntroSyncAt` (if step 4 changed anything) in `.pilot/state.json` to now.
    `lastLabelsSyncAt` needs no action here — step 5's script bumps it itself when it runs
-   successfully.
+   successfully; `/pilot-dashboard` writes its own `dashboard*` fields.
 
 7. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result (a failed
    `pilot-labels` check means step 5's label sync did not complete). Summarize what changed across steps 2-5: skills/agents added, updated,

@@ -71,6 +71,7 @@ pre-submission pause as the last check against picking the wrong one.
    `status:in-review`, re-read to confirm). Exit 1 with `reason: lost-race` → stand down and
    return to step 1 for a different candidate (bare pool only — report nothing to do if a
    specific ticket was requested). Any other refusal → report `reason` and stop.
+2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's,
    `.pilot/pilot-process.md` §2 "`type:` is never inherited") to pick the **default**
    reviewer set — the architect is never part of either default, added only via

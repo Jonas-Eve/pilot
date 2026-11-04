@@ -41,7 +41,7 @@ and report them grouped into the three fixed categories below (this grouping is
 structural — the five-phase order comes from `.pilot/pilot-process.md`'s state machine —
 not something to re-derive per run):
 
-1. Bootstrap/maintenance: `pilot-init`, `pilot-init-archi`, `pilot-update`.
+1. Bootstrap/maintenance: `pilot-init`, `pilot-init-archi`, `pilot-update`, `pilot-dashboard`.
 2. The five phases, in phase order: `pilot-discovery`, `pilot-spec`,
    `pilot-dev`, `pilot-review`, `pilot-qa`.
 3. Dispatch/utility: `pilot-auto`, `pilot-help`.
