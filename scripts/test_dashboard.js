@@ -68,7 +68,10 @@ const STUB = (opts) => `
   check('no repo selector, no source selector', (await page.$('#repoInput')) === null && (await page.$('#modeSeg')) === null);
   check('only the database capability is requested (no connector, no user)', JSON.stringify(await page.evaluate(() => window.__uses)) === '["db"]', JSON.stringify(await page.evaluate(() => window.__uses)));
   const banner = await text(page, '#banner');
-  check('fresh snapshot: counts and age shown, no refresh hint', /1 tickets ouverts/.test(banner) && /instantané pris/.test(banner) && !/Copier/.test(banner), banner);
+  check('fresh snapshot: counts and age shown, no stale warning', /1 tickets ouverts/.test(banner) && /instantané pris/.test(banner) && !/Instantané ancien/.test(banner), banner);
+  check('fresh snapshot: a refresh button is always there (opens /pilot-dashboard --refresh), with its copy fallback',
+        /Actualiser l’instantané/.test(banner) && /Copier \/pilot-dashboard --refresh/.test(banner) &&
+        (await page.$$eval('#banner a.btn', (as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])))).includes('/pilot-dashboard --refresh'), banner);
   check('no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
@@ -363,8 +366,15 @@ const STUB = (opts) => `
   check('filter buttons reflect their state', (await page.getAttribute('#searchFilters >> text=feature', 'aria-pressed')) === 'true' && (await page.getAttribute('#searchFilters >> text=bug', 'aria-pressed')) === 'false');
   await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
   check('reset clears the keyword and the filters', (await page.inputValue('#searchText')) === '' && (await rows(page)) === 6);
-  check('search results: levels shown as chips, GitHub link for a ticket with no PILOT action',
-        /story/.test(await text(page, '#view')) && (await hrefs(page, '#view .row a.btn')).some((l) => l.href === `https://github.com/${REPO}/issues/10`), JSON.stringify(await hrefs(page, '#view .row a.btn')));
+  check('search results: levels shown as chips', /story/.test(await text(page, '#view')) && /epic/.test(await text(page, '#view')));
+  const searchCmds = () => page.$$eval('#view .row a.btn', (as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
+  check('an epic and a split story get a /pilot-auto action (auto only, no pair)', (await searchCmds()).includes('/pilot-auto 10') && (await searchCmds()).includes('/pilot-auto 15') && !(await searchCmds()).includes('/pilot-spec 15'), JSON.stringify(await searchCmds()));
+  const epicRow = page.locator('#view .row', { hasText: '#10 ' });
+  check('an epic row has no pair button', (await epicRow.locator('a.btn', { hasText: /pair/ }).count()) === 0 && (await epicRow.locator('a.btn', { hasText: /auto/ }).count()) === 1);
+  await epicRow.locator('button:has-text("Options")').click(); await page.waitForTimeout(100);
+  await epicRow.locator('.opts >> text=Enchaîner').click(); await epicRow.locator('.opts .seg button', { hasText: /^3$/ }).click(); await page.waitForTimeout(100);
+  check('epic options: /pilot-auto 10 --multi 3 --next', (await searchCmds()).includes('/pilot-auto 10 --multi 3 --next'), JSON.stringify(await searchCmds()));
+  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
   await page.click('#searchText'); await page.keyboard.type('profil');
   await page.evaluate((e) => window.__push('events', 'live3', e), ev({}));
   await page.waitForTimeout(250);
