@@ -246,6 +246,60 @@ const STUB = (opts) => `
   check('overview: collapsing goes back to 8', (await cards()) === 8);
   await page.close();
 
+  // ---- search: keyword (case/accent-insensitive contains) + level + type ----
+  const SEARCH_SNAP = snapshot([
+    ticket(10, ['type:feature', 'level:epic'], { t: 'Profil d\'accessibilité : page profil' }),
+    ticket(11, ['type:feature', 'level:story', 'status:qa'], { t: 'Saisir mes données sensibles' }),
+    ticket(12, ['type:tech', 'level:story', 'status:backlog'], { t: 'Cache des états d\'équipements' }),
+    ticket(13, ['type:bug', 'level:task', 'status:backlog'], { t: 'Bug : pictogramme masqué' }),
+    ticket(14, ['type:feature', 'level:task', 'status:dev-ready'], { t: 'ÉCRAN du Profil voyageur' }),
+    ticket(15, ['type:feature', 'level:story', 'status:split'], { t: 'Story déjà découpée' }),
+  ], 120);
+  page = await open({ preload: [SEARCH_SNAP] });
+  view = await tab(page, 'Recherche');
+  check('search tab: shown, hash route, search card visible, new-request card hidden',
+        !(await page.$eval('#search', (e) => e.hidden)) && (await page.$eval('#idea', (e) => e.hidden)) && (await page.evaluate(() => location.hash)) === '#recherche');
+  check('no filter: every ticket is listed, epics and split stories included', (await rows(page)) === 6 && /6 sur 6 tickets ouverts/.test(view), view);
+  const names = () => page.$$eval('#view .row .t', (e) => e.map((x) => x.textContent.trim()));
+  await page.fill('#searchText', 'PROFIL');
+  check('keyword: case-insensitive contains on the title', (await rows(page)) === 2 && (await names()).every((n) => /profil/i.test(n)), JSON.stringify(await names()));
+  await page.fill('#searchText', 'ecran');
+  check('keyword: accent-insensitive (ecran matches ÉCRAN)', (await rows(page)) === 1 && /#14/.test((await names())[0]), JSON.stringify(await names()));
+  await page.fill('#searchText', 'profil voyageur');
+  check('several words: all must be present', (await rows(page)) === 1 && /#14/.test((await names())[0]), JSON.stringify(await names()));
+  await page.fill('#searchText', '#12');
+  check('keyword: matches the ticket number', (await rows(page)) === 1 && /#12/.test((await names())[0]), JSON.stringify(await names()));
+  await page.fill('#searchText', 'zzz');
+  check('no match: empty state', (await rows(page)) === 0 && /Aucun ticket ne correspond/.test(await text(page, '#view')));
+  await page.fill('#searchText', '');
+  await page.click('#searchFilters >> text=epic'); await page.waitForTimeout(100);
+  check('level filter: epic only', (await rows(page)) === 1 && /#10/.test((await names())[0]) && /epic/.test(await text(page, '#view .row .meta')), JSON.stringify(await names()));
+  await page.click('#searchFilters >> text=story'); await page.waitForTimeout(100);
+  check('level filter: several levels are OR-ed (epic + story)', (await rows(page)) === 4, String(await rows(page)));
+  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await page.click('#searchFilters >> text=bug'); await page.waitForTimeout(100);
+  check('type filter: bug only', (await rows(page)) === 1 && /#13/.test((await names())[0]), JSON.stringify(await names()));
+  await page.click('#searchFilters >> text=bug');
+  await page.click('#searchFilters >> text=feature'); await page.click('#searchFilters >> text=tâche'); await page.fill('#searchText', 'profil'); await page.waitForTimeout(100);
+  check('keyword + type + level are AND-ed', (await rows(page)) === 1 && /#14/.test((await names())[0]), JSON.stringify(await names()));
+  check('filter buttons reflect their state', (await page.getAttribute('#searchFilters >> text=feature', 'aria-pressed')) === 'true' && (await page.getAttribute('#searchFilters >> text=bug', 'aria-pressed')) === 'false');
+  await page.click('#searchFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  check('reset clears the keyword and the filters', (await page.inputValue('#searchText')) === '' && (await rows(page)) === 6);
+  check('search results: levels shown as chips, GitHub link for a ticket with no PILOT action',
+        /story/.test(await text(page, '#view')) && (await hrefs(page, '#view .row a.btn')).some((l) => l.href === `https://github.com/${REPO}/issues/10`), JSON.stringify(await hrefs(page, '#view .row a.btn')));
+  await page.click('#searchText'); await page.keyboard.type('profil');
+  await page.evaluate((e) => window.__push('events', 'live3', e), ev({}));
+  await page.waitForTimeout(250);
+  check('a live update keeps the typed keyword and the focus', (await page.inputValue('#searchText')) === 'profil' && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'searchText');
+  check('search: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.screenshot({ path: path.join(TMP, 'search.png') });
+  await page.close();
+
+  page = await open({ preload: [snapshot(many)] });
+  await tab(page, 'Recherche');
+  check('search results are paginated', (await rows(page)) === 20 && /Page 1 sur 3 · 45 tickets/.test(await text(page, '#view')));
+  await page.close();
+
   // ---- renderer: the project name is HTML-escaped ----
   const escaped = render('A<b>"x"&y', 'o/r', path.join(TMP, 'escaped.html'));
   page = await browser.newPage(); await page.goto(escaped);

@@ -86,7 +86,13 @@ nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent
 .refresh{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
 .idea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .idea textarea{width:100%;min-height:72px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font:inherit;color:inherit;resize:vertical}
+[hidden]{display:none!important}
 .idea .cmd{overflow-wrap:anywhere}
+.search input[type=search]{width:100%;min-height:38px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;font:inherit;color:inherit}
+.filters{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.filters .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tog{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 12px;min-height:30px}
+.tog[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .idea .seg{align-self:flex-start;max-width:100%;overflow-x:auto}
 a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
 .pager{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
@@ -113,6 +119,7 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
   <nav class="tabs" id="tabs"></nav>
   <div id="banner"></div>
   <section id="idea" class="idea" aria-label="Nouvelle demande" hidden></section>
+  <section id="search" class="idea search" aria-label="Recherche" hidden></section>
   <main id="view"></main>
 </div>
 <div id="modal"></div>
@@ -185,6 +192,7 @@ var SAMPLE=[
   ex(107,'Notification de relais humain',['type:feature','level:task','priority:P1','status:review-ready'],12),
   ex(108,'E2E : parcours de réservation assistée',['type:e2e','level:task','priority:P1','status:in-review','needs-human'],26),
   ex(109,'Migration du stockage des profils',['type:tech','level:task','priority:P2','status:approved'],2),
+  ex(100,'Parcours des voyageurs seniors',['type:feature','level:epic'],60),
   ex(110,'Profil voyageur senior',['type:feature','level:story','priority:P1','status:qa'],40)
 ].map(function(t){t.status=lab(t,'status:');return t;});
 
@@ -192,7 +200,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech',
-  tab:'file', page:0, expanded:{},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -325,6 +333,22 @@ function pager(total){
     h('span',{class:'note'},'Page '+(S.page+1)+' sur '+pages+' · '+total+' tickets'),
     h('button',{class:'btn',type:'button',disabled:S.page>=pages-1,onclick:function(){go(S.page+1);}},'Suivant'));
 }
+function ticketRow(t,withLevel){
+  var a=actionFor(t), canAuto=a.kind==='run'&&!a.pairOnly;
+  return h('div',{class:'row'+(has(t,'needs-human')?' flag':'')},
+        h('div',{class:'main'},
+          h('div',{class:'t'},h('span',{class:'num'},'#'+t.n+' '),t.title),
+          h('div',{class:'meta'},withLevel&&lab(t,'level:')?h('span',{class:'chip'},LEVEL_FR[lab(t,'level:')]||lab(t,'level:')):null,ticketChips(t),h('span',{class:'note'},ago(t.updated)),
+            a.kind==='run'?h('span',{class:'cmd'},a.cmd+(canAuto?'':'  (pair)')):null)),
+        h('div',{class:'acts'},
+          a.kind==='run'?[
+            canAuto?openLink(a.cmd+' --auto','Ouvrir (auto)',true):null,
+            openLink(a.cmd,canAuto?'Ouvrir (pair)':'Ouvrir en pair',!canAuto),
+            canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd+' --auto',e.target);}},'Copier auto'):null,
+            h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd,e.target);}},canAuto?'Copier pair':'Copier')]:null,
+          a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null));
+}
+
 function vFile(){
   var mine=tickets().filter(function(t){var p=phaseOf(t.status);return p&&(S.role==='tous'||p.role===S.role);}).sort(byUrgency);
   var pages=Math.max(1,Math.ceil(mine.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
@@ -334,22 +358,54 @@ function vFile(){
     h('h2',{},'Ma file · '+roleTxt+' · '+mine.length),
     h('p',{class:'note'},'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'),
     pager(mine.length),
-    shown.length?shown.map(function(t){
-      var a=actionFor(t), canAuto=a.kind==='run'&&!a.pairOnly;
-      return h('div',{class:'row'+(has(t,'needs-human')?' flag':'')},
-        h('div',{class:'main'},
-          h('div',{class:'t'},h('span',{class:'num'},'#'+t.n+' '),t.title),
-          h('div',{class:'meta'},ticketChips(t),h('span',{class:'note'},ago(t.updated)),
-            a.kind==='run'?h('span',{class:'cmd'},a.cmd+(canAuto?'':'  (pair)')):null)),
-        h('div',{class:'acts'},
-          a.kind==='run'?[
-            canAuto?openLink(a.cmd+' --auto','Ouvrir (auto)',true):null,
-            openLink(a.cmd,canAuto?'Ouvrir (pair)':'Ouvrir en pair',!canAuto),
-            canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd+' --auto',e.target);}},'Copier auto'):null,
-            h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd,e.target);}},canAuto?'Copier pair':'Copier')]:null,
-          a.kind==='human'||a.kind==='merge'||a.kind==='hold'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null));
-    }):h('div',{class:'empty'},'Rien n’attend ce rôle pour le moment.'),
+    shown.length?shown.map(function(t){return ticketRow(t);    }):h('div',{class:'empty'},'Rien n’attend ce rôle pour le moment.'),
     shown.length>5?pager(mine.length):null);
+}
+
+/* ---------- search: keyword (case- and accent-insensitive "contains", every word must match) + level + type ---------- */
+var LEVEL_FR={epic:'epic',story:'story',task:'tâche'}, LEVELS=['epic','story','task'], TYPES=['feature','tech','bug','e2e'];
+function fold(x){return String(x==null?'':x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+function matches(t){
+  var hay=fold('#'+t.n+' '+t.title), words=fold(S.q).split(/\s+/).filter(Boolean), i;
+  for(i=0;i<words.length;i++)if(hay.indexOf(words[i].replace(/^#/,''))<0)return false;
+  var lv=LEVELS.filter(function(k){return S.levels[k];}), ty=TYPES.filter(function(k){return S.types[k];});
+  if(lv.length&&lv.indexOf(lab(t,'level:'))<0)return false;
+  if(ty.length&&ty.indexOf(lab(t,'type:'))<0)return false;
+  return true;
+}
+function buildSearch(){
+  var box=document.getElementById('search');
+  box.append(
+    h('h2',{},'Recherche'),
+    h('label',{for:'searchText',class:'note'},'Mot-clé dans le titre ou le numéro (majuscules et accents ignorés). Plusieurs mots : tous doivent y figurer.'),
+    h('input',{type:'search',id:'searchText',autocomplete:'off',placeholder:'Ex. : profil, #418, mot de passe',oninput:function(e){S.q=e.target.value;S.page=0;render();}}),
+    h('div',{class:'filters',id:'searchFilters'}));
+  updateSearch();
+}
+function updateSearch(){
+  var f=document.getElementById('searchFilters');
+  if(!f.firstChild){
+    var grp=function(label,keys,mapName,names){
+      return h('div',{class:'grp',role:'group','aria-label':label},h('span',{class:'note'},label),
+        keys.map(function(k){return h('button',{class:'tog',type:'button','data-map':label,'data-key':k,'aria-pressed':'false',onclick:function(){S[mapName][k]=!S[mapName][k];S.page=0;render();}},names?names[k]:k);}));
+    };
+    f.append(grp('Niveau',LEVELS,'levels',LEVEL_FR),grp('Type',TYPES,'types'),
+      h('button',{class:'btn ghost',type:'button',onclick:function(){S.q='';S.levels={};S.types={};S.page=0;document.getElementById('searchText').value='';render();}},'Réinitialiser'));
+  }
+  Array.prototype.forEach.call(f.querySelectorAll('.tog'),function(b){
+    var m=b.getAttribute('data-map')==='Niveau'?S.levels:S.types;
+    b.setAttribute('aria-pressed',String(!!m[b.getAttribute('data-key')]));
+  });
+}
+function vSearch(){
+  var res=tickets().filter(matches).sort(function(a,b){return String(b.updated).localeCompare(String(a.updated));});
+  var pages=Math.max(1,Math.ceil(res.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
+  var shown=res.slice(S.page*PAGE_SIZE,(S.page+1)*PAGE_SIZE);
+  return h('div',{class:'list'},
+    h('h2',{},'Résultats · '+res.length+' sur '+tickets().length+' tickets ouverts'),
+    pager(res.length),
+    shown.length?shown.map(function(t){return ticketRow(t,true);}):h('div',{class:'empty'},'Aucun ticket ne correspond.'),
+    shown.length>5?pager(res.length):null);
 }
 
 function vOverview(){
@@ -447,21 +503,23 @@ function renderChrome(){
     return h('button',{type:'button','aria-pressed':String(S.role===r[0]),onclick:function(){S.role=r[0];S.page=0;store('cp.role',r[0]);render();}},r[1]);}));
   var alive=S.activity.filter(isAlive).length;
   var tabs=document.getElementById('tabs');
-  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['activite','Activité'+(alive?' ('+alive+')':'')]].map(function(t){
+  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')]].map(function(t){
     return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
   renderChrome();renderConn();renderBanner();
   document.getElementById('idea').hidden=S.tab!=='file';updateIdea();
+  document.getElementById('search').hidden=S.tab!=='recherche';updateSearch();
   var v=document.getElementById('view');
-  v.replaceChildren(S.tab==='ensemble'?vOverview():S.tab==='activite'?vActivity():vFile());
+  v.replaceChildren(S.tab==='ensemble'?vOverview():S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():vFile());
 }
 
 /* ---------- boot ---------- */
-function fromHash(){var t=(location.hash||'').slice(1); if(t==='file'||t==='ensemble'||t==='activite')S.tab=t;}
+function fromHash(){var t=(location.hash||'').slice(1); if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite')S.tab=t;}
 window.addEventListener('hashchange',function(){fromHash();render();});
 fromHash();
 buildIdea();
+buildSearch();
 render();
 if(window.claude&&window.claude.use){
   window.claude.use('db').then(function(d){S.db=d;watchSnapshots();watchLive();}).catch(function(){S.db=null;watchSnapshots();});
