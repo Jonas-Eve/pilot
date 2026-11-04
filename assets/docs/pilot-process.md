@@ -52,8 +52,8 @@ to pair and need that flag to run unattended (§4 "Interaction modes").
 
 | # | Phase | Skill | Agent | Produces |
 |---|-------|-------|-------|----------|
-| 1 | Discovery | `/pilot-discovery` | `pilot-pm` + `pilot-architect`, in dialogue (§4 "Agent dialogue") | One or more `level:story` — `type:feature`, and/or `type:tech` when the same effort genuinely needs a technical enabler alongside the product work — grouped under a new/reused `level:epic` (`type:feature` only) if it doesn't fit in one, with dependencies between them and early architecture decisions (interfaces, infra shape) already anticipated. Never splits into tasks — that's phase 2's job. `status:draft` until human approval, then `status:backlog`. Never for `type:tech` standalone or `type:bug` (§2 "Three levels") |
-| 2 | Spec | `/pilot-spec` | `pilot-architect` + `pilot-techlead`, in dialogue — plus `pilot-pm` when a `type:feature` story is split | Splits an already-formalized story into dev-sized tasks (mandatory for `type:feature`, a judgment call for `type:tech`) **and** writes each resulting ticket's technical spec, in one continuous pass — or, given no ticket at all (`--tech`/`--bug`, explicit or auto-detected), originates the ticket itself first, standalone, then splits/specs it the same way. `status:dev-ready` per resulting ticket (the tracker parent, if split, lands on `status:split` instead) |
+| 1 | Discovery | `/pilot-discovery` | `pilot-pm` first frames the idea with the human, then `pilot-pm` + `pilot-architect`, in dialogue (§4 "Agent dialogue") | One or more `level:story` — `type:feature`, and/or `type:tech` when the same effort genuinely needs a technical enabler alongside the product work — grouped under a new/reused `level:epic` (`type:feature` only) if it doesn't fit in one, with dependencies between them and early architecture decisions (interfaces, infra shape) already anticipated. Never splits into tasks — that's phase 2's job. `status:draft` until human approval, then `status:backlog`. Never for `type:tech` standalone or `type:bug` (§2 "Three levels") |
+| 2 | Spec | `/pilot-spec` | `pilot-architect` + `pilot-techlead`, in dialogue — plus `pilot-pm` when a `type:feature` story is split | Splits an already-formalized story into dev-sized tasks (mandatory for `type:feature`, a judgment call for `type:tech`) **and** writes each resulting ticket's technical spec, in one continuous pass — or, given no ticket at all (`--tech`/`--bug`, explicit or auto-detected), originates the ticket itself first (with a human live, after the architect and tech lead have challenged and verified the raw need with them), standalone, then splits/specs it the same way. `status:dev-ready` per resulting ticket (the tracker parent, if split, lands on `status:split` instead) |
 | 3 | Dev | `/pilot-dev` | `pilot-dev`, or `pilot-e2e` instead for a `type:e2e` task | An implementation + pull request (following `.github/pull_request_template.md`) |
 | 4 | Review | `/pilot-review` | `pilot-techlead` + `pilot-pm` (feature/e2e) or `pilot-techlead` alone (tech/bug) — `pilot-architect` optional in either set | A submitted GitHub PR review (Approve/Request changes/Comment): `status:approved`, or blocking points (`needs-human`, plus `status:changes-requested` if code-level) — merges only with `--merge`, otherwise a human merges by hand |
 | 5 | Human QA (`type:feature` only) | `/pilot-qa` | `pilot-qa` | A human-confirmed `status:done` once every task has merged, or a `needs-human` flag with what failed (§7) |
@@ -899,8 +899,13 @@ sub-issues/spec; Dev: the PR) is each phase's own call, covered in its own `SKIL
 
 For Dev and Review a ticket already exists before the phase starts. **Discovery, and
 Spec's own no-ticket entry, are the cases where no ticket exists yet at the very first
-checkpoint** — the skill creates it right there (`status:draft`, §3) as soon as the
-agents' first draft is ready to show the human, instead of holding it in-conversation.
+checkpoint**. Before creating anything, the skill runs a framing stage with the human:
+in Discovery the PM alone challenges the idea with the human and restates it as a brief they
+validate; in Spec's no-ticket entry (human live) the architect alone does the same for the
+raw need. Only once the human has validated it does the agents' dialogue start (PM with
+architect; architect with tech lead, who checks the need against the code). Only then does the agents' dialogue start, and the skill creates the ticket
+(`status:draft`, §3) as soon as the first draft is ready to show the human, instead of
+holding it in-conversation. There is nothing to `--resume` during framing.
 Either way, the very last thing pair mode does — setting the phase's completion `status:`
 — is the same end-state `--auto` reaches in one pass, for the phases that have an `--auto`
 (Discovery/QA don't, above).

@@ -5,8 +5,10 @@ prompt, alternating turns with the architect's own `.pilot/pilot-task-anticipate
 (`.pilot/pilot-link-agent-dialogue.md`) — you're not drafting in isolation for the
 architect to challenge later, the two of you shape the story together.
 
-You receive a raw idea in free text (possibly after back-and-forth with the human, and
-with the architect's own turns already in the conversation). Turn it into a well-formed
+You receive the human-validated brief from the framing stage
+(`.pilot/pilot-task-frame-idea.md`), the raw idea it came from, and the architect's own turns
+already in the conversation. What the framing settled is decided: don't reopen it or ask the
+human again. Turn it into a well-formed
 `type:feature` GitHub issue — not code, or dependency/splitting decisions;
 that's Spec's job (phase 2). Architecture is the architect's own contribution to this same
 dialogue, not something you draft yourself — fold in what it raises rather than
@@ -48,9 +50,10 @@ duplicating it.
      look disconnected from the rest of the product. Don't reach for a design tool to
      produce a mockup; scoping and implementation shouldn't be left guessing either way.
    - Explicit out-of-scope notes for anything adjacent you're deliberately not including.
-   - **Open questions** — treat the raw idea as a starting point, not a spec: probe it for
-     holes before fixing acceptance criteria (undefined states, edge cases, rules or
-     numbers left unstated, a degenerate way to use the feature). Never invent an answer
+   - **Open questions** — framing already put the idea's holes to the human, so list only what
+     it left open or what the architect's turns newly raised, before fixing acceptance
+     criteria (undefined states, edge cases, rules or numbers left unstated, a degenerate
+     way to use the feature). Never invent an answer
      to a decision that belongs to the human. List the ones that would change the
      product's shape under an "Open questions" section (same language as the story),
      most shape-changing first, each with a provisional default so the story isn't

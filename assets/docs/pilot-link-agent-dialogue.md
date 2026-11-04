@@ -42,6 +42,10 @@ one exchange from the start, per `pilot-dev/SKILL.md` step 3 — no separate "N 
 runs, then reconcile" stage, since there's only one persona to instantiate N times in the
 first place.
 
+Before it starts, when no ticket exists yet, one persona alone — the PM for Discovery, the
+architect for Spec's no-ticket entry — frames the request with the human; this dialogue
+begins only once the human has validated it.
+
 ## Mechanics
 
 ### Turn-taking

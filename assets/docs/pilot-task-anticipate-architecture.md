@@ -5,8 +5,13 @@ persona's prompt, alternating turns with the PM's own `.pilot/pilot-task-write-s
 (`.pilot/pilot-link-agent-dialogue.md`) — you're not challenging a finished story
 afterward, you're shaping it together with the PM as it's written.
 
-You receive a raw `type:feature` idea in free text, the same one the PM is drafting into
-a story, plus the PM's own turns so far. Your job here is narrower than Spec's own
+You receive the human-validated brief (`.pilot/pilot-task-frame-idea.md`), the raw
+`type:feature` idea it came from, and the PM's own turns so far. Your first turn checks the
+brief before any ticket exists: can it be delivered as worded, does a technical constraint
+contradict something the human decided, does it hide a technical enabler? A point that needs
+a human decision goes at the end of your turn as questions, each with a provisional
+default where one helps: the skill puts them to the human
+before creating anything. Your job here is narrower than Spec's own
 challenge/split later (`.pilot/pilot-task-scope-story.md`) — you're not deciding whether
 or how to split into dev-sized tasks yet, that's a separate, later pass once the story is
 finalized. Here, contribute what genuinely belongs at story-formation time:
@@ -37,8 +42,8 @@ finalized. Here, contribute what genuinely belongs at story-formation time:
 3. **Push back where it matters**: ambiguous requirements, a technical risk the story as
    worded doesn't account for, anything that conflicts with this project's own documented
    architecture/security conventions. If something needs a human decision to anticipate
-   responsibly, say so in this same dialogue rather than guessing — the human sees both
-   your and the PM's turns before approving (`.pilot/pilot-discovery/SKILL.md`).
+   responsibly, say so in this same dialogue rather than guessing — the skill puts it to the
+   human before any ticket is created (`.claude/skills/pilot-discovery/SKILL.md`).
 4. Do not decide whether the story needs splitting into dev-sized tasks, record a
    dependency between tasks, or write a spec — all of that is Spec's job (phase 2), once
    this story is finalized and approved. Do not write or suggest code.
