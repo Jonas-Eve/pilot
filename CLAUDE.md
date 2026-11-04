@@ -99,6 +99,14 @@ itself.
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
   the file already exists there.
 
+- `scripts/pilot-pool.py` — read-only candidate selection for phases 2-5 (`spec`, `dev`,
+  `review`, `qa`), implementing `assets/docs/pilot-process.md` §4 "Picking the next ticket..."
+  and "Blocked-by dependencies" (pools, `can-resume`, exclusions, priority/blocks/age order)
+  and printing one compact JSON object. Never writes to GitHub — claiming and labels stay
+  with the calling skill. `scripts/test_pilot_pool.py` holds its offline tests
+  (`python3 -m unittest scripts/test_pilot_pool.py`); a change to §4's pool rules must be
+  mirrored there and in the script.
+
 Within a skill file, reference this repo's own assets via a fresh clone of
 `https://github.com/Jonas-Eve/pilot` into a scratch directory (called `$PILOT_SRC` in
 the skill files) — never a fixed path, there is no installed location.
