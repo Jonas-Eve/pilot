@@ -87,6 +87,12 @@ nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent
 .idea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .idea textarea{width:100%;min-height:72px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font:inherit;color:inherit;resize:vertical}
 [hidden]{display:none!important}
+.fold{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;padding:0;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:13px;color:var(--muted)}
+.fold .chev{display:inline-block;width:1em;color:var(--accent)}
+.fold .sum{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400}
+.foldbody{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.row .opts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;border-top:1px dashed var(--line);padding-top:8px}
+.row .opts .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .idea .cmd{overflow-wrap:anywhere}
 .search input[type=search]{width:100%;min-height:38px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;font:inherit;color:inherit}
 .filters{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
@@ -119,6 +125,7 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
   <nav class="tabs" id="tabs"></nav>
   <div id="banner"></div>
   <section id="idea" class="idea" aria-label="Nouvelle demande" hidden></section>
+  <section id="batch" class="idea" aria-label="Lancer en lot" hidden></section>
   <section id="search" class="idea search" aria-label="Recherche" hidden></section>
   <main id="view"></main>
 </div>
@@ -200,7 +207,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, ro:{}, ideaMulti:0, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -333,20 +340,55 @@ function pager(total){
     h('span',{class:'note'},'Page '+(S.page+1)+' sur '+pages+' · '+total+' tickets'),
     h('button',{class:'btn',type:'button',disabled:S.page>=pages-1,onclick:function(){go(S.page+1);}},'Suivant'));
 }
+var MULTI_CHOICES=[0,2,3,4,5];
+function multiSeg(cur,onpick,label){
+  return h('div',{class:'seg',role:'group','aria-label':label||'Multi'},MULTI_CHOICES.map(function(m){
+    return h('button',{type:'button','aria-pressed':String(cur===m),onclick:function(){onpick(m);}},m?String(m):'Non');}));
+}
+/* a card whose body folds behind a chevron so the ticket list stays in view; its state is remembered per viewer */
+function foldCard(box,key,title){
+  var open=store('cp.fold.'+key)==='1';
+  var chev=h('span',{class:'chev','aria-hidden':'true'},open?'▾':'▸'), sum=h('span',{class:'sum note',id:key+'Sum'});
+  var body=h('div',{class:'foldbody',id:key+'Body',hidden:open?null:true});
+  var btn=h('button',{type:'button',class:'fold',id:key+'Toggle','aria-expanded':String(open),'aria-controls':key+'Body',
+    onclick:function(){var o=body.hidden;body.hidden=!o;btn.setAttribute('aria-expanded',String(o));chev.textContent=o?'▾':'▸';store('cp.fold.'+key,o?'1':'0');}},chev,title,sum);
+  box.append(btn,body);
+  return body;
+}
+/* what one ticket row can launch, given its chosen options: --next rides it through every phase via /pilot-auto,
+   --multi N has N agents converge on the approach first (never on a resume, nor on QA) */
+function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0});}
+function rowCmds(t,a,o){
+  var canAuto=a.kind==='run'&&!a.pairOnly, multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
+  var mu=multiOK&&o.multi?' --multi '+o.multi:'';
+  return {canAuto:canAuto,multiOK:multiOK,
+    auto:canAuto?(o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu):null,
+    pair:a.cmd+mu};
+}
 function ticketRow(t,withLevel){
-  var a=actionFor(t), canAuto=a.kind==='run'&&!a.pairOnly;
+  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), hasOpts=rc.canAuto||rc.multiOK;
+  function set(k,v){o[k]=v;render();}
   return h('div',{class:'row'+(has(t,'needs-human')?' flag':'')},
         h('div',{class:'main'},
           h('div',{class:'t'},h('span',{class:'num'},'#'+t.n+' '),t.title),
-          h('div',{class:'meta'},withLevel&&lab(t,'level:')?h('span',{class:'chip'},LEVEL_FR[lab(t,'level:')]||lab(t,'level:')):null,ticketChips(t),h('span',{class:'note'},ago(t.updated)),
-            a.kind==='run'?h('span',{class:'cmd'},a.cmd+(canAuto?'':'  (pair)')):null)),
+          h('div',{class:'meta'},withLevel&&lab(t,'level:')?h('span',{class:'chip'},LEVEL_FR[lab(t,'level:')]||lab(t,'level:')):null,ticketChips(t),
+            rc.canAuto&&o.next?h('span',{class:'chip acc'},'enchaîné'):null,rc.multiOK&&o.multi?h('span',{class:'chip acc'},'multi '+o.multi):null,
+            h('span',{class:'note'},ago(t.updated)),
+            a.kind==='run'?h('span',{class:'cmd'},(rc.auto||rc.pair)+(rc.canAuto?'':'  (pair)')):null)),
         h('div',{class:'acts'},
           a.kind==='run'?[
-            canAuto?openLink(a.cmd+' --auto','Ouvrir (auto)',true):null,
-            openLink(a.cmd,canAuto?'Ouvrir (pair)':'Ouvrir en pair',!canAuto),
-            canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd+' --auto',e.target);}},'Copier auto'):null,
-            h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd,e.target);}},canAuto?'Copier pair':'Copier')]:null,
-          a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null));
+            rc.canAuto?openLink(rc.auto,'Ouvrir (auto)',true):null,
+            openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto),
+            rc.canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.auto,e.target);}},'Copier auto'):null,
+            h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.pair,e.target);}},rc.canAuto?'Copier pair':'Copier'),
+            hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
+          a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null),
+        a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
+          rc.canAuto?h('div',{class:'grp'},
+            h('button',{class:'tog',type:'button','aria-pressed':String(o.next),onclick:function(){set('next',!o.next);}},'Enchaîner (--next)'),
+            h('span',{class:'note'},'suit ce ticket dans toutes les phases suivantes, jusqu’à la fin ou un blocage')):null,
+          rc.multiOK?h('div',{class:'grp'},h('span',{class:'note'},'Multi'),multiSeg(o.multi,function(m){set('multi',m);},'Multi'),
+            h('span',{class:'note'},'N agents dialoguent avant d’agir')):null):null);
 }
 
 function vFile(){
@@ -441,27 +483,68 @@ function kindNow(){var key=ideaKind||(S.role==='tech'?'tech':'produit');return K
 function ideaText(){var el=document.getElementById('ideaText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
 function buildIdea(){
   var box=document.getElementById('idea');
-  box.append(
-    h('h2',{},'Nouvelle demande'),
+  foldCard(box,'idea','Nouvelle demande').append(
     h('label',{for:'ideaText',class:'note'},'Décrivez l’idée, le besoin technique ou le bug.'),
     h('textarea',{id:'ideaText',rows:3,maxlength:1500,placeholder:'Ex. : signaler un ascenseur en panne sur le trajet',oninput:updateIdea}),
     h('div',{class:'seg',role:'group','aria-label':'Type de demande',id:'kindSeg'}),
     h('p',{class:'note',id:'ideaHint'}),
+    h('div',{class:'filters',id:'ideaMultiWrap'},h('span',{class:'note'},'Multi'),h('div',{id:'ideaMultiSeg'}),h('span',{class:'note'},'plusieurs PM+architecte proposent chacun, puis convergent')),
     h('div',{class:'cmd',id:'ideaCmd'}),
     h('div',{class:'refresh'},
       h('a',{class:'btn primary',id:'ideaOpen',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
-      h('button',{class:'btn ghost',type:'button',id:'ideaCopy',onclick:function(e){var t=ideaText();if(t)copyCmd(kindNow().prefix+t,e.target);}},'Copier la commande')));
+      h('button',{class:'btn ghost',type:'button',id:'ideaCopy',onclick:function(e){var t=ideaText();if(t)copyCmd(ideaFull(kindNow(),t),e.target);}},'Copier la commande')));
   updateIdea();
 }
+function ideaFull(k,text){return k.prefix+text+(k.key==='produit'&&S.ideaMulti?' --multi '+S.ideaMulti:'');}
 function updateIdea(){
   var k=kindNow(), text=ideaText(), seg=document.getElementById('kindSeg'), open=document.getElementById('ideaOpen');
   seg.replaceChildren.apply(seg,KINDS.map(function(x){
     return h('button',{type:'button','aria-pressed':String(x.key===k.key),onclick:function(){ideaKind=x.key;updateIdea();}},x.label);}));
   document.getElementById('ideaHint').textContent=k.hint+' La commande est écrite, pas envoyée.';
-  document.getElementById('ideaCmd').textContent=k.prefix+(text||'…');
-  if(text){open.setAttribute('href',claudeCodeUrl(k.prefix+text));open.removeAttribute('aria-disabled');}
+  document.getElementById('ideaCmd').textContent=ideaFull(k,text||'…');
+  var mw=document.getElementById('ideaMultiWrap'), ms=document.getElementById('ideaMultiSeg');
+  mw.hidden=k.key!=='produit'; ms.replaceChildren(multiSeg(S.ideaMulti,function(m){S.ideaMulti=m;updateIdea();},'Multi'));
+  document.getElementById('ideaSum').textContent=text?'brouillon en cours':'';
+  if(text){open.setAttribute('href',claudeCodeUrl(ideaFull(k,text)));open.removeAttribute('aria-disabled');}
   else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}
   document.getElementById('ideaCopy').disabled=!text;
+}
+
+/* ---------- batch: /pilot-auto over a pool of candidates (--again drains each pool, --next follows one candidate through the chain) ---------- */
+var BPH=['review','dev','spec'];
+function batchCmd(){
+  var ph=BPH.filter(function(k){return S.b.ph[k];}); if(!ph.length)return null;
+  return '/pilot-auto'+(ph.length<BPH.length?' '+ph.join(' '):'')+(S.b.multi?' --multi '+S.b.multi:'')+(S.b.mode==='again'?' --again':S.b.mode==='next'?' --next':'');
+}
+function buildBatch(){
+  var box=document.getElementById('batch');
+  foldCard(box,'batch','Lancer en lot').append(
+    h('p',{class:'note'},'Une seule commande /pilot-auto qui choisit elle-même le prochain ticket prêt (Discovery et QA humaine n’ont pas de mode auto).'),
+    h('div',{class:'filters'},h('div',{class:'grp',role:'group','aria-label':'Phases',id:'batchPh'}),h('div',{class:'grp',id:'batchMode',role:'group','aria-label':'Répétition'})),
+    h('div',{class:'filters'},h('span',{class:'note'},'Multi'),h('div',{id:'batchMulti'})),
+    h('p',{class:'note',id:'batchHint'}),
+    h('div',{class:'cmd',id:'batchCmd'}),
+    h('div',{class:'refresh'},
+      h('a',{class:'btn primary',id:'batchOpen',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
+      h('button',{class:'btn ghost',type:'button',id:'batchCopy',onclick:function(e){var c=batchCmd();if(c)copyCmd(c,e.target);}},'Copier la commande')));
+  updateBatch();
+}
+var BMODES=[['','Un candidat'],['again','--again'],['next','--next']];
+var BHINT={'':'Traite un seul ticket prêt, puis s’arrête.',again:'Après chaque ticket, en prend un nouveau, jusqu’à ce que plus aucune file n’ait rien à faire.',next:'Prend un candidat et le suit dans toutes les phases jusqu’à la fin, un blocage ou sa fermeture.'};
+function updateBatch(){
+  var c=batchCmd(), open=document.getElementById('batchOpen');
+  var ph=document.getElementById('batchPh'), md=document.getElementById('batchMode'), mu=document.getElementById('batchMulti');
+  ph.replaceChildren.apply(ph,[h('span',{class:'note'},'Phases')].concat(BPH.map(function(k){
+    return h('button',{class:'tog',type:'button','aria-pressed':String(!!S.b.ph[k]),onclick:function(){S.b.ph[k]=!S.b.ph[k];updateBatch();}},k);})));
+  md.replaceChildren.apply(md,BMODES.map(function(m){
+    return h('button',{class:'tog',type:'button','aria-pressed':String(S.b.mode===m[0]),onclick:function(){S.b.mode=m[0];updateBatch();}},m[1]);}));
+  mu.replaceChildren(multiSeg(S.b.multi,function(m){S.b.multi=m;updateBatch();},'Multi'));
+  document.getElementById('batchHint').textContent=c?BHINT[S.b.mode]+' La commande est écrite, pas envoyée.':'Choisissez au moins une phase.';
+  document.getElementById('batchCmd').textContent=c||'…';
+  document.getElementById('batchSum').textContent=c?c.replace('/pilot-auto','').trim():'';
+  if(c){open.setAttribute('href',claudeCodeUrl(c));open.removeAttribute('aria-disabled');}
+  else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}
+  document.getElementById('batchCopy').disabled=!c;
 }
 
 /* ---------- banner, chips, chrome ---------- */
@@ -509,6 +592,7 @@ function renderChrome(){
 function render(){
   renderChrome();renderConn();renderBanner();
   document.getElementById('idea').hidden=S.tab!=='file';updateIdea();
+  document.getElementById('batch').hidden=S.tab!=='file';
   document.getElementById('search').hidden=S.tab!=='recherche';updateSearch();
   var v=document.getElementById('view');
   v.replaceChildren(S.tab==='ensemble'?vOverview():S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():vFile());
@@ -519,6 +603,7 @@ function fromHash(){var t=(location.hash||'').slice(1); if(t==='file'||t==='ense
 window.addEventListener('hashchange',function(){fromHash();render();});
 fromHash();
 buildIdea();
+buildBatch();
 buildSearch();
 render();
 if(window.claude&&window.claude.use){

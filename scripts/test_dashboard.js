@@ -169,6 +169,9 @@ const STUB = (opts) => `
 
   // ---- new request: Discovery / tech Spec / bug Spec from scratch ----
   page = await open({ preload: [BASE] });
+  check('new request card is folded by default, behind a chevron', (await page.getAttribute('#ideaToggle', 'aria-expanded')) === 'false' && (await page.$eval('#ideaBody', (e) => e.hidden)));
+  await page.click('#ideaToggle');
+  check('the chevron opens it', (await page.getAttribute('#ideaToggle', 'aria-expanded')) === 'true' && !(await page.$eval('#ideaBody', (e) => e.hidden)));
   const ideaOpen = () => page.$eval('#ideaOpen', (a) => ({ href: a.getAttribute('href'), disabled: a.getAttribute('aria-disabled'), target: a.target, rel: a.rel }));
   const encBase = 'https://claude.ai/code/new?q=';
   const encRepo = '&repo=' + encodeURIComponent(REPO);
@@ -197,12 +200,14 @@ const STUB = (opts) => `
 
   page = await open({ preload: [BASE] });
   await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
+  await page.click('#ideaToggle');
   await page.fill('#ideaText', 'Idée');
   check('product role defaults to /pilot-discovery', (await page.$eval('#ideaOpen', (a) => a.getAttribute('href'))).includes(encodeURIComponent('/pilot-discovery Idée')));
   await page.close();
 
   // typing is not lost nor interrupted by a live update
   page = await open({ preload: [BASE] });
+  await page.click('#ideaToggle');
   await page.click('#ideaText'); await page.keyboard.type('texte en cours');
   await page.evaluate((e) => window.__push('events', 'live2', e), ev({}));
   await page.waitForTimeout(250);
@@ -244,6 +249,79 @@ const STUB = (opts) => `
   check('overview: expanding shows all 12 and offers to collapse', (await cards()) === 12 && /Réduire/.test(await text(page, 'section[aria-label="Dev"]')));
   await page.click('section[aria-label="Dev"] >> text=Réduire'); await page.waitForTimeout(150);
   check('overview: collapsing goes back to 8', (await cards()) === 8);
+  await page.close();
+
+  // ---- row options: --next and --multi behind a chevron ----
+  const OPT_SNAP = snapshot([
+    ticket(99, ['type:tech', 'status:dev-ready', 'priority:P0']), ticket(70, ['type:feature', 'status:review-ready', 'priority:P1']),
+    ticket(60, ['type:tech', 'status:in-dev', 'priority:P1']), ticket(50, ['type:feature', 'status:qa', 'priority:P1']),
+  ], 120);
+  page = await open({ preload: [OPT_SNAP] });
+  await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
+  const rowOf = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' });
+  const rowHrefs = (n) => rowOf(n).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
+  const optBtn = (n) => rowOf(n).locator('button:has-text("Options")');
+  check('options are folded by default: no panel, a chevron button on auto-capable rows only',
+        (await page.$$('#view .opts')).length === 0 && (await optBtn(99).count()) === 1 && (await optBtn(70).count()) === 1 &&
+        (await optBtn(60).count()) === 0 && (await optBtn(50).count()) === 0);
+  await optBtn(99).click(); await page.waitForTimeout(100);
+  const panel99 = () => rowOf(99).locator('.opts');
+  check('chevron opens the panel with --next and multi', (await panel99().count()) === 1 && /Enchaîner \(--next\)/.test(await panel99().textContent()) && /Multi/.test(await panel99().textContent()));
+  check('the other rows stay folded', (await rowOf(70).locator('.opts').count()) === 0);
+  check('default commands unchanged', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto', '/pilot-dev 99']), JSON.stringify(await rowHrefs(99)));
+  await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
+  check('--next: auto rides the ticket through /pilot-auto, pair unchanged', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-auto 99 --next', '/pilot-dev 99']), JSON.stringify(await rowHrefs(99)));
+  await panel99().locator('.seg button', { hasText: /^3$/ }).click(); await page.waitForTimeout(100);
+  check('--next + multi 3: /pilot-auto 99 --multi 3 --next, pair gets --multi 3', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-auto 99 --multi 3 --next', '/pilot-dev 99 --multi 3']), JSON.stringify(await rowHrefs(99)));
+  check('active options shown as chips and in the command line', /enchaîné/.test(await rowOf(99).textContent()) && /multi 3/.test(await rowOf(99).textContent()) && /\/pilot-auto 99 --multi 3 --next/.test(await rowOf(99).locator('.cmd').textContent()));
+  await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
+  check('multi without --next: /pilot-dev 99 --auto --multi 3', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto --multi 3', '/pilot-dev 99 --multi 3']), JSON.stringify(await rowHrefs(99)));
+  await page.evaluate((e) => window.__push('events', 'live4', e), ev({ n: 70, title: 'Ticket 70', labels: ['type:feature', 'status:review-ready'] }));
+  await page.waitForTimeout(250);
+  check('a live update keeps the opened panel and the chosen options', (await panel99().count()) === 1 && JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto --multi 3', '/pilot-dev 99 --multi 3']));
+  await optBtn(99).click(); await page.waitForTimeout(100);
+  check('chevron folds the panel again, the options stay applied', (await panel99().count()) === 0 && /multi 3/.test(await rowOf(99).textContent()));
+  await optBtn(70).click(); await rowOf(70).locator('.opts .seg button', { hasText: /^2$/ }).click(); await page.waitForTimeout(100);
+  check('review row: multi forwarded (/pilot-review 70 --auto --multi 2)', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --auto --multi 2', '/pilot-review 70 --multi 2']), JSON.stringify(await rowHrefs(70)));
+  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
+  check('row options: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.screenshot({ path: path.join(TMP, 'options.png') });
+  await page.close();
+
+  // ---- batch: /pilot-auto with --again / --next / --multi, folded by default ----
+  page = await open({ preload: [BASE] });
+  const batchOpen = () => page.$eval('#batchOpen', (a) => ({ href: a.getAttribute('href'), disabled: a.getAttribute('aria-disabled') }));
+  const batchCmdText = () => text(page, '#batchCmd');
+  const bt = (grp, label) => page.locator(`#${grp} button`, { hasText: label }).first().click();
+  check('batch card: shown on "Ma file", folded by default', !(await page.$eval('#batch', (e) => e.hidden)) && (await page.getAttribute('#batchToggle', 'aria-expanded')) === 'false' && (await page.$eval('#batchBody', (e) => e.hidden)));
+  check('batch card hidden on the other tabs', (await tab(page, 'Vue d’ensemble')) !== null && (await page.$eval('#batch', (e) => e.hidden)));
+  await tab(page, 'Ma file');
+  await page.click('#batchToggle');
+  check('batch default: bare /pilot-auto, all phases', (await batchCmdText()) === '/pilot-auto', await batchCmdText());
+  await bt('batchMode', '--again');
+  check('--again', (await batchCmdText()) === '/pilot-auto --again', await batchCmdText());
+  await bt('batchMulti', /^3$/);
+  check('--multi 3 goes before --again (the documented order)', (await batchCmdText()) === '/pilot-auto --multi 3 --again', await batchCmdText());
+  await bt('batchPh', 'spec');
+  check('a subset of phases is listed explicitly', (await batchCmdText()) === '/pilot-auto review dev --multi 3 --again', await batchCmdText());
+  await bt('batchMode', '--next');
+  check('--next replaces --again (they never combine)', (await batchCmdText()) === '/pilot-auto review dev --multi 3 --next', await batchCmdText());
+  check('open link carries the command and the repo', (await batchOpen()).href === 'https://claude.ai/code/new?q=' + encodeURIComponent('/pilot-auto review dev --multi 3 --next') + '&repo=' + encodeURIComponent(REPO), JSON.stringify(await batchOpen()));
+  await bt('batchPh', 'review'); await bt('batchPh', 'dev');
+  check('no phase selected: link and copy disabled', (await batchOpen()).href === null && (await batchOpen()).disabled === 'true' && (await page.isDisabled('#batchCopy')));
+  check('batch: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.screenshot({ path: path.join(TMP, 'batch.png') });
+  await page.close();
+
+  // ---- new request: --multi for a product idea only ----
+  page = await open({ preload: [BASE] });
+  await page.click('#ideaToggle'); await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
+  await page.fill('#ideaText', 'Mon idée');
+  check('product idea: multi choices shown', !(await page.$eval('#ideaMultiWrap', (e) => e.hidden)));
+  await page.locator('#ideaMultiSeg button', { hasText: /^3$/ }).click();
+  check('product idea + multi: /pilot-discovery <idea> --multi 3', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3' && (await page.$eval('#ideaOpen', (a) => a.getAttribute('href'))).includes(encodeURIComponent('/pilot-discovery Mon idée --multi 3')), await text(page, '#ideaCmd'));
+  await page.click('#kindSeg >> text=Bug');
+  check('bug / tech need: no multi choice, no --multi in the command', (await page.$eval('#ideaMultiWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée', await text(page, '#ideaCmd'));
   await page.close();
 
   // ---- search: keyword (case/accent-insensitive contains) + level + type ----
