@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 import pathlib
+import subprocess
 import unittest
 
 spec = importlib.util.spec_from_file_location("pilot", pathlib.Path(__file__).with_name("pilot.py"))
@@ -542,6 +543,35 @@ class MiscTests(unittest.TestCase):
         gh = FakeGh([issue(1, ["status:dev-ready"])])
         args = pilot.build_parser().parse_args(["claim", "dev", "1", "--mode", "fresh"])
         self.assertTrue(pilot.run(args, gh)["claimed"])
+
+
+class VersionBumpTests(unittest.TestCase):
+    """A change to what projects copy must raise VERSION (CLAUDE.md §4). Compares with origin/main;
+    skipped where that ref or git is not available."""
+
+    ROOT = pathlib.Path(__file__).resolve().parent.parent
+    SHIPPED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/setup-github-labels.sh")
+
+    def git(self, *args):
+        out = subprocess.run(["git", *args], cwd=self.ROOT, capture_output=True, text=True)
+        if out.returncode != 0:
+            self.skipTest("git or origin/main is not available here")
+        return out.stdout
+
+    @staticmethod
+    def parse(text):
+        return tuple(int(part) for part in text.strip().split("."))
+
+    def test_shipped_changes_come_with_a_higher_version(self):
+        base = self.git("merge-base", "HEAD", "origin/main").strip()
+        changed = set(self.git("diff", "--name-only", base).split()) | set(self.git("ls-files", "--others", "--exclude-standard").split())
+        shipped = sorted(f for f in changed if f.startswith(self.SHIPPED))
+        if not shipped:
+            return
+        before = self.parse(self.git("show", f"{base}:VERSION"))
+        after = self.parse((self.ROOT / "VERSION").read_text())
+        self.assertGreater(after, before, "shipped files changed (e.g. %s) but VERSION did not go up from %s: bump it (CLAUDE.md §4)"
+                           % (", ".join(shipped[:3]), ".".join(map(str, before))))
 
 
 class VersionTests(unittest.TestCase):

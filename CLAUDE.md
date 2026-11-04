@@ -277,7 +277,9 @@ the skill files) — never a fixed path, there is no installed location.
   changes no mechanism, **minor** for a backward-compatible capability (a new skill, flag,
   command or dashboard feature), **major** for a mechanism change that makes a project act
   (a renamed label or status, a changed claim protocol or state machine). A PR touching none
-  of those (this file, tests alone, demo data) leaves it alone.
+  of those (this file, tests alone, demo data) leaves it alone. `scripts/test_pilot.py`
+  (`VersionBumpTests`) fails a branch that changed what projects copy without raising
+  `VERSION` above `origin/main`'s — it checks that it went up, not that the level is right.
 - **Commit Freely On A Work Branch, Never On `main`:** on a short-lived work branch,
   committing and pushing completed work is authorized by default. On `main`, never
   commit or push without the user explicitly asking in the current task.
