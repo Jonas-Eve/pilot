@@ -99,6 +99,7 @@ nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent
 .search input[type=search]{width:100%;min-height:38px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;font:inherit;color:inherit}
 .filters{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
 .filters .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.me{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;min-height:34px;width:min(190px,100%);font-family:var(--mono);font-size:13px}
 .fpanel{display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--line);padding-top:10px}
 .fgrp{display:flex;flex-direction:column;gap:6px}
 .chip.rm{border:0;cursor:pointer;font:inherit;font-size:12px;line-height:20px}
@@ -123,6 +124,8 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
       <p class="sub">Tickets par phase et file d’actions selon votre rôle, avec la commande PILOT prête à copier.</p>
     </div>
     <div class="controls">
+      <input class="me" id="meInput" list="meList" autocomplete="off" spellcheck="false" aria-label="Mon identifiant GitHub" placeholder="Mon identifiant GitHub">
+      <datalist id="meList"></datalist>
       <div class="seg" role="group" aria-label="Rôle" id="roleSeg"></div>
     </div>
   </div>
@@ -213,8 +216,8 @@ var SAMPLE=[
 /* ---------- state ---------- */
 var S={
   repo:'{{REPO}}',
-  role:store('cp.role')||'tech',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, ro:{}, ideaMulti:0, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -228,7 +231,7 @@ function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.a
 
 /* ---------- snapshots (db): written by Claude from GitHub, read by everyone ---------- */
 function snapId(repo){return String(repo).replace('/','__');}
-function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||'',p:i.p||0,k:i.k||null};t.status=lab(t,'status:');return t;}
+function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||'',p:i.p||0,k:i.k||null,r:i.r||0};t.status=lab(t,'status:');return t;}
 function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
@@ -258,7 +261,7 @@ function overlay(list,baseAt){
   Object.keys(S.events).forEach(function(k){
     var e=S.events[k]; if(baseAt&&String(e.at)<=String(baseAt))return;
     if(e.state==='closed'){delete by[e.n];return;}
-    var old=by[e.n], t={n:e.n,title:e.title||(old&&old.title)||('#'+e.n),labels:e.labels||[],updated:e.at,assignee:(e.assignees||[])[0]||'',p:(old&&old.p)||0,k:(old&&old.k)||null};
+    var old=by[e.n], t={n:e.n,title:e.title||(old&&old.title)||('#'+e.n),labels:e.labels||[],updated:e.at,assignee:(e.assignees||[])[0]||'',p:(old&&old.p)||0,k:(old&&old.k)||null,r:(old&&old.r)||0};
     t.status=lab(t,'status:'); by[e.n]=t;
   });
   return Object.keys(by).map(function(k){return by[k];});
@@ -388,6 +391,7 @@ function ticketRow(t,withLevel,depth){
           h('div',{class:'t'},h('span',{class:'num'},'#'+t.n+' '),t.title),
           h('div',{class:'meta'},withLevel&&lab(t,'level:')?h('span',{class:'chip'},LEVEL_FR[lab(t,'level:')]||lab(t,'level:')):null,ticketChips(t),
             rc.canAuto&&o.next?h('span',{class:'chip acc'},'enchaîné'):null,rc.multiOK&&o.multi?h('span',{class:'chip acc'},'multi '+o.multi):null,
+            t.assignee?h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee):null,
             t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
             h('span',{class:'note'},ago(t.updated)),
             a.kind==='run'?h('span',{class:'cmd'},(rc.auto||rc.pair)+(rc.canAuto?'':'  (pair)')):null)),
@@ -399,6 +403,7 @@ function ticketRow(t,withLevel,depth){
             rc.pair?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.pair,e.target);}},rc.canAuto?'Copier pair':'Copier'):null,
             hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
+          t.r?h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r):null,
           kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
           rc.canAuto?h('div',{class:'grp'},
@@ -409,16 +414,28 @@ function ticketRow(t,withLevel,depth){
         kids.length&&o.kids?h('div',{class:'kids'},kids.map(function(c){return ticketRow(c,true,depth+1);})):null);
 }
 
+var SCOPES=[['prendre','À prendre'],['moi','Assignés à moi'],['tous','Tous']];
 function vFile(){
-  var mine=tickets().filter(function(t){var p=phaseOf(t.status);return p&&(S.role==='tous'||p.role===S.role);}).sort(byUrgency);
+  function inRole(t){var p=phaseOf(t.status);return p&&(S.role==='tous'||p.role===S.role);}
+  var mine=tickets().filter(function(t){
+    if(!phaseOf(t.status))return false;
+    if(S.scope==='moi')return !!S.me&&t.assignee===S.me;
+    if(S.scope==='prendre')return inRole(t)&&!t.assignee&&!has(t,'needs-human')&&!has(t,'on-hold');
+    return inRole(t);
+  }).sort(byUrgency);
   var pages=Math.max(1,Math.ceil(mine.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
   var shown=mine.slice(S.page*PAGE_SIZE,(S.page+1)*PAGE_SIZE);
-  var roleTxt=S.role==='produit'?'Discovery et QA humaine':S.role==='tech'?'Spec, Dev et Review':'Toutes les phases';
+  var roleTxt=S.scope==='moi'?'Tous rôles':S.role==='produit'?'Discovery et QA humaine':S.role==='tech'?'Spec, Dev et Review':'Toutes les phases';
+  var scopeSeg=h('div',{class:'seg',role:'group','aria-label':'Tickets'},SCOPES.map(function(c){
+    return h('button',{type:'button','aria-pressed':String(S.scope===c[0]),onclick:function(){S.scope=c[0];S.page=0;store('cp.scope',c[0]);render();}},c[1]);}));
   return h('div',{class:'list'},
-    h('h2',{},'Ma file · '+roleTxt+' · '+mine.length),
+    h('h2',{},'Ma file · '+(S.scope==='moi'?'assignés à '+(S.me?'@'+S.me:'moi')+' · ':S.scope==='prendre'?'à prendre · ':'')+roleTxt+' · '+mine.length),
+    scopeSeg,
     h('p',{class:'note'},'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'),
     pager(mine.length),
-    shown.length?shown.map(function(t){return ticketRow(t);    }):h('div',{class:'empty'},'Rien n’attend ce rôle pour le moment.'),
+    shown.length?shown.map(function(t){return ticketRow(t);}):h('div',{class:'empty'},
+      S.scope==='moi'&&!S.me?'Indiquez votre identifiant GitHub (en haut de la page) pour voir les tickets qui vous sont assignés.':
+      S.scope==='moi'?'Aucun ticket ne vous est assigné.':S.scope==='prendre'?'Rien à prendre pour ce rôle pour le moment.':'Rien n’attend ce rôle pour le moment.'),
     shown.length>5?pager(mine.length):null);
 }
 
@@ -434,19 +451,22 @@ function matches(t){
   var st=Object.keys(S.states).filter(function(k){return S.states[k];}), fl=Object.keys(S.flags).filter(function(k){return S.flags[k];});
   if(st.length&&st.indexOf(t.status||'none')<0)return false;
   if(fl.length&&!fl.some(function(k){return has(t,k);}))return false;
+  var as=Object.keys(S.assignees).filter(function(k){return S.assignees[k];});
+  if(as.length&&!as.some(function(k){return k==='me'?(!!S.me&&t.assignee===S.me):k==='none'?!t.assignee:t.assignee===k;}))return false;
   return true;
 }
-var FGROUPS=[['levels','Niveau'],['types','Type'],['states','État'],['flags','Drapeau']];
+var FGROUPS=[['levels','Niveau'],['types','Type'],['states','État'],['assignees','Assigné'],['flags','Drapeau']];
 function filterName(map,k){
   if(map==='levels')return LEVEL_FR[k]||k;
   if(map==='states')return k==='none'?'sans statut':(STATUS_FR[k]||k);
   if(map==='flags')return FLAG_FR[k]||k;
+  if(map==='assignees')return k==='me'?'moi':k==='none'?'non assigné':'@'+k;
   return k;
 }
 function activeFilters(){
   var out=[]; FGROUPS.forEach(function(g){Object.keys(S[g[0]]).forEach(function(k){if(S[g[0]][k])out.push({map:g[0],group:g[1],key:k});});}); return out;
 }
-function clearSearch(){S.q='';S.levels={};S.types={};S.states={};S.flags={};S.page=0;document.getElementById('searchText').value='';render();}
+function clearSearch(){S.q='';S.levels={};S.types={};S.states={};S.flags={};S.assignees={};S.page=0;document.getElementById('searchText').value='';render();}
 function buildSearch(){
   var box=document.getElementById('search'), open=store('cp.fold.filters')==='1';
   var chev=h('span',{class:'chev','aria-hidden':'true'},open?'▾':'▸'), panel=h('div',{class:'fpanel',id:'searchFilters',hidden:open?null:true});
@@ -469,15 +489,19 @@ function stateKeys(){
   tickets().forEach(function(t){if(t.status&&STATE_ORDER.indexOf(t.status)<0)extra[t.status]=1;});
   return STATE_ORDER.concat(Object.keys(extra).sort(),['none']);
 }
+function assigneeKeys(){
+  var by={}; tickets().forEach(function(t){if(t.assignee)by[t.assignee]=1;});
+  return ['me','none'].concat(Object.keys(by).sort());
+}
 function updateSearch(){
-  var f=document.getElementById('searchFilters'), keys=stateKeys(), sig=keys.join(',');
+  var f=document.getElementById('searchFilters'), keys=stateKeys(), akeys=assigneeKeys(), sig=keys.join(',')+'|'+akeys.join(',');
   if(!f.firstChild||S._sk!==sig){
     S._sk=sig;
     var grp=function(label,ks,mapName){
       return h('div',{class:'fgrp',role:'group','aria-label':label},h('span',{class:'note'},label),
         h('div',{class:'chips'},ks.map(function(k){return h('button',{class:'tog',type:'button','data-map':mapName,'data-key':k,'aria-pressed':'false',onclick:function(){S[mapName][k]=!S[mapName][k];S.page=0;render();}},filterName(mapName,k));})));
     };
-    f.replaceChildren(grp('Niveau',LEVELS,'levels'),grp('Type',TYPES,'types'),grp('État',keys,'states'),grp('Drapeau',['needs-human','on-hold'],'flags'));
+    f.replaceChildren(grp('Niveau',LEVELS,'levels'),grp('Type',TYPES,'types'),grp('État',keys,'states'),grp('Assigné',akeys,'assignees'),grp('Drapeau',['needs-human','on-hold'],'flags'));
   }
   Array.prototype.forEach.call(f.querySelectorAll('.tog'),function(b){
     b.setAttribute('aria-pressed',String(!!S[b.getAttribute('data-map')][b.getAttribute('data-key')]));
@@ -496,6 +520,7 @@ function vSearch(){
   return h('div',{class:'list'},
     h('h2',{},'Résultats · '+res.length+' sur '+tickets().length+' tickets ouverts'),
     pager(res.length),
+    S.assignees.me&&!S.me?h('p',{class:'note'},'Indiquez votre identifiant GitHub (en haut de la page) pour que « moi » désigne vos tickets.'):null,
     shown.length?shown.map(function(t){return ticketRow(t,true);}):h('div',{class:'empty'},'Aucun ticket ne correspond.'),
     shown.length>5?pager(res.length):null);
 }
@@ -631,6 +656,9 @@ function renderConn(){
   var c=document.getElementById('conn'); c.replaceChildren.apply(c,chips);
 }
 function renderChrome(){
+  var dl=document.getElementById('meList'), logins={}; tickets().forEach(function(t){if(t.assignee)logins[t.assignee]=1;});
+  var want=Object.keys(logins).sort().join(',');
+  if(dl.getAttribute('data-k')!==want){dl.setAttribute('data-k',want);dl.replaceChildren.apply(dl,Object.keys(logins).sort().map(function(l){return h('option',{value:l});}));}
   var seg=document.getElementById('roleSeg');
   seg.replaceChildren.apply(seg,[['produit','Produit'],['tech','Tech'],['tous','Tous']].map(function(r){
     return h('button',{type:'button','aria-pressed':String(S.role===r[0]),onclick:function(){S.role=r[0];S.page=0;store('cp.role',r[0]);render();}},r[1]);}));
@@ -653,6 +681,8 @@ function render(){
 function fromHash(){var t=(location.hash||'').slice(1); if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite')S.tab=t;}
 window.addEventListener('hashchange',function(){fromHash();render();});
 fromHash();
+var me=document.getElementById('meInput'); me.value=S.me;
+me.addEventListener('input',function(){S.me=me.value.trim().replace(/^@/,'');store('cp.me',S.me);S.page=0;render();});
 buildIdea();
 buildBatch();
 buildSearch();

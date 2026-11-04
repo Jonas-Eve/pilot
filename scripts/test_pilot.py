@@ -59,6 +59,10 @@ class FakeGh:
         return [copy.deepcopy(i) for i in self.store.values()
                 if i["state"] == "open" and "pull_request" not in i]
 
+    def open_pulls(self):
+        return [copy.deepcopy(i) for i in self.store.values()
+                if i["state"] == "open" and "pull_request" in i]
+
     def repo_info(self):
         return {"full_name": "o/r", "permissions": getattr(self, "perms", {"push": True})}
 
@@ -411,6 +415,17 @@ class DashboardPayloadTests(unittest.TestCase):
         self.assertEqual((rows[1].get("k"), rows[1].get("p")), ([4, 10], None))
         self.assertEqual((rows[2].get("p"), rows[2].get("k")), (1, None))
         self.assertNotIn("p", rows[3]); self.assertNotIn("k", rows[3])
+
+    def test_snapshot_carries_the_assignee_and_the_open_pr_closing_a_ticket(self):
+        a = issue(1, ["status:in-dev"], assignees=["alice"])
+        pr = issue(9, pr=True, body="Summary\n\nCloses #1, and also fixes #2")
+        older = issue(8, pr=True, body="closes #1")
+        gone = issue(7, pr=True, body="Closes #3", state="closed")
+        m, _ = machine([a, issue(2), issue(3), pr, older, gone])
+        rows = {r["n"]: r for r in m.snapshot()["issues"]}
+        self.assertEqual((rows[1].get("a"), rows[1].get("r")), ("alice", 9))
+        self.assertEqual((rows[2].get("a"), rows[2].get("r")), (None, 9))
+        self.assertNotIn("r", rows[3])
 
     def test_snapshot_is_truncated_to_fit_a_database_document(self):
         issues = [issue(n, ["status:backlog"]) for n in range(1, 2600)]

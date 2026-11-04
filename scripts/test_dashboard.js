@@ -377,7 +377,7 @@ const STUB = (opts) => `
   view = await tab(page, 'Recherche');
   check('filters are folded by default behind a chevron, with no count', (await page.getAttribute('#filtersToggle', 'aria-expanded')) === 'false' && (await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.$eval('#filtersCount', (e) => e.hidden)));
   await page.click('#filtersToggle');
-  check('the chevron opens the filter panel: four groups', !(await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.locator('#searchFilters .fgrp').count()) === 4);
+  check('the chevron opens the filter panel: five groups', !(await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.locator('#searchFilters .fgrp').count()) === 5);
   check('search tab: shown, hash route, search card visible, new-request card hidden',
         !(await page.$eval('#search', (e) => e.hidden)) && (await page.$eval('#idea', (e) => e.hidden)) && (await page.evaluate(() => location.hash)) === '#recherche');
   check('no filter: every ticket is listed, epics and split stories included', (await rows(page)) === 6 && /6 sur 6 tickets ouverts/.test(view), view);
@@ -480,6 +480,66 @@ const STUB = (opts) => `
   check('reset clears state and flag filters', (await nums()).length === 7 && (await stBtn('states', 'backlog').getAttribute('aria-pressed')) === 'false' && (await stBtn('flags', 'on-hold').getAttribute('aria-pressed')) === 'false');
   check('state filter: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'states.png') });
+  await page.close();
+
+  // ---- assignee (chip, "à prendre" / "assignés à moi", search filter) and the open PR link ----
+  const ASSIGN_SNAP = snapshot([
+    ticket(1, ['type:tech', 'status:dev-ready', 'priority:P1'], { t: 'Libre dev' }),
+    ticket(2, ['type:tech', 'status:in-dev', 'priority:P1'], { t: 'À alice dev', a: 'alice', r: 33 }),
+    ticket(3, ['type:tech', 'status:dev-ready', 'needs-human'], { t: 'Libre mais bloqué' }),
+    ticket(4, ['type:feature', 'status:review-ready', 'priority:P2'], { t: 'Libre review' }),
+    ticket(5, ['type:feature', 'status:qa', 'priority:P2'], { t: 'Libre qa' }),
+    ticket(6, ['type:feature', 'status:in-qa', 'priority:P2'], { t: 'À alice qa', a: 'alice' }),
+    ticket(7, ['type:tech', 'status:in-review', 'priority:P2'], { t: 'À bob review', a: 'bob', r: 34 }),
+  ], 120);
+  page = await open({ preload: [ASSIGN_SNAP] });
+  const fileNums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
+  const setOf2 = (...a) => JSON.stringify(a.sort());
+  check('default scope "Tous": the role\'s tickets, assigned or not', JSON.stringify(await fileNums()) === setOf2('#1', '#2', '#3', '#4', '#7'), JSON.stringify(await fileNums()));
+  check('an assignee shows as a chip', /@alice/.test(await page.locator('#view .row', { hasText: '#2 ' }).textContent()) && !/@/.test(await page.locator('#view .row', { hasText: '#1 ' }).textContent()));
+  const prHref = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' }).locator('a:has-text("PR #")').evaluateAll((as) => as.map((a) => ({ href: a.href, text: a.textContent.trim(), target: a.target, rel: a.rel })));
+  check('a ticket with an open PR links to it (new tab, no opener)', JSON.stringify(await prHref(2)) === JSON.stringify([{ href: `https://github.com/${REPO}/pull/33`, text: 'PR #33', target: '_blank', rel: 'noopener' }]), JSON.stringify(await prHref(2)));
+  check('a ticket without a PR has no PR link', (await prHref(1)).length === 0);
+  await page.locator('#view .seg button', { hasText: 'À prendre' }).click(); await page.waitForTimeout(100);
+  check('"À prendre": role tickets that are unassigned and neither blocked nor on hold', JSON.stringify(await fileNums()) === setOf2('#1', '#4'), JSON.stringify(await fileNums()));
+  await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
+  check('"À prendre" follows the role (product: the QA ticket)', JSON.stringify(await fileNums()) === setOf2('#5'), JSON.stringify(await fileNums()));
+  await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(100);
+  await page.locator('#view .seg button', { hasText: 'Assignés à moi' }).click(); await page.waitForTimeout(100);
+  check('"Assignés à moi" without an identity asks for it', (await fileNums()).length === 0 && /Indiquez votre identifiant GitHub/.test(await text(page, '#view')));
+  check('the known assignees are offered in the identity field', (await page.locator('#meList option').evaluateAll((o) => o.map((x) => x.value).sort())).join(',') === 'alice,bob');
+  await page.fill('#meInput', '@alice'); await page.waitForTimeout(100);
+  check('with an identity: every ticket assigned to me, whatever the role (a dev one and a QA one)', JSON.stringify(await fileNums()) === setOf2('#2', '#6'), JSON.stringify(await fileNums()));
+  await page.screenshot({ path: path.join(TMP, 'mine.png') });
+  check('my own tickets are highlighted and the title names me', /@alice/.test(await text(page, '#view h2')) && (await page.locator('#view .row', { hasText: '#2 ' }).locator('.chip.acc', { hasText: '@alice' }).count()) === 1);
+  await page.fill('#meInput', 'nobody'); await page.waitForTimeout(100);
+  check('an identity with no ticket: dedicated empty state', /Aucun ticket ne vous est assigné/.test(await text(page, '#view')));
+  await page.fill('#meInput', 'bob'); await page.waitForTimeout(100);
+  check('bob sees his review ticket', JSON.stringify(await fileNums()) === setOf2('#7'), JSON.stringify(await fileNums()));
+  await page.evaluate((e) => window.__push('events', 'live6', e), ev({ n: 1, title: 'Libre dev', labels: ['type:tech', 'status:in-dev'], assignees: ['bob'] }));
+  await page.waitForTimeout(250);
+  check('a live event assigning a ticket moves it into my list', JSON.stringify(await fileNums()) === setOf2('#1', '#7'), JSON.stringify(await fileNums()));
+  check('assignee: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+
+  page = await open({ preload: [ASSIGN_SNAP] });
+  await page.fill('#meInput', 'alice');
+  await tab(page, 'Recherche'); await page.click('#filtersToggle');
+  const asBtn = (key) => page.locator(`#searchFilters button[data-map="assignees"][data-key="${key}"]`);
+  const sNums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
+  check('assignee filter: moi, non assigné and each assignee found', (await asBtn('me').count()) === 1 && (await asBtn('none').count()) === 1 && (await asBtn('alice').count()) === 1 && (await asBtn('bob').count()) === 1);
+  await asBtn('none').click(); await page.waitForTimeout(100);
+  check('"non assigné"', JSON.stringify(await sNums()) === setOf2('#1', '#3', '#4', '#5'), JSON.stringify(await sNums()));
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await asBtn('me').click(); await page.waitForTimeout(100);
+  check('"moi" = the identity typed at the top', JSON.stringify(await sNums()) === setOf2('#2', '#6'), JSON.stringify(await sNums()));
+  await asBtn('bob').click(); await page.waitForTimeout(100);
+  check('assignees are OR-ed (moi + bob)', JSON.stringify(await sNums()) === setOf2('#2', '#6', '#7'), JSON.stringify(await sNums()));
+  check('chips: "Assigné : moi ✕" and "Assigné : @bob ✕"', (await page.locator('#activeFilters .chip.rm').allTextContents()).map((x) => x.trim()).sort().join('|') === 'Assigné : @bob ✕|Assigné : moi ✕');
+  await page.fill('#meInput', '');
+  await page.waitForTimeout(100);
+  check('"moi" without an identity: a hint, and only the other assignees left', /Indiquez votre identifiant GitHub/.test(await text(page, '#view')) && JSON.stringify(await sNums()) === setOf2('#7'), JSON.stringify(await sNums()));
+  check('search by assignee: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
   // ---- renderer: the project name is HTML-escaped ----
