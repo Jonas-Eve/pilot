@@ -544,6 +544,12 @@ class MiscTests(unittest.TestCase):
         self.assertTrue(pilot.run(args, gh)["claimed"])
 
 
+class VersionTests(unittest.TestCase):
+    def test_version_file_is_a_semantic_version(self):
+        text = pathlib.Path(__file__).with_name("..").resolve().joinpath("VERSION").read_text()
+        self.assertRegex(text, r"^\d+\.\d+\.\d+\n$")
+
+
 class DemoSnapshotTests(unittest.TestCase):
     """scripts/demo_snapshot.py feeds the demo dashboard: its document must look like pilot.py's."""
 

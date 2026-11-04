@@ -95,7 +95,7 @@ itself.
   matching canonical snippet here — never bare in the template** — that's what keeps a
   consuming project's own prose free of content only PILOT can keep current (see
   §3 below). `pilot-dashboard.html.tmpl` is different: the page `/pilot-dashboard`
-  renders (`{{PROJECT_NAME}}`, `{{REPO}}`, `{{PILOT_VERSION}}`) and publishes as one private Artifact per
+  renders (`{{PROJECT_NAME}}`, `{{REPO}}`, `{{PILOT_VERSION}}` — the `VERSION` file) and publishes as one private Artifact per
   project; `/pilot-update` republishes it at the same address, so a page change ships
   with a PILOT release and the project's data (snapshot, events, activity) is kept. It
   is checked by `scripts/test_dashboard.js` (renders it, loads it in headless Chromium with
@@ -269,6 +269,15 @@ the skill files) — never a fixed path, there is no installed location.
   project's own doc-maintenance burden, not a gap in this rule.
 
 ## 4. GIT WORKFLOW
+- **Version Every Change Projects Would Copy (`VERSION`, SemVer):** `VERSION` holds PILOT's
+  `MAJOR.MINOR.PATCH`; `/pilot-init` and `/pilot-update` record it in the project's
+  `.pilot/state.json` (`pilotVersion`) and the dashboard footer shows it. A PR that changes
+  anything a project copies (skills, agents, `assets/docs`, `scripts/pilot.py`, the
+  dashboard template) bumps it once, in the PR itself: **patch** for a fix or wording that
+  changes no mechanism, **minor** for a backward-compatible capability (a new skill, flag,
+  command or dashboard feature), **major** for a mechanism change that makes a project act
+  (a renamed label or status, a changed claim protocol or state machine). A PR touching none
+  of those (this file, tests alone, demo data) leaves it alone.
 - **Commit Freely On A Work Branch, Never On `main`:** on a short-lived work branch,
   committing and pushing completed work is authorized by default. On `main`, never
   commit or push without the user explicitly asking in the current task.
