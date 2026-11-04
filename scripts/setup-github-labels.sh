@@ -65,13 +65,8 @@ echo "Setting up PILOT labels on ${1:-the current repo}..."
 
 for entry in "${LABELS[@]}"; do
   IFS='|' read -r name color description <<<"$entry"
-  if gh label list "${REPO_ARG[@]}" --search "$name" --json name --jq '.[].name' 2>/dev/null | grep -qx "$name"; then
-    gh label edit "$name" "${REPO_ARG[@]}" --color "$color" --description "$description"
-    echo "  updated: $name"
-  else
-    gh label create "$name" "${REPO_ARG[@]}" --color "$color" --description "$description"
-    echo "  created: $name"
-  fi
+  gh label create "$name" "${REPO_ARG[@]}" --color "$color" --description "$description" --force >/dev/null
+  echo "  synced: $name"
 done
 
 echo "Done. ${#LABELS[@]} PILOT labels are in sync."
