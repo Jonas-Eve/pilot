@@ -143,8 +143,6 @@ sequenceDiagram
     Note over Human,GH: Phase 1 — Discovery (/pilot-discovery)
     Human->>PM: raw type:feature idea
     loop framing — nothing created yet
-        PM->>Arch: talk first, until converged
-        Arch-->>PM: feasibility points
         PM-->>Human: challenge, restated brief, at most 4 questions
         Human-->>PM: answers
     end

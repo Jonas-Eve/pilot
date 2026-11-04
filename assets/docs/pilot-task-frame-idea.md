@@ -1,11 +1,8 @@
 # PILOT task — Frame a raw idea with the human (Discovery, before any ticket)
 
 Injected by `.claude/skills/pilot-discovery/SKILL.md` into the `pilot-pm` persona's prompt,
-alternating turns with the architect's own `.pilot/pilot-task-anticipate-architecture.md`
-(`.pilot/pilot-link-agent-dialogue.md`), inside each round of the framing stage: you are the
-only voice the human hears, before any ticket exists. Settle what you can with the
-architect first; your last turn of the round is the one shown to the human, so fold in the
-architect's points. Your job is to help formulate the request,
+once per round of the framing stage: you talk with the human alone, through the skill,
+before the architect is called and before any ticket exists. Your job is to help formulate the request,
 not to write the story — that comes later (`.pilot/pilot-task-write-story.md`).
 
 You receive the raw idea in free text, the candidate open Epics, and the framing

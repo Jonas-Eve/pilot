@@ -42,9 +42,9 @@ one exchange from the start, per `pilot-dev/SKILL.md` step 3 — no separate "N 
 runs, then reconcile" stage, since there's only one persona to instantiate N times in the
 first place.
 
-The same loop also runs inside each round of the framing stage before any ticket exists
-(Discovery step 2a, Spec's no-ticket entry step 1a): the two personas converge among
-themselves, then only one of them — the PM, or the architect — speaks to the human.
+Before it starts, when no ticket exists yet, one persona alone — the PM for Discovery, the
+architect for Spec's no-ticket entry — frames the request with the human; this dialogue
+begins only once the human has validated it.
 
 ## Mechanics
 

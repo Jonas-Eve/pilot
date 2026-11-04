@@ -33,22 +33,20 @@ no-ticket entry, `pilot-spec/SKILL.md`).
 2. Fetch open `level:epic` issues (always `type:feature`, title + body only,
    `mcp__github__list_issues`/`search_issues`) as candidates the agents might reuse —
    cheap, deterministic bookkeeping, not the agents' job to search for itself.
-2a. **Frame the idea with the human first** — before any ticket exists. The PM is the only
-    voice the human hears; behind it, the PM and architect talk first. Each round: run the
-    PM+architect dialogue (`.pilot/pilot-link-agent-dialogue.md`) — `pilot-pm` with
-    `.pilot/pilot-task-frame-idea.md`, `pilot-architect` with
-    `.pilot/pilot-task-anticipate-architecture.md`, alternating, each call passed the raw
-    idea, step 2's Epic list and the framing conversation so far (the human's answers
-    included) — nothing else from this conversation. Once they have converged for this round,
-    show the human only the PM's last turn (challenges, restated brief, the architect's points
-    folded in) and put its questions to them (at most four at a time, the most shape-changing
-    first, through whatever question tool you have, each with its provisional default as the
-    recommended option); feed the answers back and run the dialogue again. Stop when the PM
-    says the brief is ready and the human has confirmed it (or says to go with the provisional
-    defaults), or when the idea turns out to be out of scope or not a product idea
-    (`/pilot-spec --tech`/`--bug`): report and create nothing. The human-validated brief is
-    what step 3 starts from. No ticket exists during this stage, so `--resume` has nothing to
-    pick up: an interrupted framing is simply run again. Skipped with `--resume`.
+2a. **Frame the idea with the human first** — before the architect is called and before any
+    ticket exists. The PM talks with the human alone, round by round
+    (`.pilot/pilot-task-frame-idea.md`): call `Agent` for `pilot-pm` with it, passing the raw
+    idea, step 2's Epic list and the framing conversation so far, the human's answers
+    included — nothing else from this conversation. Each round, show the human the PM's
+    challenges and restated brief, and put its questions to them (at most four at a time, the
+    most shape-changing first, through whatever question tool you have, each with its
+    provisional default as the recommended option); feed the answers back and call the PM
+    again. Stop when the PM says the brief is ready and the human has confirmed it (or says to
+    go with the provisional defaults), or when the idea turns out to be out of scope or not a
+    product idea (`/pilot-spec --tech`/`--bug`): report and create nothing. Only then does
+    step 3's PM+architect dialogue start, from the validated brief. No ticket exists during
+    this stage, so `--resume` has nothing to pick up: an interrupted framing is simply run
+    again. Skipped with `--resume`.
 3. Run the PM+architect dialogue (`.pilot/pilot-link-agent-dialogue.md`): call `Agent` for
    `pilot-pm`, then `pilot-architect`, alternating turns, each passed the running
    conversation so far. Read `.pilot/pilot-task-write-story.md` (PM's duty) and
@@ -56,7 +54,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    one as part of each call's prompt, along with the human-validated brief (and the raw idea it
    came from), the candidate Epic list, and the dialogue so far — nothing else from this
    conversation's history, so each call gets a clean, scoped context
-   (`.pilot/pilot-process.md` §5). The architect already checked the brief during step 2a. A
+   (`.pilot/pilot-process.md` §5). The architect's first turn checks the validated brief. A
    question that needs the human — a constraint that contradicts something they decided, a
    choice that changes the story's shape — is put to them now, before step 4 creates anything,
    the same way step 2a does, and its answer fed back into the dialogue. The persona files themselves

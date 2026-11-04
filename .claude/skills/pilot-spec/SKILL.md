@@ -63,26 +63,27 @@ what `--multi` means here.
 1a. **No-ticket entry** (`--tech`/`--bug`, explicit or auto-detected).
     **Frame the need first, with the human, before any ticket exists** — this stage needs a
     human live, so it never runs when another phase applies the shared bug mechanism on its
-    own (`.pilot/pilot-link-bug-tickets.md`). The architect is the only voice the human
-    hears; behind it, the architect and tech lead talk first. Each round: run the
-    architect+tech lead dialogue (`.pilot/pilot-link-agent-dialogue.md`) — `pilot-architect`
-    with `.pilot/pilot-task-challenge-need.md`, `pilot-techlead` with
-    `.pilot/pilot-task-verify-need.md`, alternating, each call passed the raw need and the
-    framing conversation so far (the human's answers included) — nothing else from this
-    conversation. Once they have converged for this round, show the human only the
-    architect's last turn (classification, challenges, what the tech lead found in the code)
-    and put its questions to them (at most four at a time, the most shape-changing first,
-    through whatever question tool you have, each with its provisional default as the
-    recommended option); feed the answers back and run the dialogue again. Stop when both say
-    the need is ready and the human has confirmed it (or says to go with the provisional
-    defaults), or when it turns out not to belong here (out of scope, a product idea for
-    `/pilot-discovery`, not a real defect or a duplicate): report and create nothing. No
-    ticket exists during this stage, so an interrupted framing is simply run again.
-    Then call `Agent` with `subagent_type: "pilot-architect"` alone — read the matching task
-    doc, `.pilot/pilot-task-formalize-tech-need.md` (`--tech`) or
+    own (`.pilot/pilot-link-bug-tickets.md`). The architect talks with the human alone, round
+    by round (`.pilot/pilot-task-challenge-need.md`): call `Agent` for `pilot-architect` with
+    it, passing the raw need and the framing conversation so far, the human's answers
+    included — nothing else from this conversation. Each round, show the human the
+    architect's classification and challenges and put its questions to them (at most four at
+    a time, the most shape-changing first, through whatever question tool you have, each
+    with its provisional default as the recommended option); feed the answers back and call
+    it again. Stop when the architect says the need is ready and the human has confirmed it
+    (or says to go with the provisional defaults), or when it turns out not to belong here
+    (out of scope, a product idea for `/pilot-discovery`, not a real defect or a duplicate):
+    report and create nothing. No ticket exists during this stage, so an interrupted framing
+    is simply run again.
+    Only then do the architect and tech lead talk
+    (`.pilot/pilot-link-agent-dialogue.md`): alternating `pilot-architect`, with the matching
+    formalizing doc — `.pilot/pilot-task-formalize-tech-need.md` (`--tech`) or
     `.pilot/pilot-task-formalize-bug-report.md` (`--bug`, alongside
-    `.pilot/pilot-link-bug-tickets.md` in full), and pass its content with the clarified need
-    from the framing (the raw need when another phase applies the shared mechanism).
+    `.pilot/pilot-link-bug-tickets.md` in full) — and `pilot-techlead`, with
+    `.pilot/pilot-task-verify-need.md` (checks the clarified need against the real code), each
+    passed the clarified need and the dialogue so far; the tech lead's check precedes
+    the architect's draft being created. A question that needs the human is put to them before anything is created, the
+    same way, and its answer fed back into the dialogue.
     - `--tech`: out of scope / not actionable → report, create nothing. Otherwise →
       always exactly one `type:tech` `level:story` (standalone — never grouped under an
       epic, there is no `type:tech` epic, `.pilot/pilot-process.md` §2 "Three levels") —

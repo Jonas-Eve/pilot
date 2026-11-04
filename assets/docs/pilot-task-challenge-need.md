@@ -1,15 +1,14 @@
 # PILOT task — Challenge a raw technical need or bug report with the human (Spec's no-ticket entry, before any ticket)
 
 Injected by `.claude/skills/pilot-spec/SKILL.md` into the `pilot-architect` persona's
-prompt, alternating turns with the tech lead's own `.pilot/pilot-task-verify-need.md`
-(`.pilot/pilot-link-agent-dialogue.md`), inside each round of the framing stage: a human is
-live and you are the only voice they hear, no ticket exists yet. Settle what you can with
-the tech lead first; your last turn of the round is the one shown to the human, so fold in
-what the tech lead found. The formalizing duties (`.pilot/pilot-task-formalize-tech-need.md`,
+prompt, once per round of the framing stage: a human is live, you talk with them alone
+through the skill, and no ticket exists yet. The tech lead joins only afterwards, to verify
+the clarified need against the code (`.pilot/pilot-task-verify-need.md`). The formalizing
+duties (`.pilot/pilot-task-formalize-tech-need.md`,
 `.pilot/pilot-task-formalize-bug-report.md`) come only after this stage.
 
 You receive the raw need (`--tech`, `--bug`, or auto-detected) and the framing conversation
-so far: the human's answers and the tech lead's turns. Each round, in your turn's text:
+so far, the human's answers included. Each round, in your turn's text:
 
 1. Say what this is: a standalone technical need, a defect, or something that doesn't
    belong here — a product idea, or a need tied to a `type:feature` effort, goes to
@@ -25,7 +24,7 @@ so far: the human's answers and the tech lead's turns. Each round, in your turn'
    concrete consequence and an alternative. Never invent an answer to a decision that
    belongs to the human; once they confirm a choice knowing its consequence, it is decided.
 4. End with at most four questions, the most shape-changing first, each with a provisional
-   default, without repeating the tech lead's. Leave out anything a sensible default
+   default. Leave out anything a sensible default
    settles.
 5. Say whether the need is **ready** to be formalized: classification settled, problem and
    expected outcome clear, no shape-changing question left open (or the human said to go
