@@ -491,23 +491,24 @@ const STUB = (opts) => `
     ticket(5, ['type:feature', 'status:qa', 'priority:P2'], { t: 'Libre qa' }),
     ticket(6, ['type:feature', 'status:in-qa', 'priority:P2'], { t: 'À alice qa', a: 'alice' }),
     ticket(7, ['type:tech', 'status:in-review', 'priority:P2'], { t: 'À bob review', a: 'bob', r: 34 }),
+    ticket(8, ['type:tech', 'status:changes-requested', 'priority:P2'], { t: 'Corrections demandées par carol', a: 'carol' }),
   ], 120);
   page = await open({ preload: [ASSIGN_SNAP] });
   const fileNums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
   const setOf2 = (...a) => JSON.stringify(a.sort());
-  check('default scope "Tous": the role\'s tickets, assigned or not', JSON.stringify(await fileNums()) === setOf2('#1', '#2', '#3', '#4', '#7'), JSON.stringify(await fileNums()));
+  check('default scope "Tous": the role\'s tickets, assigned or not', JSON.stringify(await fileNums()) === setOf2('#1', '#2', '#3', '#4', '#7', '#8'), JSON.stringify(await fileNums()));
   check('an assignee shows as a chip', /@alice/.test(await page.locator('#view .row', { hasText: '#2 ' }).textContent()) && !/@/.test(await page.locator('#view .row', { hasText: '#1 ' }).textContent()));
   const prHref = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' }).locator('a:has-text("PR #")').evaluateAll((as) => as.map((a) => ({ href: a.href, text: a.textContent.trim(), target: a.target, rel: a.rel })));
   check('a ticket with an open PR links to it (new tab, no opener)', JSON.stringify(await prHref(2)) === JSON.stringify([{ href: `https://github.com/${REPO}/pull/33`, text: 'PR #33', target: '_blank', rel: 'noopener' }]), JSON.stringify(await prHref(2)));
   check('a ticket without a PR has no PR link', (await prHref(1)).length === 0);
   await page.locator('#view .seg button', { hasText: 'À prendre' }).click(); await page.waitForTimeout(100);
-  check('"À prendre": role tickets that are unassigned and neither blocked nor on hold', JSON.stringify(await fileNums()) === setOf2('#1', '#4'), JSON.stringify(await fileNums()));
+  check('"À prendre": role tickets that are unassigned (or changes-requested, which /pilot-dev reclaims over the reviewer) and neither blocked nor on hold', JSON.stringify(await fileNums()) === setOf2('#1', '#4', '#8'), JSON.stringify(await fileNums()));
   await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
   check('"À prendre" follows the role (product: the QA ticket)', JSON.stringify(await fileNums()) === setOf2('#5'), JSON.stringify(await fileNums()));
   await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(100);
   await page.locator('#view .seg button', { hasText: 'Assignés à moi' }).click(); await page.waitForTimeout(100);
   check('"Assignés à moi" without an identity asks for it', (await fileNums()).length === 0 && /Indiquez votre identifiant GitHub/.test(await text(page, '#view')));
-  check('the known assignees are offered in the identity field', (await page.locator('#meList option').evaluateAll((o) => o.map((x) => x.value).sort())).join(',') === 'alice,bob');
+  check('the known assignees are offered in the identity field', (await page.locator('#meList option').evaluateAll((o) => o.map((x) => x.value).sort())).join(',') === 'alice,bob,carol');
   await page.fill('#meInput', '@alice'); await page.waitForTimeout(100);
   check('with an identity: every ticket assigned to me, whatever the role (a dev one and a QA one)', JSON.stringify(await fileNums()) === setOf2('#2', '#6'), JSON.stringify(await fileNums()));
   await page.screenshot({ path: path.join(TMP, 'mine.png') });
