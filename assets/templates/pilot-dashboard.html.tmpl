@@ -87,6 +87,7 @@ nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent
 .idea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .idea textarea{width:100%;min-height:72px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font:inherit;color:inherit;resize:vertical}
 [hidden]{display:none!important}
+.foot{color:var(--muted);font-size:12px;font-family:var(--mono);text-align:center;padding-top:8px}
 .fold{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;padding:0;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:13px;color:var(--muted)}
 .fold .chev{display:inline-block;width:1em;color:var(--accent)}
 .fold .sum{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400}
@@ -136,6 +137,7 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
   <section id="batch" class="idea" aria-label="Lancer en lot" hidden></section>
   <section id="search" class="idea search" aria-label="Recherche" hidden></section>
   <main id="view"></main>
+  <footer class="foot" id="version">Cockpit PILOT · version {{PILOT_VERSION}}</footer>
 </div>
 <div id="modal"></div>
 
