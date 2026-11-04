@@ -100,6 +100,9 @@ class GhClient:
         items = self._pages(f"repos/{self.repo}/issues", {"state": "open"})
         return [i for i in items if "pull_request" not in i]
 
+    def open_pulls(self):
+        return self._pages(f"repos/{self.repo}/pulls", {"state": "open"})
+
     def get_issue(self, number):
         """The raw issue (a PR carries a `pull_request` key), or None when it doesn't exist."""
         try:
@@ -139,6 +142,9 @@ class GhClient:
 
     def post_comment(self, number, text):
         self._run(f"repos/{self.repo}/issues/{number}/comments", method="POST", body={"body": text})
+
+
+CLOSES_RE = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+#(\d+)", re.I)
 
 
 def normalize(raw):
@@ -374,11 +380,25 @@ class Machine:
 
     def snapshot(self):
         """Every open ticket as the dashboard's `snapshots/<owner>__<repo>` document."""
-        rows = []
+        rows, prs = [], {}
+        for pr in self.gh.open_pulls():  # the open PR that closes a ticket: `Closes #<issue>` in its body
+            for num in CLOSES_RE.findall(pr.get("body") or ""):
+                prs[int(num)] = max(prs.get(int(num), 0), pr["number"])
         for raw in self.gh.open_issues():
             t = normalize(raw)
-            rows.append({"n": t["number"], "t": t["title"], "l": sorted(t["labels"]),
-                         "u": raw.get("updated_at", "")})
+            row = {"n": t["number"], "t": t["title"], "l": sorted(t["labels"]),
+                   "u": raw.get("updated_at", "")}
+            if t["assignees"]:
+                row["a"] = t["assignees"][0]
+            if t["number"] in prs:
+                row["r"] = prs[t["number"]]
+            parent = str(raw.get("parent_issue_url") or "").rsplit("/", 1)[-1]
+            if parent.isdigit():
+                row["p"] = int(parent)  # parent issue number: lets the dashboard nest sub-issues
+            summary = raw.get("sub_issues_summary") or {}
+            if summary.get("total"):
+                row["k"] = [summary.get("completed", 0), summary["total"]]  # sub-issues done / total
+            rows.append(row)
         rows.sort(key=lambda r: r["u"], reverse=True)
         doc = {"repo": self.gh.repo, "at": now_iso(), "source": "pilot.py", "total": len(rows),
                "truncated": False, "issues": rows}

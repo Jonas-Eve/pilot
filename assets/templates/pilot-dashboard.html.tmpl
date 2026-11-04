@@ -86,7 +86,25 @@ nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent
 .refresh{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
 .idea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .idea textarea{width:100%;min-height:72px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font:inherit;color:inherit;resize:vertical}
+[hidden]{display:none!important}
+.fold{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;padding:0;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:13px;color:var(--muted)}
+.fold .chev{display:inline-block;width:1em;color:var(--accent)}
+.fold .sum{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400}
+.foldbody{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.kids{grid-column:1/-1;display:flex;flex-direction:column;gap:8px;margin-left:10px;padding-left:10px;border-left:2px solid var(--line)}
+.kids .row{background:var(--bg)}
+.row .opts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;border-top:1px dashed var(--line);padding-top:8px}
+.row .opts .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .idea .cmd{overflow-wrap:anywhere}
+.search input[type=search]{width:100%;min-height:38px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;font:inherit;color:inherit}
+.filters{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.filters .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.me{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;min-height:34px;width:min(190px,100%);font-family:var(--mono);font-size:13px}
+.fpanel{display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--line);padding-top:10px}
+.fgrp{display:flex;flex-direction:column;gap:6px}
+.chip.rm{border:0;cursor:pointer;font:inherit;font-size:12px;line-height:20px}
+.tog{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 12px;min-height:30px}
+.tog[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .idea .seg{align-self:flex-start;max-width:100%;overflow-x:auto}
 a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
 .pager{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
@@ -106,6 +124,8 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
       <p class="sub">Tickets par phase et file d’actions selon votre rôle, avec la commande PILOT prête à copier.</p>
     </div>
     <div class="controls">
+      <input class="me" id="meInput" list="meList" autocomplete="off" spellcheck="false" aria-label="Mon identifiant GitHub" placeholder="Mon identifiant GitHub">
+      <datalist id="meList"></datalist>
       <div class="seg" role="group" aria-label="Rôle" id="roleSeg"></div>
     </div>
   </div>
@@ -113,6 +133,8 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
   <nav class="tabs" id="tabs"></nav>
   <div id="banner"></div>
   <section id="idea" class="idea" aria-label="Nouvelle demande" hidden></section>
+  <section id="batch" class="idea" aria-label="Lancer en lot" hidden></section>
+  <section id="search" class="idea search" aria-label="Recherche" hidden></section>
   <main id="view"></main>
 </div>
 <div id="modal"></div>
@@ -146,7 +168,7 @@ var PHASES=[
   {key:'review',name:'Review',n:4,role:'tech',statuses:['review-ready','in-review','approved']},
   {key:'qa',name:'QA humaine',n:5,role:'produit',statuses:['qa','in-qa']}
 ];
-var STATUS_FR={'draft':'brouillon','backlog':'à spécifier','in-spec':'spec en cours','dev-ready':'prêt à coder','in-dev':'dev en cours','changes-requested':'corrections demandées','review-ready':'à relire','in-review':'relecture en cours','approved':'approuvé, à merger','qa':'à tester','in-qa':'test en cours'};
+var STATUS_FR={'draft':'brouillon','backlog':'à spécifier','in-spec':'spec en cours','dev-ready':'prêt à coder','in-dev':'dev en cours','changes-requested':'corrections demandées','review-ready':'à relire','in-review':'relecture en cours','approved':'approuvé, à merger','split':'découpée en tâches','qa':'à tester','in-qa':'test en cours'};
 function phaseOf(status){for(var i=0;i<PHASES.length;i++)if(PHASES[i].statuses.indexOf(status)>-1)return PHASES[i];return null;}
 
 function lab(t,p){for(var i=0;i<t.labels.length;i++)if(t.labels[i].indexOf(p)===0)return t.labels[i].slice(p.length);return '';}
@@ -157,6 +179,8 @@ function actionFor(t){
   var s=t.status, n=t.n;
   if(has(t,'on-hold'))return {kind:'hold',label:'En pause'};
   if(has(t,'needs-human'))return {kind:'human',label:'Attend un humain'};
+  /* an epic or a split story is a container: /pilot-auto searches its open sub-issues and works the best candidate (--next keeps going) */
+  if(has(t,'level:epic')||s==='split')return {kind:'run',cmd:'/pilot-auto '+n,container:true,label:'Traiter'};
   switch(s){
     case 'draft': return {kind:'run',cmd:'/pilot-discovery --resume '+n,pairOnly:true,label:'Reprendre'};
     case 'backlog': return {kind:'run',cmd:'/pilot-spec '+n,label:'Spécifier'};
@@ -185,14 +209,15 @@ var SAMPLE=[
   ex(107,'Notification de relais humain',['type:feature','level:task','priority:P1','status:review-ready'],12),
   ex(108,'E2E : parcours de réservation assistée',['type:e2e','level:task','priority:P1','status:in-review','needs-human'],26),
   ex(109,'Migration du stockage des profils',['type:tech','level:task','priority:P2','status:approved'],2),
+  ex(100,'Parcours des voyageurs seniors',['type:feature','level:epic'],60),
   ex(110,'Profil voyageur senior',['type:feature','level:story','priority:P1','status:qa'],40)
 ].map(function(t){t.status=lab(t,'status:');return t;});
 
 /* ---------- state ---------- */
 var S={
   repo:'{{REPO}}',
-  role:store('cp.role')||'tech',
-  tab:'file', page:0, expanded:{},
+  role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -206,7 +231,7 @@ function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.a
 
 /* ---------- snapshots (db): written by Claude from GitHub, read by everyone ---------- */
 function snapId(repo){return String(repo).replace('/','__');}
-function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||''};t.status=lab(t,'status:');return t;}
+function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||'',p:i.p||0,k:i.k||null,r:i.r||0};t.status=lab(t,'status:');return t;}
 function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
@@ -236,7 +261,7 @@ function overlay(list,baseAt){
   Object.keys(S.events).forEach(function(k){
     var e=S.events[k]; if(baseAt&&String(e.at)<=String(baseAt))return;
     if(e.state==='closed'){delete by[e.n];return;}
-    var old=by[e.n], t={n:e.n,title:e.title||(old&&old.title)||('#'+e.n),labels:e.labels||[],updated:e.at,assignee:(e.assignees||[])[0]||''};
+    var old=by[e.n], t={n:e.n,title:e.title||(old&&old.title)||('#'+e.n),labels:e.labels||[],updated:e.at,assignee:(e.assignees||[])[0]||'',p:(old&&old.p)||0,k:(old&&old.k)||null,r:(old&&old.r)||0};
     t.status=lab(t,'status:'); by[e.n]=t;
   });
   return Object.keys(by).map(function(k){return by[k];});
@@ -325,31 +350,179 @@ function pager(total){
     h('span',{class:'note'},'Page '+(S.page+1)+' sur '+pages+' · '+total+' tickets'),
     h('button',{class:'btn',type:'button',disabled:S.page>=pages-1,onclick:function(){go(S.page+1);}},'Suivant'));
 }
-function vFile(){
-  var mine=tickets().filter(function(t){var p=phaseOf(t.status);return p&&(S.role==='tous'||p.role===S.role);}).sort(byUrgency);
-  var pages=Math.max(1,Math.ceil(mine.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
-  var shown=mine.slice(S.page*PAGE_SIZE,(S.page+1)*PAGE_SIZE);
-  var roleTxt=S.role==='produit'?'Discovery et QA humaine':S.role==='tech'?'Spec, Dev et Review':'Toutes les phases';
-  return h('div',{class:'list'},
-    h('h2',{},'Ma file · '+roleTxt+' · '+mine.length),
-    h('p',{class:'note'},'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'),
-    pager(mine.length),
-    shown.length?shown.map(function(t){
-      var a=actionFor(t), canAuto=a.kind==='run'&&!a.pairOnly;
-      return h('div',{class:'row'+(has(t,'needs-human')?' flag':'')},
+var MULTI_CHOICES=[0,2,3,4,5];
+function multiSeg(cur,onpick,label){
+  return h('div',{class:'seg',role:'group','aria-label':label||'Multi'},MULTI_CHOICES.map(function(m){
+    return h('button',{type:'button','aria-pressed':String(cur===m),onclick:function(){onpick(m);}},m?String(m):'Non');}));
+}
+/* a card whose body folds behind a chevron so the ticket list stays in view; its state is remembered per viewer */
+function foldCard(box,key,title){
+  var open=store('cp.fold.'+key)==='1';
+  var chev=h('span',{class:'chev','aria-hidden':'true'},open?'▾':'▸'), sum=h('span',{class:'sum note',id:key+'Sum'});
+  var body=h('div',{class:'foldbody',id:key+'Body',hidden:open?null:true});
+  var btn=h('button',{type:'button',class:'fold',id:key+'Toggle','aria-expanded':String(open),'aria-controls':key+'Body',
+    onclick:function(){var o=body.hidden;body.hidden=!o;btn.setAttribute('aria-expanded',String(o));chev.textContent=o?'▾':'▸';store('cp.fold.'+key,o?'1':'0');}},chev,title,sum);
+  box.append(btn,body);
+  return body;
+}
+/* what one ticket row can launch, given its chosen options: --next rides it through every phase via /pilot-auto,
+   --multi N has N agents converge on the approach first (never on a resume, nor on QA) */
+function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false});}
+/* open sub-issues of a ticket (the snapshot gives each ticket's parent); closed ones are only counted, in t.k */
+function kidsOf(n){
+  if(!S._km){S._km={};tickets().forEach(function(t){if(t.p)(S._km[t.p]=S._km[t.p]||[]).push(t);});}
+  return (S._km[n]||[]).slice().sort(byUrgency);
+}
+function rowCmds(t,a,o){
+  if(a.container)return {canAuto:true,multiOK:true,container:true,auto:a.cmd+(o.multi?' --multi '+o.multi:'')+(o.next?' --next':''),pair:null};
+  var canAuto=a.kind==='run'&&!a.pairOnly, multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
+  var mu=multiOK&&o.multi?' --multi '+o.multi:'';
+  return {canAuto:canAuto,multiOK:multiOK,
+    auto:canAuto?(o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu):null,
+    pair:a.cmd+mu};
+}
+function ticketRow(t,withLevel,depth){
+  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), hasOpts=rc.canAuto||rc.multiOK;
+  depth=depth||0;
+  var kids=depth<3?kidsOf(t.n):[];
+  function set(k,v){o[k]=v;render();}
+  return h('div',{class:'row'+(has(t,'needs-human')?' flag':'')},
         h('div',{class:'main'},
           h('div',{class:'t'},h('span',{class:'num'},'#'+t.n+' '),t.title),
-          h('div',{class:'meta'},ticketChips(t),h('span',{class:'note'},ago(t.updated)),
-            a.kind==='run'?h('span',{class:'cmd'},a.cmd+(canAuto?'':'  (pair)')):null)),
+          h('div',{class:'meta'},withLevel&&lab(t,'level:')?h('span',{class:'chip'},LEVEL_FR[lab(t,'level:')]||lab(t,'level:')):null,ticketChips(t),
+            rc.canAuto&&o.next?h('span',{class:'chip acc'},'enchaîné'):null,rc.multiOK&&o.multi?h('span',{class:'chip acc'},'multi '+o.multi):null,
+            t.assignee?h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee):null,
+            t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
+            h('span',{class:'note'},ago(t.updated)),
+            a.kind==='run'?h('span',{class:'cmd'},(rc.auto||rc.pair)+(rc.canAuto?'':'  (pair)')):null)),
         h('div',{class:'acts'},
           a.kind==='run'?[
-            canAuto?openLink(a.cmd+' --auto','Ouvrir (auto)',true):null,
-            openLink(a.cmd,canAuto?'Ouvrir (pair)':'Ouvrir en pair',!canAuto),
-            canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd+' --auto',e.target);}},'Copier auto'):null,
-            h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd,e.target);}},canAuto?'Copier pair':'Copier')]:null,
-          a.kind==='human'||a.kind==='merge'||a.kind==='hold'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null));
-    }):h('div',{class:'empty'},'Rien n’attend ce rôle pour le moment.'),
+            rc.canAuto?openLink(rc.auto,'Ouvrir (auto)',true):null,
+            rc.pair?openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto):null,
+            rc.canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.auto,e.target);}},'Copier auto'):null,
+            rc.pair?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.pair,e.target);}},rc.canAuto?'Copier pair':'Copier'):null,
+            hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
+          a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
+          t.r?h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r):null,
+          kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
+        a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
+          rc.canAuto?h('div',{class:'grp'},
+            h('button',{class:'tog',type:'button','aria-pressed':String(o.next),onclick:function(){set('next',!o.next);}},'Enchaîner (--next)'),
+            h('span',{class:'note'},rc.container?'traite ce qui est prêt dans cette arborescence, ticket après ticket, jusqu’à la fin ou un blocage':'suit ce ticket dans toutes les phases suivantes, jusqu’à la fin ou un blocage')):null,
+          rc.multiOK?h('div',{class:'grp'},h('span',{class:'note'},'Multi'),multiSeg(o.multi,function(m){set('multi',m);},'Multi'),
+            h('span',{class:'note'},'N agents dialoguent avant d’agir')):null):null,
+        kids.length&&o.kids?h('div',{class:'kids'},kids.map(function(c){return ticketRow(c,true,depth+1);})):null);
+}
+
+var SCOPES=[['prendre','À prendre'],['moi','Assignés à moi'],['tous','Tous']];
+function vFile(){
+  function inRole(t){var p=phaseOf(t.status);return p&&(S.role==='tous'||p.role===S.role);}
+  var mine=tickets().filter(function(t){
+    if(!phaseOf(t.status))return false;
+    if(S.scope==='moi')return !!S.me&&t.assignee===S.me;
+    if(S.scope==='prendre')return inRole(t)&&!has(t,'needs-human')&&!has(t,'on-hold')&&(!t.assignee||t.status==='changes-requested'); /* a review verdict keeps the reviewer as assignee, and /pilot-dev reclaims changes-requested over it */
+    return inRole(t);
+  }).sort(byUrgency);
+  var pages=Math.max(1,Math.ceil(mine.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
+  var shown=mine.slice(S.page*PAGE_SIZE,(S.page+1)*PAGE_SIZE);
+  var roleTxt=S.scope==='moi'?'Tous rôles':S.role==='produit'?'Discovery et QA humaine':S.role==='tech'?'Spec, Dev et Review':'Toutes les phases';
+  var scopeSeg=h('div',{class:'seg',role:'group','aria-label':'Tickets'},SCOPES.map(function(c){
+    return h('button',{type:'button','aria-pressed':String(S.scope===c[0]),onclick:function(){S.scope=c[0];S.page=0;store('cp.scope',c[0]);render();}},c[1]);}));
+  return h('div',{class:'list'},
+    h('h2',{},'Ma file · '+(S.scope==='moi'?'assignés à '+(S.me?'@'+S.me:'moi')+' · ':S.scope==='prendre'?'à prendre · ':'')+roleTxt+' · '+mine.length),
+    scopeSeg,
+    h('p',{class:'note'},'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'),
+    pager(mine.length),
+    shown.length?shown.map(function(t){return ticketRow(t);}):h('div',{class:'empty'},
+      S.scope==='moi'&&!S.me?'Indiquez votre identifiant GitHub (en haut de la page) pour voir les tickets qui vous sont assignés.':
+      S.scope==='moi'?'Aucun ticket ne vous est assigné.':S.scope==='prendre'?'Rien à prendre pour ce rôle pour le moment.':'Rien n’attend ce rôle pour le moment.'),
     shown.length>5?pager(mine.length):null);
+}
+
+/* ---------- search: keyword (case- and accent-insensitive "contains", every word must match) + level + type ---------- */
+var LEVEL_FR={epic:'epic',story:'story',task:'tâche'}, LEVELS=['epic','story','task'], TYPES=['feature','tech','bug','e2e'];
+function fold(x){return String(x==null?'':x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+function matches(t){
+  var hay=fold('#'+t.n+' '+t.title), words=fold(S.q).split(/\s+/).filter(Boolean), i;
+  for(i=0;i<words.length;i++)if(hay.indexOf(words[i].replace(/^#/,''))<0)return false;
+  var lv=LEVELS.filter(function(k){return S.levels[k];}), ty=TYPES.filter(function(k){return S.types[k];});
+  if(lv.length&&lv.indexOf(lab(t,'level:'))<0)return false;
+  if(ty.length&&ty.indexOf(lab(t,'type:'))<0)return false;
+  var st=Object.keys(S.states).filter(function(k){return S.states[k];}), fl=Object.keys(S.flags).filter(function(k){return S.flags[k];});
+  if(st.length&&st.indexOf(t.status||'none')<0)return false;
+  if(fl.length&&!fl.some(function(k){return has(t,k);}))return false;
+  var as=Object.keys(S.assignees).filter(function(k){return S.assignees[k];});
+  if(as.length&&!as.some(function(k){return k==='me'?(!!S.me&&t.assignee===S.me):k==='none'?!t.assignee:t.assignee===k;}))return false;
+  return true;
+}
+var FGROUPS=[['levels','Niveau'],['types','Type'],['states','État'],['assignees','Assigné'],['flags','Drapeau']];
+function filterName(map,k){
+  if(map==='levels')return LEVEL_FR[k]||k;
+  if(map==='states')return k==='none'?'sans statut':(STATUS_FR[k]||k);
+  if(map==='flags')return FLAG_FR[k]||k;
+  if(map==='assignees')return k==='me'?'moi':k==='none'?'non assigné':'@'+k;
+  return k;
+}
+function activeFilters(){
+  var out=[]; FGROUPS.forEach(function(g){Object.keys(S[g[0]]).forEach(function(k){if(S[g[0]][k])out.push({map:g[0],group:g[1],key:k});});}); return out;
+}
+function clearSearch(){S.q='';S.levels={};S.types={};S.states={};S.flags={};S.assignees={};S.page=0;document.getElementById('searchText').value='';render();}
+function buildSearch(){
+  var box=document.getElementById('search'), open=store('cp.fold.filters')==='1';
+  var chev=h('span',{class:'chev','aria-hidden':'true'},open?'▾':'▸'), panel=h('div',{class:'fpanel',id:'searchFilters',hidden:open?null:true});
+  var tog=h('button',{type:'button',class:'btn',id:'filtersToggle','aria-expanded':String(open),'aria-controls':'searchFilters',
+    onclick:function(){var o=panel.hidden;panel.hidden=!o;tog.setAttribute('aria-expanded',String(o));chev.textContent=o?'▾':'▸';store('cp.fold.filters',o?'1':'0');}},
+    chev,' Filtres ',h('span',{class:'chip acc',id:'filtersCount',hidden:true},'0'));
+  box.append(
+    h('h2',{},'Recherche'),
+    h('label',{for:'searchText',class:'note'},'Mot-clé dans le titre ou le numéro (majuscules et accents ignorés). Plusieurs mots : tous doivent y figurer.'),
+    h('input',{type:'search',id:'searchText',autocomplete:'off',placeholder:'Ex. : profil, #418, mot de passe',oninput:function(e){S.q=e.target.value;S.page=0;render();}}),
+    h('div',{class:'filters'},tog,h('div',{class:'filters',id:'activeFilters'})),
+    panel);
+  updateSearch();
+}
+var STATE_ORDER=['draft','backlog','in-spec','dev-ready','in-dev','changes-requested','review-ready','in-review','approved','qa','in-qa','split'];
+var FLAG_FR={'needs-human':'attend un humain','on-hold':'en pause'};
+function stateKeys(){
+  /* the PILOT statuses in process order, then any other status present in the tickets, then "sans statut" (epics) */
+  var extra={};
+  tickets().forEach(function(t){if(t.status&&STATE_ORDER.indexOf(t.status)<0)extra[t.status]=1;});
+  return STATE_ORDER.concat(Object.keys(extra).sort(),['none']);
+}
+function assigneeKeys(){
+  var by={}; tickets().forEach(function(t){if(t.assignee)by[t.assignee]=1;});
+  return ['me','none'].concat(Object.keys(by).sort());
+}
+function updateSearch(){
+  var f=document.getElementById('searchFilters'), keys=stateKeys(), akeys=assigneeKeys(), sig=keys.join(',')+'|'+akeys.join(',');
+  if(!f.firstChild||S._sk!==sig){
+    S._sk=sig;
+    var grp=function(label,ks,mapName){
+      return h('div',{class:'fgrp',role:'group','aria-label':label},h('span',{class:'note'},label),
+        h('div',{class:'chips'},ks.map(function(k){return h('button',{class:'tog',type:'button','data-map':mapName,'data-key':k,'aria-pressed':'false',onclick:function(){S[mapName][k]=!S[mapName][k];S.page=0;render();}},filterName(mapName,k));})));
+    };
+    f.replaceChildren(grp('Niveau',LEVELS,'levels'),grp('Type',TYPES,'types'),grp('État',keys,'states'),grp('Assigné',akeys,'assignees'),grp('Drapeau',['needs-human','on-hold'],'flags'));
+  }
+  Array.prototype.forEach.call(f.querySelectorAll('.tog'),function(b){
+    b.setAttribute('aria-pressed',String(!!S[b.getAttribute('data-map')][b.getAttribute('data-key')]));
+  });
+  var act=activeFilters(), cnt=document.getElementById('filtersCount'), box=document.getElementById('activeFilters');
+  cnt.textContent=String(act.length); cnt.hidden=!act.length;
+  box.replaceChildren.apply(box,act.map(function(a){
+    return h('button',{class:'chip acc rm',type:'button','aria-label':'Retirer le filtre '+a.group+' '+filterName(a.map,a.key),
+      onclick:function(){S[a.map][a.key]=false;S.page=0;render();}},a.group+' : '+filterName(a.map,a.key)+' ✕');
+  }).concat(act.length||S.q?[h('button',{class:'btn ghost',type:'button',onclick:clearSearch},'Réinitialiser')]:[]));
+}
+function vSearch(){
+  var res=tickets().filter(matches).sort(function(a,b){return String(b.updated).localeCompare(String(a.updated));});
+  var pages=Math.max(1,Math.ceil(res.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
+  var shown=res.slice(S.page*PAGE_SIZE,(S.page+1)*PAGE_SIZE);
+  return h('div',{class:'list'},
+    h('h2',{},'Résultats · '+res.length+' sur '+tickets().length+' tickets ouverts'),
+    pager(res.length),
+    S.assignees.me&&!S.me?h('p',{class:'note'},'Indiquez votre identifiant GitHub (en haut de la page) pour que « moi » désigne vos tickets.'):null,
+    shown.length?shown.map(function(t){return ticketRow(t,true);}):h('div',{class:'empty'},'Aucun ticket ne correspond.'),
+    shown.length>5?pager(res.length):null);
 }
 
 function vOverview(){
@@ -385,27 +558,68 @@ function kindNow(){var key=ideaKind||(S.role==='tech'?'tech':'produit');return K
 function ideaText(){var el=document.getElementById('ideaText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
 function buildIdea(){
   var box=document.getElementById('idea');
-  box.append(
-    h('h2',{},'Nouvelle demande'),
+  foldCard(box,'idea','Nouvelle demande').append(
     h('label',{for:'ideaText',class:'note'},'Décrivez l’idée, le besoin technique ou le bug.'),
     h('textarea',{id:'ideaText',rows:3,maxlength:1500,placeholder:'Ex. : signaler un ascenseur en panne sur le trajet',oninput:updateIdea}),
     h('div',{class:'seg',role:'group','aria-label':'Type de demande',id:'kindSeg'}),
     h('p',{class:'note',id:'ideaHint'}),
+    h('div',{class:'filters',id:'ideaMultiWrap'},h('span',{class:'note'},'Multi'),h('div',{id:'ideaMultiSeg'}),h('span',{class:'note'},'plusieurs PM+architecte proposent chacun, puis convergent')),
     h('div',{class:'cmd',id:'ideaCmd'}),
     h('div',{class:'refresh'},
       h('a',{class:'btn primary',id:'ideaOpen',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
-      h('button',{class:'btn ghost',type:'button',id:'ideaCopy',onclick:function(e){var t=ideaText();if(t)copyCmd(kindNow().prefix+t,e.target);}},'Copier la commande')));
+      h('button',{class:'btn ghost',type:'button',id:'ideaCopy',onclick:function(e){var t=ideaText();if(t)copyCmd(ideaFull(kindNow(),t),e.target);}},'Copier la commande')));
   updateIdea();
 }
+function ideaFull(k,text){return k.prefix+text+(k.key==='produit'&&S.ideaMulti?' --multi '+S.ideaMulti:'');}
 function updateIdea(){
   var k=kindNow(), text=ideaText(), seg=document.getElementById('kindSeg'), open=document.getElementById('ideaOpen');
   seg.replaceChildren.apply(seg,KINDS.map(function(x){
     return h('button',{type:'button','aria-pressed':String(x.key===k.key),onclick:function(){ideaKind=x.key;updateIdea();}},x.label);}));
   document.getElementById('ideaHint').textContent=k.hint+' La commande est écrite, pas envoyée.';
-  document.getElementById('ideaCmd').textContent=k.prefix+(text||'…');
-  if(text){open.setAttribute('href',claudeCodeUrl(k.prefix+text));open.removeAttribute('aria-disabled');}
+  document.getElementById('ideaCmd').textContent=ideaFull(k,text||'…');
+  var mw=document.getElementById('ideaMultiWrap'), ms=document.getElementById('ideaMultiSeg');
+  mw.hidden=k.key!=='produit'; ms.replaceChildren(multiSeg(S.ideaMulti,function(m){S.ideaMulti=m;updateIdea();},'Multi'));
+  document.getElementById('ideaSum').textContent=text?'brouillon en cours':'';
+  if(text){open.setAttribute('href',claudeCodeUrl(ideaFull(k,text)));open.removeAttribute('aria-disabled');}
   else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}
   document.getElementById('ideaCopy').disabled=!text;
+}
+
+/* ---------- batch: /pilot-auto over a pool of candidates (--again drains each pool, --next follows one candidate through the chain) ---------- */
+var BPH=['review','dev','spec'];
+function batchCmd(){
+  var ph=BPH.filter(function(k){return S.b.ph[k];}); if(!ph.length)return null;
+  return '/pilot-auto'+(ph.length<BPH.length?' '+ph.join(' '):'')+(S.b.multi?' --multi '+S.b.multi:'')+(S.b.mode==='again'?' --again':S.b.mode==='next'?' --next':'');
+}
+function buildBatch(){
+  var box=document.getElementById('batch');
+  foldCard(box,'batch','Lancer en lot').append(
+    h('p',{class:'note'},'Une seule commande /pilot-auto qui choisit elle-même le prochain ticket prêt (Discovery et QA humaine n’ont pas de mode auto).'),
+    h('div',{class:'filters'},h('div',{class:'grp',role:'group','aria-label':'Phases',id:'batchPh'}),h('div',{class:'grp',id:'batchMode',role:'group','aria-label':'Répétition'})),
+    h('div',{class:'filters'},h('span',{class:'note'},'Multi'),h('div',{id:'batchMulti'})),
+    h('p',{class:'note',id:'batchHint'}),
+    h('div',{class:'cmd',id:'batchCmd'}),
+    h('div',{class:'refresh'},
+      h('a',{class:'btn primary',id:'batchOpen',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
+      h('button',{class:'btn ghost',type:'button',id:'batchCopy',onclick:function(e){var c=batchCmd();if(c)copyCmd(c,e.target);}},'Copier la commande')));
+  updateBatch();
+}
+var BMODES=[['','Un candidat'],['again','--again'],['next','--next']];
+var BHINT={'':'Traite un seul ticket prêt, puis s’arrête.',again:'Après chaque ticket, en prend un nouveau, jusqu’à ce que plus aucune file n’ait rien à faire.',next:'Prend un candidat et le suit dans toutes les phases jusqu’à la fin, un blocage ou sa fermeture.'};
+function updateBatch(){
+  var c=batchCmd(), open=document.getElementById('batchOpen');
+  var ph=document.getElementById('batchPh'), md=document.getElementById('batchMode'), mu=document.getElementById('batchMulti');
+  ph.replaceChildren.apply(ph,[h('span',{class:'note'},'Phases')].concat(BPH.map(function(k){
+    return h('button',{class:'tog',type:'button','aria-pressed':String(!!S.b.ph[k]),onclick:function(){S.b.ph[k]=!S.b.ph[k];updateBatch();}},k);})));
+  md.replaceChildren.apply(md,BMODES.map(function(m){
+    return h('button',{class:'tog',type:'button','aria-pressed':String(S.b.mode===m[0]),onclick:function(){S.b.mode=m[0];updateBatch();}},m[1]);}));
+  mu.replaceChildren(multiSeg(S.b.multi,function(m){S.b.multi=m;updateBatch();},'Multi'));
+  document.getElementById('batchHint').textContent=c?BHINT[S.b.mode]+' La commande est écrite, pas envoyée.':'Choisissez au moins une phase.';
+  document.getElementById('batchCmd').textContent=c||'…';
+  document.getElementById('batchSum').textContent=c?c.replace('/pilot-auto','').trim():'';
+  if(c){open.setAttribute('href',claudeCodeUrl(c));open.removeAttribute('aria-disabled');}
+  else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}
+  document.getElementById('batchCopy').disabled=!c;
 }
 
 /* ---------- banner, chips, chrome ---------- */
@@ -421,9 +635,9 @@ function renderBanner(){
       h('p',{},h('strong',{},S.repo),' · '+tickets().length+' tickets ouverts · instantané pris '+ago(g.at)+
         (applied?' · '+applied+' changement'+(applied>1?'s':'')+' appliqué'+(applied>1?'s':'')+' depuis':'')+
         (g.truncated?' · liste tronquée ('+g.total+' au total)':'')+'.'),
-      hours>24?h('div',{class:'refresh'},note('','Instantané ancien : relancez la mise à jour depuis une session du projet.'),
-        openLink(REFRESH_CMD,'Ouvrir dans Claude Code',true),
-        h('button',{class:'btn ghost',type:'button',onclick:copyBtn},'Copier '+REFRESH_CMD)):null);
+      h('div',{class:'refresh'},hours>24?note('','Instantané ancien : relancez la mise à jour depuis une session du projet.'):null,
+        openLink(REFRESH_CMD,hours>24?'Ouvrir dans Claude Code':'Actualiser l’instantané',hours>24),
+        h('button',{class:'btn ghost',type:'button',onclick:copyBtn},'Copier '+REFRESH_CMD)));
   }else if(g.state==='loading'||g.state==='init'){
     n=h('div',{class:'banner sample'},h('p',{},'Lecture des données en cours. Exemples affichés en attendant.'));
   }else{
@@ -442,26 +656,36 @@ function renderConn(){
   var c=document.getElementById('conn'); c.replaceChildren.apply(c,chips);
 }
 function renderChrome(){
+  var dl=document.getElementById('meList'), logins={}; tickets().forEach(function(t){if(t.assignee)logins[t.assignee]=1;});
+  var want=Object.keys(logins).sort().join(',');
+  if(dl.getAttribute('data-k')!==want){dl.setAttribute('data-k',want);dl.replaceChildren.apply(dl,Object.keys(logins).sort().map(function(l){return h('option',{value:l});}));}
   var seg=document.getElementById('roleSeg');
   seg.replaceChildren.apply(seg,[['produit','Produit'],['tech','Tech'],['tous','Tous']].map(function(r){
     return h('button',{type:'button','aria-pressed':String(S.role===r[0]),onclick:function(){S.role=r[0];S.page=0;store('cp.role',r[0]);render();}},r[1]);}));
   var alive=S.activity.filter(isAlive).length;
   var tabs=document.getElementById('tabs');
-  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['activite','Activité'+(alive?' ('+alive+')':'')]].map(function(t){
+  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')]].map(function(t){
     return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
+  S._km=null;
   renderChrome();renderConn();renderBanner();
   document.getElementById('idea').hidden=S.tab!=='file';updateIdea();
+  document.getElementById('batch').hidden=S.tab!=='file';
+  document.getElementById('search').hidden=S.tab!=='recherche';updateSearch();
   var v=document.getElementById('view');
-  v.replaceChildren(S.tab==='ensemble'?vOverview():S.tab==='activite'?vActivity():vFile());
+  v.replaceChildren(S.tab==='ensemble'?vOverview():S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():vFile());
 }
 
 /* ---------- boot ---------- */
-function fromHash(){var t=(location.hash||'').slice(1); if(t==='file'||t==='ensemble'||t==='activite')S.tab=t;}
+function fromHash(){var t=(location.hash||'').slice(1); if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite')S.tab=t;}
 window.addEventListener('hashchange',function(){fromHash();render();});
 fromHash();
+var me=document.getElementById('meInput'); me.value=S.me;
+me.addEventListener('input',function(){S.me=me.value.trim().replace(/^@/,'');store('cp.me',S.me);S.page=0;render();});
 buildIdea();
+buildBatch();
+buildSearch();
 render();
 if(window.claude&&window.claude.use){
   window.claude.use('db').then(function(d){S.db=d;watchSnapshots();watchLive();}).catch(function(){S.db=null;watchSnapshots();});
