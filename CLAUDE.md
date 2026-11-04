@@ -104,7 +104,8 @@ itself.
   `resolve` (classify an explicitly-given ticket: claim, resume, reclaim, re-scope, descend
   into an Epic, stop — and why), `claim` (assignee + status swap, re-read), `set`
   (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with its
-  mandatory comment). Every command prints one JSON object; judgment (which agent to call,
+  mandatory comment), `doctor` (preflight each phase skill runs as its step 0, once per session: python,
+  gh auth, repo access and push permission, the 27 PILOT labels). Every command prints one JSON object; judgment (which agent to call,
   what a spec or review says, pair dialogue) never lives in it. Copied verbatim into a
   consuming project as `.pilot/pilot.py` by `/pilot-init` and re-synced by `/pilot-update`;
   `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa` run it for their step-1 ticket

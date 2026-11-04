@@ -123,7 +123,8 @@ from a previous run — the whole point is picking up upstream changes.
    `lastLabelsSyncAt` needs no action here — step 5's script bumps it itself when it runs
    successfully.
 
-7. **Report.** Summarize what changed across steps 2-5: skills/agents added, updated,
+7. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result (a failed
+   `pilot-labels` check means step 5's label sync did not complete). Summarize what changed across steps 2-5: skills/agents added, updated,
    flagged as orphaned (and whether removed), each root file added, updated, flagged as
    orphaned (and whether removed), or left as-is and why, intro blocks resynced or
    skipped, labels created/updated.

@@ -34,6 +34,7 @@ pre-submission pause as the last check against picking the wrong one.
 
 ## Steps
 
+0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation. `ok: false` (exit 1) or a failure (exit 2, script missing) → report each entry of `failed` (or the error) and stop here, before anything has changed.
 1. Resolve the ticket: `python3 .pilot/pilot.py resolve review <issue> [--resume]`. With none
    given, run `python3 .pilot/pilot.py pool review` first — the pool of
    `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:review-ready`,

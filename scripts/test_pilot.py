@@ -49,7 +49,15 @@ class FakeGh:
         return [copy.deepcopy(self.store[n]) for n in self.subs.get(number, [])]
 
     def me(self):
+        if self._me is None:
+            raise pilot.GhError("gh: not authenticated")
         return self._me
+
+    def repo_info(self):
+        return {"full_name": "o/r", "permissions": getattr(self, "perms", {"push": True})}
+
+    def label_names(self):
+        return set(getattr(self, "labels", pilot.REQUIRED_LABELS))
 
     def patch_issue(self, number, body):
         target = self.store[number]
@@ -354,6 +362,42 @@ class FlagTests(unittest.TestCase):
         m.unflag(1, "Decided: A")
         self.assertEqual([c[0] for c in gh.calls], ["comment", "patch"])
         self.assertNotIn("needs-human", names(gh.store[1]))
+
+
+class DoctorTests(unittest.TestCase):
+    def report(self, **attrs):
+        gh = FakeGh([])
+        for key, value in attrs.items():
+            setattr(gh, key, value)
+        return pilot.Machine(gh).doctor()
+
+    def test_everything_fine(self):
+        got = self.report()
+        self.assertTrue(got["ok"])
+        self.assertEqual(got["failed"], [])
+
+    def test_not_authenticated(self):
+        got = FakeGh([], me=None)
+        got = pilot.Machine(got).doctor()
+        self.assertFalse(got["ok"])
+        self.assertEqual([c["name"] for c in got["failed"]], ["github-api"])
+
+    def test_read_only_account(self):
+        got = self.report(perms={"push": False, "pull": True})
+        self.assertEqual([c["name"] for c in got["failed"]], ["repo-write-permission"])
+
+    def test_missing_labels_are_listed(self):
+        got = self.report(labels=pilot.REQUIRED_LABELS - {"status:dev-ready", "needs-human"})
+        failed = got["failed"][0]
+        self.assertEqual(failed["name"], "pilot-labels")
+        self.assertIn("needs-human", failed["detail"])
+        self.assertIn("2 missing", failed["detail"])
+
+    def test_required_labels_cover_every_status_and_flag(self):
+        for status in pilot.STATUSES:
+            self.assertIn(f"status:{status}", pilot.REQUIRED_LABELS)
+        self.assertTrue({"needs-human", "on-hold", "can-resume", "type:e2e"} <= pilot.REQUIRED_LABELS)
+        self.assertEqual(len(pilot.REQUIRED_LABELS), 27)  # pilot-process.md section 0
 
 
 class MiscTests(unittest.TestCase):

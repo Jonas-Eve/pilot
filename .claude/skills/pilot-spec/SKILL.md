@@ -14,6 +14,7 @@ what `--multi` means here.
 
 ## Steps
 
+0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation. `ok: false` (exit 1) or a failure (exit 2, script missing) → report each entry of `failed` (or the error) and stop here, before anything has changed.
 1. Determine the input:
    - `--tech <raw need>` or `--bug <raw need>` (explicit), or free text with no issue
      number that auto-detects as one of these (infra/CI/security/deployment/migration/

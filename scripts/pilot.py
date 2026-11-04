@@ -7,6 +7,7 @@
   pilot.py set     <issue> [--status S] [--assign-me|--unassign] [--add L]... [--remove L]... [--close]
   pilot.py flag    <issue> --comment TEXT      # needs-human + the mandatory why/what's-needed comment
   pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
+  pilot.py doctor  [--verbose]                 # preflight: can the commands above work here?
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
@@ -39,6 +40,11 @@ STATUSES = {
     "changes-requested", "approved", "wont-do", "split", "qa", "in-qa", "done",
 }
 RESCOPABLE = ("status:qa", "status:in-qa", "status:split")  # spec re-scopes these in place
+REQUIRED_LABELS = (
+    {"type:feature", "type:tech", "type:bug", "type:e2e", "level:epic", "level:story", "level:task",
+     "priority:P0", "priority:P1", "priority:P2", "needs-human", "on-hold", "can-resume"}
+    | {f"status:{name}" for name in STATUSES}
+)
 PRIORITY = {"priority:P0": 0, "priority:P1": 1, "priority:P2": 2}
 NO_PRIORITY = 9
 FLAGS = ("needs-human", "on-hold")
@@ -116,6 +122,13 @@ class GhClient:
         text = self._run(f"repos/{self.repo}/issues/{number}/sub_issues",
                          {"per_page": 100}, paginate=True)
         return self._decode(text)
+
+    def repo_info(self):
+        return json.loads(self._run(f"repos/{self.repo}"))
+
+    def label_names(self):
+        text = self._run(f"repos/{self.repo}/labels", {"per_page": 100}, paginate=True)
+        return {l["name"] for l in self._decode(text)}
 
     def me(self):
         if self._me is None:
@@ -307,6 +320,45 @@ class Machine:
             return {"action": "claim-fresh", **base}
         return {"action": "stop", "reason": "wrong-status", **base}
 
+    # ---- preflight -----------------------------------------------------------------------
+    def doctor(self):
+        """Cheap checks that the other commands can work here; changes nothing.
+
+        Cannot prove a write will be allowed (a session may restrict writes that the GitHub
+        account itself could make); it checks what the account and the repo say.
+        """
+        checks = []
+
+        def check(name, ok, detail=""):
+            checks.append({"name": name, "ok": bool(ok), "detail": detail})
+            return bool(ok)
+
+        check("python>=3.8", sys.version_info >= (3, 8), sys.version.split()[0])
+        login = None
+        try:
+            login = self.gh.me()
+            check("github-api", True, f"authenticated as {login}")
+        except (GhError, ValueError, FileNotFoundError, KeyError) as err:
+            check("github-api", False, str(err) or "gh CLI not found or not authenticated")
+        if login:
+            try:
+                info = self.gh.repo_info()
+                check("repo-readable", True, info.get("full_name", ""))
+                perms = info.get("permissions") or {}
+                check("repo-write-permission", perms.get("push") or perms.get("admin"),
+                      "the account can push (a session may still restrict writes)"
+                      if perms.get("push") or perms.get("admin")
+                      else "read-only access: claim/set/flag would be refused")
+                missing = sorted(REQUIRED_LABELS - self.gh.label_names())
+                check("pilot-labels", not missing,
+                      "all present" if not missing else
+                      f"{len(missing)} missing (run /pilot-update): " + ", ".join(missing[:6])
+                      + ("…" if len(missing) > 6 else ""))
+            except (GhError, ValueError) as err:
+                check("repo-readable", False, str(err))
+        failed = [c for c in checks if not c["ok"]]
+        return {"ok": not failed, "login": login, "failed": failed, "checks": checks}
+
     # ---- writes --------------------------------------------------------------------------
     def _write(self, number, labels, assignees=None, extra=None):
         body = {"labels": sorted(labels)}
@@ -456,6 +508,8 @@ def build_parser():
     p.add_argument("--add", action="append", default=[])
     p.add_argument("--remove", action="append", default=[])
     p.add_argument("--close", action="store_true")
+    p = sub.add_parser("doctor")
+    p.add_argument("--verbose", action="store_true", help="list every check, not only failures")
     for name in ("flag", "unflag"):
         p = sub.add_parser(name)
         p.add_argument("issue", type=int)
@@ -474,6 +528,11 @@ def run(args, gh):
     if args.cmd == "set":
         assign = "me" if args.assign_me else "none" if args.unassign else None
         return machine.set(args.issue, args.status, assign, args.add, args.remove, args.close)
+    if args.cmd == "doctor":
+        report = machine.doctor()
+        if not args.verbose:
+            report.pop("checks")
+        return report
     if args.cmd == "flag":
         return machine.flag(args.issue, args.comment)
     return machine.unflag(args.issue, args.comment)
@@ -491,7 +550,7 @@ def main(argv=None):
         print(json.dumps({"error": str(err) or "gh CLI not found"}))
         return 2
     print(json.dumps({"repo": repo, **result}, ensure_ascii=False))
-    return 0
+    return 1 if result.get("ok") is False and args.cmd == "doctor" else 0
 
 
 if __name__ == "__main__":

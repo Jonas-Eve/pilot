@@ -141,5 +141,6 @@ see `.claude/skills/pilot-update/SKILL.md`.
     `lastSkillsSyncAt`/`lastIntroSyncAt`/`lastProcessDocSyncAt`/`lastLabelsSyncAt` set to
     now (or left null for whichever of labels was skipped in step 9).
 
-11. **Report.** Summarize what was created/updated/skipped, and suggest running
+11. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result. Summarize what
+    was created/updated/skipped, and suggest running
     `/pilot-init-archi` next to describe the monorepo's apps and generate their scaffolds.

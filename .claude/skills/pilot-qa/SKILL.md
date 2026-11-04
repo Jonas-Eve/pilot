@@ -13,6 +13,7 @@ this skill only covers the mechanics of running it.
 
 ## Steps
 
+0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation. `ok: false` (exit 1) or a failure (exit 2, script missing) → report each entry of `failed` (or the error) and stop here, before anything has changed.
 1. Determine the input: `python3 .pilot/pilot.py resolve qa <issue> [--resume]`. With no issue
    given, run `python3 .pilot/pilot.py pool qa` first — the pool of
    `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:qa`, resumable
