@@ -83,7 +83,7 @@ actually is, never copied down a tree:
   optional — its architecture decisions are made and cross-examined by the tech lead
   already, at spec time).
 - **`type:tech`** — originates in one of two ways: **grouped** with a `type:feature`
-  effort — Discovery's own PM+architect dialogue recognizes the idea needs a technical
+  effort — Discovery's own PM-led, architect-validated discussion recognizes the idea needs a technical
   enabler alongside the product work and formalizes it as its own `type:tech` story under
   the same `level:epic` — or **standalone** — a human describes a purely technical need
   (infra, CI, security hardening, migration, no product framing) directly to
@@ -951,9 +951,9 @@ actually blocking.
 
 ### Agent dialogue: Discovery, Spec, and `--multi` on Dev
 
-Discovery (PM+architect) and Spec (architect+tech lead) aren't one persona handing a
-finished artifact to another — the two personas genuinely converse before a human ever
-sees a draft, with no fixed number of turns: they judge for themselves when they've
+Spec (architect+tech lead) isn't one persona handing a finished artifact to another, and
+Discovery's validator debates the PM when it objects ("Roster" above) — the personas
+genuinely converse before a human ever sees a draft, with no fixed number of turns: they judge for themselves when they've
 converged, or when a disagreement is genuinely irreconcilable and belongs to `needs-human`
 instead. `--multi` on Discovery, Spec, and Dev uses this same self-terminating dialogue
 between its N instances, instead of the older skill-mediated, capped reconciliation.

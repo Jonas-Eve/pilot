@@ -48,7 +48,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
     again. Stop when the PM says the brief is ready and the human has confirmed it (or says to
     go with the provisional defaults), or when the idea turns out to be out of scope or not a
     product idea (`/pilot-spec --tech`/`--bug`): report and create nothing. Only then does
-    step 3's PM+architect dialogue start, from the validated brief. No ticket exists during
+    step 3's PM-led, architect-validated discussion start, from the validated brief. No ticket exists during
     this stage, so `--resume` has nothing to pick up: an interrupted framing is simply run
     again. Skipped with `--resume`.
 3. The PM leads: call `Agent` for `pilot-pm` with `.pilot/pilot-task-write-story.md`, the

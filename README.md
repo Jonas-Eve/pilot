@@ -56,8 +56,8 @@ dialogue rather than one handing a finished draft to the other
     working right now. Run it again, or let `/pilot-update` do it, to get the latest page at
     the same address.
   - `/pilot-discovery`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
-    `/pilot-qa` — the five phases themselves. `/pilot-discovery` (PM+architect, in
-    dialogue) formalizes a `type:feature` idea into one or more stories; `/pilot-spec`
+    `/pilot-qa` — the five phases themselves. `/pilot-discovery` (PM leading, architect
+    validating) formalizes a `type:feature` idea into one or more stories; `/pilot-spec`
     (architect+techlead, in dialogue) splits an already-formalized story into dev-sized
     tasks and writes each one's technical spec in the same pass, or, given no ticket at
     all, originates a standalone technical need or a bug report first (the one shared

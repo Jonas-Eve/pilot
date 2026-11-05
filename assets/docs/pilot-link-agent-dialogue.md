@@ -30,7 +30,7 @@ verdict, so nothing here applies there — Review's own `--multi` keeps the olde
 skill-mediated, capped mechanism (`.pilot/pilot-link-multi-consensus.md`).
 
 `--multi <N>` on Discovery or Spec runs N independent instances of the *whole two-persona
-dialogue* (not N instances of one persona) — each its own isolated PM+architect, or
+dialogue* (not N instances of one persona) — each its own isolated PM-led and architect-validated discussion, or
 architect+tech lead, conversation converging on its own proposal first. Once all N have
 their own proposal, compare them: every substantive point agrees across all N → adopt any
 one verbatim, done. Any point genuinely diverges → that's a second round, not a skill-side

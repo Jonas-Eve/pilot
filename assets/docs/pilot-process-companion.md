@@ -13,7 +13,7 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 
 ```
 /pilot-discovery "let a user filter search results by wheelchair accessibility"
-    → PM+architect dialogue opens a type:feature issue (and, if the same effort needs
+    → PM drafts, architect validates, and it opens a type:feature issue (and, if the same effort needs
       one, a type:tech companion story alongside it)
 
 /pilot-discovery --resume 12    → picks back up a status:draft ticket left mid-pair
