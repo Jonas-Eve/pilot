@@ -1,7 +1,7 @@
 ---
 name: pilot-proto
-description: "Builds a prototype of a feature with a human, to decide whether to build it — before any Discovery (see .pilot/pilot-process.md). Not one of the five phases. The PM first frames the idea alone with the human (the feature, who for, what the prototype must teach) into a brief they validate; then the designer leads a live discussion that builds a clickable mockup from what the human says, stored in the project's dashboard and shown in its \"Prototypes\" tab; when the human says it is done, the PM checks it against the brief (and debates the designer if it objects). Creates a type:poc ticket as status:poc-draft as soon as a first mockup exists, status:poc-review once approved. <n> --accept accepts a prototype under review (status:poc-validated), after which /pilot-discovery --from-proto <n> may start from it; <n> --reject [reason] rejects any open prototype, with its reason, and closes it. --resume <n> picks a draft back up. --with architect adds the architect from the start; the human can summon or dismiss a persona at any time. Always pair, never --auto, never Routine-driven. Needs a project with a dashboard (/pilot-dashboard) and the tool that writes to its database."
-argument-hint: "<feature idea in free text> [--with architect] | --resume <issue number> | <issue number> --accept | <issue number> --reject [reason]"
+description: "Builds a prototype of a feature with a human, to decide whether to build it — before any Discovery (see .pilot/pilot-process.md). Not one of the five phases. The PM first frames the idea alone with the human (the feature, who for, what the prototype must teach) into a brief they validate; then the designer leads a live discussion that builds a clickable mockup from what the human says, stored in the project's dashboard and shown in its \"Prototypes\" tab; when the human says it is done, the PM checks it against the brief (and debates the designer if it objects). Creates a type:poc ticket as status:poc-draft as soon as a first mockup exists, status:poc-review once approved. <n> --accept accepts a prototype under review (status:poc-validated), after which /pilot-discovery --from-proto <n> may start from it; <n> --reject [reason] rejects any open prototype, with its reason, and closes it. --from-artifact <url> imports one of the human's own Claude artifacts as the mockup (self-contained, under 1 MB). --resume <n> picks a draft back up. --with architect adds the architect from the start; the human can summon or dismiss a persona at any time. Always pair, never --auto, never Routine-driven. Needs a project with a dashboard (/pilot-dashboard) and the tool that writes to its database."
+argument-hint: "<feature idea in free text> [--with architect] | --from-artifact <artifact url> [note] | --resume <issue number> | <issue number> --accept | <issue number> --reject [reason]"
 disable-model-invocation: true
 ---
 
@@ -26,6 +26,10 @@ live (except `--accept` and `--reject`, which are one mechanical step).
    - `--resume <n>`: `python3 .pilot/pilot.py resolve proto <n> --resume`, then `claim proto <n> --mode
      <the returned action>` (`resume-orphaned` or `resume-cleared`). Read the ticket's body (the brief) and
      the mockup of `protos/p<n>` (step 5's parts, joined), then go to step 4 with that state.
+   - `--from-artifact <url> [note]`: imports a Claude artifact as the mockup. Needs the `Artifact` tool, else
+     stop. `Artifact read` the url: only the human's own artifact comes back as HTML (its header says they can
+     edit it), else stop. Keep that page as the mockup in a temporary file; the note, if any, is the idea
+     (otherwise ask what the prototype should teach). Go on.
    - Anything else is the feature idea, without its `--with` (ask if none given); go on. If it reads as a technical need or a bug,
      point at `/pilot-spec --tech`/`--bug` and stop.
 2. **Preconditions.** `.pilot/state.json` has `dashboardUrl`, else stop and point at `/pilot-dashboard`; the
@@ -35,10 +39,14 @@ live (except `--accept` and `--reject`, which are one mechanical step).
    plainly and says so).
 3. **Frame, alone with the human, before any ticket exists.** Call `Agent` for `pilot-pm` with
    `.pilot/pilot-task-frame-proto.md`, the idea, the design system and the framing conversation so far,
+   (and, with `--from-artifact`, the imported mockup: the brief states what it shows and what it must teach)
    round by round: show the human its brief and questions as a natural conversation (a provisional default
    as the recommended option when one helps), feed the replies back. Stop when the PM says the brief is
    ready and the human confirmed it, or when the idea is out of scope (report, create nothing).
-4. **Build.** Call `Agent` for `pilot-designer` with `.pilot/pilot-task-build-proto.md`, the validated brief,
+4. **Build.** With `--from-artifact` the mockup already exists: skip the first designer call, create the ticket
+   as below, run step 5 (if `proto-pack` refuses the mockup, report its `problems` and stop — the human fixes
+   the artifact, or starts again from an idea) and go on; the designer takes part only if the human asks for
+   changes. Otherwise call `Agent` for `pilot-designer` with `.pilot/pilot-task-build-proto.md`, the validated brief,
    the design system, the current mockup (if any), the conversation so far and the human's words — nothing
    else from this conversation. Show the human its assumptions and questions; write the returned HTML to a
    temporary file. After the **first** mockup: create the ticket (`mcp__github__issue_write`) — title from the
