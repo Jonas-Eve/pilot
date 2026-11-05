@@ -37,7 +37,7 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
      republish), stop and say so — never create a second artifact for the project.
 
    Capabilities, always the full set and nothing else (no connector): `db` with rules
-   `snapshots` (read `view`, write `admin`), `design`, `events` and `activity` (read `view`, write
+   `snapshots` (read `view`, write `admin`), `design`, `protos`, `protoHtml`, `events` and `activity` (read `view`, write
    `interact`).
 4. **Snapshot** (after a first publish, and for `--refresh`). `python3 .pilot/pilot.py
    snapshot --out <temp file>`, then `ArtifactData` `set` on `snapshots/<owner>__<repo>` with

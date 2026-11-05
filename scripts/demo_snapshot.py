@@ -4,7 +4,7 @@
 
 Usage:
   python3 scripts/demo_snapshot.py --out FILE        # the `snapshots/Jonas-Eve__pilot` document
-  python3 scripts/demo_snapshot.py --dir DIR         # that document + a live session, a few events and a design document
+  python3 scripts/demo_snapshot.py --dir DIR         # that document + a live session, a few events, a design document and prototypes
 
 Timestamps are relative to now, so re-run it to refresh the demo. Stdlib only.
 """
@@ -49,6 +49,10 @@ def tickets():
     add(401, "Pictogramme PMR masqué en mode sombre", ["type:bug", "level:task", "status:dev-ready", "priority:P0"], 9)
     add(402, "Le jeton expiré n'est pas détecté", ["type:bug", "level:task", "status:backlog", "priority:P1"], 15)
     add(403, "Le flux s'interrompt si un message part pendant la réponse", ["type:bug", "level:task", "status:in-dev", "priority:P1", "needs-human"], 18, None, None, "carol")
+    add(701, "Itinéraire sans escalier : choisir ses contraintes", ["type:poc", "level:story", "status:poc-draft"], 2, None, None, "alice")
+    add(702, "Alerte ascenseur en panne sur le trajet", ["type:poc", "level:story", "status:poc-review"], 5)
+    add(703, "Relais humain depuis l'application", ["type:poc", "level:story", "status:poc-validated"], 30)
+    add(704, "Profil voyageur senior", ["type:poc", "level:story", "status:poc-validated"], 48)
     for i in range(24):
         status = ["backlog", "dev-ready", "review-ready", "backlog"][i % 4]
         labels = ["type:tech", "level:task", f"status:{status}", f"priority:P{(i % 3)}"]
@@ -130,6 +134,38 @@ def design_document():
     }
 
 
+PROTO_HTML = """<!doctype html><meta charset=utf8><title>Alerte ascenseur</title>
+<style>body{margin:0;font:16px system-ui;background:#F2F5F8;color:#121C26;padding:16px}.card{background:#fff;border:1px solid #D5DDE5;border-radius:12px;padding:14px;max-width:420px}
+button{min-height:44px;padding:0 16px;border:0;border-radius:8px;background:#1747C9;color:#fff;font:inherit;margin-top:10px}.ko{color:#B42318;font-weight:600}.ok{color:#17803D;font-weight:600}</style>
+<div class=card><b>Gare du Nord → Châtelet</b><p id=s class=ko>Ascenseur du quai 4 en panne</p>
+<p id=alt hidden>Itinéraire de remplacement : 2 correspondances, sans escalier. <span class=ok>Prévenu 3 min avant l'arrivée.</span></p>
+<button id=b>Voir l'itinéraire de remplacement</button></div>
+<script>document.getElementById("b").onclick=function(){document.getElementById("alt").hidden=false;this.hidden=true}</script>"""
+
+
+def proto_documents():
+    """The `protos` metadata documents and the `protoHtml` parts a /pilot-proto session would have written."""
+    def meta(n, title, **extra):
+        return {"kind": "proto", "n": n, "repo": REPO, "title": title, "parts": 0, "at": iso(6), **extra}
+    metas = {
+        "proto-701": meta(701, "Itinéraire sans escalier : choisir ses contraintes", at=iso(2),
+                          brief="Tester un écran où le voyageur indique ses contraintes (escalier, ascenseur, distance) avant le calcul."),
+        "proto-702": meta(702, "Alerte ascenseur en panne sur le trajet", parts=1, height=340, at=iso(5),
+                          brief="Tester l'alerte et la proposition d'un itinéraire de remplacement quand un ascenseur est en panne."),
+        "proto-703": meta(703, "Relais humain depuis l'application", at=iso(30), decision="accepted", decidedAt=iso(29),
+                          brief="Tester le bouton qui met le voyageur en relation avec un conseiller."),
+        "proto-704": meta(704, "Profil voyageur senior", at=iso(48), decision="accepted", decidedAt=iso(40), stories=[103, 111],
+                          brief="Tester un profil qui agrandit les textes et simplifie les écrans."),
+        "proto-705": meta(705, "Carte des équipements en temps réel", at=iso(200), decision="accepted", decidedAt=iso(150), stories=[990],
+                          brief="Tester l'affichage en direct de l'état des ascenseurs sur une carte."),
+        "proto-706": meta(706, "Assistant vocal de bout en bout", at=iso(300), decision="rejected", decidedAt=iso(260),
+                          reason="Trop coûteux pour le gain observé : le bouton de relais humain couvre déjà le besoin.",
+                          brief="Tester un assistant vocal qui guide tout le trajet."),
+    }
+    parts = {"protoHtml-702-0": {"n": 702, "k": 0, "html": PROTO_HTML}}
+    return {**metas, **parts}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out")
@@ -146,6 +182,9 @@ def main():
             json.dump(snapshot(), fh, ensure_ascii=False)
         with open(os.path.join(args.dir, "design.json"), "w", encoding="utf-8") as fh:
             json.dump(design_document(), fh, ensure_ascii=False)
+        for name, doc in proto_documents().items():
+            with open(os.path.join(args.dir, name + ".json"), "w", encoding="utf-8") as fh:
+                json.dump(doc, fh, ensure_ascii=False)
         for name, doc in live_documents().items():
             with open(os.path.join(args.dir, name + ".json"), "w", encoding="utf-8") as fh:
                 json.dump(doc, fh, ensure_ascii=False)
