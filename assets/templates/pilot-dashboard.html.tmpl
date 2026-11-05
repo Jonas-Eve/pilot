@@ -371,7 +371,13 @@ function foldCard(box,key,title){
 }
 /* what one ticket row can launch, given its chosen options: --next rides it through every phase via /pilot-auto,
    --multi N has N agents converge on the approach first (never on a resume, nor on QA) */
-function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false});}
+function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false,w:{},only:{}});}
+/* personas a row can add with --with (the step's Summonable column, pilot-process.md §4 "Roster") and, for a review, narrow to with --only; never on a resume or a container */
+var WITHS={'/pilot-spec':['designer'],'/pilot-dev':['techlead','architect','designer'],'/pilot-review':['architect'],'/pilot-qa':['designer']};
+var PERSONA_FR={techlead:'tech lead',architect:'architecte',designer:'designer',pm:'PM'};
+function phaseCmd(a){var m=/^\/pilot-(spec|dev|review|qa) /.exec(a.cmd||'');return m&&a.cmd.indexOf('--resume')<0&&!a.container?'/pilot-'+m[1]:null;}
+function onlyList(t,a){return phaseCmd(a)==='/pilot-review'?(['feature','e2e'].indexOf(lab(t,'type:'))>-1?['techlead','pm','architect']:['techlead','architect']):[];}
+function picked(map,ks){return ks.filter(function(k){return map[k];});}
 /* open sub-issues of a ticket (the snapshot gives each ticket's parent); closed ones are only counted, in t.k */
 function kidsOf(n){
   if(!S._km){S._km={};tickets().forEach(function(t){if(t.p)(S._km[t.p]=S._km[t.p]||[]).push(t);});}
@@ -381,12 +387,15 @@ function rowCmds(t,a,o){
   if(a.container)return {canAuto:true,multiOK:true,container:true,auto:a.cmd+(o.multi?' --multi '+o.multi:'')+(o.next?' --next':''),pair:null};
   var canAuto=a.kind==='run'&&!a.pairOnly, multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
   var mu=multiOK&&o.multi?' --multi '+o.multi:'';
-  return {canAuto:canAuto,multiOK:multiOK,
-    auto:canAuto?(o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu):null,
-    pair:a.cmd+mu};
+  var p=phaseCmd(a), withs=p?WITHS[p]:[], onlys=onlyList(t,a), only=picked(o.only,onlys), wl=o.next||only.length?[]:picked(o.w,withs);
+  var wt=wl.length?' --with '+wl.join(','):'', ot=only.length?' --only '+only.join(','):'';
+  if(only.length)canAuto=false; /* --only is never combined with --auto */
+  return {canAuto:canAuto,multiOK:multiOK,withs:withs,onlys:onlys,
+    auto:canAuto?(o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu+wt):null,
+    pair:a.cmd+mu+wt+ot};
 }
 function ticketRow(t,withLevel,depth){
-  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), hasOpts=rc.canAuto||rc.multiOK;
+  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
   var kids=depth<3?kidsOf(t.n):[];
   function set(k,v){o[k]=v;render();}
@@ -414,7 +423,13 @@ function ticketRow(t,withLevel,depth){
             h('button',{class:'tog',type:'button','aria-pressed':String(o.next),onclick:function(){set('next',!o.next);}},'Enchaîner (--next)'),
             h('span',{class:'note'},rc.container?'traite ce qui est prêt dans cette arborescence, ticket après ticket, jusqu’à la fin ou un blocage':'suit ce ticket dans toutes les phases suivantes, jusqu’à la fin ou un blocage')):null,
           rc.multiOK?h('div',{class:'grp'},h('span',{class:'note'},'Multi'),multiSeg(o.multi,function(m){set('multi',m);},'Multi'),
-            h('span',{class:'note'},'N agents dialoguent avant d’agir')):null):null,
+            h('span',{class:'note'},'N agents dialoguent avant d’agir')):null,
+          rc.withs&&rc.withs.length&&!o.next&&!picked(o.only,rc.onlys).length?h('div',{class:'grp'},h('span',{class:'note'},'Avec'),
+            rc.withs.map(function(k){return h('button',{class:'tog',type:'button','aria-pressed':String(!!o.w[k]),onclick:function(){o.w[k]=!o.w[k];render();}},PERSONA_FR[k]);}),
+            h('span',{class:'note'},'rejoint la discussion dès le départ')):null,
+          rc.onlys&&rc.onlys.length?h('div',{class:'grp'},h('span',{class:'note'},'Seulement'),
+            rc.onlys.map(function(k){return h('button',{class:'tog',type:'button','aria-pressed':String(!!o.only[k]),onclick:function(){o.only[k]=!o.only[k];render();}},PERSONA_FR[k]);}),
+            h('span',{class:'note'},'ne relancent que ces relecteurs, en pair ; possible après une première relecture')):null):null,
         kids.length&&o.kids?h('div',{class:'kids'},kids.map(function(c){return ticketRow(c,true,depth+1);})):null);
 }
 
