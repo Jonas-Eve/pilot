@@ -55,6 +55,9 @@ dialogue rather than one handing a finished draft to the other
     Artifact with its own data: tickets by phase, each role's queue, the PILOT sessions
     working right now, and the project's design system. Run it again, or let `/pilot-update` do it, to get the latest page at
     the same address.
+  - `/pilot-proto` — build a prototype of a feature with the PM and the designer, in a live discussion, to decide
+    whether to build it; an accepted one starts a Discovery (`/pilot-discovery --from-proto`). Shown in the
+    dashboard's "Prototypes" tab.
   - `/pilot-design` — create or revise the project's design system and brand charter with the
     designer, in a live discussion; the result is shown in the "Design" tab of the dashboard.
   - `/pilot-discovery`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
