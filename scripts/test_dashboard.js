@@ -138,14 +138,18 @@ const STUB = (opts) => `
   check('activity: live session with phase and mode', /Ticket vivant/.test(view) && /en cours/.test(view) && /Dev/.test(view) && /auto/.test(view), view);
   check('activity: silent session flagged', /Ticket muet/.test(view) && /sans signe de vie/.test(view), view);
   check('activity: entries older than a day hidden', !/Ticket ancien/.test(view), view);
-  check('activity: recent changes feed', /pris en charge \(Dev\)/.test(view), view);
   check('activity: hash route', (await page.evaluate(() => location.hash)) === '#activite');
+  await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(150);
+  view = await text(page, '#view');
+  check('activity: recent changes feed (Changements sub-tab)', /pris en charge \(Dev\)/.test(view) && !/Ticket vivant/.test(view), view);
   check('activity: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
   page = await open({ preload: [BASE] });
   view = await tab(page, 'Activité');
-  check('activity: empty states', /Aucune session/.test(view) && /Aucun changement/.test(view), view);
+  check('activity: empty sessions', /Aucune session/.test(view), view);
+  await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(150);
+  check('activity: empty changes', /Aucun changement/.test(await text(page, '#view')), await text(page, '#view'));
   await page.close();
 
   // ---- open in Claude Code: links with the command typed in ----
@@ -411,7 +415,8 @@ const STUB = (opts) => `
   check('both sub-tickets are listed under the story', JSON.stringify(await page.$$eval('#view > .list > .row:has(.kids) .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim().split(' ')[0]).sort())) === JSON.stringify(['#13', '#30']));
   const prLinks = (n) => evRow(n).locator('a:has-text("PR #")').evaluateAll((as) => as.map((a) => a.href));
   check('an event carrying a PR gives the ticket its PR link', JSON.stringify(await prLinks(13)) === JSON.stringify([`https://github.com/${REPO}/pull/77`]), JSON.stringify(await prLinks(13)));
-  view = await tab(page, 'Activité');
+  await tab(page, 'Activité'); await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(150);
+  view = await text(page, '#view');
   check('activity feed words a created and an approved ticket', /créé \(prêt à coder\)/.test(view) && /approuvé \(à spécifier\)/.test(view), view);
   check('events: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
@@ -610,17 +615,26 @@ const STUB = (opts) => `
   check('design tab: empty state with the edit card, no ticket banner', /Aucun design system/.test(await text(page, '#view')) && !(await page.$eval('#designEdit', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)));
   check('design edit card and banner back on the other tabs', (await tab(page, 'Vue d’ensemble')) !== null && (await page.$eval('#designEdit', (e) => e.hidden)) && !(await page.$eval('#banner', (e) => e.hidden)));
   await page.click('nav >> text=Design'); await page.waitForTimeout(100);
+  check('design: the edit card is folded by default, so the content comes first', (await page.$eval('#designEBody', (e) => e.hidden)));
+  await page.click('#designEToggle'); await page.waitForTimeout(100);
   const dCmd = () => text(page, '#designCmd');
   const dHref = async () => decodeURIComponent((await page.$eval('#designOpen', (a) => a.getAttribute('href'))).split('?q=')[1].split('&repo=')[0]);
   check('design: bare command, link carries it', (await dCmd()) === '/pilot-design' && (await dHref()) === '/pilot-design', await dCmd());
-  await page.click('#designSeg >> text=Couleurs'); await page.fill('#designText', 'ajouter un thème\nà fort contraste'); await page.waitForTimeout(100);
-  check('design: --section and the request in one line', (await dCmd()) === '/pilot-design --section colors ajouter un thème à fort contraste' && (await dHref()) === (await dCmd()), await dCmd());
-  await page.click('#designSeg >> text=Tout'); await page.waitForTimeout(100);
-  check('design: "Tout" drops --section', (await dCmd()) === '/pilot-design ajouter un thème à fort contraste', await dCmd());
+  await page.fill('#designText', 'ajouter un thème\nà fort contraste'); await page.waitForTimeout(100);
+  check('design: with no document yet, the request alone (it creates the whole document)', (await dCmd()) === '/pilot-design ajouter un thème à fort contraste' && (await dHref()) === (await dCmd()), await dCmd());
   await page.evaluate((d) => window.__push('design', 'd0', d), DESIGN); await page.waitForTimeout(200);
-  const dv = await text(page, '#view');
+  let dv = '';
+  for (const lab of ['Charte', 'Couleurs', 'Typographie', 'Espacements', 'Composants', 'Accessibilité']) {
+    await page.click('#subtabs >> text=' + lab); await page.waitForTimeout(120); dv += await text(page, '#view');
+  }
+  await page.click('#subtabs >> text=Charte'); await page.waitForTimeout(120);
   check('design: a live document fills every section', /Voyager sans obstacle/.test(dv) && /clair #FFFFFF/.test(dv) && /sombre #0E141B/.test(dv) && /IBM Plex Sans/.test(dv) && /22 px · 600/.test(dv) && /Espacement m/.test(dv) && /Rayon s/.test(dv) && /Cible de 44 px/.test(dv) && /Contraste AA minimum/.test(dv) && /Clair et bienveillant/.test(dv), dv);
   check('design: the edit card now says "Modifier", the typed request is kept', /^Modifier/.test(await text(page, '#designHint')) && (await page.inputValue('#designText')).includes('fort contraste'));
+  await page.click('#subtabs >> text=Couleurs'); await page.waitForTimeout(150);
+  check('design: the command targets the open section, with the request', (await dCmd()) === '/pilot-design --section colors ajouter un thème à fort contraste' && (await dHref()) === (await dCmd()), await dCmd());
+  await page.click('#designAll'); await page.waitForTimeout(100);
+  check('design: "Tout le design system" drops the section', (await dCmd()) === '/pilot-design ajouter un thème à fort contraste' && /tout le design system/.test(await text(page, '#designHint')), await dCmd());
+  await page.click('#designAll'); await page.click('#subtabs >> text=Charte'); await page.waitForTimeout(150);
   check('design: HTML in a value stays text, an invalid hex gets no swatch', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && /myAVI <img src=x/.test(dv) && !(await page.$('#view [style*="evil"]')), dv);
   check('design: a valid logo renders as an image', (await page.$$('#view img.logo')).length === 1 && (await page.$eval('#view img.logo', (i) => i.src.startsWith('data:image/svg+xml'))));
   await page.evaluate((d) => window.__push('design', 'd0', Object.assign({}, d, { charter: Object.assign({}, d.charter, { logo: '<img src=x onerror=1>' }) })), DESIGN); await page.waitForTimeout(200);
@@ -648,7 +662,7 @@ const STUB = (opts) => `
       { name: 'Sans aperçu', description: 'Seulement une description' },
     ] });
   page = await open({ preload: [BASE], design: [PV] });
-  await page.goto(FILE + '#design'); await page.waitForTimeout(500);
+  await page.goto(FILE + '#design/components'); await page.waitForTimeout(500);
   const frames = () => page.$$('#view iframe.prev');
   check('preview: one frame per component that has a valid preview (not the oversized or missing ones)', (await frames()).length === 2, String((await frames()).length));
   check('preview: the frame is sandboxed with no permission at all', (await page.$$eval('#view iframe.prev', (fs) => fs.every((f) => f.getAttribute('sandbox') === '' && !f.hasAttribute('src')))));
@@ -711,6 +725,50 @@ const STUB = (opts) => `
   page = await open({ preload: [snapshot(MANY2, 120)] });
   await page.goto(FILE + '#ensemble/dev'); await page.waitForTimeout(350);
   check('phase tab: paginated like the other lists (20 per page)', (await rows(page)) === 20 && /Page 1 sur 3/.test(await text(page, '#view')));
+  await page.close();
+
+  // ---- sub-tabs of Design (one per section) and of Activité (sessions, changes) ----
+  page = await open({ preload: [BASE], design: [DESIGN] });
+  await page.goto(FILE + '#design'); await page.waitForTimeout(400);
+  const dLabels = () => page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent));
+  const dNow = () => page.$eval('#subtabs a[aria-current=page]', (a) => a.textContent);
+  check('design sub-tabs: one per section, with a count where there is one',
+        JSON.stringify(await dLabels()) === JSON.stringify(['Charte', 'Couleurs (1)', 'Typographie (1)', 'Espacements (2)', 'Composants (1)', 'Accessibilité (1)']), JSON.stringify(await dLabels()));
+  check('design sub-tabs: the charter is the default, alone on the page',
+        (await dNow()) === 'Charte' && /Voyager sans obstacle/.test(await text(page, '#view')) && !/IBM Plex Sans/.test(await text(page, '#view')));
+  await page.click('#subtabs >> text=Couleurs'); await page.waitForTimeout(200);
+  check('design sub-tabs: a section shows only itself, the address follows',
+        /clair #FFFFFF/.test(await text(page, '#view')) && !/Voyager sans obstacle/.test(await text(page, '#view')) && (await page.evaluate(() => location.hash)) === '#design/colors');
+  await page.screenshot({ path: path.join(TMP, 'design-subtabs.png') });
+  check('design sub-tabs: the edit card follows the open section (/pilot-design --section colors)', (await text(page, '#designCmd')) === '/pilot-design --section colors', await text(page, '#designCmd'));
+  await page.click('#subtabs >> text=Accessibilité'); await page.waitForTimeout(200);
+  check('design sub-tabs: moving on updates the section of the command', (await text(page, '#designCmd')) === '/pilot-design --section a11y' && /Contraste AA minimum/.test(await text(page, '#view')), await text(page, '#designCmd'));
+  await page.close();
+  page = await open({ preload: [BASE] });
+  await page.goto(FILE + '#design'); await page.waitForTimeout(350);
+  check('design sub-tabs: none while there is no document', (await page.$eval('#subtabs', (e) => e.hidden)) && (await page.$$('#subtabs a')).length === 0);
+  await page.close();
+  page = await open({ preload: [BASE], design: [DESIGN] });
+  await page.goto(FILE + '#design/space'); await page.waitForTimeout(400);
+  check('design sub-tabs: #design/space opens that section directly', (await dNow()).startsWith('Espacements') && /Espacement m/.test(await text(page, '#view')) && /Rayon s/.test(await text(page, '#view')));
+  check('design sub-tabs: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+
+  const ACT = { activity: [
+    { kind: 'activity', id: 'dev-99-1', phase: 'dev', n: 99, title: 'Ticket vivant', mode: 'fresh', auto: true, by: 'alice', startedAt: iso(30), lastBeat: iso(3) },
+    { kind: 'activity', id: 'spec-5-1', phase: 'spec', n: 5, title: 'Ticket muet', mode: 'fresh', auto: false, by: 'bob', startedAt: iso(300), lastBeat: iso(180) },
+  ], events: [ev({ at: iso(2), action: 'claim:fresh' })] };
+  page = await open(Object.assign({ preload: [BASE] }, ACT));
+  await page.click('nav >> text=Activité'); await page.waitForTimeout(200);
+  check('activity sub-tabs: sessions and changes, with their counts', JSON.stringify(await dLabels()) === JSON.stringify(['Sessions (2)', 'Changements (1)']), JSON.stringify(await dLabels()));
+  check('activity sub-tabs: sessions first, without the changes', /Ticket vivant/.test(await text(page, '#view')) && !/pris en charge/.test(await text(page, '#view')));
+  await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(200);
+  check('activity sub-tabs: the changes alone, the address follows', /pris en charge \(Dev\)/.test(await text(page, '#view')) && !/Ticket vivant/.test(await text(page, '#view')) && (await page.evaluate(() => location.hash)) === '#activite/changements');
+  await page.close();
+  page = await open(Object.assign({ preload: [BASE] }, ACT));
+  await page.goto(FILE + '#activite/changements'); await page.waitForTimeout(400);
+  check('activity sub-tabs: #activite/changements opens that sub-tab directly', (await dNow()).startsWith('Changements') && /pris en charge/.test(await text(page, '#view')));
+  check('activity sub-tabs: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
   // ---- renderer: the project name is HTML-escaped ----
