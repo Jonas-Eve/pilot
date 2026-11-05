@@ -35,10 +35,14 @@ from a scheduled sweep.
    the section is ready and the human approves.
 5. **Write.** Validate the returned JSON: hex values `#RGB`/`#RRGGBB`, numeric sizes, `logo`
    an inline SVG under 20 KB, nothing but plain text elsewhere — fix or ask, never write it
-   unchecked. Merge the approved sections into the current document and `ArtifactData`
-   `set` it on `design/<owner>__<repo>` (pass `if_version` when it existed), with `kind:
-   "design"`, `repo` and `at` (now, UTC ISO 8601). A version conflict → `get` again, merge
-   your sections into that one and retry once.
+   unchecked. Merge the approved sections into the current document, keep the document as it
+   was before this run in a `previous` field (replacing any older one, never nesting them), and
+   `ArtifactData` `set` it on `design/<owner>__<repo>` (pass `if_version` when it existed), with
+   `kind: "design"`, `repo` and `at` (now, UTC ISO 8601). A version conflict → `get` again, merge
+   your sections into that one and retry once. A refusal (the write reads as not found) means
+   this person lacks the Contributor level on the dashboard: save the approved JSON to a
+   temporary file, give its path, and say to ask the dashboard's owner for that level — never
+   drop the approved work.
 6. **Report** the sections written and the dashboard's address with `#design`. The tab is
-   readable by everyone the dashboard is shared with; only people allowed to write to it can
-   run this.
+   readable by everyone the dashboard is shared with; everyone at the Contributor level or above
+   can run this, and `previous` holds one step back to restore from.
