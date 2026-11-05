@@ -147,7 +147,7 @@ to conflate.
   **`level:story`** tickets under a shared theme, for categorization — a `type:feature`
   story, or a `type:tech` story genuinely tied to that same feature effort (above), can
   both sit under it. Never itself scoped, spec'd, or built — no `status:` label. Created
-  by Discovery's PM+architect dialogue, at the same moment a story would otherwise be
+  by Discovery's PM-led, architect-validated discussion, at the same moment a story would otherwise be
   created, the instant it's clear the idea can't be delivered as a single story. A
   standalone `type:tech` need originated directly via Spec's own entry point is never
   grouped under an epic — there's no Discovery pass to decide one's needed.
