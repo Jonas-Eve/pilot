@@ -241,7 +241,7 @@ const STUB = (opts) => `
   await page.click('button:has-text("Suivant") >> nth=0'); await page.waitForTimeout(150);
   check('last page: remaining 5, "Suivant" disabled', (await rows(page)) === 5 && /Page 3 sur 3/.test(await text(page, '#view')) && await page.isDisabled('button:has-text("Suivant") >> nth=0'));
   await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(150);
-  check('changing role goes back to a valid page', /Ma file · Discovery et QA humaine · 0/.test(await text(page, '#view')) && !(await page.$('.pager')));
+  check('changing role goes back to a valid page', /Ma file · Prototypes, Discovery et QA humaine · 0/.test(await text(page, '#view')) && !(await page.$('.pager')));
   await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(150);
   check('back on the first page after a role change', /Page 1 sur 3/.test(await text(page, '#view')));
   check('pagination: no page errors', page.errors.length === 0, page.errors.join('|'));
@@ -916,6 +916,29 @@ const STUB = (opts) => `
   await storyRow.locator('button:has-text("Voir le proto")').click(); await page.waitForTimeout(500);
   check('from everywhere: it opens that prototype in full screen', (await page.evaluate(() => location.hash)) === '#proto/712' && /#712 Proto source/.test(await text(page, '#view')) && (await page.$('#view iframe.prev')) !== null);
   check('from everywhere: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.evaluate(() => { location.hash = 'file'; }); await page.waitForTimeout(100);
+  await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(150);
+  const myFile = await text(page, '#view');
+  check('my queue (product): a prototype to decide and an accepted one to launch',
+        /#710 Proto en revue/.test(myFile) && /#711 Proto accepté/.test(myFile) && /Accepter/.test(myFile) && /Lancer la Discovery/.test(myFile), myFile.slice(280, 700));
+  await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(150);
+  check('my queue (tech): no prototype', !/Proto en revue/.test(await text(page, '#view')));
+
+  // every tab and sub-tab fits a phone, in both themes, with no script error
+  const ROUTES = ['file', 'ensemble', 'ensemble/discovery', 'ensemble/spec', 'ensemble/dev', 'ensemble/review', 'ensemble/qa',
+    'prototypes/encours', 'prototypes/acceptes/alancer', 'prototypes/acceptes/encours', 'prototypes/acceptes/termines', 'prototypes/rejetes', 'proto/702',
+    'recherche', 'activite/sessions', 'activite/changements',
+    'design/charter', 'design/colors', 'design/type', 'design/space', 'design/components', 'design/a11y'];
+  const wide = [];
+  for (const scheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const r of ROUTES) {
+      await page.evaluate((x) => { location.hash = x; }, r); await page.waitForTimeout(150);
+      const w = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (w > 0) wide.push(scheme + ' #' + r + ' (+' + w + 'px)');
+    }
+  }
+  check('every tab and sub-tab fits a 400px phone, light and dark', wide.length === 0 && page.errors.length === 0, wide.join(', ') + ' ' + page.errors.join(' | '));
   await page.close();
 
   // ---- renderer: the project name is HTML-escaped ----
