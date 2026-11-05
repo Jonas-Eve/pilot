@@ -41,16 +41,17 @@ and report them grouped into the three fixed categories below (this grouping is
 structural — the five-phase order comes from `.pilot/pilot-process.md`'s state machine —
 not something to re-derive per run):
 
-1. Bootstrap/maintenance: `pilot-init`, `pilot-init-archi`, `pilot-update`, `pilot-dashboard`.
+1. Bootstrap/maintenance: `pilot-init`, `pilot-init-archi`, `pilot-update`, `pilot-dashboard`,
+   `pilot-design`.
 2. The five phases, in phase order: `pilot-discovery`, `pilot-spec`,
    `pilot-dev`, `pilot-review`, `pilot-qa`.
 3. Dispatch/utility: `pilot-auto`, `pilot-help`.
 
 For each command actually present, one line: its name, a plain-language one-sentence
 summary distilled from its `description` (not the full frontmatter dumped verbatim), and
-a pointer to run `/pilot-help <name>` for the rest. Skip any of the ten that isn't
+a pointer to run `/pilot-help <name>` for the rest. Skip any of the twelve that isn't
 actually installed in this project rather than describing it from memory; mention any
-`pilot-*` skill present that isn't one of the ten as project-local, not PILOT's. Close
+`pilot-*` skill present that isn't one of the twelve as project-local, not PILOT's. Close
 with one line naming the seven personas behind these commands (`pilot-pm`,
 `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`) and pointing at
 `/pilot-help agent <name>` for one's identity — they're not commands themselves, so they

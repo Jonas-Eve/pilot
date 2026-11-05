@@ -1,6 +1,6 @@
 ---
 name: pilot-dashboard
-description: "Publishes — or updates — the project's PILOT dashboard: one private Claude Artifact per project, with its own data, showing tickets by phase, each person's queue by role, and the PILOT sessions working right now. Renders the project's name and GitHub repo into a template from github.com/Jonas-Eve/pilot, publishes it, records its address in .pilot/state.json (dashboardUrl), and seeds its ticket snapshot. Run again, or let /pilot-update run it, to republish the latest template at the same address — the data is kept. --refresh re-reads the tickets into the snapshot and prunes obsolete events. Run only when asked (by the human, /pilot-init or /pilot-update): it publishes a page. Needs the Artifact tool, which not every surface has."
+description: "Publishes — or updates — the project's PILOT dashboard: one private Claude Artifact per project, with its own data, showing tickets by phase, each person's queue by role, the PILOT sessions working right now, and the project's design system and brand charter (written by /pilot-design, which --refresh leaves untouched). Renders the project's name and GitHub repo into a template from github.com/Jonas-Eve/pilot, publishes it, records its address in .pilot/state.json (dashboardUrl), and seeds its ticket snapshot. Run again, or let /pilot-update run it, to republish the latest template at the same address — the data is kept. --refresh re-reads the tickets into the snapshot and prunes obsolete events. Run only when asked (by the human, /pilot-init or /pilot-update): it publishes a page. Needs the Artifact tool, which not every surface has."
 argument-hint: "[--refresh]"
 ---
 
@@ -37,7 +37,7 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
      republish), stop and say so — never create a second artifact for the project.
 
    Capabilities, always the full set and nothing else (no connector): `db` with rules
-   `snapshots` (read `view`, write `admin`), `events` and `activity` (read `view`, write
+   `snapshots` and `design` (read `view`, write `admin`), `events` and `activity` (read `view`, write
    `interact`).
 4. **Snapshot** (after a first publish, and for `--refresh`). `python3 .pilot/pilot.py
    snapshot --out <temp file>`, then `ArtifactData` `set` on `snapshots/<owner>__<repo>` with

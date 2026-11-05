@@ -52,9 +52,11 @@ dialogue rather than one handing a finished draft to the other
     your project. Overwrites, no merge — see the warning in
     `.claude/skills/pilot-update/SKILL.md`.
   - `/pilot-dashboard` — publish (or update) the project's team page as a private Claude
-    Artifact with its own data: tickets by phase, each role's queue, and the PILOT sessions
-    working right now. Run it again, or let `/pilot-update` do it, to get the latest page at
+    Artifact with its own data: tickets by phase, each role's queue, the PILOT sessions
+    working right now, and the project's design system. Run it again, or let `/pilot-update` do it, to get the latest page at
     the same address.
+  - `/pilot-design` — create or revise the project's design system and brand charter with the
+    designer, in a live discussion; the result is shown in the "Design" tab of the dashboard.
   - `/pilot-discovery`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
     `/pilot-qa` — the five phases themselves. `/pilot-discovery` (PM leading, architect
     validating) formalizes a `type:feature` idea into one or more stories; `/pilot-spec`
@@ -92,7 +94,7 @@ dialogue rather than one handing a finished draft to the other
   `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 3's
   persona for an end-to-end-test task, `type:e2e`, instead of `pilot-dev`), and
   `pilot-qa` (phase 5's persona, a human-paired manual QA gate for every `type:feature`
-  story once its tasks are all done), and `pilot-designer` (never leads or validates — summoned
+  story once its tasks are all done), and `pilot-designer` (leads `/pilot-design`, never a phase or a validation — summoned
   into a phase's discussion, or added with `--with`, to advise on usage and accessibility). Each file is just that persona's identity — its
   duty instructions (how it scopes, how it reviews, ...) live in `pilot-task-<duty>.md`
   instead, below.
