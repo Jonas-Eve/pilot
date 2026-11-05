@@ -324,7 +324,12 @@ const STUB = (opts) => `
   check('product idea: multi choices shown', !(await page.$eval('#ideaMultiWrap', (e) => e.hidden)));
   await page.locator('#ideaMultiSeg button', { hasText: /^3$/ }).click();
   check('product idea + multi: /pilot-discovery <idea> --multi 3', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3' && (await page.$eval('#ideaOpen', (a) => a.getAttribute('href'))).includes(encodeURIComponent('/pilot-discovery Mon idée --multi 3')), await text(page, '#ideaCmd'));
+  await page.click('#ideaWithSeg >> text=Designer');
+  check('product idea + designer: --with designer after --multi', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3 --with designer', await text(page, '#ideaCmd'));
+  await page.click('#kindSeg >> text=Besoin technique');
+  check('tech need + designer: --with designer, no --multi', (await text(page, '#ideaCmd')) === '/pilot-spec --tech Mon idée --with designer', await text(page, '#ideaCmd'));
   await page.click('#kindSeg >> text=Bug');
+  check('bug: no --with choice, no --with in the command', (await page.$eval('#ideaWithWrap', (e) => e.hidden)) && !(await text(page, '#ideaCmd')).includes('--with'), await text(page, '#ideaCmd'));
   check('bug / tech need: no multi choice, no --multi in the command', (await page.$eval('#ideaMultiWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée', await text(page, '#ideaCmd'));
   await page.close();
 

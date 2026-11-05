@@ -219,7 +219,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -553,7 +553,7 @@ function vOverview(){
 
 /* ---------- new request: start Discovery, a tech Spec or a bug Spec from scratch ---------- */
 var KINDS=[
-  {key:'produit',label:'Idée produit',prefix:'/pilot-discovery ',hint:'Discovery : le PM et l’architecte en font une ou plusieurs stories.'},
+  {key:'produit',label:'Idée produit',prefix:'/pilot-discovery ',hint:'Discovery : le PM rédige, l’architecte valide, pour une ou plusieurs stories.'},
   {key:'tech',label:'Besoin technique',prefix:'/pilot-spec --tech ',hint:'Spec : l’architecte et le tech lead cadrent et spécifient le besoin.'},
   {key:'bug',label:'Bug',prefix:'/pilot-spec --bug ',hint:'Spec : l’architecte qualifie le défaut, puis crée le ticket.'}
 ];
@@ -567,14 +567,15 @@ function buildIdea(){
     h('textarea',{id:'ideaText',rows:3,maxlength:1500,placeholder:'Ex. : signaler un ascenseur en panne sur le trajet',oninput:updateIdea}),
     h('div',{class:'seg',role:'group','aria-label':'Type de demande',id:'kindSeg'}),
     h('p',{class:'note',id:'ideaHint'}),
-    h('div',{class:'filters',id:'ideaMultiWrap'},h('span',{class:'note'},'Multi'),h('div',{id:'ideaMultiSeg'}),h('span',{class:'note'},'plusieurs PM+architecte proposent chacun, puis convergent')),
+    h('div',{class:'filters',id:'ideaMultiWrap'},h('span',{class:'note'},'Multi'),h('div',{id:'ideaMultiSeg'}),h('span',{class:'note'},'plusieurs PM, chacun validé par l’architecte, puis les propositions convergent')),
+    h('div',{class:'filters',id:'ideaWithWrap'},h('span',{class:'note'},'Avec'),h('div',{class:'seg',id:'ideaWithSeg',role:'group','aria-label':'Agents à convoquer dès le départ'}),h('span',{class:'note'},'le designer rejoint la discussion dès le départ')),
     h('div',{class:'cmd',id:'ideaCmd'}),
     h('div',{class:'refresh'},
       h('a',{class:'btn primary',id:'ideaOpen',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
       h('button',{class:'btn ghost',type:'button',id:'ideaCopy',onclick:function(e){var t=ideaText();if(t)copyCmd(ideaFull(kindNow(),t),e.target);}},'Copier la commande')));
   updateIdea();
 }
-function ideaFull(k,text){return k.prefix+text+(k.key==='produit'&&S.ideaMulti?' --multi '+S.ideaMulti:'');}
+function ideaFull(k,text){return k.prefix+text+(k.key==='produit'&&S.ideaMulti?' --multi '+S.ideaMulti:'')+(k.key!=='bug'&&S.ideaDesigner?' --with designer':'');}
 function updateIdea(){
   var k=kindNow(), text=ideaText(), seg=document.getElementById('kindSeg'), open=document.getElementById('ideaOpen');
   seg.replaceChildren.apply(seg,KINDS.map(function(x){
@@ -583,6 +584,8 @@ function updateIdea(){
   document.getElementById('ideaCmd').textContent=ideaFull(k,text||'…');
   var mw=document.getElementById('ideaMultiWrap'), ms=document.getElementById('ideaMultiSeg');
   mw.hidden=k.key!=='produit'; ms.replaceChildren(multiSeg(S.ideaMulti,function(m){S.ideaMulti=m;updateIdea();},'Multi'));
+  var ww=document.getElementById('ideaWithWrap'), ws=document.getElementById('ideaWithSeg');
+  ww.hidden=k.key==='bug'; ws.replaceChildren(h('button',{type:'button','aria-pressed':String(!!S.ideaDesigner),onclick:function(){S.ideaDesigner=S.ideaDesigner?0:1;updateIdea();}},'Designer'));
   document.getElementById('ideaSum').textContent=text?'brouillon en cours':'';
   if(text){open.setAttribute('href',claudeCodeUrl(ideaFull(k,text)));open.removeAttribute('aria-disabled');}
   else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}
