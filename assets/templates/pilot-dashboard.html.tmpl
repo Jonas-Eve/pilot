@@ -387,7 +387,7 @@ function rowCmds(t,a,o){
   if(a.container)return {canAuto:true,multiOK:true,container:true,auto:a.cmd+(o.multi?' --multi '+o.multi:'')+(o.next?' --next':''),pair:null};
   var canAuto=a.kind==='run'&&!a.pairOnly, multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
   var mu=multiOK&&o.multi?' --multi '+o.multi:'';
-  var p=phaseCmd(a), withs=p?WITHS[p]:[], onlys=onlyList(t,a), only=picked(o.only,onlys), wl=o.next||only.length?[]:picked(o.w,withs);
+  var p=phaseCmd(a), withs=!p?[]:p==='/pilot-spec'&&lab(t,'type:')==='bug'?['architect']:WITHS[p], onlys=onlyList(t,a), only=picked(o.only,onlys), wl=o.next||only.length?[]:picked(o.w,withs);
   var wt=wl.length?' --with '+wl.join(','):'', ot=only.length?' --only '+only.join(','):'';
   if(only.length)canAuto=false; /* --only is never combined with --auto */
   return {canAuto:canAuto,multiOK:multiOK,withs:withs,onlys:onlys,

@@ -259,6 +259,7 @@ const STUB = (opts) => `
   const OPT_SNAP = snapshot([
     ticket(99, ['type:tech', 'status:dev-ready', 'priority:P0']), ticket(70, ['type:feature', 'status:review-ready', 'priority:P1']),
     ticket(60, ['type:tech', 'status:in-dev', 'priority:P1']), ticket(50, ['type:feature', 'status:qa', 'priority:P1']),
+    ticket(80, ['type:bug', 'level:task', 'status:backlog', 'priority:P1']), ticket(81, ['type:tech', 'level:story', 'status:backlog', 'priority:P1']),
   ], 120);
   page = await open({ preload: [OPT_SNAP] });
   await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
@@ -301,6 +302,13 @@ const STUB = (opts) => `
   await optBtn(50).click(); await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await page.waitForTimeout(100);
   check('QA row: --with designer, pair only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --with designer']), JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await optBtn(50).click(); await page.waitForTimeout(100);
+  await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
+  check('spec row of a bug offers the architect, not the designer; a tech story offers the designer',
+        (await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).textContent()).includes('architecte') && !(await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).textContent()).includes('designer') &&
+        (await rowOf(81).locator('.opts .grp', { hasText: 'Avec' }).textContent()).includes('designer'));
+  await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
+  check('bug spec: /pilot-spec 80 --auto --with architect', JSON.stringify(await rowHrefs(80)) === JSON.stringify(['/pilot-spec 80 --auto --with architect', '/pilot-spec 80 --with architect']), JSON.stringify(await rowHrefs(80)));
+  await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
   check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
   check('row options: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'options.png') });
