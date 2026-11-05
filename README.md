@@ -22,7 +22,7 @@ machine, label taxonomy, and claim protocol — it's the canonical copy;
 Each skill reads three layers, not just its own file: `pilot-process.md` for what every
 phase shares, a `pilot-link-<topic>.md` doc (below) for what it coordinates with a couple
 of other skills on, and its own `SKILL.md` for everything specific to that one phase. The
-actual judgment work happens in a separate `Agent` call to one of the six personas below,
+actual judgment work happens in a separate `Agent` call to one of the seven personas below,
 each carrying only a small, stable identity — the skill reads a `pilot-task-<duty>.md`
 doc (below) and passes it into that call, so a persona is told what to do fresh each
 time instead of carrying every one of its duties' instructions on every invocation. Two
@@ -56,8 +56,8 @@ dialogue rather than one handing a finished draft to the other
     working right now. Run it again, or let `/pilot-update` do it, to get the latest page at
     the same address.
   - `/pilot-discovery`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
-    `/pilot-qa` — the five phases themselves. `/pilot-discovery` (PM+architect, in
-    dialogue) formalizes a `type:feature` idea into one or more stories; `/pilot-spec`
+    `/pilot-qa` — the five phases themselves. `/pilot-discovery` (PM leading, architect
+    validating) formalizes a `type:feature` idea into one or more stories; `/pilot-spec`
     (architect+techlead, in dialogue) splits an already-formalized story into dev-sized
     tasks and writes each one's technical spec in the same pass, or, given no ticket at
     all, originates a standalone technical need or a bug report first (the one shared
@@ -81,18 +81,19 @@ dialogue rather than one handing a finished draft to the other
     Lets one scheduled Routine drive the whole pipeline, or several Routines split it by
     cadence, or a human/Routine hand it one ticket without knowing which phase it's in —
     see `.claude/skills/pilot-auto/SKILL.md`.
-  - `/pilot-help` — read-only discovery over all of the above plus the six agents below:
+  - `/pilot-help` — read-only discovery over all of the above plus the seven agents below:
     bare, lists every installed command with a one-line summary; given a command, flag,
     or agent name, explains it in detail (an agent name that collides with a command's,
     `dev`/`qa`, needs a leading `agent` token — the other four don't); given free text,
     either the exact command to run for a described goal, or which persona is
     responsible for a kind of judgment, whichever was actually asked. Never claims a
     ticket or invokes another skill/agent itself — see `.claude/skills/pilot-help/SKILL.md`.
-- **Agents** (`.claude/agents/`): the six personas the phase skills delegate to —
+- **Agents** (`.claude/agents/`): the seven personas the phase skills delegate to —
   `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 3's
   persona for an end-to-end-test task, `type:e2e`, instead of `pilot-dev`), and
   `pilot-qa` (phase 5's persona, a human-paired manual QA gate for every `type:feature`
-  story once its tasks are all done). Each file is just that persona's identity — its
+  story once its tasks are all done), and `pilot-designer` (never leads or validates — summoned
+  into a phase's discussion, or added with `--with`, to advise on usage and accessibility). Each file is just that persona's identity — its
   duty instructions (how it scopes, how it reviews, ...) live in `pilot-task-<duty>.md`
   instead, below.
 - **Scripts** (`scripts/`): `setup-github-labels.sh`, idempotent creation/update of every

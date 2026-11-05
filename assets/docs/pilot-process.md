@@ -52,7 +52,7 @@ to pair and need that flag to run unattended (§4 "Interaction modes").
 
 | # | Phase | Skill | Agent | Produces |
 |---|-------|-------|-------|----------|
-| 1 | Discovery | `/pilot-discovery` | `pilot-pm` first frames the idea with the human, then `pilot-pm` + `pilot-architect`, in dialogue (§4 "Agent dialogue") | One or more `level:story` — `type:feature`, and/or `type:tech` when the same effort genuinely needs a technical enabler alongside the product work — grouped under a new/reused `level:epic` (`type:feature` only) if it doesn't fit in one, with dependencies between them and early architecture decisions (interfaces, infra shape) already anticipated. Never splits into tasks — that's phase 2's job. `status:draft` until human approval, then `status:backlog`. Never for `type:tech` standalone or `type:bug` (§2 "Three levels") |
+| 1 | Discovery | `/pilot-discovery` | `pilot-pm` first frames the idea with the human, then leads the story, which `pilot-architect` then validates (§4 "Roster") | One or more `level:story` — `type:feature`, and/or `type:tech` when the same effort genuinely needs a technical enabler alongside the product work — grouped under a new/reused `level:epic` (`type:feature` only) if it doesn't fit in one, with dependencies between them and early architecture decisions (interfaces, infra shape) already anticipated. Never splits into tasks — that's phase 2's job. `status:draft` until human approval, then `status:backlog`. Never for `type:tech` standalone or `type:bug` (§2 "Three levels") |
 | 2 | Spec | `/pilot-spec` | `pilot-architect` + `pilot-techlead`, in dialogue — plus `pilot-pm` when a `type:feature` story is split | Splits an already-formalized story into dev-sized tasks (mandatory for `type:feature`, a judgment call for `type:tech`) **and** writes each resulting ticket's technical spec, in one continuous pass — or, given no ticket at all (`--tech`/`--bug`, explicit or auto-detected), originates the ticket itself first (with a human live, after the architect and tech lead have challenged and verified the raw need with them), standalone, then splits/specs it the same way. `status:dev-ready` per resulting ticket (the tracker parent, if split, lands on `status:split` instead) |
 | 3 | Dev | `/pilot-dev` | `pilot-dev`, or `pilot-e2e` instead for a `type:e2e` task | An implementation + pull request (following `.github/pull_request_template.md`) |
 | 4 | Review | `/pilot-review` | `pilot-techlead` + `pilot-pm` (feature/e2e) or `pilot-techlead` alone (tech/bug) — `pilot-architect` optional in either set | A submitted GitHub PR review (Approve/Request changes/Comment): `status:approved`, or blocking points (`needs-human`, plus `status:changes-requested` if code-level) — merges only with `--merge`, otherwise a human merges by hand |
@@ -83,7 +83,7 @@ actually is, never copied down a tree:
   optional — its architecture decisions are made and cross-examined by the tech lead
   already, at spec time).
 - **`type:tech`** — originates in one of two ways: **grouped** with a `type:feature`
-  effort — Discovery's own PM+architect dialogue recognizes the idea needs a technical
+  effort — Discovery's own PM-led, architect-validated discussion recognizes the idea needs a technical
   enabler alongside the product work and formalizes it as its own `type:tech` story under
   the same `level:epic` — or **standalone** — a human describes a purely technical need
   (infra, CI, security hardening, migration, no product framing) directly to
@@ -934,7 +934,8 @@ no-ticket entry, since it needs a raw idea a human types in, is likewise never
 Routine-driven regardless of `--auto`, in practice.
 
 `--auto` and `--resume` are mutually exclusive with each other and with pair mode itself —
-pick exactly one per run. `--merge` (Review only, §3 "`status:approved`") is a separate,
+pick exactly one per run. `--with <persona>[,...]` ("Roster" below) is orthogonal to all of
+them. `--merge` (Review only, §3 "`status:approved`") is a separate,
 orthogonal flag: it controls only whether an all-approve outcome also merges the PR itself,
 and combines with either pair or `--auto`. `--multi <N>` (`/pilot-discovery`, `/pilot-spec`,
 `/pilot-dev`, `/pilot-review` only, "Agent dialogue" below and
@@ -950,9 +951,9 @@ actually blocking.
 
 ### Agent dialogue: Discovery, Spec, and `--multi` on Dev
 
-Discovery (PM+architect) and Spec (architect+tech lead) aren't one persona handing a
-finished artifact to another — the two personas genuinely converse before a human ever
-sees a draft, with no fixed number of turns: they judge for themselves when they've
+Spec (architect+tech lead) isn't one persona handing a finished artifact to another, and
+Discovery's validator debates the PM when it objects ("Roster" above) — the personas
+genuinely converse before a human ever sees a draft, with no fixed number of turns: they judge for themselves when they've
 converged, or when a disagreement is genuinely irreconcilable and belongs to `needs-human`
 instead. `--multi` on Discovery, Spec, and Dev uses this same self-terminating dialogue
 between its N instances, instead of the older skill-mediated, capped reconciliation.
@@ -960,6 +961,49 @@ between its N instances, instead of the older skill-mediated, capped reconciliat
 documented, reviewers never converse (§6). Full mechanics —
 `.pilot/pilot-link-agent-dialogue.md` (Discovery/Spec/Dev's own ensemble) and
 `.pilot/pilot-link-multi-consensus.md` (Review's `--multi`, unchanged).
+
+### Roster: who is in the discussion
+
+A phase run is one discussion between the human and agents. Each step has fixed
+leads, an optional validator, and personas the human may summon:
+
+| Step | Lead(s) | Validator | Summonable |
+|------|---------|-----------|------------|
+| Discovery | `pilot-pm` | `pilot-architect` | `pilot-designer` |
+| Spec — `type:feature`/`type:tech` | `pilot-architect` + `pilot-techlead` | `pilot-pm` (`type:feature` only) | `pilot-designer` |
+| Spec — `type:bug` | `pilot-techlead` | — | `pilot-architect` |
+| Dev | `pilot-dev` (`pilot-e2e` for `type:e2e`) | — | `pilot-techlead`, `pilot-architect`, `pilot-designer` |
+| Review | `pilot-techlead` + `pilot-pm` (`type:feature`/`type:e2e`), `pilot-techlead` alone (`type:tech`/`type:bug`) | — | `pilot-architect` |
+| QA | `pilot-qa` | — | `pilot-designer` |
+
+- **Lead.** The skill opens the discussion with the lead(s). `--with <persona>[,...]`
+  (any phase skill) adds personas from that step's Summonable column from the start; any
+  other name is refused.
+- **Validator.** Once the human says the lead's work is done, the validator joins the
+  same discussion and is given the deliverable only — not the discussion. Approves →
+  the step continues. Objects → it stays for the debate with the lead(s) and the human;
+  once the lead(s) have revised or contested the objection it goes dormant (no calls
+  while they work), then returns with only its own objections plus the revised
+  deliverable and gives a new verdict. Repeat until it approves: the verdict is always on
+  a deliverable, never on a conversation.
+- **Summon / dismiss.** The human may at any time summon a persona from the step's
+  Summonable column, or dismiss any persona in the discussion; a dismissed persona gets no
+  further call. Dismissing the last lead, or the validator, before the deliverable is
+  validated is refused — replace the validator instead by summoning one from the column, or
+  end the step with `needs-human` stating it was not validated. Each summon, dismissal and
+  validator verdict is recorded in the step's own checkpoint (above).
+- **Context.** Every call stays isolated (§5): a persona entering mid-discussion receives
+  the ticket's latest checkpoint — never the transcript — and, from then on, only the
+  messages posted since its own last turn (a validator: the deliverable, then the same).
+  A persona may ask the skill to show one specific earlier message.
+- **Advisory personas never block.** `pilot-designer` advises; its objection alone never
+  justifies `needs-human`.
+- **`--auto`** (no human, so no summon/dismiss; `--with` still applies): leads, then
+  validator, run in sequence; an objection sends the validator and lead(s) into the
+  turn-taking dialogue of `.pilot/pilot-link-agent-dialogue.md` (no round cap),
+  `needs-human` only for the genuine disagreement that doc describes.
+- **Review** keeps its parallel, isolated reviewers (§6): `--with` there extends the
+  reviewer set at the start (`--only` instead fixes the exact set), and nothing can be summoned mid-run.
 
 ---
 

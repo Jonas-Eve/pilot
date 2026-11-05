@@ -1,9 +1,9 @@
 # PILOT task — Write a `type:feature` story
 
 Injected by `.claude/skills/pilot-discovery/SKILL.md` into the `pilot-pm` persona's
-prompt, alternating turns with the architect's own `.pilot/pilot-task-anticipate-architecture.md`
-(`.pilot/pilot-link-agent-dialogue.md`) — you're not drafting in isolation for the
-architect to challenge later, the two of you shape the story together.
+prompt as the lead; the architect then validates your draft with
+`.pilot/pilot-task-anticipate-architecture.md` (`.pilot/pilot-process.md` §4 "Roster"), and an
+objection opens a debate with you (`.pilot/pilot-link-agent-dialogue.md`).
 
 You receive the human-validated brief from the framing stage
 (`.pilot/pilot-task-frame-idea.md`), the raw idea it came from, and the architect's own turns

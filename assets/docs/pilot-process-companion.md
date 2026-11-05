@@ -13,7 +13,7 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 
 ```
 /pilot-discovery "let a user filter search results by wheelchair accessibility"
-    → PM+architect dialogue opens a type:feature issue (and, if the same effort needs
+    → PM drafts, architect validates, and it opens a type:feature issue (and, if the same effort needs
       one, a type:tech companion story alongside it)
 
 /pilot-discovery --resume 12    → picks back up a status:draft ticket left mid-pair
@@ -57,7 +57,8 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-review 57 --multi 3 → 3 instances of each default-set reviewer role independently
                            review #57 (no dialogue — reviewers stay isolated), each role
                            reconciled into one verdict
-/pilot-review 57 --agents architect → adds the architect to this round's review
+/pilot-review 57 --with architect → adds the architect to this round's review
+/pilot-review 57 --only techlead → only the tech lead re-reviews this round (reclaim)
                            (never in either default set) alongside whichever roles the
                            ticket's own type already selects
 
@@ -201,4 +202,14 @@ sequenceDiagram
         QAAgent->>GH: needs-human + findings (resolved live and cleared same-turn, or left for later)
     end
     end
+```
+
+## The roster: who is in the discussion
+
+```
+/pilot-discovery "idea" --with designer     # lead PM + designer from the start
+  PM (lead) ── draft ──► architect (validator, sees the draft only)
+                           ├─ approves → step continues
+                           └─ objects → debate with PM + you → dormant → back on the revised draft
+"convoque l'architecte" / "congédie le designer"   # any time, from the step's own list
 ```

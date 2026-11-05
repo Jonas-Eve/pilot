@@ -1,7 +1,7 @@
 ---
 name: pilot-review
-description: "Phase 4 of PILOT (see .pilot/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, .pilot/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+tech lead by default for type:feature/type:e2e, tech lead alone for type:tech/type:bug — architect optional in either set, added via --agents) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved; a pure code-level verdict moves straight to status:changes-requested with no needs-human, so /pilot-dev can reclaim it immediately; a verdict blocking on any judgment call (alone or alongside code-level points) adds needs-human too (status:in-review stays for a pure judgment call, status:changes-requested for a mixed one), gating /pilot-dev's reclaim on a human clearing it. Defaults to pair mode: an all-approve or pure-code-level verdict gets a live human's last look before it's submitted; a verdict carrying any judgment call always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. An optional --multi <N> runs N instances of each already-selected reviewer role independently on the one claimed PR instead of one — reviewer roles never converse even under --multi, this stays the older skill-mediated mechanism (.pilot/pilot-link-multi-consensus.md) — reconciling each role's own verdict before the usual cross-role aggregation, escalating to needs-human on a genuine, unresolved same-point disagreement. On a reclaimed PR (one that already carries a submitted review), every selected reviewer is automatically also shown that prior review's points, so it confirms what's now fixed instead of starting blind — this is separate from and always happens regardless of --agents below. An optional --agents <pm|architect|techlead>[,...], valid only with an explicit PR/issue number (never a sweep) and never combined with --auto (it always keeps the pair-mode pre-submission pause as a check against picking the wrong role), replaces step 3's default reviewer set with exactly and only the given role(s) — never merged with the default, so keeping a default role alongside an addition means listing it too (e.g. techlead,pm,architect to add the architect on a type:feature PR without dropping pm). architect is always a legal name in the list, on any type:, since it's never part of either default and adding it never counts as narrowing. Any other name must already be in the ticket's own type-based default; narrowing that default (dropping a role it would have included) additionally requires a review already submitted on this PR — typically a reclaim, where the dropped role's prior approval still holds so only the flagged one(s) need to re-run. Refused if a non-architect name isn't part of the ticket's own type-based default, or if narrowing is asked for before any review has been submitted on the PR yet. Use once /pilot-dev has opened a PR ready for review."
-argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto] [--merge] [--multi [N]] | <issue or PR number> --agents <pm|architect|techlead>[,...] [--merge] | <issue number> --resume [--merge]"
+description: "Phase 4 of PILOT (see .pilot/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, .pilot/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+tech lead by default for type:feature/type:e2e, tech lead alone for type:tech/type:bug — architect optional in either set, added via --with architect) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved; a pure code-level verdict moves straight to status:changes-requested with no needs-human, so /pilot-dev can reclaim it immediately; a verdict blocking on any judgment call (alone or alongside code-level points) adds needs-human too (status:in-review stays for a pure judgment call, status:changes-requested for a mixed one), gating /pilot-dev's reclaim on a human clearing it. Defaults to pair mode: an all-approve or pure-code-level verdict gets a live human's last look before it's submitted; a verdict carrying any judgment call always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. An optional --multi <N> runs N instances of each already-selected reviewer role independently on the one claimed PR instead of one — reviewer roles never converse even under --multi, this stays the older skill-mediated mechanism (.pilot/pilot-link-multi-consensus.md) — reconciling each role's own verdict before the usual cross-role aggregation, escalating to needs-human on a genuine, unresolved same-point disagreement. On a reclaimed PR (one that already carries a submitted review), every selected reviewer is automatically also shown that prior review's points, so it confirms what's now fixed instead of starting blind — this is separate from and always happens regardless of --only below. An optional --only <pm|architect|techlead>[,...], valid only with an explicit PR/issue number (never a sweep) and never combined with --auto (it always keeps the pair-mode pre-submission pause as a check against picking the wrong role), replaces step 3's default reviewer set with exactly and only the given role(s) — never merged with the default, so keeping a default role alongside an addition means listing it too (e.g. techlead,pm,architect to add the architect on a type:feature PR without dropping pm). architect is always a legal name in the list, on any type:, since it's never part of either default and adding it never counts as narrowing. Any other name must already be in the ticket's own type-based default; narrowing that default (dropping a role it would have included) additionally requires a review already submitted on this PR — typically a reclaim, where the dropped role's prior approval still holds so only the flagged one(s) need to re-run. Refused if a non-architect name isn't part of the ticket's own type-based default, or if narrowing is asked for before any review has been submitted on the PR yet. Use once /pilot-dev has opened a PR ready for review."
+argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto] [--merge] [--with architect] [--multi [N]] | <issue or PR number> --only <pm|architect|techlead>[,...] [--merge] | <issue number> --resume [--merge]"
 ---
 
 # PILOT — Phase 4: Review
@@ -9,7 +9,9 @@ argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if om
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
 protocol (§4) — and `.pilot/pilot-link-review-consensus.md` for the shared `change`/`decision`
 tags contract; this skill covers only phase 4's mechanics, including how it picks the
-reviewer set (step 3).
+reviewer set (step 3). `--with architect` (the only summonable persona here, `.pilot/pilot-process.md`
+§4 "Roster") adds the architect to that set, valid in a sweep too; `--only` (step 3) instead fixes the exact set
+(replacing or narrowing it); nothing can be summoned mid-review.
 
 Mode: pair by default. Every outcome is checkpointed as a pending GitHub PR review the
 moment it's decided (step 7), the same durable-immediately discipline every other
@@ -23,10 +25,10 @@ for a scheduled Routine, `.pilot/pilot-process.md` §4 "Scheduled sweeps"). `--m
 separate, orthogonal flag (step 12) usable with either mode — without it, this skill never
 merges. `--multi <N>` runs N instances of each role already selected in step 3 (PM
 and/or architect and/or tech lead, depending on `type:`) instead of one — composing with,
-not replacing, this skill's existing per-role parallelism: (2, 3, or a `--agents`-narrowed
+not replacing, this skill's existing per-role parallelism: (2, 3, or a `--only`-narrowed
 count) roles × N instances simultaneous `Agent` calls, reconciled per role before step 6's
 cross-role aggregation.
-Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`. `--agents
+Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`. `--only
 <list>` (step 3) is a separate, orthogonal override valid only with an explicit PR/issue
 number, never a sweep — combinable with `--multi` or `--merge`, but never `--auto`: it's
 inherently a human's own call on which role to drop, so it always keeps step 8's
@@ -75,10 +77,10 @@ pre-submission pause as the last check against picking the wrong one.
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's,
    `.pilot/pilot-process.md` §2 "`type:` is never inherited") to pick the **default**
    reviewer set — the architect is never part of either default, added only via
-   `--agents` below:
+   `--with architect` or `--only` below:
    - `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`
    - `type:tech` or `type:bug` → `pilot-techlead` alone (no PM)
-   - Independent of `--agents`, check whether this PR already carries at least one
+   - Independent of `--only`, check whether this PR already carries at least one
      submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true
      whenever this round follows a reclaim fix (`status:changes-requested` →
      `status:review-ready`, `.pilot/pilot-process.md` §4 "Reclaiming a
@@ -87,13 +89,15 @@ pre-submission pause as the last check against picking the wrong one.
      full body (every point, change and decision alike, marked which is which) to pass to
      every reviewer this round in step 5 — see there and
      `.pilot/pilot-link-review-consensus.md` for how it's used. This check also feeds
-     `--agents` below, when given.
-   - Given `--agents <list>` (only valid with an explicit PR/issue number, never a sweep)
+     `--only` below, when given.
+   - Given `--with architect` → the default set plus the architect (never narrows, so no
+     prior-review check), valid on any `type:`, in a sweep too; never combined with `--only` (that one already
+     fixes the exact set).
+   - Given `--only <list>` (only valid with an explicit PR/issue number, never a sweep)
      → `<list>` is always the **complete, exact** reviewer set for this round — never
      merged with the type-based default, so keeping a default role alongside an addition
-     means listing it too (e.g. `--agents techlead,pm,architect` on a `type:feature` PR
-     keeps both defaults and adds the architect; `--agents architect` alone means *only*
-     the architect reviews this round). Validate each name: `architect` is always legal,
+     means listing it too (`--only architect` alone means *only* the architect reviews this
+     round; to keep the defaults and add the architect, use `--with architect` instead). Validate each name: `architect` is always legal,
      on any `type:`, regardless of prior-review state — the human's own call that this
      PR's architecture warrants a dedicated look. Any other name (`pm`, `techlead`) must
      already be in the ticket's own default set above (never `pm` on
@@ -106,7 +110,7 @@ pre-submission pause as the last check against picking the wrong one.
      least once first. Once every name validates, use `<list>` exactly, instead of the
      type-based default.
 
-   Absent `--agents`, together the default set covers every dimension phase 4 checks for
+   Absent `--only`, together the default set covers every dimension phase 4 checks for
    that `type:`: PM — product fit / e2e-flow validation; tech lead — spec conformance and
    code quality. The architect's own architecture/security conformance check is covered
    by construction instead — it already cross-examined the split and wrote/reviewed the
@@ -192,7 +196,7 @@ pre-submission pause as the last check against picking the wrong one.
    `submit_pending`) plus the matching label — the outcome's `event`
    (`.pilot/pilot-link-review-consensus.md`):
    - All approved → `event: APPROVE`; body names exactly which role(s) approved this
-     round (every role in step 3's set — all of them, unless `--agents` narrowed it, in
+     round (every role in step 3's set — all of them, unless `--only` narrowed it, in
      which case say so explicitly rather than implying full coverage) and, per step 12,
      whether this run also merges or a human still needs to; `status:approved`.
    - At least one blocking point tagged `change`, none tagged `decision` → `event:

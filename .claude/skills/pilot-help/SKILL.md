@@ -51,8 +51,8 @@ summary distilled from its `description` (not the full frontmatter dumped verbat
 a pointer to run `/pilot-help <name>` for the rest. Skip any of the ten that isn't
 actually installed in this project rather than describing it from memory; mention any
 `pilot-*` skill present that isn't one of the ten as project-local, not PILOT's. Close
-with one line naming the six personas behind these commands (`pilot-pm`,
-`pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`) and pointing at
+with one line naming the seven personas behind these commands (`pilot-pm`,
+`pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`) and pointing at
 `/pilot-help agent <name>` for one's identity — they're not commands themselves, so they
 don't get their own list entry above.
 
@@ -73,14 +73,14 @@ which one was meant. On a match, read that skill's whole `SKILL.md` and answer w
      examples, otherwise built from the command's own `argument-hint`.
 
 **An agent/persona name → agent mode.** Normalize the same way (strip a leading `/`, add
-back a `pilot-` prefix if missing) and match against the six installed
+back a `pilot-` prefix if missing) and match against the seven installed
 `.claude/agents/pilot-*.md` personas (`pilot-pm`, `pilot-architect`, `pilot-techlead`,
-`pilot-dev`, `pilot-e2e`, `pilot-qa`). Two of those names — `dev`, `qa` — also match a
+`pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`). Two of those names — `dev`, `qa` — also match a
 command; on a bare match like that, command detail mode above takes precedence (a
 command is the thing actually run) — an explicit leading `agent` token (`agent dev`,
 `agent pilot-qa`) means the persona instead. The other four (`pm`, `architect`,
 `techlead`, `e2e`) never collide, so the bare name alone is enough — but the leading
-`agent` token is always accepted too, on any of the six, not just the two that need it,
+`agent` token is always accepted too, on any of the seven, not just the two that need it,
 so a human unsure which apply can always use it. No match on either →
 say so and suggest bare `/pilot-help` for the full list. On a match, read that persona's
 whole file and answer with:

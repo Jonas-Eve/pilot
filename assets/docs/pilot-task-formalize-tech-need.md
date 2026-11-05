@@ -26,7 +26,7 @@ same skill invocation, once this ticket is drafted and approved.
    story, `.pilot/pilot-task-scope-story.md`), turning this one story into dev-sized tasks
    instead of multiplying stories. If the need is tied
    to a product effort instead (it belongs alongside a `type:feature` story), it isn't
-   standalone — point at `/pilot-discovery` instead, where the PM+architect dialogue can
+   standalone — point at `/pilot-discovery` instead, where the PM-led, architect-validated discussion can
    group it under that effort's own Epic.
 3. Label the story `type:tech`, `level:story`, `status:draft` (this skill's own no-ticket
    entry drafts it live with a human before finalizing, same as Discovery does), its own

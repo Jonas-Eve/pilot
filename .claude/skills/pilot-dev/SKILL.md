@@ -1,14 +1,19 @@
 ---
 name: pilot-dev
 description: "Phase 3 of PILOT (see .pilot/pilot-process.md): implements a spec'd ticket (status:dev-ready) and opens a PR, or flags needs-human and stops without one if genuinely blocked. Uses the pilot-dev agent, or pilot-e2e when the ticket's own type is type:e2e. Claims the ticket (assignee + status:in-dev) first so parallel runs don't collide. Defaults to pair mode — agrees the approach with a live human before coding, checkpointing progress into the ticket; --auto skips this (required for a scheduled cron Routine, since pair needs a live human). Also resumes a previously-flagged ticket once needs-human clears, resumes a mid-pair-session ticket via --resume <issue number>, reclaims a status:changes-requested ticket by pushing new commits to its existing PR — immediately for a pure code-level review verdict (no needs-human ever set), or once needs-human clears for a verdict that also blocked on a judgment call — and with no argument sweeps fresh/resumable/reclaimable work (e.g. --auto from a scheduled cron Routine), skipping on-hold or dependency-blocked tickets and preferring one that blocks another. An optional --multi <N> runs N devs proposing an implementation approach for the one claimed ticket, in direct dialogue with each other rather than one-shot outputs the skill reconciles, converging on a single agreed approach (no fixed round cap — they judge for themselves when they've converged) before a single dev actually implements it, escalating to needs-human quoting the differing approaches only on a genuine, irreconcilable disagreement (see .pilot/pilot-link-agent-dialogue.md) — no effect on a reclaim, which always implements the phase-4 review's fix directly with no approach stage to ensemble on. Use once /pilot-spec has produced a technical spec."
-argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto] [--multi [N]] | <issue number> --resume"
+argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume"
 ---
 
 # PILOT — Phase 3: Dev
 
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
 protocol; this skill covers only phase 3's mechanics. Most likely phase to run as several
-parallel instances; the claim step below prevents collisions.
+parallel instances; the claim step below prevents collisions. The roster (`.pilot/pilot-process.md`
+§4 "Roster") for this phase: the dev (`pilot-e2e` for a `type:e2e` task) leads, no validator, and
+the tech lead, architect and designer are summonable — `--with <persona>[,...]` adds them from
+the start, and a live human may summon or dismiss one at any point of the pair discussion
+(each recorded in the ticket's checkpoint comment); `.pilot/pilot-task-advise.md` is read and
+passed into a summoned persona's call.
 
 ## Steps
 

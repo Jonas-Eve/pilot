@@ -13,8 +13,9 @@ Two different personas working the same ticket together, in a real back-and-fort
 before a human ever sees a draft — not one producing a finished artifact the other then
 critiques separately:
 
-- **Discovery** — `pilot-pm` + `pilot-architect`, turning a raw idea into a story (or
-  several) with the architecture already anticipated, not bolted on afterward.
+- **Discovery** — `pilot-pm` leading and `pilot-architect` validating the draft
+  (`.pilot/pilot-process.md` §4 "Roster"); this dialogue is the debate an objection opens,
+  turning a raw idea into a story (or several) with the architecture anticipated.
 - **Spec** — `pilot-architect` + `pilot-techlead`, splitting a story and writing the
   resulting spec(s) in the same pass — a spec-time feasibility concern can send the split
   itself back for a rethink, in the same conversation, rather than surfacing later as a
@@ -29,7 +30,7 @@ verdict, so nothing here applies there — Review's own `--multi` keeps the olde
 skill-mediated, capped mechanism (`.pilot/pilot-link-multi-consensus.md`).
 
 `--multi <N>` on Discovery or Spec runs N independent instances of the *whole two-persona
-dialogue* (not N instances of one persona) — each its own isolated PM+architect, or
+dialogue* (not N instances of one persona) — each its own isolated PM-led and architect-validated discussion, or
 architect+tech lead, conversation converging on its own proposal first. Once all N have
 their own proposal, compare them: every substantive point agrees across all N → adopt any
 one verbatim, done. Any point genuinely diverges → that's a second round, not a skill-side
