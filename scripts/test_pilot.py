@@ -356,6 +356,150 @@ class SetTests(unittest.TestCase):
         self.assertNotIn("assignees", gh.calls[0][2])
 
 
+class ProtoTests(unittest.TestCase):
+    def poc(self, number, status, **kw):
+        return issue(number, ["type:poc", "level:story", status], **kw)
+
+    def test_a_prototype_is_only_for_pilot_proto_and_pilot_proto_only_takes_a_prototype(self):
+        m, _ = machine([self.poc(1, "status:poc-draft", assignees=["a"]), issue(2, ["status:dev-ready"])])
+        for phase in ("spec", "dev", "review", "qa"):
+            self.assertEqual(m.resolve(phase, 1)["reason"], "poc", phase)
+        self.assertEqual(m.resolve("proto", 2)["reason"], "not-a-poc")
+
+    def test_resume_a_draft(self):
+        m, _ = machine([self.poc(1, "status:poc-draft", assignees=["a"])])
+        self.assertEqual(m.resolve("proto", 1, resume=True)["action"], "resume-orphaned")
+        self.assertEqual(m.resolve("proto", 1)["action"], "ask-resume")
+        got = m.claim("proto", 1, "resume-orphaned")
+        self.assertEqual((got["claimed"], got["assignee"], got["status"]), (True, "bot", "status:poc-draft"))
+
+    def test_resume_needs_a_draft(self):
+        m, _ = machine([self.poc(1, "status:poc-review")])
+        self.assertEqual(m.resolve("proto", 1, resume=True)["reason"], "resume-mismatch")
+        self.assertEqual(m.resolve("proto", 1)["reason"], "wrong-status")
+
+    def test_no_pool_for_prototypes(self):
+        with self.assertRaises(SystemExit):
+            pilot.build_parser().parse_args(["pool", "proto"])
+
+    def test_accept_moves_a_review_to_validated_and_is_idempotent(self):
+        m, gh = machine([self.poc(1, "status:poc-review")])
+        got = m.proto(1, "accept")
+        self.assertEqual((got["changed"], got["status"]), (True, "status:poc-validated"))
+        self.assertEqual(got["event"]["action"], "accept")
+        self.assertEqual(m.proto(1, "accept")["changed"], False)
+        self.assertEqual(len([c for c in gh.calls if c[0] == "patch"]), 1)
+
+    def test_accept_refuses_anything_but_a_review(self):
+        for status in ("status:poc-draft", "status:poc-rejected"):
+            m, gh = machine([self.poc(1, status)])
+            with self.assertRaises(pilot.Refused) as caught:
+                m.proto(1, "accept")
+            self.assertEqual(caught.exception.payload["reason"], "not-reviewable")
+            self.assertEqual(gh.calls, [])
+
+    def test_reject_needs_a_reason_posted_first_then_closes_and_unassigns(self):
+        m, gh = machine([self.poc(1, "status:poc-review", assignees=["a"]), ])
+        with self.assertRaises(pilot.Refused) as caught:
+            m.proto(1, "reject", "  ")
+        self.assertEqual(caught.exception.payload["reason"], "reason-required")
+        self.assertEqual(gh.calls, [])
+        got = m.proto(1, "reject", "Too costly")
+        self.assertEqual(gh.calls[0][0], "comment")
+        self.assertEqual(gh.posted, [(1, "Too costly")])
+        self.assertEqual((got["status"], got["state"]), ("status:poc-rejected", "closed"))
+        self.assertEqual(gh.store[1]["assignees"], [])
+        self.assertEqual(names(gh.store[1]), ["level:story", "status:poc-rejected", "type:poc"])
+
+    def test_reject_works_from_every_open_state_not_from_a_rejected_one(self):
+        for status in ("status:poc-draft", "status:poc-review", "status:poc-validated"):
+            m, _ = machine([self.poc(1, status)])
+            self.assertEqual(m.proto(1, "reject", "why")["status"], "status:poc-rejected", status)
+        m, _ = machine([self.poc(1, "status:poc-rejected")])
+        with self.assertRaises(pilot.Refused):
+            m.proto(1, "reject", "again")
+
+    def test_a_discovery_only_starts_from_an_accepted_prototype(self):
+        m, gh = machine([self.poc(1, "status:poc-validated"), self.poc(2, "status:poc-review")])
+        self.assertTrue(m.proto(1, "from-proto")["ok"])
+        with self.assertRaises(pilot.Refused) as caught:
+            m.proto(2, "from-proto")
+        self.assertEqual(caught.exception.payload["reason"], "not-accepted")
+        self.assertEqual(gh.calls, [])
+
+    def test_not_a_prototype_closed_or_flagged_are_refused(self):
+        cases = [(issue(1, ["status:poc-review"]), "not-a-poc"),
+                 (self.poc(1, "status:poc-review", state="closed"), "closed"),
+                 (self.poc(1, "status:poc-review") | {"labels": [{"name": n} for n in ("type:poc", "status:poc-review", "needs-human")]}, "flagged")]
+        for raw, reason in cases:
+            m, _ = machine([raw])
+            with self.assertRaises(pilot.Refused) as caught:
+                m.proto(1, "accept")
+            self.assertEqual(caught.exception.payload["reason"], reason)
+
+    def test_set_knows_the_prototype_statuses(self):
+        m, gh = machine([self.poc(1, "status:poc-draft")])
+        m.set(1, status="poc-review", assign="none")
+        self.assertIn("status:poc-review", names(gh.store[1]))
+
+
+class ProtoPackTests(unittest.TestCase):
+    def pack(self, html, **kw):
+        import os
+        import tempfile
+        m, _ = machine([issue(7, ["type:poc", "status:poc-draft"])])
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, "m.html")
+            with open(src, "w", encoding="utf-8") as handle:
+                handle.write(html)
+            out = os.path.join(tmp, "out")
+            got = m.proto_pack(7, src, out, **kw)
+            docs = {}
+            for path in got["files"]:
+                with open(path, encoding="utf-8") as handle:
+                    docs[os.path.basename(path)] = json.load(handle)
+            return got, docs
+
+    def test_a_small_mockup_is_one_part_with_its_metadata(self):
+        got, docs = self.pack("<!doctype html><p>hi</p>", brief="  Test the alert  ", height=5000)
+        self.assertEqual((got["parts"], got["bytes"]), (1, len("<!doctype html><p>hi</p>")))
+        meta = docs["proto-7.json"]
+        self.assertEqual((meta["kind"], meta["n"], meta["repo"], meta["title"], meta["parts"], meta["brief"], meta["height"]),
+                         ("proto", 7, "o/r", "t7", 1, "Test the alert", 900))
+        self.assertEqual(docs["protoHtml-7-0.json"], {"n": 7, "k": 0, "html": "<!doctype html><p>hi</p>"})
+
+    def test_a_large_mockup_is_split_in_parts_that_fit_and_join_back(self):
+        html = "<p>" + "é" * 150_000 + "</p>"          # 2 bytes a character: ~300 KB
+        got, docs = self.pack(html)
+        self.assertEqual(got["parts"], 2)
+        joined = "".join(docs[f"protoHtml-7-{k}.json"]["html"] for k in range(got["parts"]))
+        self.assertEqual(joined, html)
+        for k in range(got["parts"]):
+            self.assertLessEqual(len(docs[f"protoHtml-7-{k}.json"]["html"].encode("utf-8")), pilot.PROTO_PART_BYTES)
+        self.assertEqual(docs["proto-7.json"]["parts"], 2)
+
+    def test_an_external_resource_is_refused_but_an_xml_namespace_is_not(self):
+        self.pack('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>')
+        for bad in ('<img src="https://x.test/a.png">', '<p>https://x.test</p>', '<script src="//cdn.test/a.js"></script>',
+                    '<style>@import url(a.css)</style>', '<iframe src="a"></iframe>', '<link rel="stylesheet" href="a.css">',
+                    '<meta http-equiv="refresh" content="0;url=a">'):
+            with self.assertRaises(pilot.Refused) as caught:
+                self.pack(bad)
+            self.assertEqual(caught.exception.payload["reason"], "invalid-mockup", bad)
+
+    def test_too_big_or_empty_is_refused(self):
+        for html in ("a" * (pilot.PROTO_MAX_BYTES + 1), "   "):
+            with self.assertRaises(pilot.Refused) as caught:
+                self.pack(html)
+            self.assertTrue(caught.exception.payload["problems"])
+
+    def test_only_a_prototype_has_a_mockup(self):
+        m, _ = machine([issue(7, ["status:dev-ready"])])
+        with self.assertRaises(pilot.Refused) as caught:
+            m.proto_pack(7, "x", "y")
+        self.assertEqual(caught.exception.payload["reason"], "not-a-poc")
+
+
 class FlagTests(unittest.TestCase):
     def test_flag_requires_a_comment_and_posts_it_first(self):
         m, gh = machine([issue(1, ["status:in-dev"])])
@@ -508,7 +652,17 @@ class DoctorTests(unittest.TestCase):
         for status in pilot.STATUSES:
             self.assertIn(f"status:{status}", pilot.REQUIRED_LABELS)
         self.assertTrue({"needs-human", "on-hold", "can-resume", "type:e2e"} <= pilot.REQUIRED_LABELS)
-        self.assertEqual(len(pilot.REQUIRED_LABELS), 27)  # pilot-process.md section 0
+        self.assertEqual(len(pilot.REQUIRED_LABELS), 32)  # pilot-process.md section 0
+
+
+class LabelScriptTests(unittest.TestCase):
+    def test_the_provisioning_script_and_the_doctor_agree_on_the_labels(self):
+        import os
+        import re
+        path = os.path.join(os.path.dirname(__file__), "setup-github-labels.sh")
+        with open(path, encoding="utf-8") as handle:
+            in_script = set(re.findall(r'^  "([^|"]+)\|', handle.read(), re.M))
+        self.assertEqual(in_script, set(pilot.REQUIRED_LABELS))
 
 
 class MiscTests(unittest.TestCase):

@@ -38,11 +38,11 @@ itself.
 ## 2. STRUCTURE
 - `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
   consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
-  sync by `/pilot-update`) — same path on both sides. All twelve carry the `pilot-`
+  sync by `/pilot-update`) — same path on both sides. All thirteen carry the `pilot-`
   prefix a project-local skill needs to avoid colliding with the project's own — there's
   no plugin namespace to rely on instead. `pilot-init`, `pilot-init-archi`,
   `pilot-update`, `pilot-dashboard` are this repo's own bootstrap/maintenance commands
-  (`pilot-dashboard` publishes the project's dashboard artifact from a template, below; `pilot-design` is a project command, not a phase — it writes the design system the dashboard's "Design" tab shows); `pilot-discovery`,
+  (`pilot-dashboard` publishes the project's dashboard artifact from a template, below; `pilot-design` and `pilot-proto` are project commands, not phases — they write the design system and the prototypes the dashboard's "Design" and "Prototypes" tabs show); `pilot-discovery`,
   `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa` are the five PILOT
   phases (`pilot-spec` covers splitting a story into dev-sized tasks and writing each
   one's technical spec, in one continuous pass); `pilot-auto` is a dispatcher over the
@@ -105,7 +105,7 @@ itself.
   with the `Artifact` tool's `list`), never to a real project's dashboard** — those are only
   republished by `/pilot-update`, or when the human asks for it explicitly. Refresh the demo
   data with `python3 scripts/demo_snapshot.py --dir DIR` and `ArtifactData` (`snapshots`
-  `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, plus the `activity`/`events` files it writes).
+  `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, plus the `activity`/`events`/`protos`/`protoHtml` files it writes).
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot-init` and `/pilot-update`; also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
@@ -116,9 +116,11 @@ itself.
   `resolve` (classify an explicitly-given ticket: claim, resume, reclaim, re-scope, descend
   into an Epic, stop — and why), `claim` (assignee + status swap, re-read), `set`
   (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with its
-  mandatory comment), `snapshot` (every open ticket as the dashboard's snapshot document) and
+  mandatory comment), `snapshot` (every open ticket as the dashboard's snapshot document),
+  `proto` (accept or reject a prototype, or check it is accepted before a Discovery starts from it), `proto-pack`
+  (check a prototype's mockup and split it into the cockpit's documents) and
   `doctor` (preflight each phase skill runs as its step 0, once per session: python, gh auth,
-  repo access and push permission, the 27 PILOT labels). Every command prints one JSON
+  repo access and push permission, the 32 PILOT labels). Every command prints one JSON
   object; `claim`/`set`/`flag`/`unflag` also return the `event` (and `claim` the `activity`)
   the phase skills push to the dashboard (`pilot-link-dashboard.md`), and `event` builds one
   for a ticket a skill changed itself (Discovery, the tasks Spec creates). Judgment (which agent

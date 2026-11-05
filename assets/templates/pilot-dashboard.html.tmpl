@@ -268,7 +268,7 @@ function watchSnapshots(){
 }
 
 /* ---------- live layers: events and activity written by the project's PILOT sessions ---------- */
-var PHASE_FR={discovery:'Discovery',spec:'Spec',dev:'Dev',review:'Review',qa:'QA humaine'}, STALE_MIN=60;
+var PHASE_FR={discovery:'Discovery',spec:'Spec',dev:'Dev',review:'Review',qa:'QA humaine',proto:'Prototype'}, STALE_MIN=60;
 /* a ticket event newer than the base list (snapshot or direct read) replaces that ticket's state */
 function overlay(list,baseAt){
   var by={}; list.forEach(function(t){by[t.n]=t;});

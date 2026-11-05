@@ -20,11 +20,12 @@ rather than repeating it — keep this document accurate first, then bring those
 **These GitHub labels must exist before any PILOT skill runs** — no skill creates them on
 the fly, and applying a label that doesn't exist fails the API call outright:
 
-`type:feature`, `type:tech`, `type:bug`, `type:e2e`, `level:epic`, `level:story`,
+`type:feature`, `type:tech`, `type:bug`, `type:e2e`, `type:poc`, `level:epic`, `level:story`,
 `level:task`, `priority:P0`, `priority:P1`, `priority:P2`,
 `status:draft`, `status:backlog`, `status:in-spec`,
 `status:dev-ready`, `status:in-dev`, `status:review-ready`, `status:in-review`,
 `status:changes-requested`,
+`status:poc-draft`, `status:poc-review`, `status:poc-validated`, `status:poc-rejected`,
 `status:approved`, `status:wont-do`, `status:split`, `status:qa`, `status:in-qa`,
 `status:done`, `needs-human`, `on-hold`, `can-resume`.
 
@@ -340,6 +341,10 @@ apply to `type:feature`.
   always exactly one per `type:feature` split (`.pilot/pilot-link-e2e-tasks.md`), reviewed by
   PM + tech lead, same set as `type:feature`. It changes which agent
   `/pilot-dev` calls in phase 3 (`pilot-e2e` instead of `pilot-dev`).
+- `type:poc` — a prototype of a feature, built with a human in `/pilot-proto` before any Discovery
+  and used to decide whether to build it. Always a standalone `level:story`, never split, never
+  through Spec, Dev, Review or QA (`pilot.py resolve` refuses it there, and refuses anything else
+  in `/pilot-proto`). Its states are the `status:poc-*` labels below.
 
 Never inherited from a parent to a child (§2 intro) — a story's tasks each get whichever of
 the four fits that specific task, assigned by Spec at split time.
@@ -491,6 +496,18 @@ when phase 4 blocks on something that needs an actual code change — see
 `level:epic` tickets never carry a `status:` label at all. `status:wont-do` and
 `status:split` tickets don't carry any *other* `status:` label — the rest of the state
 machine only applies to tickets still actively moving through Spec/Dev/Review themselves.
+
+### `status:poc-*` — a prototype's own lifecycle, outside the pipeline
+- `status:poc-draft` — being built with a human; assigned while a session works on it
+  (resumable like any other claim: `can-resume`, `/pilot-proto --resume <n>`).
+- `status:poc-review` — published, unassigned, waiting for a human: accept it
+  (`/pilot-proto <n> --accept`) or reject it (`--reject`).
+- `status:poc-validated` — accepted. Only now may `/pilot-discovery --from-proto <n>` start from
+  it; the prototype ticket is closed, label kept, once that Discovery's stories are approved.
+- `status:poc-rejected` — rejected; the reason is a comment on the ticket, which is closed.
+
+These are the only labels `/pilot-proto` changes; `pilot.py proto <n> accept|reject|from-proto`
+applies the transitions and refuses any other.
 
 ### `needs-human` — an orthogonal flag, not a pipeline state
 
@@ -975,6 +992,7 @@ leads, an optional validator, and personas the human may summon:
 | Dev | `pilot-dev` (`pilot-e2e` for `type:e2e`) | — | `pilot-techlead`, `pilot-architect`, `pilot-designer` |
 | Review | `pilot-techlead` + `pilot-pm` (`type:feature`/`type:e2e`), `pilot-techlead` alone (`type:tech`/`type:bug`) | — | `pilot-architect` |
 | QA | `pilot-qa` | — | `pilot-designer` |
+| Proto (`/pilot-proto`, not a phase) | `pilot-designer`, after `pilot-pm` has framed the idea alone with the human | `pilot-pm` | `pilot-architect` |
 | Design (`/pilot-design`, not a phase) | `pilot-designer` | — | `pilot-pm`, `pilot-architect` |
 
 - **Lead.** The skill opens the discussion with the lead(s). `--with <persona>[,...]`

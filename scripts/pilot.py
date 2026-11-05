@@ -26,6 +26,7 @@ dialogue stay with the skills. Requires the `gh` CLI and Python 3.
 import argparse
 import datetime
 import json
+import os
 import re
 import subprocess
 import sys
@@ -42,14 +43,18 @@ PHASES = {
                "gate": False, "containers": {"epic", "split"}, "resumable": {"status:in-review"}},
     "qa": {"fresh": "status:qa", "inprog": "status:in-qa", "reclaim": None,
            "gate": True, "containers": set(), "resumable": {"status:in-qa"}},
+    "proto": {"fresh": None, "inprog": "status:poc-draft", "reclaim": None,
+              "gate": False, "containers": set(), "resumable": {"status:poc-draft"}},
 }
 STATUSES = {
     "draft", "backlog", "in-spec", "dev-ready", "in-dev", "review-ready", "in-review",
     "changes-requested", "approved", "wont-do", "split", "qa", "in-qa", "done",
+    "poc-draft", "poc-review", "poc-validated", "poc-rejected",
 }
+POC_OPEN = ("status:poc-draft", "status:poc-review", "status:poc-validated")  # a prototype can still be rejected
 RESCOPABLE = ("status:qa", "status:in-qa", "status:split")  # spec re-scopes these in place
 REQUIRED_LABELS = (
-    {"type:feature", "type:tech", "type:bug", "type:e2e", "level:epic", "level:story", "level:task",
+    {"type:feature", "type:tech", "type:bug", "type:e2e", "type:poc", "level:epic", "level:story", "level:task",
      "priority:P0", "priority:P1", "priority:P2", "needs-human", "on-hold", "can-resume"}
     | {f"status:{name}" for name in STATUSES}
 )
@@ -58,6 +63,15 @@ NO_PRIORITY = 9
 FLAGS = ("needs-human", "on-hold")
 DEPENDS_RE = re.compile(r"Depends on #(\d+)")
 BLOCKS_RE = re.compile(r"Blocks #(\d+)")
+PROTO_MAX_BYTES = 1_000_000   # one mockup, all parts together
+PROTO_PART_BYTES = 200_000     # a database document is capped at 256 KiB
+PROTO_FORBIDDEN = (
+    (re.compile(r"https?://", re.I), "an external URL (the mockup must be self-contained)"),
+    (re.compile(r"""(?:src|href|action|poster)\s*=\s*["']?\s*//""", re.I), "a protocol-relative URL"),
+    (re.compile(r"@import", re.I), "@import"),
+    (re.compile(r"<\s*(?:iframe|object|embed|link|base)\b", re.I), "an iframe, object, embed, link or base element"),
+    (re.compile(r"<\s*meta[^>]+http-equiv\s*=\s*[\"']?refresh", re.I), "a meta refresh"),
+)
 REMOTE_RE = re.compile(r"(?:github\.com[:/]|/git/)([\w.-]+)/([\w.-]+?)(?:\.git)?/?$")
 
 
@@ -301,6 +315,8 @@ class Machine:
             return {"action": "stop", "reason": "closed", **base}
         if issue["is_pr"]:
             return {"action": "manual", "reason": "pr-number", **base}
+        if (phase == "proto") != ("type:poc" in labels):
+            return {"action": "stop", "reason": "not-a-poc" if phase == "proto" else "poc", **base}
         if not resume:
             kind = ("epic" if "level:epic" in labels else
                     "split" if "level:story" in labels and status == "status:split" else None)
@@ -512,6 +528,94 @@ class Machine:
                 "labels": sorted(after["labels"]), "assignees": after["assignees"],
                 "state": after["state"], "event": self._event(after, "set", pr=pr)}
 
+    def proto(self, number, verdict, reason=None):
+        """accept / reject a prototype, or check it is accepted before a Discovery starts from it."""
+        raw = self.gh.get_issue(number)
+        if raw is None:
+            raise Refused({"ok": False, "reason": "not-found", "issue": number})
+        issue = normalize(raw)
+        labels, status = set(issue["labels"]), status_of(issue["labels"])
+
+        def refuse(why, **extra):
+            raise Refused({"ok": False, "reason": why, "issue": number, "status": status, **extra})
+
+        if issue["state"] != "open":
+            refuse("closed")
+        if issue["is_pr"] or "type:poc" not in labels:
+            refuse("not-a-poc")
+        flags = sorted(f for f in FLAGS if f in labels)
+        if flags:
+            refuse("flagged", flags=flags)
+        if verdict == "from-proto":
+            if status != "status:poc-validated":
+                refuse("not-accepted", expected="status:poc-validated")
+            return {"ok": True, "verdict": verdict, "issue": number, "status": status, "title": issue["title"]}
+        if verdict == "accept":
+            if status == "status:poc-validated":
+                return {"ok": True, "changed": False, "verdict": verdict, "issue": number, "status": status}
+            if status != "status:poc-review":
+                refuse("not-reviewable", expected="status:poc-review")
+            after = self._write(number, labels - {"status:poc-review"} | {"status:poc-validated"})
+            return {"ok": True, "changed": True, "verdict": verdict, "issue": number,
+                    "status": status_of(after["labels"]), "event": self._event(after, "accept", "proto")}
+        if status not in POC_OPEN:
+            refuse("not-rejectable", expected=list(POC_OPEN))
+        if not (reason or "").strip():
+            raise Refused({"ok": False, "reason": "reason-required"})
+        self.gh.post_comment(number, reason)  # the reason is on the record before anything changes
+        labels = {l for l in labels if not l.startswith("status:")} - {"can-resume"} | {"status:poc-rejected"}
+        after = self._write(number, labels, [], {"state": "closed", "state_reason": "not_planned"})
+        return {"ok": True, "changed": True, "verdict": "reject", "issue": number,
+                "status": status_of(after["labels"]), "state": after["state"],
+                "event": self._event(after, "reject", "proto")}
+
+    def proto_pack(self, number, html_path, out_dir, brief=None, height=None):
+        """Check a prototype's mockup and write the cockpit documents for it: proto-<n>.json (the
+        metadata, `protos/p<n>`) and protoHtml-<n>-<k>.json (the parts, `protoHtml/<n>-<k>`)."""
+        raw = self.gh.get_issue(number)
+        if raw is None:
+            raise Refused({"ok": False, "reason": "not-found", "issue": number})
+        issue = normalize(raw)
+        if "type:poc" not in issue["labels"]:
+            raise Refused({"ok": False, "reason": "not-a-poc", "issue": number})
+        with open(html_path, encoding="utf-8") as handle:
+            html = handle.read()
+        size = len(html.encode("utf-8"))
+        problems = []
+        if not html.strip():
+            problems.append("the mockup is empty")
+        if size > PROTO_MAX_BYTES:
+            problems.append(f"the mockup is {size} bytes, the limit is {PROTO_MAX_BYTES}")
+        scan = re.sub(r'xmlns(?::\w+)?\s*=\s*"[^"]*"', "", html)  # an XML namespace is not a resource
+        for pattern, label in PROTO_FORBIDDEN:
+            if pattern.search(scan):
+                problems.append("it contains " + label)
+        if problems:
+            raise Refused({"ok": False, "reason": "invalid-mockup", "issue": number, "problems": problems})
+        parts, current, used = [], [], 0
+        for char in html:
+            width = len(char.encode("utf-8"))
+            if used + width > PROTO_PART_BYTES:
+                parts.append("".join(current))
+                current, used = [], 0
+            current.append(char)
+            used += width
+        parts.append("".join(current))
+        os.makedirs(out_dir, exist_ok=True)
+        files = []
+        meta = {"kind": "proto", "n": number, "repo": self.gh.repo, "title": issue["title"],
+                "brief": (brief or "").strip()[:600], "parts": len(parts), "bytes": size, "at": now_iso()}
+        if height:
+            meta["height"] = max(200, min(900, int(height)))
+        docs = [(f"proto-{number}.json", meta)]
+        docs += [(f"protoHtml-{number}-{k}.json", {"n": number, "k": k, "html": text}) for k, text in enumerate(parts)]
+        for name, doc in docs:
+            path = os.path.join(out_dir, name)
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(doc, handle, ensure_ascii=False, separators=(",", ":"))
+            files.append(path)
+        return {"ok": True, "issue": number, "parts": len(parts), "bytes": size, "files": files}
+
     def flag(self, number, comment):
         if not comment.strip():
             raise Refused({"ok": False, "reason": "comment-required"})
@@ -563,7 +667,7 @@ def build_parser():
     sub.add_parser = lambda *a, **k: _add(*a, parents=[common], **k)
     phases = sorted(PHASES)
     p = sub.add_parser("pool")
-    p.add_argument("phase", choices=phases)
+    p.add_argument("phase", choices=[x for x in phases if x != "proto"])
     p.add_argument("--limit", type=int, default=5)
     p = sub.add_parser("resolve")
     p.add_argument("phase", choices=phases)
@@ -584,6 +688,16 @@ def build_parser():
     p.add_argument("--remove", action="append", default=[])
     p.add_argument("--close", action="store_true")
     p.add_argument("--pr", type=int, help="the open PR that closes this ticket, forwarded in the event")
+    p = sub.add_parser("proto")
+    p.add_argument("issue", type=int)
+    p.add_argument("verdict", choices=["accept", "reject", "from-proto"])
+    p.add_argument("--reason", help="why a prototype is rejected (required by reject)")
+    p = sub.add_parser("proto-pack")
+    p.add_argument("issue", type=int)
+    p.add_argument("--html", required=True, help="the mockup, one self-contained HTML file")
+    p.add_argument("--out", required=True, help="directory for the documents to write to the cockpit")
+    p.add_argument("--brief")
+    p.add_argument("--height", type=int)
     p = sub.add_parser("event")
     p.add_argument("issues", type=int, nargs="+")
     p.add_argument("--action", required=True, help="what happened, e.g. created or approved")
@@ -610,6 +724,10 @@ def run(args, gh):
     if args.cmd == "set":
         assign = "me" if args.assign_me else "none" if args.unassign else None
         return machine.set(args.issue, args.status, assign, args.add, args.remove, args.close, args.pr)
+    if args.cmd == "proto":
+        return machine.proto(args.issue, args.verdict, args.reason)
+    if args.cmd == "proto-pack":
+        return machine.proto_pack(args.issue, args.html, args.out, args.brief, args.height)
     if args.cmd == "event":
         return machine.events(args.issues, args.action, args.phase)
     if args.cmd == "snapshot":

@@ -1,7 +1,7 @@
 ---
 name: pilot-discovery
-description: "Phase 1 of PILOT (see .pilot/pilot-process.md): turns a raw type:feature idea into one or more formalized GitHub issues. The PM first frames the idea with the human — challenges it, helps formulate it, restates it as a brief the human validates — before any ticket exists; then the PM drafts the story and the architect validates it, anticipating architecture (interfaces, infra shape), debating with the PM when it objects (.pilot/pilot-link-agent-dialogue.md). Produces one or more level:story tickets — type:feature, and, when the same effort genuinely needs a technical enabler alongside it, type:tech too — grouped under a new/reused level:epic (always type:feature) if it doesn't fit in one story, with dependencies between them. Never splits into dev-sized tasks, records a prerequisite, or writes a spec — that's /pilot-spec's job, run separately. The PM leads and the architect then validates the drafted story (.pilot/pilot-process.md §4 "Roster"); --with adds personas such as the designer upfront, and the human can summon or dismiss one at any time. Always pair mode: drafts live with a human, creating the ticket(s) as status:draft as soon as a first draft exists and refining in place. No --auto, never Routine-driven; --resume <issue number> picks back up a status:draft ticket left mid-pair. An optional --multi <N> runs N independent PM-led, architect-validated discussions on the same raw idea instead of one, converging the N resulting proposals with no fixed round cap the same way the base dialogue converges (see .pilot/pilot-link-agent-dialogue.md), escalating to a live question for the human only on a genuine, unresolved disagreement. A standalone type:tech need with no product framing, or any type:bug report, never comes through here — see /pilot-spec's own no-ticket entry instead. Use whenever a human wants to start a new product idea."
-argument-hint: "<raw idea in free text> [--with <persona>[,...]] [--multi [N]] | --resume <issue number>"
+description: "Phase 1 of PILOT (see .pilot/pilot-process.md): turns a raw type:feature idea into one or more formalized GitHub issues. The PM first frames the idea with the human — challenges it, helps formulate it, restates it as a brief the human validates — before any ticket exists; then the PM drafts the story and the architect validates it, anticipating architecture (interfaces, infra shape), debating with the PM when it objects (.pilot/pilot-link-agent-dialogue.md). Produces one or more level:story tickets — type:feature, and, when the same effort genuinely needs a technical enabler alongside it, type:tech too — grouped under a new/reused level:epic (always type:feature) if it doesn't fit in one story, with dependencies between them. Never splits into dev-sized tasks, records a prerequisite, or writes a spec — that's /pilot-spec's job, run separately. The PM leads and the architect then validates the drafted story (.pilot/pilot-process.md §4 "Roster"); --with adds personas such as the designer upfront, and the human can summon or dismiss one at any time. Always pair mode: drafts live with a human, creating the ticket(s) as status:draft as soon as a first draft exists and refining in place. --from-proto <n> starts from an accepted prototype (status:poc-validated, see /pilot-proto) instead of a raw idea. No --auto, never Routine-driven; --resume <issue number> picks back up a status:draft ticket left mid-pair. An optional --multi <N> runs N independent PM-led, architect-validated discussions on the same raw idea instead of one, converging the N resulting proposals with no fixed round cap the same way the base dialogue converges (see .pilot/pilot-link-agent-dialogue.md), escalating to a live question for the human only on a genuine, unresolved disagreement. A standalone type:tech need with no product framing, or any type:bug report, never comes through here — see /pilot-spec's own no-ticket entry instead. Use whenever a human wants to start a new product idea."
+argument-hint: "<raw idea in free text> | --from-proto <accepted prototype number> [--with <persona>[,...]] [--multi [N]] | --resume <issue number>"
 disable-model-invocation: true
 ---
 
@@ -27,7 +27,13 @@ no-ticket entry, `pilot-spec/SKILL.md`).
      claim"). Read the ticket and thread (`mcp__github__issue_read` `get_comments`) to
      reconstruct what's drafted, claim it (overwrite assignee), skip to step 4 with that
      state (call the agents in step 3 again first if revising the draft, passing the
-     reconstructed context instead of a blank idea). If it doesn't match, report and stop.
+     reconstructed context instead of a blank idea). A draft whose body carries `Prototype : #<n>` continues as
+     `--from-proto <n>` (step 7 still updates and closes that prototype). If it doesn't match, report and stop.
+   - `--from-proto <n>`: `python3 .pilot/pilot.py proto <n> from-proto` — it refuses anything but an
+     **accepted** prototype (`reason: not-accepted`): relay it and say to accept it first
+     (`/pilot-proto <n> --accept`), then stop. Otherwise read the ticket (its body is the validated brief)
+     and, with `ArtifactData`, `protos/p<n>` and the mockup parts `protoHtml/<n>-<k>` joined; step 2a's raw
+     idea is that brief and mockup. Continue with steps 2-4.
    - A raw idea (the argument, or ask if none given): continue with steps 2-4. Don't
      analyze it yourself — framing it is the PM's job in step 2a. If it reads as a
      standalone technical need or a bug report instead of a product idea, say so and
@@ -35,7 +41,8 @@ no-ticket entry, `pilot-spec/SKILL.md`).
 2. Fetch open `level:epic` issues (always `type:feature`, title + body only,
    `mcp__github__list_issues`/`search_issues`) as candidates the agents might reuse —
    cheap, deterministic bookkeeping, not the agents' job to search for itself.
-2a. **Frame the idea with the human first** — before the architect is called and before any
+2a. **Frame the idea with the human first** (with `--from-proto`, the PM starts from the prototype's brief and
+    mockup and puts to the human only what the prototype did not settle — pass both into the round) — before the architect is called and before any
     ticket exists. The PM talks with the human alone, round by round
     (`.pilot/pilot-task-frame-idea.md`): call `Agent` for `pilot-pm` with it, passing the raw
     idea, step 2's Epic list and the framing conversation so far, the human's answers
@@ -87,6 +94,8 @@ no-ticket entry, `pilot-spec/SKILL.md`).
      `status:` label, unassigned — an Epic is never itself a draft, and never carries a
      `priority:`) first, then each story linked as its sub-issue, its own `type:` +
      `level:story` + `status:draft` + its own `priority:` + assigned.
+   Under `--from-proto`, each story's body also carries `Prototype : #<n>` and, when `dashboardUrl` is set,
+   `Maquette : <dashboardUrl>#proto/<n> (dashboard › Prototypes › #<n>)`.
    Once every ticket is created and linked (the Epic included), their dashboard events come from
    one call: `python3 .pilot/pilot.py event <n> <n>... --action created --phase discovery`
    (best-effort, step 7a).
@@ -99,7 +108,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    answer that opens new questions gets another round. A draft isn't approved while a
    question that changes its acceptance criteria is still open, unless the human says to
    go with the provisional defaults. For each `type:feature` draft
-   involving user-facing UI, also ask once whether the human has an existing mockup,
+   involving user-facing UI — except under `--from-proto`, where the prototype is the mockup — also ask once whether the human has an existing mockup,
    wants to sketch one live (e.g. the `design` skill, if available), or is fine with the
    PM's own prose description. No tool here can upload an image to a GitHub comment the
    way the web UI's drag-and-drop does, so either way ask the human to attach it to the
@@ -123,7 +132,11 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    criterion added later, an architecture assumption one round made that a later round's
    split contradicts).
 7. Finalize (`mcp__github__issue_write`): flip each story from `status:draft` to
-   `status:backlog`, unassigned.
+   `status:backlog`, unassigned. Under `--from-proto`: `update` `protos/p<n>` with `stories` (the numbers just
+   finalized), comment on the prototype ticket with them, then `python3 .pilot/pilot.py set <n> --close` (the
+   label stays). If the dialogue decides the idea is out of scope, ask the human whether to reject the
+   prototype; if so, `python3 .pilot/pilot.py proto <n> reject --reason "<why>"` and `update` `protos/p<n>`
+   with `decision: "rejected"`, `reason` and `decidedAt`.
 7a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push, with `ArtifactData`
    (`ToolSearch` loads it if deferred), the `events` that `python3 .pilot/pilot.py event <n>
    <n>... --action approved --phase discovery` returns for the stories just finalized — and the

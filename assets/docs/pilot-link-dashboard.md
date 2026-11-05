@@ -1,6 +1,6 @@
 # PILOT link — pushing live events to the project's dashboard
 
-Read by `pilot-discovery`, `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa`, and `pilot-dashboard` (which
+Read by `pilot-discovery`, `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa`, `pilot-proto`, and `pilot-dashboard` (which
 publishes the page that reads these documents). Best-effort only: GitHub labels stay the
 source of truth, and a push that fails or is skipped never blocks, delays or changes a phase.
 
@@ -8,7 +8,7 @@ source of truth, and a push that fails or is skipped never blocks, delays or cha
 database is available. Otherwise skip everything below, silently. Decide once per session.
 
 **What to push** (to the dashboard at `dashboardUrl`):
-- Every `event` returned by `.pilot/pilot.py claim|set|flag|unflag`, and every entry of the
+- Every `event` returned by `.pilot/pilot.py claim|set|flag|unflag|proto`, and every entry of the
   `events` list `.pilot/pilot.py event` returns for several tickets at once (write those in one
   `ArtifactData` `batch`): a new document in the `events` collection, id `<epoch
   milliseconds>-<issue number>`, body = the event object as returned. Always a new document,
