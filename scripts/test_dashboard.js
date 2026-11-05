@@ -634,6 +634,38 @@ const STUB = (opts) => `
   check('design: #design opens the tab, a preloaded document is shown', /myAVI/.test(await text(page, '#view')) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Design');
   await page.close();
 
+  // ---- design tab: a component shows a live preview in an isolated frame, themed by the document's own tokens ----
+  const PV = Object.assign({}, DESIGN, {
+    colors: [{ name: 'Action', light: '#1747C9', dark: '#7EA2FF', use: 'boutons' }, { name: 'Fond clair', light: '#FFFFFF', dark: '#0E141B', use: 'page' }],
+    space: { spacing: [{ name: 'm', value: '16px' }], radius: [{ name: 's', value: '8px' }] },
+    type: { family: 'IBM Plex Sans', scale: [{ name: 'Corps', size: 14, weight: 400, use: 'texte' }] },
+    components: [
+      { name: 'Bouton', description: 'Action principale', rules: 'Cible de 44 px', height: 70,
+        preview: '<button id="b" style="padding:var(--space-m);border-radius:var(--radius-s);background:var(--color-action);color:#fff;border:0">Démarrer</button>' },
+      { name: 'Piège', description: 'Aperçu hostile', height: 60,
+        preview: '<script>parent.__pwn=1<\/script><img src="https://evil.example/x.png" onerror="parent.__pwn=2"><p id="t">texte</p>' },
+      { name: 'Trop gros', description: 'Aperçu hors limite', preview: '<p>' + 'x'.repeat(4100) + '</p>' },
+      { name: 'Sans aperçu', description: 'Seulement une description' },
+    ] });
+  page = await open({ preload: [BASE], design: [PV] });
+  await page.goto(FILE + '#design'); await page.waitForTimeout(500);
+  const frames = () => page.$$('#view iframe.prev');
+  check('preview: one frame per component that has a valid preview (not the oversized or missing ones)', (await frames()).length === 2, String((await frames()).length));
+  check('preview: the frame is sandboxed with no permission at all', (await page.$$eval('#view iframe.prev', (fs) => fs.every((f) => f.getAttribute('sandbox') === '' && !f.hasAttribute('src')))));
+  const sd = await page.$eval('#view iframe.prev', (f) => f.getAttribute('srcdoc'));
+  check('preview: the frame defines the tokens, with a policy that forbids script and network',
+        /--color-action:#1747C9/.test(sd) && /--color-fond-clair:#FFFFFF/.test(sd) && /--space-m:16px/.test(sd) && /--radius-s:8px/.test(sd) && /--text-corps:14px/.test(sd) &&
+        /prefers-color-scheme:dark\)\{:root\{--color-action:#7EA2FF/.test(sd) && /Content-Security-Policy[^>]*default-src 'none'/.test(sd), sd.slice(0, 400));
+  const bf = await (await page.$('#view iframe.prev')).contentFrame();
+  const bg = await bf.$eval('#b', (b) => getComputedStyle(b).backgroundColor);
+  check('preview: the component renders with the document\'s color token', bg === 'rgb(23, 71, 201)', bg);
+  check('preview: a hostile fragment cannot run script nor reach the page', (await page.evaluate(() => window.__pwn)) === undefined);
+  check('preview: the oversized one says so, the one without preview has no frame',
+        /Aperçu trop volumineux/.test(await text(page, '#view')) && /Seulement une description/.test(await text(page, '#view')));
+  check('preview: height comes from the document, clamped', (await page.$$eval('#view iframe.prev', (fs) => fs.map((f) => f.style.height))).join() === '70px,60px');
+  check('preview: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+
   // ---- renderer: the project name is HTML-escaped ----
   const escaped = render('A<b>"x"&y', 'o/r', path.join(TMP, 'escaped.html'));
   page = await browser.newPage(); await page.goto(escaped);

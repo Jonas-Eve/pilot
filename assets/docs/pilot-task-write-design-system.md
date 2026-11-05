@@ -28,10 +28,18 @@ guidelines, theme/token files, anything the human handed over) and the conversat
   "colors": [{"name": "", "light": "#RRGGBB", "dark": "#RRGGBB", "use": ""}],
   "type": {"family": "", "scale": [{"name": "", "size": 16, "weight": 400, "use": ""}]},
   "space": {"spacing": [{"name": "", "value": "8px"}], "radius": [{"name": "", "value": "8px"}]},
-  "components": [{"name": "", "description": "", "rules": ""}],
+  "components": [{"name": "", "description": "", "rules": "", "preview": "<div>…</div>", "height": 120}],
   "a11y": [""]
 }
 ```
 
+   A component's `preview` is a static HTML fragment (no `<script>`, no event handlers, no
+   external resource; inline `<style>` allowed) under 4 KB, shown in an isolated frame of
+   `height` px (40 to 400). Style it only with the document's own tokens, which the frame
+   defines from it, so it follows both themes: `var(--color-<name>)`, `var(--space-<name>)`,
+   `var(--radius-<name>)`, `var(--text-<name>)` and `var(--font)`, where `<name>` is the token's
+   name lower-cased, accents removed and anything else turned into `-`. Show the component in
+   its main state; one preview per component.
+
    Hex values are `#RGB` or `#RRGGBB`; `size` is a number of px; `logo` is an inline SVG under
-   20 KB, omitted when there is none. Every field is plain text — no HTML or Markdown.
+   20 KB, omitted when there is none. Every other field is plain text — no HTML or Markdown.
