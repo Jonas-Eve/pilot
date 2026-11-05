@@ -856,6 +856,28 @@ const STUB = (opts) => `
   check('prototypes: with none at all, a hint to start one', /Aucun prototype pour l’instant/.test(await text(page, '#view')) && /Prototypes$/.test((await mainTabs())[2]));
   await page.close();
 
+  // ---- prototype in full screen: its own address, a way back, the whole screen for the frame ----
+  page = await open({ preload: [PSNAP], protos: PROTOS, protoHtml: PHTML });
+  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
+  check('full view: only a prototype that has a mockup offers it', (await page.locator('#view .row', { hasText: '#702 ' }).locator('button:has-text("Plein écran")').count()) === 1 && (await page.locator('#view .row', { hasText: '#701 ' }).locator('button:has-text("Plein écran")').count()) === 0);
+  await page.locator('#view .row', { hasText: '#702 ' }).locator('button:has-text("Plein écran")').click(); await page.waitForTimeout(500);
+  check('full view: the address is #proto/<n> and the prototype is on its own, no sub-tabs and no card',
+        (await page.evaluate(() => location.hash)) === '#proto/702' && (await page.$$('#subtabs a')).length === 0 && (await page.$eval('#protoNew', (e) => e.hidden)) && /#702 Proto à décider/.test(await text(page, '#view')));
+  check('full view: the ticket banner is out of the way', await page.$eval('#banner', (e) => e.hidden));
+  const big = await page.$eval('#view iframe.prev', (f) => f.getBoundingClientRect().height);
+  await page.screenshot({ path: path.join(TMP, 'protofull.png') });
+  check('full view: the frame takes the room of the screen, more than the list\'s 300 px', big >= 420, String(big));
+  const ff = await (await page.$('#view iframe.prev')).contentFrame();
+  check('full view: it is the same live mockup (its own script runs)', (await ff.click('#b'), await ff.textContent('#t')) === 'cliqué');
+  await page.click('#view >> text=← Prototypes'); await page.waitForTimeout(300);
+  check('full view: the way back returns to the list with its sub-tabs', (await page.evaluate(() => location.hash)) === '#prototypes' && (await page.$$('#subtabs a')).length === 3);
+  await page.goto(FILE + '#proto/702'); await page.waitForTimeout(500);
+  check('full view: a direct link #proto/702 opens it', /#702 Proto à décider/.test(await text(page, '#view')) && (await page.$('#view iframe.prev')) !== null && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)).startsWith('Prototypes'));
+  await page.goto(FILE + '#proto/999'); await page.waitForTimeout(300);
+  check('full view: an unknown prototype says so and offers the way back', /Prototype introuvable/.test(await text(page, '#view')) && (await page.$('#view >> text=← Prototypes')) !== null);
+  check('full view: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+
   // ---- renderer: the project name is HTML-escaped ----
   const escaped = render('A<b>"x"&y', 'o/r', path.join(TMP, 'escaped.html'));
   page = await browser.newPage(); await page.goto(escaped);
