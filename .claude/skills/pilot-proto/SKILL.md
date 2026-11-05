@@ -27,8 +27,9 @@ live (except `--accept` and `--reject`, which are one mechanical step).
      <the returned action>` (`resume-orphaned` or `resume-cleared`). Read the ticket's body (the brief) and
      the mockup of `protos/p<n>` (step 5's parts, joined), then go to step 4 with that state.
    - `--from-artifact <url> [note]`: imports a Claude artifact as the mockup. Needs the `Artifact` tool, else
-     stop. `Artifact read` the url: only the human's own artifact comes back as HTML (its header says they can
-     edit it), else stop. Keep that page as the mockup in a temporary file; the note, if any, is the idea
+     stop. `Artifact read` the url: only the human's own plain single-page artifact comes back as HTML (its header
+     says they can edit it). One made from an Artifact type (a Design canvas, a deck) or with several files
+     returns no page: stop and say so — the human can ask Claude to rebuild it as one self-contained HTML file. Keep that page as the mockup in a temporary file; the note, if any, is the idea
      (otherwise ask what the prototype should teach). Go on.
    - Anything else is the feature idea, without its `--with` (ask if none given); go on. If it reads as a technical need or a bug,
      point at `/pilot-spec --tech`/`--bug` and stop.
