@@ -924,30 +924,34 @@ const STUB = (opts) => `
   await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(150);
   check('my queue (tech): no prototype', !/Proto en revue/.test(await text(page, '#view')));
 
-  // reference panel: the agents and the roster, kept in step with pilot-process.md §4 "Roster"
-  check('reference panel: hidden until the button is pressed', (await page.$eval('#help', (e) => e.hidden)) && (await page.$eval('#helpBtn', (b) => b.getAttribute('aria-expanded'))) === 'false');
-  await page.click('#helpBtn'); await page.waitForTimeout(100);
-  check('reference panel: opens on any tab, lists the 7 agents', !(await page.$eval('#help', (e) => e.hidden)) && (await page.$$('#help .agents .row')).length === 7 && (await page.$eval('#helpBtn', (b) => b.getAttribute('aria-expanded'))) === 'true');
+  // reference page (#aide): the agents and the roster, kept in step with pilot-process.md §4 "Roster"
+  await page.evaluate(() => { location.hash = 'file'; }); await page.waitForTimeout(100);
+  check('reference page: a discreet info button, and the tab is untouched until it is used',
+        (await text(page, '#helpLink')) === 'i' && (await page.$eval('#helpLink', (a) => a.getAttribute('href'))) === '#aide' && !(await page.$eval('#idea', (e) => e.hidden)));
+  await page.click('#helpLink'); await page.waitForTimeout(150);
+  check('reference page: its own page (#aide) with the 7 agents, replacing the tab content, no tab marked current',
+        /Agents et steps/.test(await text(page, '#view')) && (await page.$$('#view .agents .row')).length === 7 && (await page.$eval('#idea', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)) &&
+        (await page.$$('#tabs a[aria-current="page"]')).length === 0 && (await page.$eval('#helpLink', (a) => a.getAttribute('aria-current'))) === 'page');
   const docRows = fs.readFileSync(path.resolve(__dirname, '../assets/docs/pilot-process.md'), 'utf8').split('\n')
     .filter((l) => /^\| (Discovery|Spec|Dev|Review|QA|Proto|Design)\b/.test(l)).map((l) => l.split('|').slice(1, 5).map((c) => new Set((c.match(/pilot-(\w+)/g) || []).map((x) => x.slice(6)))));
   const KEYS = [['pm', 'PM'], ['architect', 'Architecte'], ['techlead', 'Tech lead'], ['dev', 'Dev'], ['e2e', 'E2E'], ['qa', 'QA'], ['designer', 'Designer']];
-  const roster = (await page.$$eval('#help tbody tr', (trs) => trs.map((tr) => [...tr.querySelectorAll('td')].map((td) => td.textContent))))
+  const roster = (await page.$$eval('#view tbody tr', (trs) => trs.map((tr) => [...tr.querySelectorAll('td')].map((td) => td.textContent))))
     .map((cells) => cells.map((c) => new Set(KEYS.filter(([, n]) => new RegExp('\\b' + n + '\\b', 'i').test(c)).map(([k]) => k))));
   const same = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
-  check('reference panel: the roster has the same steps and the same personas per column as pilot-process.md',
+  check('reference page: the roster has the same steps and the same personas per column as pilot-process.md',
         docRows.length === roster.length && docRows.every((d, i) => [0, 1, 2].every((k) => same(d[k + 1], roster[i][k]))), JSON.stringify([docRows.length, roster.length]));
-  check('reference panel: the table shows one row per step, with Lead, Validateur and Convocable',
-        (await page.$$('#help tbody tr')).length === docRows.length && /Discovery[\s\S]*PM[\s\S]*Architecte[\s\S]*Designer/.test(await text(page, '#help tbody tr')));
-  await page.click('#helpBtn'); await page.waitForTimeout(100);
-  check('reference panel: closes again', await page.$eval('#help', (e) => e.hidden));
+  check('reference page: the table shows one row per step, with Lead, Validateur and Convocable',
+        (await page.$$('#view tbody tr')).length === docRows.length && /Discovery[\s\S]*PM[\s\S]*Architecte[\s\S]*Designer/.test(await text(page, '#view tbody tr')));
+  await page.click('#view >> text=Retour'); await page.waitForTimeout(150);
+  check('reference page: Retour goes back to the tab it was opened from',
+        (await page.evaluate(() => location.hash)) === '#file' && !(await page.$eval('#idea', (e) => e.hidden)) && /Ma file/.test(await text(page, '#view')));
 
   // every tab and sub-tab fits a phone, in both themes, with no script error
   const ROUTES = ['file', 'ensemble', 'ensemble/discovery', 'ensemble/spec', 'ensemble/dev', 'ensemble/review', 'ensemble/qa',
     'prototypes/encours', 'prototypes/acceptes/alancer', 'prototypes/acceptes/encours', 'prototypes/acceptes/termines', 'prototypes/rejetes', 'proto/702',
-    'recherche', 'activite/sessions', 'activite/changements',
+    'recherche', 'activite/sessions', 'activite/changements', 'aide',
     'design/charter', 'design/colors', 'design/type', 'design/space', 'design/components', 'design/a11y'];
   const wide = [];
-  await page.click('#helpBtn'); // the reference panel stays open for the sweep
   for (const scheme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: scheme });
     for (const r of ROUTES) {

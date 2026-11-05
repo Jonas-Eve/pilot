@@ -88,6 +88,9 @@ nav.tabs.sub a{padding:6px 12px;font-size:13px}
 .note.ok{color:var(--ok)} .note.crit{color:var(--crit)}
 .refresh{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
 .idea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.ttl{display:flex;align-items:center;gap:10px}
+.info{flex:none;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font:italic 600 14px/1 Georgia,serif;align-self:center}
+.info:hover,.info[aria-current="page"]{color:var(--fg);border-color:var(--muted)}
 .ref{overflow-x:auto}
 .ref table{border-collapse:collapse;width:100%;font-size:13px}
 .ref th,.ref td{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
@@ -136,21 +139,19 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>Cockpit {{PROJECT_NAME}}</h1>
+      <div class="ttl"><h1>Cockpit {{PROJECT_NAME}}</h1><a class="info" id="helpLink" href="#aide" title="Agents et steps" aria-label="Agents et steps">i</a></div>
       <p class="sub">Tickets par phase et file d’actions selon votre rôle, avec la commande PILOT prête à copier.</p>
     </div>
     <div class="controls">
       <input class="me" id="meInput" list="meList" autocomplete="off" spellcheck="false" aria-label="Mon identifiant GitHub" placeholder="Mon identifiant GitHub">
       <datalist id="meList"></datalist>
       <div class="seg" role="group" aria-label="Rôle" id="roleSeg"></div>
-      <button class="btn ghost" id="helpBtn" type="button" aria-expanded="false" aria-controls="help">Agents et steps</button>
     </div>
   </div>
   <div class="chips" id="conn" aria-label="État des connecteurs"></div>
   <nav class="tabs" id="tabs"></nav>
   <nav class="tabs sub" id="subtabs" aria-label="Sous-onglets" hidden></nav>
   <nav class="tabs sub" id="subtabs2" aria-label="Sous-onglets" hidden></nav>
-  <section id="help" class="idea" aria-label="Agents et steps" hidden></section>
   <div id="banner"></div>
   <section id="idea" class="idea" aria-label="Nouvelle demande" hidden></section>
   <section id="batch" class="idea" aria-label="Lancer en lot" hidden></section>
@@ -241,7 +242,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, help:0, viewProto:0, sub3:'alancer', sub:{ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -968,23 +969,24 @@ function renderChrome(){
   var alive=S.activity.filter(isAlive).length;
   var tabs=document.getElementById('tabs');
   tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['prototypes','Prototypes'+(protoCounts().encours?' ('+protoCounts().encours+')':'')],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')],['design','Design']].map(function(t){
-    return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
+    return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]&&!S.viewHelp?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
   S._km=null;S._po=null;
   renderChrome();renderConn();renderBanner();
-  document.getElementById('idea').hidden=S.tab!=='file';updateIdea();
-  document.getElementById('batch').hidden=S.tab!=='file';
-  document.getElementById('search').hidden=S.tab!=='recherche';updateSearch();
-  document.getElementById('designEdit').hidden=S.tab!=='design';updateDesign();
-  document.getElementById('help').hidden=!S.help; document.getElementById('helpBtn').setAttribute('aria-expanded',String(!!S.help));
-  document.getElementById('protoNew').hidden=S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
-  document.getElementById('banner').hidden=S.tab==='design'||(S.tab==='prototypes'&&!!S.viewProto);
+  var H=!!S.viewHelp; /* the reference page replaces everything under the tabs */
+  var hl=document.getElementById('helpLink'); if(H)hl.setAttribute('aria-current','page'); else hl.removeAttribute('aria-current');
+  document.getElementById('idea').hidden=H||S.tab!=='file';updateIdea();
+  document.getElementById('batch').hidden=H||S.tab!=='file';
+  document.getElementById('search').hidden=H||S.tab!=='recherche';updateSearch();
+  document.getElementById('designEdit').hidden=H||S.tab!=='design';updateDesign();
+  document.getElementById('protoNew').hidden=H||S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
+  document.getElementById('banner').hidden=H||S.tab==='design'||(S.tab==='prototypes'&&!!S.viewProto);
   var items=subItems(S.tab), ph=PHASES.filter(function(p){return p.key===S.sub.ensemble;})[0];
-  if(items.length&&!(S.tab==='prototypes'&&S.viewProto))subnav(S.tab,items,S.sub[S.tab]); else subnav('',[],'');
-  if(S.tab==='prototypes'&&!S.viewProto&&S.sub.prototypes==='acceptes')subnav('prototypes',protoSubItems(),S.sub3,'subtabs2','prototypes/acceptes'); else subnav('',[],'','subtabs2');
+  if(!H&&items.length&&!(S.tab==='prototypes'&&S.viewProto))subnav(S.tab,items,S.sub[S.tab]); else subnav('',[],'');
+  if(!H&&S.tab==='prototypes'&&!S.viewProto&&S.sub.prototypes==='acceptes')subnav('prototypes',protoSubItems(),S.sub3,'subtabs2','prototypes/acceptes'); else subnav('',[],'','subtabs2');
   var v=document.getElementById('view');
-  v.replaceChildren(S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():S.tab==='prototypes'?vProtos():vFile());
+  v.replaceChildren(H?vHelp():S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():S.tab==='prototypes'?vProtos():vFile());
 }
 
 /* ---------- reference panel: the agents and who leads, validates or can be summoned at each step (mirrors pilot-process.md §4 "Roster") ---------- */
@@ -1009,11 +1011,10 @@ var ROSTER=[
   {step:'Design (hors phase)',lead:['designer'],val:[],sum:['pm','architect']}
 ];
 function agentName(k){var a=AGENTS.filter(function(x){return x[0]===k;})[0];return a?a[1]:k;}
-function buildHelp(){
-  var box=document.getElementById('help');
+function vHelp(){
   function names(ks,note){return ks.length?ks.map(agentName).join(' + ')+(note?' ('+note+')':''):'—';}
-  box.append(
-    h('h2',{},'Agents et steps'),
+  return h('div',{class:'list'},
+    h('div',{class:'refresh'},h('a',{class:'btn',href:'#'+S.tab},'← Retour'),h('h2',{style:'margin:0'},'Agents et steps')),
     h('p',{class:'note'},'À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.'),
     h('h3',{class:'gh'},'Les agents'),
     h('div',{class:'agents'},AGENTS.map(function(a){return h('div',{class:'row'},h('div',{class:'main'},h('div',{class:'t'},a[1]),h('p',{class:'note'},a[2])));})),
@@ -1023,13 +1024,12 @@ function buildHelp(){
       h('tbody',{},ROSTER.map(function(r){
         return h('tr',{},h('th',{scope:'row'},r.step),h('td',{},names(r.lead,r.leadNote)),h('td',{},names(r.val,r.valNote)),h('td',{},names(r.sum)));
       })))));
-  document.getElementById('helpBtn').addEventListener('click',function(){S.help=S.help?0:1;render();});
 }
 
 /* ---------- boot ---------- */
 function fromHash(){
   var p=(location.hash||'').slice(1).split('/'), t=p[0];
-  S.viewProto=0;
+  S.viewProto=0; S.viewHelp=t==='aide'?1:0;
   if(t==='proto'){S.tab='prototypes';S.viewProto=Number(p[1])||0;}
   else if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design'||t==='prototypes')S.tab=t;
   var list=SUBS[S.tab];
@@ -1045,7 +1045,6 @@ buildBatch();
 buildSearch();
 buildDesign();
 buildProtoNew();
-buildHelp();
 render();
 if(window.claude&&window.claude.use){
   window.claude.use('db').then(function(d){S.db=d;watchSnapshots();watchLive();}).catch(function(){S.db=null;watchSnapshots();});
