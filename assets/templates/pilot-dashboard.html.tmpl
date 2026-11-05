@@ -53,6 +53,9 @@ a.btn.primary{color:var(--accent-fg)}
 nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
 nav.tabs a{padding:8px 14px;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
 nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent);font-weight:600}
+nav.tabs.sub{margin-top:-6px;border-bottom-style:dashed}
+nav.tabs.sub a{padding:6px 12px;font-size:13px}
+.gh{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--muted)}
 .banner{border:1px solid var(--line);border-left-width:4px;background:var(--surface);border-radius:8px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
 .banner.live{border-left-color:var(--ok)} .banner.sample{border-left-color:var(--warn)}
 .banner p{margin:0;min-width:0}
@@ -136,6 +139,7 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
   </div>
   <div class="chips" id="conn" aria-label="État des connecteurs"></div>
   <nav class="tabs" id="tabs"></nav>
+  <nav class="tabs sub" id="subtabs" aria-label="Sous-onglets" hidden></nav>
   <div id="banner"></div>
   <section id="idea" class="idea" aria-label="Nouvelle demande" hidden></section>
   <section id="batch" class="idea" aria-label="Lancer en lot" hidden></section>
@@ -224,7 +228,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, sub:{ensemble:'tableau'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -553,6 +557,29 @@ function vSearch(){
     shown.length>5?pager(res.length):null);
 }
 
+/* ---------- sub-tabs: a second row under a main tab, addressed as #tab/sub (one component, reused by every tab that has them) ---------- */
+function subnav(tab,items,cur){
+  var el=document.getElementById('subtabs');
+  el.hidden=!items.length;
+  el.replaceChildren.apply(el,items.map(function(t){
+    return h('a',{href:'#'+tab+'/'+t[0],'aria-current':cur===t[0]?'page':null,onclick:function(){S.sub[tab]=t[0];S.page=0;}},t[1]+(t[2]!=null?' ('+t[2]+')':''));}));
+}
+var OV_SUBS=[['tableau','Tableau']].concat(PHASES.map(function(p){return [p.key,p.name];}));
+function phaseItems(p){
+  return tickets().filter(function(t){return p.statuses.indexOf(t.status)>-1;}).sort(function(a,b){
+    return p.statuses.indexOf(a.status)-p.statuses.indexOf(b.status)||byUrgency(a,b);});
+}
+function vPhase(p){
+  var items=phaseItems(p), count={}, last=null, out=[];
+  items.forEach(function(t){count[t.status]=(count[t.status]||0)+1;});
+  var pages=Math.max(1,Math.ceil(items.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
+  items.slice(S.page*PAGE_SIZE,(S.page+1)*PAGE_SIZE).forEach(function(t){
+    if(t.status!==last){last=t.status;out.push(h('h3',{class:'gh'},(STATUS_FR[t.status]||t.status)+' · '+count[t.status]));}
+    out.push(ticketRow(t,true));
+  });
+  return h('div',{class:'list'},h('h2',{},p.n+' · '+p.name+' · '+items.length),pager(items.length),
+    out.length?out:h('div',{class:'empty'},'Aucun ticket dans cette phase.'),out.length>5?pager(items.length):null);
+}
 function vOverview(){
   var all=tickets();
   var cols=PHASES.map(function(p){
@@ -786,12 +813,19 @@ function render(){
   document.getElementById('search').hidden=S.tab!=='recherche';updateSearch();
   document.getElementById('designEdit').hidden=S.tab!=='design';updateDesign();
   document.getElementById('banner').hidden=S.tab==='design';
+  var cur=S.sub.ensemble, ph=PHASES.filter(function(p){return p.key===cur;})[0];
+  if(S.tab==='ensemble')subnav('ensemble',OV_SUBS.map(function(s){var p=PHASES.filter(function(q){return q.key===s[0];})[0];return [s[0],s[1],p?phaseItems(p).length:null];}),cur);
+  else subnav('',[],'');
   var v=document.getElementById('view');
-  v.replaceChildren(S.tab==='ensemble'?vOverview():S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():vFile());
+  v.replaceChildren(S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():vFile());
 }
 
 /* ---------- boot ---------- */
-function fromHash(){var t=(location.hash||'').slice(1); if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design')S.tab=t;}
+function fromHash(){
+  var p=(location.hash||'').slice(1).split('/'), t=p[0];
+  if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design')S.tab=t;
+  if(S.tab==='ensemble'&&p[1]&&p[1]!==S.sub.ensemble&&OV_SUBS.some(function(s){return s[0]===p[1];})){S.sub.ensemble=p[1];S.page=0;}
+}
 window.addEventListener('hashchange',function(){fromHash();render();});
 fromHash();
 var me=document.getElementById('meInput'); me.value=S.me;
