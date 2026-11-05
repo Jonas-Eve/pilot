@@ -52,8 +52,8 @@ dialogue rather than one handing a finished draft to the other
     your project. Overwrites, no merge — see the warning in
     `.claude/skills/pilot-update/SKILL.md`.
   - `/pilot-dashboard` — publish (or update) the project's team page as a private Claude
-    Artifact with its own data: tickets by phase, each role's queue, and the PILOT sessions
-    working right now. Run it again, or let `/pilot-update` do it, to get the latest page at
+    Artifact with its own data: tickets by phase, each role's queue, the PILOT sessions
+    working right now, and the project's design system. Run it again, or let `/pilot-update` do it, to get the latest page at
     the same address.
   - `/pilot-design` — create or revise the project's design system and brand charter with the
     designer, in a live discussion; the result is shown in the "Design" tab of the dashboard.
