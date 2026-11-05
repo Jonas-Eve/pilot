@@ -12,7 +12,7 @@ Five phases, each with its own Claude Code skill and agent persona:
 
 | Phase | Skill | Agent | Produces |
 |---|---|---|---|
-| 1. Discovery | `/pilot-discovery` | PM + Architect, in dialogue | One or more `type:feature` stories (and, when the same effort needs one, a `type:tech` companion story) under a new/reused Epic, architecture already anticipated. `type:feature` only — a standalone technical need or a bug report never comes through here |
+| 1. Discovery | `/pilot-discovery` | PM leading, Architect validating | One or more `type:feature` stories (and, when the same effort needs one, a `type:tech` companion story) under a new/reused Epic, architecture already anticipated. `type:feature` only — a standalone technical need or a bug report never comes through here |
 | 2. Spec | `/pilot-spec` | Architect + Tech Lead, in dialogue | Splits an already-formalized story into dev-sized tasks (mandatory for feature, judgment call for tech) and writes each resulting ticket's technical spec, in one continuous pass — or, given no ticket at all, first originates a standalone technical need or a bug report (the one shared bug-creation mechanism) |
 | 3. Dev | `/pilot-dev` | Senior Dev, or the e2e persona for the end-to-end-test task | Code + an open pull request |
 | 4. Review | `/pilot-review` | Tech Lead + PM by default (feature/e2e) or Tech Lead alone (tech/bug) — Architect optional in either set | A submitted GitHub PR review (approve/request changes) — merges too, only with `--merge` |
@@ -53,3 +53,7 @@ Each phase is a Claude Code slash command (`/pilot-discovery "..."`, `/pilot-spe
 `/pilot-dev 42`, ...) — see [.pilot/pilot-process.md](.pilot/pilot-process.md) §0 for the
 required GitHub labels (created once, not auto-created by any skill) and a full command
 quickstart, and the rest of that doc for the state machine and claim protocol in detail.
+
+Two project commands sit beside the phases: `/pilot-proto` builds a prototype of a feature with the PM and the
+designer to decide whether to build it (an accepted one starts a Discovery with `--from-proto`), and `/pilot-design`
+writes the project's design system and brand charter. Both are shown in the dashboard.
