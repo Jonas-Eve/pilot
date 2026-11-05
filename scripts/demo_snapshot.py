@@ -150,6 +150,15 @@ body.big{font-size:22px}button{min-height:48px;padding:0 18px;border:0;border-ra
 <script>document.getElementById("b").onclick=function(){document.body.classList.toggle("big")}</script>"""
 
 
+def small_mock(title, text, button, after):
+    """A tiny interactive mockup, for the demo prototypes that have no hand-written one."""
+    return ("<!doctype html><meta charset=utf8><title>" + title + "</title>"
+            "<style>body{margin:0;font:16px system-ui;background:#F2F5F8;color:#121C26;padding:16px}.card{background:#fff;border:1px solid #D5DDE5;border-radius:12px;padding:14px;max-width:420px}"
+            "button{min-height:44px;padding:0 16px;border:0;border-radius:8px;background:#1747C9;color:#fff;font:inherit;margin-top:10px}</style>"
+            "<div class=card><b>" + title + "</b><p>" + text + "</p><p id=r hidden>" + after + "</p><button id=b>" + button + "</button></div>"
+            "<script>document.getElementById('b').onclick=function(){document.getElementById('r').hidden=false;this.hidden=true}</script>")
+
+
 def proto_documents():
     """The `protos` metadata documents and the `protoHtml` parts a /pilot-proto session would have written."""
     def meta(n, title, **extra):
@@ -159,18 +168,21 @@ def proto_documents():
                           brief="Tester un écran où le voyageur indique ses contraintes (escalier, ascenseur, distance) avant le calcul."),
         "proto-702": meta(702, "Alerte ascenseur en panne sur le trajet", parts=1, height=340, at=iso(5),
                           brief="Tester l'alerte et la proposition d'un itinéraire de remplacement quand un ascenseur est en panne."),
-        "proto-703": meta(703, "Relais humain depuis l'application", at=iso(30), decision="accepted", decidedAt=iso(29),
+        "proto-703": meta(703, "Relais humain depuis l'application", parts=1, height=260, at=iso(30), decision="accepted", decidedAt=iso(29),
                           brief="Tester le bouton qui met le voyageur en relation avec un conseiller."),
         "proto-704": meta(704, "Profil voyageur senior", parts=1, height=300, at=iso(48), decision="accepted", decidedAt=iso(40), stories=[103, 111],
                           brief="Tester un profil qui agrandit les textes et simplifie les écrans."),
-        "proto-705": meta(705, "Carte des équipements en temps réel", at=iso(200), decision="accepted", decidedAt=iso(150), stories=[990],
+        "proto-705": meta(705, "Carte des équipements en temps réel", parts=1, height=260, at=iso(200), decision="accepted", decidedAt=iso(150), stories=[990],
                           brief="Tester l'affichage en direct de l'état des ascenseurs sur une carte."),
-        "proto-706": meta(706, "Assistant vocal de bout en bout", at=iso(300), decision="rejected", decidedAt=iso(260),
+        "proto-706": meta(706, "Assistant vocal de bout en bout", parts=1, height=260, at=iso(300), decision="rejected", decidedAt=iso(260),
                           reason="Trop coûteux pour le gain observé : le bouton de relais humain couvre déjà le besoin.",
                           brief="Tester un assistant vocal qui guide tout le trajet."),
     }
     parts = {"protoHtml-702-0": {"n": 702, "k": 0, "html": PROTO_HTML},
-             "protoHtml-704-0": {"n": 704, "k": 0, "html": PROTO_SENIOR}}
+             "protoHtml-704-0": {"n": 704, "k": 0, "html": PROTO_SENIOR},
+             "protoHtml-703-0": {"n": 703, "k": 0, "html": small_mock("Relais humain", "Besoin d'aide pendant le trajet ?", "Parler à un conseiller", "Un conseiller vous rappelle dans 2 minutes.")},
+             "protoHtml-705-0": {"n": 705, "k": 0, "html": small_mock("Équipements en direct", "Ascenseur quai 4 : en panne. Ascenseur quai 2 : en service.", "Actualiser", "Mis à jour à l'instant.")},
+             "protoHtml-706-0": {"n": 706, "k": 0, "html": small_mock("Assistant vocal", "Dites votre destination.", "Parler", "Destination comprise : Châtelet.")}}
     return {**metas, **parts}
 
 

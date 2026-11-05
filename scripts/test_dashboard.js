@@ -809,6 +809,8 @@ const STUB = (opts) => `
         JSON.stringify(await rowHrefs(702)) === JSON.stringify(['/pilot-proto 702 --accept', '/pilot-proto 702 --reject']), JSON.stringify(await rowHrefs(702)));
   check('prototypes: no link to GitHub anywhere in the list', (await page.$$('#view a[href*="github.com"]')).length === 0);
   check('prototypes: the brief is shown', /Brief du proto 702/.test(await text(page, '#view')));
+  check('prototypes: a prototype with no mockup says so; one with a mockup does not',
+        /Pas de maquette enregistrée/.test(await page.locator('#view .row', { hasText: '#701 ' }).textContent()) && !/Pas de maquette enregistrée/.test(await page.locator('#view .row', { hasText: '#702 ' }).textContent()));
   await page.click('#subtabs >> text=Acceptés'); await page.waitForTimeout(200);
   check('prototypes: Acceptés has its own three sub-tabs, with counts', JSON.stringify(await pSubs2()) === JSON.stringify(['À lancer (1)', 'En cours (1)', 'Terminés (1)']), JSON.stringify(await pSubs2()));
   await page.screenshot({ path: path.join(TMP, 'protos.png') });
