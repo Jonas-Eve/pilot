@@ -105,7 +105,7 @@ itself.
   with the `Artifact` tool's `list`), never to a real project's dashboard** — those are only
   republished by `/pilot-update`, or when the human asks for it explicitly. Refresh the demo
   data with `python3 scripts/demo_snapshot.py --dir DIR` and `ArtifactData` (`snapshots`
-  `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, plus the `activity`/`events` files it writes).
+  `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, plus the `activity`/`events`/`protos`/`protoHtml` files it writes).
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot-init` and `/pilot-update`; also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
@@ -116,7 +116,7 @@ itself.
   `resolve` (classify an explicitly-given ticket: claim, resume, reclaim, re-scope, descend
   into an Epic, stop — and why), `claim` (assignee + status swap, re-read), `set`
   (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with its
-  mandatory comment), `snapshot` (every open ticket as the dashboard's snapshot document) and
+  mandatory comment), `snapshot` (every open ticket as the dashboard's snapshot document),
   `proto` (accept or reject a prototype, or check it is accepted before a Discovery starts from it), `proto-pack`
   (check a prototype's mockup and split it into the cockpit's documents) and
   `doctor` (preflight each phase skill runs as its step 0, once per session: python, gh auth,

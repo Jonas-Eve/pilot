@@ -27,7 +27,8 @@ no-ticket entry, `pilot-spec/SKILL.md`).
      claim"). Read the ticket and thread (`mcp__github__issue_read` `get_comments`) to
      reconstruct what's drafted, claim it (overwrite assignee), skip to step 4 with that
      state (call the agents in step 3 again first if revising the draft, passing the
-     reconstructed context instead of a blank idea). If it doesn't match, report and stop.
+     reconstructed context instead of a blank idea). A draft whose body carries `Prototype : #<n>` continues as
+     `--from-proto <n>` (step 7 still updates and closes that prototype). If it doesn't match, report and stop.
    - `--from-proto <n>`: `python3 .pilot/pilot.py proto <n> from-proto` — it refuses anything but an
      **accepted** prototype (`reason: not-accepted`): relay it and say to accept it first
      (`/pilot-proto <n> --accept`), then stop. Otherwise read the ticket (its body is the validated brief)

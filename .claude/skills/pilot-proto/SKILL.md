@@ -26,7 +26,7 @@ live (except `--accept` and `--reject`, which are one mechanical step).
    - `--resume <n>`: `python3 .pilot/pilot.py resolve proto <n> --resume`, then `claim proto <n> --mode
      <the returned action>` (`resume-orphaned` or `resume-cleared`). Read the ticket's body (the brief) and
      the mockup of `protos/p<n>` (step 5's parts, joined), then go to step 4 with that state.
-   - Anything else is the feature idea (ask if none given); go on. If it reads as a technical need or a bug,
+   - Anything else is the feature idea, without its `--with` (ask if none given); go on. If it reads as a technical need or a bug,
      point at `/pilot-spec --tech`/`--bug` and stop.
 2. **Preconditions.** `.pilot/state.json` has `dashboardUrl`, else stop and point at `/pilot-dashboard`; the
    tool that writes to the dashboard's database (`ArtifactData`, `ToolSearch` loads it if deferred) is
