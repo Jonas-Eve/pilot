@@ -634,6 +634,85 @@ const STUB = (opts) => `
   check('design: #design opens the tab, a preloaded document is shown', /myAVI/.test(await text(page, '#view')) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Design');
   await page.close();
 
+  // ---- design tab: a component shows a live preview in an isolated frame, themed by the document's own tokens ----
+  const PV = Object.assign({}, DESIGN, {
+    colors: [{ name: 'Action', light: '#1747C9', dark: '#7EA2FF', use: 'boutons' }, { name: 'Fond clair', light: '#FFFFFF', dark: '#0E141B', use: 'page' }],
+    space: { spacing: [{ name: 'm', value: '16px' }], radius: [{ name: 's', value: '8px' }] },
+    type: { family: 'IBM Plex Sans', scale: [{ name: 'Corps', size: 14, weight: 400, use: 'texte' }] },
+    components: [
+      { name: 'Bouton', description: 'Action principale', rules: 'Cible de 44 px', height: 70,
+        preview: '<button id="b" style="padding:var(--space-m);border-radius:var(--radius-s);background:var(--color-action);color:#fff;border:0">Démarrer</button>' },
+      { name: 'Piège', description: 'Aperçu hostile', height: 60,
+        preview: '<script>parent.__pwn=1<\/script><img src="https://evil.example/x.png" onerror="parent.__pwn=2"><p id="t">texte</p>' },
+      { name: 'Trop gros', description: 'Aperçu hors limite', preview: '<p>' + 'x'.repeat(4100) + '</p>' },
+      { name: 'Sans aperçu', description: 'Seulement une description' },
+    ] });
+  page = await open({ preload: [BASE], design: [PV] });
+  await page.goto(FILE + '#design'); await page.waitForTimeout(500);
+  const frames = () => page.$$('#view iframe.prev');
+  check('preview: one frame per component that has a valid preview (not the oversized or missing ones)', (await frames()).length === 2, String((await frames()).length));
+  check('preview: the frame is sandboxed with no permission at all', (await page.$$eval('#view iframe.prev', (fs) => fs.every((f) => f.getAttribute('sandbox') === '' && !f.hasAttribute('src')))));
+  const sd = await page.$eval('#view iframe.prev', (f) => f.getAttribute('srcdoc'));
+  check('preview: the frame defines the tokens, with a policy that forbids script and network',
+        /--color-action:#1747C9/.test(sd) && /--color-fond-clair:#FFFFFF/.test(sd) && /--space-m:16px/.test(sd) && /--radius-s:8px/.test(sd) && /--text-corps:14px/.test(sd) &&
+        /prefers-color-scheme:dark\)\{:root\{--color-action:#7EA2FF/.test(sd) && /Content-Security-Policy[^>]*default-src 'none'/.test(sd), sd.slice(0, 400));
+  const bf = await (await page.$('#view iframe.prev')).contentFrame();
+  const bg = await bf.$eval('#b', (b) => getComputedStyle(b).backgroundColor);
+  check('preview: the component renders with the document\'s color token', bg === 'rgb(23, 71, 201)', bg);
+  check('preview: a hostile fragment cannot run script nor reach the page', (await page.evaluate(() => window.__pwn)) === undefined);
+  check('preview: the oversized one says so, the one without preview has no frame',
+        /Aperçu trop volumineux/.test(await text(page, '#view')) && /Seulement une description/.test(await text(page, '#view')));
+  check('preview: height comes from the document, clamped', (await page.$$eval('#view iframe.prev', (fs) => fs.map((f) => f.style.height))).join() === '70px,60px');
+  check('preview: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+
+  // ---- overview sub-tabs: the board, then one tab per phase, addressed as #ensemble/<phase> ----
+  const SUB_SNAP = snapshot([
+    ticket(1, ['type:feature', 'level:story', 'status:draft', 'priority:P1']),
+    ticket(2, ['type:tech', 'status:backlog', 'priority:P1']), ticket(3, ['type:tech', 'status:backlog', 'priority:P2']), ticket(4, ['type:tech', 'status:in-spec', 'priority:P1']),
+    ticket(5, ['type:tech', 'status:dev-ready', 'priority:P1']), ticket(6, ['type:tech', 'status:dev-ready', 'priority:P0']), ticket(7, ['type:tech', 'status:dev-ready', 'priority:P2']),
+    ticket(8, ['type:tech', 'status:in-dev', 'priority:P1']), ticket(9, ['type:tech', 'status:in-dev', 'priority:P1']), ticket(10, ['type:tech', 'status:changes-requested', 'priority:P1']),
+    ticket(11, ['type:feature', 'level:story', 'status:qa', 'priority:P1']),
+  ], 120);
+  page = await open({ preload: [SUB_SNAP] });
+  await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(200);
+  const subLabels = () => page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent));
+  const subNow = () => page.$eval('#subtabs a[aria-current=page]', (a) => a.textContent);
+  check('overview: a second row of tabs with the board first and a count per phase',
+        JSON.stringify(await subLabels()) === JSON.stringify(['Tableau', 'Discovery (1)', 'Spec (3)', 'Dev (6)', 'Review (0)', 'QA humaine (1)']), JSON.stringify(await subLabels()));
+  check('overview: the board is the default sub-tab', (await subNow()) === 'Tableau' && !!(await page.$('#view .board')));
+  await page.click('#subtabs >> text=Dev'); await page.waitForTimeout(200);
+  const grp = () => page.$$eval('#view h3.gh', (hs) => hs.map((h) => h.textContent));
+  check('phase tab: only that phase\'s tickets, grouped by state in pipeline order, most urgent first',
+        (await subNow()).startsWith('Dev') && !(await page.$('#view .board')) && (await rows(page)) === 6 &&
+        JSON.stringify(await grp()) === JSON.stringify(['prêt à coder · 3', 'dev en cours · 2', 'corrections demandées · 1']) &&
+        /#6 /.test((await page.$$eval('#view .row', (r) => r[0].textContent))), JSON.stringify(await grp()));
+  check('phase tab: no ticket of another phase', !/Ticket 1\b/.test(await text(page, '#view')) && !/Ticket 11\b/.test(await text(page, '#view')));
+  check('phase tab: the address follows (#ensemble/dev)', (await page.evaluate(() => location.hash)) === '#ensemble/dev');
+  await page.screenshot({ path: path.join(TMP, 'subtabs.png') });
+  await page.click('#subtabs >> text=Review'); await page.waitForTimeout(200);
+  check('phase tab: an empty phase says so', /Aucun ticket dans cette phase/.test(await text(page, '#view')));
+  await page.click('#subtabs >> text=Spec'); await page.waitForTimeout(200);
+  await page.goBack(); await page.waitForTimeout(250);
+  check('phase tab: the browser back button returns to the previous sub-tab', (await subNow()).startsWith('Review'), await subNow());
+  await page.click('nav >> text=Ma file'); await page.waitForTimeout(200);
+  check('sub-tabs are hidden, and empty, on a tab that has none', (await page.$eval('#subtabs', (e) => e.hidden)) && (await page.$$('#subtabs a')).length === 0);
+  await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(200);
+  check('coming back to the overview keeps the chosen sub-tab', (await subNow()).startsWith('Review'), await subNow());
+  await page.evaluate((e) => window.__push('events', 'sub1', e), ev({ n: 5, title: 'Ticket 5', labels: ['type:tech', 'status:review-ready'] })); await page.waitForTimeout(250);
+  check('a live update moves the ticket and the counts', (await subLabels()).includes('Dev (5)') && (await subLabels()).includes('Review (1)'), JSON.stringify(await subLabels()));
+  check('overview sub-tabs: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+  page = await open({ preload: [SUB_SNAP] });
+  await page.goto(FILE + '#ensemble/spec'); await page.waitForTimeout(350);
+  check('#ensemble/spec opens that phase directly', (await subNow()).startsWith('Spec') && (await rows(page)) === 3 && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Vue d’ensemble');
+  await page.close();
+  const MANY2 = []; for (let n = 1; n <= 45; n++) MANY2.push(ticket(n, ['type:tech', 'status:dev-ready', 'priority:P2']));
+  page = await open({ preload: [snapshot(MANY2, 120)] });
+  await page.goto(FILE + '#ensemble/dev'); await page.waitForTimeout(350);
+  check('phase tab: paginated like the other lists (20 per page)', (await rows(page)) === 20 && /Page 1 sur 3/.test(await text(page, '#view')));
+  await page.close();
+
   // ---- renderer: the project name is HTML-escaped ----
   const escaped = render('A<b>"x"&y', 'o/r', path.join(TMP, 'escaped.html'));
   page = await browser.newPage(); await page.goto(escaped);

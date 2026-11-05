@@ -34,8 +34,10 @@ from a scheduled sweep.
    summoned or dismissed by the human, takes part the same way. Stop when the designer says
    the section is ready and the human approves.
 5. **Write.** Validate the returned JSON: hex values `#RGB`/`#RRGGBB`, numeric sizes, `logo`
-   an inline SVG under 20 KB, nothing but plain text elsewhere — fix or ask, never write it
-   unchecked. Merge the approved sections into the current document, keep the document as it
+   an inline SVG under 20 KB, each component `preview` a fragment under 4 KB with no `<script>`,
+   event handler or external URL, nothing but plain text elsewhere — fix or ask, never write it
+   unchecked. The document, `previous` included, must stay under 250 KB serialized: when it
+   would not, leave `previous` out and say so. Merge the approved sections into the current document, keep the document as it
    was before this run in a `previous` field (replacing any older one, never nesting them), and
    `ArtifactData` `set` it on `design/<owner>__<repo>` (pass `if_version` when it existed), with
    `kind: "design"`, `repo` and `at` (now, UTC ISO 8601). A version conflict → `get` again, merge
