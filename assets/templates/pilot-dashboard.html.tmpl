@@ -88,6 +88,13 @@ nav.tabs.sub a{padding:6px 12px;font-size:13px}
 .note.ok{color:var(--ok)} .note.crit{color:var(--crit)}
 .refresh{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
 .idea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.ref{overflow-x:auto}
+.ref table{border-collapse:collapse;width:100%;font-size:13px}
+.ref th,.ref td{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.ref thead th{white-space:nowrap}
+.ref th{color:var(--muted);font-weight:600}
+.agents{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
+.agents .row{margin:0}
 .idea input[type=url]{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font:inherit;color:inherit}
 .idea textarea{width:100%;min-height:72px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font:inherit;color:inherit;resize:vertical}
 [hidden]{display:none!important}
@@ -136,12 +143,14 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
       <input class="me" id="meInput" list="meList" autocomplete="off" spellcheck="false" aria-label="Mon identifiant GitHub" placeholder="Mon identifiant GitHub">
       <datalist id="meList"></datalist>
       <div class="seg" role="group" aria-label="Rôle" id="roleSeg"></div>
+      <button class="btn ghost" id="helpBtn" type="button" aria-expanded="false" aria-controls="help">Agents et steps</button>
     </div>
   </div>
   <div class="chips" id="conn" aria-label="État des connecteurs"></div>
   <nav class="tabs" id="tabs"></nav>
   <nav class="tabs sub" id="subtabs" aria-label="Sous-onglets" hidden></nav>
   <nav class="tabs sub" id="subtabs2" aria-label="Sous-onglets" hidden></nav>
+  <section id="help" class="idea" aria-label="Agents et steps" hidden></section>
   <div id="banner"></div>
   <section id="idea" class="idea" aria-label="Nouvelle demande" hidden></section>
   <section id="batch" class="idea" aria-label="Lancer en lot" hidden></section>
@@ -232,7 +241,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewProto:0, sub3:'alancer', sub:{ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, help:0, viewProto:0, sub3:'alancer', sub:{ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -968,6 +977,7 @@ function render(){
   document.getElementById('batch').hidden=S.tab!=='file';
   document.getElementById('search').hidden=S.tab!=='recherche';updateSearch();
   document.getElementById('designEdit').hidden=S.tab!=='design';updateDesign();
+  document.getElementById('help').hidden=!S.help; document.getElementById('helpBtn').setAttribute('aria-expanded',String(!!S.help));
   document.getElementById('protoNew').hidden=S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
   document.getElementById('banner').hidden=S.tab==='design'||(S.tab==='prototypes'&&!!S.viewProto);
   var items=subItems(S.tab), ph=PHASES.filter(function(p){return p.key===S.sub.ensemble;})[0];
@@ -975,6 +985,45 @@ function render(){
   if(S.tab==='prototypes'&&!S.viewProto&&S.sub.prototypes==='acceptes')subnav('prototypes',protoSubItems(),S.sub3,'subtabs2','prototypes/acceptes'); else subnav('',[],'','subtabs2');
   var v=document.getElementById('view');
   v.replaceChildren(S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():S.tab==='prototypes'?vProtos():vFile());
+}
+
+/* ---------- reference panel: the agents and who leads, validates or can be summoned at each step (mirrors pilot-process.md §4 "Roster") ---------- */
+var AGENTS=[
+  ['pm','PM','Cadre votre idée avec vous, rédige les stories, vérifie qu’un découpage couvre les critères d’acceptation, relit les livraisons produit, cadre un prototype puis le contrôle.'],
+  ['architect','Architecte','Anticipe l’architecture, challenge puis découpe les stories, tranche sur le périmètre et les dépendances.'],
+  ['techlead','Tech lead','Vérifie le besoin dans le code, écrit la spec technique de chaque ticket, relit la conformité et la qualité des PR.'],
+  ['dev','Dev','Implémente un ticket spécifié, relit son propre diff et ouvre la PR.'],
+  ['e2e','E2E','Écrit le test de bout en bout que chaque story produit exige, une fois les tâches fusionnées.'],
+  ['qa','QA','Déroule avec vous le plan de test d’une story et rend le verdict.'],
+  ['designer','Designer','Construit le design system, la charte et les prototypes avec vous ; conseille sur l’usage, l’interface et l’accessibilité. Ne valide jamais une phase.']
+];
+var ROSTER=[
+  {step:'Discovery',lead:['pm'],val:['architect'],sum:['designer']},
+  {step:'Spec · feature ou tech',lead:['architect','techlead'],val:['pm'],valNote:'feature seulement',sum:['designer']},
+  {step:'Spec · bug, signalement brut',lead:['architect','techlead'],val:[],sum:['designer']},
+  {step:'Spec · bug, ticket existant',lead:['techlead'],val:[],sum:['architect']},
+  {step:'Dev',lead:['dev'],leadNote:'E2E pour une tâche e2e',val:[],sum:['techlead','architect','designer']},
+  {step:'Review',lead:['techlead','pm'],leadNote:'le tech lead seul pour une tâche tech ou bug',val:[],sum:['architect']},
+  {step:'QA humaine',lead:['qa'],val:[],sum:['designer']},
+  {step:'Prototype (hors phase)',lead:['designer'],leadNote:'après le cadrage par le PM',val:['pm'],sum:['architect']},
+  {step:'Design (hors phase)',lead:['designer'],val:[],sum:['pm','architect']}
+];
+function agentName(k){var a=AGENTS.filter(function(x){return x[0]===k;})[0];return a?a[1]:k;}
+function buildHelp(){
+  var box=document.getElementById('help');
+  function names(ks,note){return ks.length?ks.map(agentName).join(' + ')+(note?' ('+note+')':''):'—';}
+  box.append(
+    h('h2',{},'Agents et steps'),
+    h('p',{class:'note'},'À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.'),
+    h('h3',{class:'gh'},'Les agents'),
+    h('div',{class:'agents'},AGENTS.map(function(a){return h('div',{class:'row'},h('div',{class:'main'},h('div',{class:'t'},a[1]),h('p',{class:'note'},a[2])));})),
+    h('h3',{class:'gh'},'Qui intervient à chaque step'),
+    h('div',{class:'ref'},h('table',{},
+      h('thead',{},h('tr',{},['Step','Lead','Validateur','Convocable'].map(function(t){return h('th',{scope:'col'},t);}))),
+      h('tbody',{},ROSTER.map(function(r){
+        return h('tr',{},h('th',{scope:'row'},r.step),h('td',{},names(r.lead,r.leadNote)),h('td',{},names(r.val,r.valNote)),h('td',{},names(r.sum)));
+      })))));
+  document.getElementById('helpBtn').addEventListener('click',function(){S.help=S.help?0:1;render();});
 }
 
 /* ---------- boot ---------- */
@@ -996,6 +1045,7 @@ buildBatch();
 buildSearch();
 buildDesign();
 buildProtoNew();
+buildHelp();
 render();
 if(window.claude&&window.claude.use){
   window.claude.use('db').then(function(d){S.db=d;watchSnapshots();watchLive();}).catch(function(){S.db=null;watchSnapshots();});
