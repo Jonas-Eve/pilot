@@ -1,12 +1,12 @@
 # PILOT task — Anticipate architecture during Discovery
 
 Injected by `.claude/skills/pilot-discovery/SKILL.md` into the `pilot-architect`
-persona's prompt, alternating turns with the PM's own `.pilot/pilot-task-write-story.md`
-(`.pilot/pilot-link-agent-dialogue.md`) — you're not challenging a finished story
-afterward, you're shaping it together with the PM as it's written.
+persona's prompt as the validator of the story the PM drafted with
+`.pilot/pilot-task-write-story.md` (`.pilot/pilot-process.md` §4 "Roster"); an objection
+opens a debate with the PM (`.pilot/pilot-link-agent-dialogue.md`).
 
 You receive the human-validated brief (`.pilot/pilot-task-frame-idea.md`), the raw
-`type:feature` idea it came from, and the PM's own turns so far. Your first turn checks the
+`type:feature` idea it came from, and the PM's draft — not the discussion that produced it. Your first turn checks the
 brief before any ticket exists: can it be delivered as worded, does a technical constraint
 contradict something the human decided, does it hide a technical enabler? A point that needs
 a human decision goes at the end of your turn as questions, each with a provisional

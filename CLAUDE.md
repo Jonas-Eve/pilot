@@ -25,7 +25,7 @@ with the specific other skills/agents it hands off to or reads from, and its own
 image of this for writing new content — decide the tier, then add it to the matching
 layer instead of the file you happen to already be editing.
 
-The actual judgment work happens in an isolated `Agent` call to one of the six personas
+The actual judgment work happens in an isolated `Agent` call to one of the seven personas
 (`.claude/agents/pilot-*.md`). Each of those carries only that persona's stable
 identity — never any duty's specific instructions, even for a persona with several
 duties (the architect formalizes, scopes, *and* reviews). What to actually do arrives in
@@ -49,12 +49,12 @@ itself.
   three auto-capable phase sweeps (review, dev, spec) — not itself a phase, adds nothing
   to `pilot-process.md`'s state
   machine (see that skill's own file for its mechanics); `pilot-help` is a read-only
-  discovery layer over all of the above plus the six agents below (lists the commands,
+  discovery layer over all of the above plus the seven agents below (lists the commands,
   explains one command/flag/agent in detail, turns a described goal into the exact
   command to run, or names which persona is responsible for a kind of judgment) — never
   claims a ticket or invokes another skill/agent itself.
-- `.claude/agents/<name>.md` — the six personas (`pilot-pm`, `pilot-architect`,
-  `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`) the phase skills delegate to via
+- `.claude/agents/<name>.md` — the seven personas (`pilot-pm`, `pilot-architect`,
+  `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`) the phase skills delegate to via
   the `Agent` tool, copied into a consuming project's `.claude/agents/` the same way.
   Each file carries only that persona's identity (who it is, what judgment it brings) —
   never a duty's mechanics, even for a persona with several duties. Duty instructions

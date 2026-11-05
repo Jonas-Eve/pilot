@@ -1,7 +1,7 @@
 ---
 name: pilot-discovery
-description: "Phase 1 of PILOT (see .pilot/pilot-process.md): turns a raw type:feature idea into one or more formalized GitHub issues. The PM first frames the idea with the human — challenges it, helps formulate it, restates it as a brief the human validates — before any ticket exists; then PM and architect work it together in dialogue (.pilot/pilot-link-agent-dialogue.md) rather than one handing a finished draft to the other — the architect anticipates architecture (interfaces, infra shape) while the PM shapes the story, instead of challenging it later from scratch. Produces one or more level:story tickets — type:feature, and, when the same effort genuinely needs a technical enabler alongside it, type:tech too — grouped under a new/reused level:epic (always type:feature) if it doesn't fit in one story, with dependencies between them. Never splits into dev-sized tasks, records a prerequisite, or writes a spec — that's /pilot-spec's job, run separately. Always pair mode: drafts live with a human, creating the ticket(s) as status:draft as soon as a first draft exists and refining in place. No --auto, never Routine-driven; --resume <issue number> picks back up a status:draft ticket left mid-pair. An optional --multi <N> runs N independent PM+architect dialogues on the same raw idea instead of one, converging the N resulting proposals with no fixed round cap the same way the base dialogue converges (see .pilot/pilot-link-agent-dialogue.md), escalating to a live question for the human only on a genuine, unresolved disagreement. A standalone type:tech need with no product framing, or any type:bug report, never comes through here — see /pilot-spec's own no-ticket entry instead. Use whenever a human wants to start a new product idea."
-argument-hint: "<raw idea in free text> [--multi [N]] | --resume <issue number>"
+description: "Phase 1 of PILOT (see .pilot/pilot-process.md): turns a raw type:feature idea into one or more formalized GitHub issues. The PM first frames the idea with the human — challenges it, helps formulate it, restates it as a brief the human validates — before any ticket exists; then PM and architect work it together in dialogue (.pilot/pilot-link-agent-dialogue.md) rather than one handing a finished draft to the other — the architect anticipates architecture (interfaces, infra shape) while the PM shapes the story, instead of challenging it later from scratch. Produces one or more level:story tickets — type:feature, and, when the same effort genuinely needs a technical enabler alongside it, type:tech too — grouped under a new/reused level:epic (always type:feature) if it doesn't fit in one story, with dependencies between them. Never splits into dev-sized tasks, records a prerequisite, or writes a spec — that's /pilot-spec's job, run separately. The PM leads and the architect then validates the drafted story (.pilot/pilot-process.md §4 "Roster"); --with adds personas such as the designer upfront, and the human can summon or dismiss one at any time. Always pair mode: drafts live with a human, creating the ticket(s) as status:draft as soon as a first draft exists and refining in place. No --auto, never Routine-driven; --resume <issue number> picks back up a status:draft ticket left mid-pair. An optional --multi <N> runs N independent PM+architect dialogues on the same raw idea instead of one, converging the N resulting proposals with no fixed round cap the same way the base dialogue converges (see .pilot/pilot-link-agent-dialogue.md), escalating to a live question for the human only on a genuine, unresolved disagreement. A standalone type:tech need with no product framing, or any type:bug report, never comes through here — see /pilot-spec's own no-ticket entry instead. Use whenever a human wants to start a new product idea."
+argument-hint: "<raw idea in free text> [--with <persona>[,...]] [--multi [N]] | --resume <issue number>"
 disable-model-invocation: true
 ---
 
@@ -10,7 +10,11 @@ disable-model-invocation: true
 Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
 source of truth for labels, states, and the claim protocol; this skill only covers the
 mechanics of running Discovery. Read `.pilot/pilot-link-agent-dialogue.md` too — it covers
-the PM/architect turn-taking mechanic this skill relies on throughout.
+the PM/architect turn-taking mechanic this skill relies on whenever the architect objects. The
+roster (`.pilot/pilot-process.md` §4 "Roster") defines who is in the discussion: the PM leads,
+the architect validates, the designer is summonable; `--with <persona>[,...]` adds summonable
+personas from the start, and the human may summon or dismiss one at any point, each recorded
+in the draft ticket's checkpoint once it exists.
 
 This phase is `type:feature` only. A standalone technical need with no product framing
 (infra, CI, a migration, nothing a PM would have an opinion on) or a bug report never
@@ -47,14 +51,15 @@ no-ticket entry, `pilot-spec/SKILL.md`).
     step 3's PM+architect dialogue start, from the validated brief. No ticket exists during
     this stage, so `--resume` has nothing to pick up: an interrupted framing is simply run
     again. Skipped with `--resume`.
-3. Run the PM+architect dialogue (`.pilot/pilot-link-agent-dialogue.md`): call `Agent` for
-   `pilot-pm`, then `pilot-architect`, alternating turns, each passed the running
-   conversation so far. Read `.pilot/pilot-task-write-story.md` (PM's duty) and
-   `.pilot/pilot-task-anticipate-architecture.md` (architect's duty) and pass the matching
-   one as part of each call's prompt, along with the human-validated brief (and the raw idea it
-   came from), the candidate Epic list, and the dialogue so far — nothing else from this
-   conversation's history, so each call gets a clean, scoped context
-   (`.pilot/pilot-process.md` §5). The architect's first turn checks the validated brief. A
+3. The PM leads: call `Agent` for `pilot-pm` with `.pilot/pilot-task-write-story.md`, the
+   human-validated brief (and the raw idea it came from), the candidate Epic list, and any
+   `--with` persona's turns so far — nothing else from this conversation's history
+   (`.pilot/pilot-process.md` §5). Once the PM's draft is ready, the architect validates it
+   (`.pilot/pilot-process.md` §4 "Roster"): call `Agent` for `pilot-architect` with
+   `.pilot/pilot-task-anticipate-architecture.md` and the draft only, not the PM's
+   discussion. An objection brings the architect into the debate with the PM and the human
+   (`.pilot/pilot-link-agent-dialogue.md` turn-taking), then back on the revised draft
+   alone. "The dialogue" below means this discussion, anyone `--with`/summoned included. A
    question that needs the human — a constraint that contradicts something they decided, a
    choice that changes the story's shape — is put to them now, before step 4 creates anything,
    the same way step 2a does, and its answer fed back into the dialogue. The persona files themselves

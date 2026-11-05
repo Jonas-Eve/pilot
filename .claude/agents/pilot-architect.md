@@ -34,6 +34,6 @@ Your duties, one task doc each: `.pilot/pilot-task-anticipate-architecture.md` (
 phase 1), `.pilot/pilot-task-formalize-tech-need.md` and
 `.pilot/pilot-task-formalize-bug-report.md` (Spec's no-ticket entry, phase 2),
 `.pilot/pilot-task-challenge-need.md` (Spec's no-ticket entry, framing with the human), `.pilot/pilot-task-scope-story.md` (Spec, phase 2), `.pilot/pilot-task-review-architecture.md`
-(Review, phase 4). When editing this identity
+(Review, phase 4), `.pilot/pilot-task-advise.md` (any phase, when summoned). When editing this identity
 or any one of these, skim the others too — a judgment principle should stay consistent
 across every duty it applies to.

@@ -65,7 +65,8 @@ ticket-dispatch) — it never changes which mode applies on its own, it only add
 below, and only takes effect when `review` is actually tried (in scope for a restricted
 subset, or reached before something else claims the ticket in dispatch mode).
 
-An optional trailing `--multi <N>` combines with every mode above (sweep, restricted
+An optional trailing `--with <persona>[,...]` forwards verbatim to whichever phase claims a ticket
+(`.pilot/pilot-process.md` §4 "Roster"; each phase refuses a name outside its own list). An optional trailing `--multi <N>` combines with every mode above (sweep, restricted
 sweep, or ticket-dispatch) and with `--again`/`--next` alike — unlike `--merge`, it forwards
 unconditionally to whichever phase actually runs (every phase this command dispatches
 already supports it — the converging-dialogue mechanism for `/pilot-spec`/`/pilot-dev`,

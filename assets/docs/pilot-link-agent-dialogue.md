@@ -13,8 +13,9 @@ Two different personas working the same ticket together, in a real back-and-fort
 before a human ever sees a draft — not one producing a finished artifact the other then
 critiques separately:
 
-- **Discovery** — `pilot-pm` + `pilot-architect`, turning a raw idea into a story (or
-  several) with the architecture already anticipated, not bolted on afterward.
+- **Discovery** — `pilot-pm` leading and `pilot-architect` validating the draft
+  (`.pilot/pilot-process.md` §4 "Roster"); this dialogue is the debate an objection opens,
+  turning a raw idea into a story (or several) with the architecture anticipated.
 - **Spec** — `pilot-architect` + `pilot-techlead`, splitting a story and writing the
   resulting spec(s) in the same pass — a spec-time feasibility concern can send the split
   itself back for a rethink, in the same conversation, rather than surfacing later as a

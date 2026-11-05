@@ -202,3 +202,13 @@ sequenceDiagram
     end
     end
 ```
+
+## The roster: who is in the discussion
+
+```
+/pilot-discovery "idea" --with designer     # lead PM + designer from the start
+  PM (lead) ── draft ──► architect (validator, sees the draft only)
+                           ├─ approves → step continues
+                           └─ objects → debate with PM + you → dormant → back on the revised draft
+"convoque l'architecte" / "congédie le designer"   # any time, from the step's own list
+```
