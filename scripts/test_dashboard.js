@@ -28,10 +28,11 @@ const ticket = (n, labels, extra = {}) => ({ n, t: `Ticket ${n}`, l: labels, u: 
 const STUB = (opts) => `
 (() => {
   const OPTS = ${JSON.stringify(opts)};
-  const data = { snapshots: {}, events: {}, activity: {} }; const listeners = { snapshots: [], events: [], activity: [] };
+  const data = { snapshots: {}, events: {}, activity: {}, design: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [] };
   (OPTS.preload || []).forEach(d => { data.snapshots[d.repo.replace('/', '__')] = d; });
   (OPTS.events || []).forEach((d, k) => { data.events['e' + k] = d; });
   (OPTS.activity || []).forEach((d, k) => { data.activity['a' + k] = d; });
+  (OPTS.design || []).forEach((d, k) => { data.design['d' + k] = d; });
   const snap = (c) => ({ docs: Object.entries(data[c]).map(([id, d]) => ({ id, data: () => d, exists: true })) });
   const fire = (c) => listeners[c].forEach(f => f(snap(c)));
   const sub = (c) => ({ onSnapshot: (next) => { listeners[c].push(next); setTimeout(() => next(snap(c)), 0); return () => {}; } });
@@ -593,6 +594,44 @@ const STUB = (opts) => `
   await page.waitForTimeout(100);
   check('"moi" without an identity: a hint, and only the other assignees left', /Indiquez votre identifiant GitHub/.test(await text(page, '#view')) && JSON.stringify(await sNums()) === setOf2('#7'), JSON.stringify(await sNums()));
   check('search by assignee: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+
+  // ---- design tab: the project's design document, edited through a /pilot-design session ----
+  const DESIGN = { kind: 'design', repo: REPO, at: iso(30),
+    charter: { name: 'myAVI <img src=x onerror=window.__pwn=1>', summary: 'Voyager sans obstacle', logo: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>',
+      colors: [{ name: 'Bleu', hex: '#1747C9', use: 'actions' }, { name: 'Piège', hex: 'red;background:url(//evil)', use: 'x' }], voice: 'Clair et bienveillant', rules: 'Pas de blanc sur jaune' },
+    colors: [{ name: 'Fond', light: '#FFFFFF', dark: '#0E141B', use: 'page' }],
+    type: { family: 'IBM Plex Sans', scale: [{ name: 'Titre', size: 22, weight: 600, use: 'titres' }] },
+    space: { spacing: [{ name: 'm', value: '16px' }], radius: [{ name: 's', value: '8px' }] },
+    components: [{ name: 'Bouton', description: 'Action principale', rules: 'Cible de 44 px' }],
+    a11y: ['Contraste AA minimum'] };
+  page = await open({ preload: [BASE] });
+  await page.click('nav >> text=Design'); await page.waitForTimeout(150);
+  check('design tab: empty state with the edit card, no ticket banner', /Aucun design system/.test(await text(page, '#view')) && !(await page.$eval('#designEdit', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)));
+  check('design edit card and banner back on the other tabs', (await tab(page, 'Vue d’ensemble')) !== null && (await page.$eval('#designEdit', (e) => e.hidden)) && !(await page.$eval('#banner', (e) => e.hidden)));
+  await page.click('nav >> text=Design'); await page.waitForTimeout(100);
+  const dCmd = () => text(page, '#designCmd');
+  const dHref = async () => decodeURIComponent((await page.$eval('#designOpen', (a) => a.getAttribute('href'))).split('?q=')[1].split('&repo=')[0]);
+  check('design: bare command, link carries it', (await dCmd()) === '/pilot-design' && (await dHref()) === '/pilot-design', await dCmd());
+  await page.click('#designSeg >> text=Couleurs'); await page.fill('#designText', 'ajouter un thème\nà fort contraste'); await page.waitForTimeout(100);
+  check('design: --section and the request in one line', (await dCmd()) === '/pilot-design --section colors ajouter un thème à fort contraste' && (await dHref()) === (await dCmd()), await dCmd());
+  await page.click('#designSeg >> text=Tout'); await page.waitForTimeout(100);
+  check('design: "Tout" drops --section', (await dCmd()) === '/pilot-design ajouter un thème à fort contraste', await dCmd());
+  await page.evaluate((d) => window.__push('design', 'd0', d), DESIGN); await page.waitForTimeout(200);
+  const dv = await text(page, '#view');
+  check('design: a live document fills every section', /Voyager sans obstacle/.test(dv) && /clair #FFFFFF/.test(dv) && /sombre #0E141B/.test(dv) && /IBM Plex Sans/.test(dv) && /22 px · 600/.test(dv) && /Espacement m/.test(dv) && /Rayon s/.test(dv) && /Cible de 44 px/.test(dv) && /Contraste AA minimum/.test(dv) && /Clair et bienveillant/.test(dv), dv);
+  check('design: the edit card now says "Modifier", the typed request is kept', /^Modifier/.test(await text(page, '#designHint')) && (await page.inputValue('#designText')).includes('fort contraste'));
+  check('design: HTML in a value stays text, an invalid hex gets no swatch', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && /myAVI <img src=x/.test(dv) && !(await page.$('#view [style*="evil"]')), dv);
+  check('design: a valid logo renders as an image', (await page.$$('#view img.logo')).length === 1 && (await page.$eval('#view img.logo', (i) => i.src.startsWith('data:image/svg+xml'))));
+  await page.evaluate((d) => window.__push('design', 'd0', Object.assign({}, d, { charter: Object.assign({}, d.charter, { logo: '<img src=x onerror=1>' }) })), DESIGN); await page.waitForTimeout(200);
+  check('design: a logo that is not an SVG is ignored', (await page.$$('#view img.logo')).length === 0);
+  await page.evaluate((d) => window.__push('design', 'd1', Object.assign({}, d, { repo: 'o/other', charter: { name: 'Autre projet' } })), DESIGN); await page.waitForTimeout(150);
+  check('design: another repo\'s document is not shown', !/Autre projet/.test(await text(page, '#view')));
+  check('design tab: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+  page = await open({ preload: [BASE], design: [DESIGN] });
+  await page.goto(FILE + '#design'); await page.waitForTimeout(350);
+  check('design: #design opens the tab, a preloaded document is shown', /myAVI/.test(await text(page, '#view')) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Design');
   await page.close();
 
   // ---- renderer: the project name is HTML-escaped ----

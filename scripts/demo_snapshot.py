@@ -4,7 +4,7 @@
 
 Usage:
   python3 scripts/demo_snapshot.py --out FILE        # the `snapshots/Jonas-Eve__pilot` document
-  python3 scripts/demo_snapshot.py --dir DIR         # that document + a live session and a few events
+  python3 scripts/demo_snapshot.py --dir DIR         # that document + a live session, a few events and a design document
 
 Timestamps are relative to now, so re-run it to refresh the demo. Stdlib only.
 """
@@ -97,6 +97,37 @@ def live_documents():
     }
 
 
+def design_document():
+    """The `design/Jonas-Eve__pilot` document a /pilot-design session would have written."""
+    return {
+        "kind": "design", "repo": REPO, "at": iso(5),
+        "charter": {
+            "name": "Cockpit pilot (démo)", "summary": "Un cockpit sobre et lisible, pensé pour voyager sans obstacle.",
+            "colors": [{"name": "Cobalt", "hex": "#1747C9", "use": "Actions principales et liens"},
+                       {"name": "Papier", "hex": "#F2F5F8", "use": "Fond de page"}],
+            "voice": "Clair, direct et bienveillant. Jamais de jargon.",
+            "rules": "Un seul bouton principal par écran. Pas de texte blanc sur fond clair.",
+        },
+        "colors": [{"name": "Fond", "light": "#F2F5F8", "dark": "#0E141B", "use": "Arrière-plan de page"},
+                   {"name": "Action", "light": "#1747C9", "dark": "#7EA2FF", "use": "Boutons et liens"},
+                   {"name": "Succès", "light": "#17803D", "dark": "#4CC27A", "use": "État validé"},
+                   {"name": "Alerte", "light": "#B42318", "dark": "#FF8B7E", "use": "Erreur, équipement en panne"}],
+        "type": {"family": "IBM Plex Sans", "scale": [
+            {"name": "Titre", "size": 22, "weight": 600, "use": "Titre de page"},
+            {"name": "Corps", "size": 14, "weight": 400, "use": "Texte courant"},
+            {"name": "Note", "size": 12, "weight": 400, "use": "Aide et mentions"}]},
+        "space": {"spacing": [{"name": "s", "value": "8px"}, {"name": "m", "value": "16px"}, {"name": "l", "value": "24px"}],
+                  "radius": [{"name": "s", "value": "8px"}, {"name": "m", "value": "12px"}]},
+        "components": [{"name": "Bouton", "description": "Action principale ou secondaire.",
+                        "rules": "Cible d'au moins 44 px, libellé à l'infinitif."},
+                       {"name": "Carte de trajet", "description": "Résume un itinéraire et son accessibilité.",
+                        "rules": "L'accessibilité s'affiche en texte, jamais par la couleur seule."}],
+        "a11y": ["Contraste AA minimum (4,5:1) dans les deux thèmes.",
+                 "Navigation complète au clavier, focus toujours visible.",
+                 "Aucune information portée par la couleur seule."],
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out")
@@ -111,6 +142,8 @@ def main():
         os.makedirs(args.dir, exist_ok=True)
         with open(os.path.join(args.dir, "snapshot.json"), "w", encoding="utf-8") as fh:
             json.dump(snapshot(), fh, ensure_ascii=False)
+        with open(os.path.join(args.dir, "design.json"), "w", encoding="utf-8") as fh:
+            json.dump(design_document(), fh, ensure_ascii=False)
         for name, doc in live_documents().items():
             with open(os.path.join(args.dir, name + ".json"), "w", encoding="utf-8") as fh:
                 json.dump(doc, fh, ensure_ascii=False)

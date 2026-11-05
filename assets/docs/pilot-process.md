@@ -975,6 +975,7 @@ leads, an optional validator, and personas the human may summon:
 | Dev | `pilot-dev` (`pilot-e2e` for `type:e2e`) | — | `pilot-techlead`, `pilot-architect`, `pilot-designer` |
 | Review | `pilot-techlead` + `pilot-pm` (`type:feature`/`type:e2e`), `pilot-techlead` alone (`type:tech`/`type:bug`) | — | `pilot-architect` |
 | QA | `pilot-qa` | — | `pilot-designer` |
+| Design (`/pilot-design`, not a phase) | `pilot-designer` | — | `pilot-pm`, `pilot-architect` |
 
 - **Lead.** The skill opens the discussion with the lead(s). `--with <persona>[,...]`
   (any phase skill) adds personas from that step's Summonable column from the start; any
