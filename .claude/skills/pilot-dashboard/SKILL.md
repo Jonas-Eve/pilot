@@ -49,6 +49,6 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
    into `.pilot/state.json`, leaving every other field alone.
 7. **Report.** The address; created, updated or unchanged; the snapshot's ticket count. The
    page is private until shared from the artifact's Share menu — people whose sessions should
-   push events need the Contributor level. The page only reads the project's own data: a ticket
+   push events or edit the design system need the Contributor level. The page only reads the project's own data: a ticket
    changed by hand on GitHub shows up at the next `--refresh`, so say how often to run it
    (a scheduled task works).
