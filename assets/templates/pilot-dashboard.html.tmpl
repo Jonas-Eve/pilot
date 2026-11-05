@@ -590,7 +590,7 @@ function buildIdea(){
       h('button',{class:'btn ghost',type:'button',id:'ideaCopy',onclick:function(e){var t=ideaText();if(t)copyCmd(ideaFull(kindNow(),t),e.target);}},'Copier la commande')));
   updateIdea();
 }
-function ideaFull(k,text){return k.prefix+text+(k.key==='produit'&&S.ideaMulti?' --multi '+S.ideaMulti:'')+(k.key!=='bug'&&S.ideaDesigner?' --with designer':'');}
+function ideaFull(k,text){return k.prefix+text+(k.key==='produit'&&S.ideaMulti?' --multi '+S.ideaMulti:'')+(S.ideaDesigner?' --with designer':'');}
 function updateIdea(){
   var k=kindNow(), text=ideaText(), seg=document.getElementById('kindSeg'), open=document.getElementById('ideaOpen');
   seg.replaceChildren.apply(seg,KINDS.map(function(x){
@@ -600,7 +600,7 @@ function updateIdea(){
   var mw=document.getElementById('ideaMultiWrap'), ms=document.getElementById('ideaMultiSeg');
   mw.hidden=k.key!=='produit'; ms.replaceChildren(multiSeg(S.ideaMulti,function(m){S.ideaMulti=m;updateIdea();},'Multi'));
   var ww=document.getElementById('ideaWithWrap'), ws=document.getElementById('ideaWithSeg');
-  ww.hidden=k.key==='bug'; ws.replaceChildren(h('button',{type:'button','aria-pressed':String(!!S.ideaDesigner),onclick:function(){S.ideaDesigner=S.ideaDesigner?0:1;updateIdea();}},'Designer'));
+  ww.hidden=false; ws.replaceChildren(h('button',{type:'button','aria-pressed':String(!!S.ideaDesigner),onclick:function(){S.ideaDesigner=S.ideaDesigner?0:1;updateIdea();}},'Designer'));
   document.getElementById('ideaSum').textContent=text?'brouillon en cours':'';
   if(text){open.setAttribute('href',claudeCodeUrl(ideaFull(k,text)));open.removeAttribute('aria-disabled');}
   else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}

@@ -11,9 +11,9 @@ truth for labels, states, and the claim protocol; this skill covers only the
 mechanics of running this phase. Read `.pilot/pilot-link-agent-dialogue.md` too — it
 covers the architect/tech lead turn-taking mechanic this skill relies on throughout, and
 what `--multi` means here. The roster (`.pilot/pilot-process.md` §4 "Roster") for this
-phase: the architect and tech lead lead together (the tech lead alone for a `type:bug`), the PM
+phase: the architect and tech lead lead together (the tech lead alone for an existing `type:bug` ticket), the PM
 validates a `type:feature` split (step 3's coverage check), and the designer is summonable —
-for a `type:bug` it is the architect instead; `--with <persona>[,...]` adds summonable personas from the
+for an existing `type:bug` ticket it is the architect instead; `--with <persona>[,...]` adds summonable personas from the
 start, and the human may summon or dismiss one at any point (not under `--auto`), each recorded
 in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is read and passed into a
 summoned persona's call (a lead or the validator keeps its own duty doc).

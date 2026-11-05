@@ -971,7 +971,8 @@ leads, an optional validator, and personas the human may summon:
 |------|---------|-----------|------------|
 | Discovery | `pilot-pm` | `pilot-architect` | `pilot-designer` |
 | Spec — `type:feature`/`type:tech` | `pilot-architect` + `pilot-techlead` | `pilot-pm` (`type:feature` only) | `pilot-designer` |
-| Spec — `type:bug` | `pilot-techlead` | — | `pilot-architect` |
+| Spec — `type:bug`, raw report (no ticket yet) | `pilot-architect` + `pilot-techlead` | — | `pilot-designer` |
+| Spec — `type:bug`, existing ticket | `pilot-techlead` | — | `pilot-architect` |
 | Dev | `pilot-dev` (`pilot-e2e` for `type:e2e`) | — | `pilot-techlead`, `pilot-architect`, `pilot-designer` |
 | Review | `pilot-techlead` + `pilot-pm` (`type:feature`/`type:e2e`), `pilot-techlead` alone (`type:tech`/`type:bug`) | — | `pilot-architect` |
 | QA | `pilot-qa` | — | `pilot-designer` |

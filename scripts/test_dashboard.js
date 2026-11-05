@@ -351,8 +351,8 @@ const STUB = (opts) => `
   await page.click('#kindSeg >> text=Besoin technique');
   check('tech need + designer: --with designer, no --multi', (await text(page, '#ideaCmd')) === '/pilot-spec --tech Mon idée --with designer', await text(page, '#ideaCmd'));
   await page.click('#kindSeg >> text=Bug');
-  check('bug: no --with choice, no --with in the command', (await page.$eval('#ideaWithWrap', (e) => e.hidden)) && !(await text(page, '#ideaCmd')).includes('--with'), await text(page, '#ideaCmd'));
-  check('bug / tech need: no multi choice, no --multi in the command', (await page.$eval('#ideaMultiWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée', await text(page, '#ideaCmd'));
+  check('bug report: the designer is summonable too, no --multi', !(await page.$eval('#ideaWithWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée --with designer', await text(page, '#ideaCmd'));
+  check('bug / tech need: no multi choice, no --multi in the command', (await page.$eval('#ideaMultiWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée --with designer', await text(page, '#ideaCmd'));
   await page.close();
 
   // ---- sub-issues of an epic or a story: listed under it, each one launchable ----
