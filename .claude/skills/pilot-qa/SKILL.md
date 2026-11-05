@@ -10,9 +10,8 @@ disable-model-invocation: true
 Read `.pilot/pilot-process.md` before running this if you haven't already — it's the source
 of truth for labels, states, and the claim protocol, and §7 specifically covers this phase;
 this skill only covers the mechanics of running it. The roster (`.pilot/pilot-process.md` §4
-"Roster"): `pilot-qa` leads, no validator (the human is), the designer is summonable —
-`--with designer` adds it from the start, and the human may summon or dismiss it at any point,
-each recorded in the test-log comment; `.pilot/pilot-task-advise.md` is read and passed into its call.
+"Roster"): `pilot-qa` leads, no validator (the human is), the designer is summonable. Summons and
+dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` is passed into its call.
 
 ## Steps
 

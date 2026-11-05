@@ -13,10 +13,9 @@ covers the architect/tech lead turn-taking mechanic this skill relies on through
 what `--multi` means here. The roster (`.pilot/pilot-process.md` §4 "Roster") for this
 phase: the architect and tech lead lead together (the tech lead alone for an existing `type:bug` ticket), the PM
 validates a `type:feature` split (step 3's coverage check), and the designer is summonable —
-for an existing `type:bug` ticket it is the architect instead; `--with <persona>[,...]` adds summonable personas from the
-start, and the human may summon or dismiss one at any point (not under `--auto`), each recorded
-in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is read and passed into a
-summoned persona's call (a lead or the validator keeps its own duty doc).
+for an existing `type:bug` ticket it is the architect instead. Summons and dismissals are
+recorded in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a
+summoned persona's call.
 
 ## Steps
 

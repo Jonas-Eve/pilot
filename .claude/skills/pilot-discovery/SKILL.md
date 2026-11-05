@@ -11,10 +11,8 @@ Read `.pilot/pilot-process.md` before running this if you haven't already — it
 source of truth for labels, states, and the claim protocol; this skill only covers the
 mechanics of running Discovery. Read `.pilot/pilot-link-agent-dialogue.md` too — it covers
 the PM/architect turn-taking mechanic this skill relies on whenever the architect objects. The
-roster (`.pilot/pilot-process.md` §4 "Roster") defines who is in the discussion: the PM leads,
-the architect validates, the designer is summonable; `--with <persona>[,...]` adds summonable
-personas from the start, and the human may summon or dismiss one at any point, each recorded
-in the draft ticket's checkpoint once it exists.
+roster (`.pilot/pilot-process.md` §4 "Roster"): the PM leads, the architect validates, the
+designer is summonable.
 
 This phase is `type:feature` only. A standalone technical need with no product framing
 (infra, CI, a migration, nothing a PM would have an opinion on) or a bug report never
@@ -64,9 +62,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    their lead and validator turns). A
    question that needs the human — a constraint that contradicts something they decided, a
    choice that changes the story's shape — is put to them now, before step 4 creates anything,
-   the same way step 2a does, and its answer fed back into the dialogue. The persona files themselves
-   (`.claude/agents/pilot-*.md`) carry only identity now — the task docs are what tell each
-   one what to actually do. Continue until they converge (`.pilot/pilot-link-agent-dialogue.md`)
+   the same way step 2a does, and its answer fed back into the dialogue. Continue until they converge (`.pilot/pilot-link-agent-dialogue.md`)
    on: out of scope (per this project's functional-scope doc, if it has one — stop, report,
    create nothing); a single story (with or without a `type:tech` companion story for a
    technical enabler the PM and architect agree the same effort needs); or several stories

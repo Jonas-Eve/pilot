@@ -9,11 +9,9 @@ argument-hint: "<issue number, optional — picks the next dev-ready or can-resu
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
 protocol; this skill covers only phase 3's mechanics. Most likely phase to run as several
 parallel instances; the claim step below prevents collisions. The roster (`.pilot/pilot-process.md`
-§4 "Roster") for this phase: the dev (`pilot-e2e` for a `type:e2e` task) leads, no validator, and
-the tech lead, architect and designer are summonable — `--with <persona>[,...]` adds them from
-the start, and a live human may summon or dismiss one at any point of the pair discussion
-(each recorded in the ticket's checkpoint comment); `.pilot/pilot-task-advise.md` is read and
-passed into a summoned persona's call.
+§4 "Roster"): the dev (`pilot-e2e` for a `type:e2e` task) leads, no validator; the tech lead,
+architect and designer are summonable. Summons and dismissals are recorded in the ticket's
+checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned persona's call.
 
 ## Steps
 
