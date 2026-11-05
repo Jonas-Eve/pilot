@@ -259,6 +259,7 @@ const STUB = (opts) => `
   const OPT_SNAP = snapshot([
     ticket(99, ['type:tech', 'status:dev-ready', 'priority:P0']), ticket(70, ['type:feature', 'status:review-ready', 'priority:P1']),
     ticket(60, ['type:tech', 'status:in-dev', 'priority:P1']), ticket(50, ['type:feature', 'status:qa', 'priority:P1']),
+    ticket(80, ['type:bug', 'level:task', 'status:backlog', 'priority:P1']), ticket(81, ['type:tech', 'level:story', 'status:backlog', 'priority:P1']),
   ], 120);
   page = await open({ preload: [OPT_SNAP] });
   await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
@@ -267,7 +268,7 @@ const STUB = (opts) => `
   const optBtn = (n) => rowOf(n).locator('button:has-text("Options")');
   check('options are folded by default: no panel, a chevron button on auto-capable rows only',
         (await page.$$('#view .opts')).length === 0 && (await optBtn(99).count()) === 1 && (await optBtn(70).count()) === 1 &&
-        (await optBtn(60).count()) === 0 && (await optBtn(50).count()) === 0);
+        (await optBtn(60).count()) === 0 && (await optBtn(50).count()) === 1);
   await optBtn(99).click(); await page.waitForTimeout(100);
   const panel99 = () => rowOf(99).locator('.opts');
   check('chevron opens the panel with --next and multi', (await panel99().count()) === 1 && /Enchaîner \(--next\)/.test(await panel99().textContent()) && /Multi/.test(await panel99().textContent()));
@@ -287,6 +288,27 @@ const STUB = (opts) => `
   check('chevron folds the panel again, the options stay applied', (await panel99().count()) === 0 && /multi 3/.test(await rowOf(99).textContent()));
   await optBtn(70).click(); await rowOf(70).locator('.opts .seg button', { hasText: /^2$/ }).click(); await page.waitForTimeout(100);
   check('review row: multi forwarded (/pilot-review 70 --auto --multi 2)', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --auto --multi 2', '/pilot-review 70 --multi 2']), JSON.stringify(await rowHrefs(70)));
+  await optBtn(99).click(); await page.waitForTimeout(100);
+  await panel99().locator('.tog', { hasText: 'designer' }).click(); await panel99().locator('.tog', { hasText: 'tech lead' }).click(); await page.waitForTimeout(100);
+  check('dev row: --with adds the chosen personas, auto and pair alike', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto --multi 3 --with techlead,designer', '/pilot-dev 99 --multi 3 --with techlead,designer']), JSON.stringify(await rowHrefs(99)));
+  await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
+  check('--next hides --with and drops it from the commands', (await panel99().locator('text=Avec').count()) === 0 && JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-auto 99 --multi 3 --next', '/pilot-dev 99 --multi 3']), JSON.stringify(await rowHrefs(99)));
+  await panel99().locator('text=Enchaîner').click(); await optBtn(99).click(); await page.waitForTimeout(100);
+  const panel70 = () => rowOf(70).locator('.opts');
+  await panel70().locator('.tog', { hasText: 'PM' }).click(); await page.waitForTimeout(100);
+  check('review row: --only drops --auto, keeps --multi, replaces --with', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --multi 2 --only pm']) && (await panel70().locator('text=Avec').count()) === 0, JSON.stringify(await rowHrefs(70)));
+  await panel70().locator('.tog', { hasText: 'PM' }).click(); await panel70().locator('.grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
+  check('review row: --with architect', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --auto --multi 2 --with architect', '/pilot-review 70 --multi 2 --with architect']), JSON.stringify(await rowHrefs(70)));
+  await optBtn(50).click(); await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await page.waitForTimeout(100);
+  check('QA row: --with designer, pair only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --with designer']), JSON.stringify(await rowHrefs(50)));
+  await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await optBtn(50).click(); await page.waitForTimeout(100);
+  await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
+  check('spec row of a bug offers the architect, not the designer; a tech story offers the designer',
+        (await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).textContent()).includes('architecte') && !(await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).textContent()).includes('designer') &&
+        (await rowOf(81).locator('.opts .grp', { hasText: 'Avec' }).textContent()).includes('designer'));
+  await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
+  check('bug spec: /pilot-spec 80 --auto --with architect', JSON.stringify(await rowHrefs(80)) === JSON.stringify(['/pilot-spec 80 --auto --with architect', '/pilot-spec 80 --with architect']), JSON.stringify(await rowHrefs(80)));
+  await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
   check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
   check('row options: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'options.png') });
@@ -324,8 +346,13 @@ const STUB = (opts) => `
   check('product idea: multi choices shown', !(await page.$eval('#ideaMultiWrap', (e) => e.hidden)));
   await page.locator('#ideaMultiSeg button', { hasText: /^3$/ }).click();
   check('product idea + multi: /pilot-discovery <idea> --multi 3', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3' && (await page.$eval('#ideaOpen', (a) => a.getAttribute('href'))).includes(encodeURIComponent('/pilot-discovery Mon idée --multi 3')), await text(page, '#ideaCmd'));
+  await page.click('#ideaWithSeg >> text=Designer');
+  check('product idea + designer: --with designer after --multi', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3 --with designer', await text(page, '#ideaCmd'));
+  await page.click('#kindSeg >> text=Besoin technique');
+  check('tech need + designer: --with designer, no --multi', (await text(page, '#ideaCmd')) === '/pilot-spec --tech Mon idée --with designer', await text(page, '#ideaCmd'));
   await page.click('#kindSeg >> text=Bug');
-  check('bug / tech need: no multi choice, no --multi in the command', (await page.$eval('#ideaMultiWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée', await text(page, '#ideaCmd'));
+  check('bug report: the designer is summonable too, no --multi', !(await page.$eval('#ideaWithWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée --with designer', await text(page, '#ideaCmd'));
+  check('bug / tech need: no multi choice, no --multi in the command', (await page.$eval('#ideaMultiWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée --with designer', await text(page, '#ideaCmd'));
   await page.close();
 
   // ---- sub-issues of an epic or a story: listed under it, each one launchable ----

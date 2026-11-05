@@ -76,10 +76,9 @@ actually is, never copied down a tree:
 **Where a ticket originates depends on its `type:`, not a single shared entry point:**
 
 - **`type:feature`** — the only type that goes through Discovery. A human describes an
-  idea in free text to `/pilot-discovery`; PM and architect turn it into one or more user
-  stories together, in dialogue (§4 "Agent dialogue") — the architect anticipating
-  architecture (interfaces, infra shape) from the start rather than challenging a
-  finished artifact later. Phase 4 review involves PM + tech lead by default (architect
+  idea in free text to `/pilot-discovery`; the PM turns it into one or more user stories and
+  the architect validates them (§4 "Roster"), anticipating architecture (interfaces, infra
+  shape) from the start rather than challenging a finished artifact later. Phase 4 review involves PM + tech lead by default (architect
   optional — its architecture decisions are made and cross-examined by the tech lead
   already, at spec time).
 - **`type:tech`** — originates in one of two ways: **grouped** with a `type:feature`
@@ -147,7 +146,7 @@ to conflate.
   **`level:story`** tickets under a shared theme, for categorization — a `type:feature`
   story, or a `type:tech` story genuinely tied to that same feature effort (above), can
   both sit under it. Never itself scoped, spec'd, or built — no `status:` label. Created
-  by Discovery's PM+architect dialogue, at the same moment a story would otherwise be
+  by Discovery's PM-led, architect-validated discussion, at the same moment a story would otherwise be
   created, the instant it's clear the idea can't be delivered as a single story. A
   standalone `type:tech` need originated directly via Spec's own entry point is never
   grouped under an epic — there's no Discovery pass to decide one's needed.
@@ -900,9 +899,9 @@ Spec's own no-ticket entry, are the cases where no ticket exists yet at the very
 checkpoint**. Before creating anything, the skill runs a framing stage with the human:
 in Discovery the PM alone challenges the idea with the human and restates it as a brief they
 validate; in Spec's no-ticket entry (human live) the architect alone does the same for the
-raw need. Only once the human has validated it does the agents' dialogue start (PM with
-architect; architect with tech lead, who checks the need against the code). Only then does the agents' dialogue start, and the skill creates the ticket
-(`status:draft`, §3) as soon as the first draft is ready to show the human, instead of
+raw need. Only once the human has validated it does the discussion start (the PM leading in
+Discovery, the architect and tech lead in Spec, the tech lead checking the need against the
+code), and the skill creates the ticket (`status:draft`, §3) as soon as the first draft is ready to show the human, instead of
 holding it in-conversation. There is nothing to `--resume` during framing.
 Either way, the very last thing pair mode does — setting the phase's completion `status:`
 — is the same end-state `--auto` reaches in one pass, for the phases that have an `--auto`
@@ -971,7 +970,8 @@ leads, an optional validator, and personas the human may summon:
 |------|---------|-----------|------------|
 | Discovery | `pilot-pm` | `pilot-architect` | `pilot-designer` |
 | Spec — `type:feature`/`type:tech` | `pilot-architect` + `pilot-techlead` | `pilot-pm` (`type:feature` only) | `pilot-designer` |
-| Spec — `type:bug` | `pilot-techlead` | — | `pilot-architect` |
+| Spec — `type:bug`, raw report (no ticket yet) | `pilot-architect` + `pilot-techlead` | — | `pilot-designer` |
+| Spec — `type:bug`, existing ticket | `pilot-techlead` | — | `pilot-architect` |
 | Dev | `pilot-dev` (`pilot-e2e` for `type:e2e`) | — | `pilot-techlead`, `pilot-architect`, `pilot-designer` |
 | Review | `pilot-techlead` + `pilot-pm` (`type:feature`/`type:e2e`), `pilot-techlead` alone (`type:tech`/`type:bug`) | — | `pilot-architect` |
 | QA | `pilot-qa` | — | `pilot-designer` |
@@ -1015,7 +1015,7 @@ Keeping token cost down per ticket is central to PILOT's design. Two rules keep 
    phase needs from the ticket (its current body, linked parent/children, the relevant
    `docs/` files) and hands that — never the pipeline's history — to a fresh `Agent` call
    using the matching persona in `.claude/agents/pilot-*.md`. This isolation is across
-   phases, not within one: Discovery and Spec's own dialogue (§4 "Agent dialogue") is
+   phases, not within one: Spec's own dialogue and a Roster discussion (§4) are
    several separate `Agent` calls, one per turn, each one a genuinely fresh context that
    re-reads whatever it needs (this file included) — the running conversation is passed
    as explicit text, not shared memory, so a longer dialogue costs more, turn for turn,

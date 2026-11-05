@@ -1,6 +1,6 @@
 ---
 name: pilot-discovery
-description: "Phase 1 of PILOT (see .pilot/pilot-process.md): turns a raw type:feature idea into one or more formalized GitHub issues. The PM first frames the idea with the human — challenges it, helps formulate it, restates it as a brief the human validates — before any ticket exists; then PM and architect work it together in dialogue (.pilot/pilot-link-agent-dialogue.md) rather than one handing a finished draft to the other — the architect anticipates architecture (interfaces, infra shape) while the PM shapes the story, instead of challenging it later from scratch. Produces one or more level:story tickets — type:feature, and, when the same effort genuinely needs a technical enabler alongside it, type:tech too — grouped under a new/reused level:epic (always type:feature) if it doesn't fit in one story, with dependencies between them. Never splits into dev-sized tasks, records a prerequisite, or writes a spec — that's /pilot-spec's job, run separately. The PM leads and the architect then validates the drafted story (.pilot/pilot-process.md §4 "Roster"); --with adds personas such as the designer upfront, and the human can summon or dismiss one at any time. Always pair mode: drafts live with a human, creating the ticket(s) as status:draft as soon as a first draft exists and refining in place. No --auto, never Routine-driven; --resume <issue number> picks back up a status:draft ticket left mid-pair. An optional --multi <N> runs N independent PM+architect dialogues on the same raw idea instead of one, converging the N resulting proposals with no fixed round cap the same way the base dialogue converges (see .pilot/pilot-link-agent-dialogue.md), escalating to a live question for the human only on a genuine, unresolved disagreement. A standalone type:tech need with no product framing, or any type:bug report, never comes through here — see /pilot-spec's own no-ticket entry instead. Use whenever a human wants to start a new product idea."
+description: "Phase 1 of PILOT (see .pilot/pilot-process.md): turns a raw type:feature idea into one or more formalized GitHub issues. The PM first frames the idea with the human — challenges it, helps formulate it, restates it as a brief the human validates — before any ticket exists; then the PM drafts the story and the architect validates it, anticipating architecture (interfaces, infra shape), debating with the PM when it objects (.pilot/pilot-link-agent-dialogue.md). Produces one or more level:story tickets — type:feature, and, when the same effort genuinely needs a technical enabler alongside it, type:tech too — grouped under a new/reused level:epic (always type:feature) if it doesn't fit in one story, with dependencies between them. Never splits into dev-sized tasks, records a prerequisite, or writes a spec — that's /pilot-spec's job, run separately. The PM leads and the architect then validates the drafted story (.pilot/pilot-process.md §4 "Roster"); --with adds personas such as the designer upfront, and the human can summon or dismiss one at any time. Always pair mode: drafts live with a human, creating the ticket(s) as status:draft as soon as a first draft exists and refining in place. No --auto, never Routine-driven; --resume <issue number> picks back up a status:draft ticket left mid-pair. An optional --multi <N> runs N independent PM-led, architect-validated discussions on the same raw idea instead of one, converging the N resulting proposals with no fixed round cap the same way the base dialogue converges (see .pilot/pilot-link-agent-dialogue.md), escalating to a live question for the human only on a genuine, unresolved disagreement. A standalone type:tech need with no product framing, or any type:bug report, never comes through here — see /pilot-spec's own no-ticket entry instead. Use whenever a human wants to start a new product idea."
 argument-hint: "<raw idea in free text> [--with <persona>[,...]] [--multi [N]] | --resume <issue number>"
 disable-model-invocation: true
 ---
@@ -11,10 +11,8 @@ Read `.pilot/pilot-process.md` before running this if you haven't already — it
 source of truth for labels, states, and the claim protocol; this skill only covers the
 mechanics of running Discovery. Read `.pilot/pilot-link-agent-dialogue.md` too — it covers
 the PM/architect turn-taking mechanic this skill relies on whenever the architect objects. The
-roster (`.pilot/pilot-process.md` §4 "Roster") defines who is in the discussion: the PM leads,
-the architect validates, the designer is summonable; `--with <persona>[,...]` adds summonable
-personas from the start, and the human may summon or dismiss one at any point, each recorded
-in the draft ticket's checkpoint once it exists.
+roster (`.pilot/pilot-process.md` §4 "Roster"): the PM leads, the architect validates, the
+designer is summonable.
 
 This phase is `type:feature` only. A standalone technical need with no product framing
 (infra, CI, a migration, nothing a PM would have an opinion on) or a bug report never
@@ -59,12 +57,12 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    `.pilot/pilot-task-anticipate-architecture.md` and the draft only, not the PM's
    discussion. An objection brings the architect into the debate with the PM and the human
    (`.pilot/pilot-link-agent-dialogue.md` turn-taking), then back on the revised draft
-   alone. "The dialogue" below means this discussion, anyone `--with`/summoned included. A
+   alone. "The dialogue" below means this discussion, anyone `--with`/summoned included — read `.pilot/pilot-task-advise.md` and pass it into such a
+   persona's call (the PM, architect and designer; the architect/PM keep their own duty docs above for
+   their lead and validator turns). A
    question that needs the human — a constraint that contradicts something they decided, a
    choice that changes the story's shape — is put to them now, before step 4 creates anything,
-   the same way step 2a does, and its answer fed back into the dialogue. The persona files themselves
-   (`.claude/agents/pilot-*.md`) carry only identity now — the task docs are what tell each
-   one what to actually do. Continue until they converge (`.pilot/pilot-link-agent-dialogue.md`)
+   the same way step 2a does, and its answer fed back into the dialogue. Continue until they converge (`.pilot/pilot-link-agent-dialogue.md`)
    on: out of scope (per this project's functional-scope doc, if it has one — stop, report,
    create nothing); a single story (with or without a `type:tech` companion story for a
    technical enabler the PM and architect agree the same effort needs); or several stories
