@@ -1016,7 +1016,6 @@ function vHelp(){
   function names(ks,note){return ks.length?ks.map(agentName).join(' + ')+(note?' ('+note+')':''):'—';}
   var steps=S.sub.aide==='steps';
   return h('div',{class:'list'},
-    h('div',{class:'refresh'},h('a',{class:'btn',href:'#'+S.tab},'← Retour'),h('h2',{style:'margin:0'},'Agents et steps')),
     steps?h('p',{class:'note'},'À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.'):null,
     steps?h('div',{class:'ref'},h('table',{},
       h('thead',{},h('tr',{},['Step','Lead','Validateur','Convocable'].map(function(t){return h('th',{scope:'col'},t);}))),

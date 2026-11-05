@@ -930,7 +930,7 @@ const STUB = (opts) => `
         (await text(page, '#helpLink')) === 'i' && (await page.$eval('#helpLink', (a) => a.getAttribute('href'))) === '#aide' && !(await page.$eval('#idea', (e) => e.hidden)));
   await page.click('#helpLink'); await page.waitForTimeout(150);
   check('reference page: its own page (#aide) with the 7 agents, replacing the tab content, no tab marked current',
-        /Agents et steps/.test(await text(page, '#view')) && (await page.$$('#view .agents .row')).length === 7 && (await page.$eval('#idea', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)) &&
+        (await page.$$('#view .agents .row')).length === 7 && (await page.$$('#view button, #view a.btn')).length === 0 && (await page.$eval('#idea', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)) &&
         (await page.$$('#tabs a[aria-current="page"]')).length === 0 && (await page.$eval('#helpLink', (a) => a.getAttribute('aria-current'))) === 'page');
   check('reference page: sub-tabs Agents (open) and Steps; the agents are not mixed with the table',
         JSON.stringify(await page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent + (a.getAttribute('aria-current') ? '*' : '')))) === JSON.stringify(['Agents*', 'Steps']) && (await page.$$('#view table')).length === 0);
@@ -947,9 +947,9 @@ const STUB = (opts) => `
         docRows.length === roster.length && docRows.every((d, i) => [0, 1, 2].every((k) => same(d[k + 1], roster[i][k]))), JSON.stringify([docRows.length, roster.length]));
   check('reference page: the table shows one row per step, with Lead, Validateur and Convocable',
         (await page.$$('#view tbody tr')).length === docRows.length && /Discovery[\s\S]*PM[\s\S]*Architecte[\s\S]*Designer/.test(await text(page, '#view tbody tr')));
-  await page.click('#view >> text=Retour'); await page.waitForTimeout(150);
-  check('reference page: Retour goes back to the tab it was opened from',
-        (await page.evaluate(() => location.hash)) === '#file' && !(await page.$eval('#idea', (e) => e.hidden)) && /Ma file/.test(await text(page, '#view')));
+  await page.click('#tabs >> text=Ma file'); await page.waitForTimeout(150);
+  check('reference page: clicking another tab leaves it, no back button needed',
+        (await page.evaluate(() => location.hash)) === '#file' && !(await page.$eval('#idea', (e) => e.hidden)) && /Ma file/.test(await text(page, '#view')) && (await page.$$('#subtabs a')).length === 0);
 
   // every tab and sub-tab fits a phone, in both themes, with no script error
   const ROUTES = ['file', 'ensemble', 'ensemble/discovery', 'ensemble/spec', 'ensemble/dev', 'ensemble/review', 'ensemble/qa',
