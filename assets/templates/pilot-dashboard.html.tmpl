@@ -196,7 +196,6 @@ function actionFor(t){
   if(has(t,'level:epic')||s==='split')return {kind:'run',cmd:'/pilot-auto '+n,container:true,label:'Traiter'};
   switch(s){
     case 'poc-draft': return {kind:'run',cmd:'/pilot-proto --resume '+n,pairOnly:true,label:'Reprendre'};
-    case 'poc-review': case 'poc-validated': return {kind:'run',cmd:'/pilot-discovery --from-proto '+n,pairOnly:true,label:'Lancer la Discovery'};
     case 'draft': return {kind:'run',cmd:'/pilot-discovery --resume '+n,pairOnly:true,label:'Reprendre'};
     case 'backlog': return {kind:'run',cmd:'/pilot-spec '+n,label:'Spécifier'};
     case 'in-spec': return {kind:'run',cmd:'/pilot-spec --resume '+n,pairOnly:true,label:'Reprendre'};
@@ -417,7 +416,12 @@ function rowCmds(t,a,o){
     auto:canAuto?(o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu+wt):null,
     pair:a.cmd+mu+wt+ot};
 }
+function protoOf(n){
+  if(!S._po){S._po={}; Object.keys(S.protos).forEach(function(k){var m=S.protos[k]; if(Math.floor(Number(m.parts)||0)>0)arr(m.stories).forEach(function(s){S._po[s]=Number(k);});});}
+  return S._po[n]||0;
+}
 function ticketRow(t,withLevel,depth){
+  if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
   var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
   var kids=depth<3?kidsOf(t.n):[];
@@ -440,6 +444,7 @@ function ticketRow(t,withLevel,depth){
             hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
           t.r?h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r):null,
+          protoOf(t.n)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+protoOf(t.n);}},'Voir le proto'):null,
           kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
           rc.canAuto?h('div',{class:'grp'},
@@ -747,8 +752,8 @@ function protoRow(e){
   var lead=null, acts=[];
   if(st==='poc-draft'&&e.group==='encours'){lead='/pilot-proto --resume '+n; acts.push(openLink(lead,'Reprendre',true));}
   else if(e.group==='encours'&&st==='poc-review'){
-    lead='/pilot-discovery --from-proto '+n;
-    acts.push(openLink(lead,'Lancer la Discovery',true),openLink('/pilot-proto '+n+' --accept','Accepter'),openLink('/pilot-proto '+n+' --reject','Rejeter'));
+    lead='/pilot-proto '+n+' --accept';
+    acts.push(openLink(lead,'Accepter',true),openLink('/pilot-proto '+n+' --reject','Rejeter'));
   }else if(e.group==='acceptes'&&e.sub==='alancer'){
     lead='/pilot-discovery --from-proto '+n;
     acts.push(openLink(lead,'Lancer la Discovery',true),openLink('/pilot-proto '+n+' --reject','Rejeter'));
@@ -939,7 +944,7 @@ function renderChrome(){
     return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
-  S._km=null;
+  S._km=null;S._po=null;
   renderChrome();renderConn();renderBanner();
   document.getElementById('idea').hidden=S.tab!=='file';updateIdea();
   document.getElementById('batch').hidden=S.tab!=='file';

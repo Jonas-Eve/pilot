@@ -804,9 +804,9 @@ const STUB = (opts) => `
   check('prototypes: the third main tab, with the count of those in progress', JSON.stringify((await mainTabs()).slice(0, 4)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes (2)', 'Recherche']), JSON.stringify(await mainTabs()));
   check('prototypes: sub-tabs En cours / Acceptés / Rejetés with their counts', JSON.stringify(await pSubs()) === JSON.stringify(['En cours (2)', 'Acceptés (3)', 'Rejetés (1)']), JSON.stringify(await pSubs()));
   check('prototypes: "En cours" lists the draft and the one to decide, not the others', JSON.stringify((await pRows()).map((x) => x.replace(/^#\d+ /, '')).sort()) === JSON.stringify(['Proto brouillon', 'Proto à décider']), JSON.stringify(await pRows()));
-  check('prototypes: a draft is resumed, a prototype to decide can start the Discovery, be accepted or rejected — all by command',
+  check('prototypes: a draft is resumed, one under review is accepted or rejected (never sent to the Discovery yet) — all by command',
         JSON.stringify(await rowHrefs(701)) === JSON.stringify(['/pilot-proto --resume 701']) &&
-        JSON.stringify(await rowHrefs(702)) === JSON.stringify(['/pilot-discovery --from-proto 702', '/pilot-proto 702 --accept', '/pilot-proto 702 --reject']), JSON.stringify(await rowHrefs(702)));
+        JSON.stringify(await rowHrefs(702)) === JSON.stringify(['/pilot-proto 702 --accept', '/pilot-proto 702 --reject']), JSON.stringify(await rowHrefs(702)));
   check('prototypes: no link to GitHub anywhere in the list', (await page.$$('#view a[href*="github.com"]')).length === 0);
   check('prototypes: the brief is shown', /Brief du proto 702/.test(await text(page, '#view')));
   await page.click('#subtabs >> text=Acceptés'); await page.waitForTimeout(200);
@@ -849,7 +849,7 @@ const STUB = (opts) => `
   await page.goto(FILE + '#prototypes/acceptes/termines'); await page.waitForTimeout(350);
   check('#prototypes/acceptes/termines opens that third level directly', (await pRows()).join().includes('Proto terminé') && (await page.$eval('#subtabs2 a[aria-current=page]', (a) => a.textContent)).startsWith('Terminés'));
   await tab(page, 'Recherche'); await page.fill('#searchText', '702'); await page.waitForTimeout(200);
-  check('search shows a prototype with its state in words and a command to continue', /prototype à décider/.test(await text(page, '#view')) && /pilot-discovery --from-proto 702/.test(await text(page, '#view')), await text(page, '#view'));
+  check('search shows a prototype with its state in words and the command to accept it, not the Discovery', /prototype à décider/.test(await text(page, '#view')) && JSON.stringify(await rowHrefs(702)) === JSON.stringify(['/pilot-proto 702 --accept', '/pilot-proto 702 --reject']), await text(page, '#view'));
   await page.close();
   page = await open({ preload: [BASE] });
   await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
@@ -876,6 +876,33 @@ const STUB = (opts) => `
   await page.goto(FILE + '#proto/999'); await page.waitForTimeout(300);
   check('full view: an unknown prototype says so and offers the way back', /Prototype introuvable/.test(await text(page, '#view')) && (await page.$('#view >> text=← Prototypes')) !== null);
   check('full view: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+
+  // ---- the Discovery only for an accepted prototype; the prototype visible from everywhere it matters ----
+  const VSNAP = snapshot([
+    ticket(710, ['type:poc', 'level:story', 'status:poc-review'], { t: 'Proto en revue' }),
+    ticket(711, ['type:poc', 'level:story', 'status:poc-validated'], { t: 'Proto accepté' }),
+    ticket(801, ['type:feature', 'level:story', 'status:backlog', 'priority:P1'], { t: 'Story issue du proto' }),
+  ], 120);
+  const VP = [PM(710, { title: 'Proto en revue', parts: 1 }), PM(711, { title: 'Proto accepté', decision: 'accepted', parts: 1 }), PM(712, { title: 'Proto source', decision: 'accepted', stories: [801], parts: 1 })];
+  const VH = [710, 711, 712].map((n) => ({ n, k: 0, html: '<p id="t">Maquette ' + n + '</p>' }));
+  page = await open({ preload: [VSNAP], protos: VP, protoHtml: VH });
+  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
+  const allHrefs = async () => (await page.$$eval('#view a.btn', (as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1] || '').split('&repo=')[0]))).join(' | ');
+  check('discovery rule: a prototype under review offers Accepter / Rejeter and no Discovery', /pilot-proto 710 --accept/.test(await allHrefs()) && /pilot-proto 710 --reject/.test(await allHrefs()) && !/from-proto 710/.test(await allHrefs()), await allHrefs());
+  await page.click('#subtabs >> text=Acceptés'); await page.waitForTimeout(250);
+  check('discovery rule: the Discovery is offered once accepted', /pilot-discovery --from-proto 711/.test(await allHrefs()), await allHrefs());
+  await tab(page, 'Recherche'); await page.fill('#searchText', 'proto'); await page.waitForTimeout(250);
+  check('from everywhere: in Recherche a prototype is its prototype row (state, command, and its mockup one tap away)',
+        (await page.locator('#view .row', { hasText: '#710 ' }).locator('button:has-text("Plein écran")').count()) === 1 && !/from-proto 710/.test(await allHrefs()));
+  await page.locator('#view .row', { hasText: '#711 ' }).locator('button:has-text("la maquette")').click(); await page.waitForTimeout(500);
+  check('from everywhere: the mockup opens in place from Recherche', (await page.$('#view iframe.prev')) !== null);
+  await page.goto(FILE + '#file'); await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(250);
+  const storyRow = page.locator('#view .row', { hasText: '#801 ' });
+  check('from everywhere: a story created from a prototype offers it (Ma file)', (await storyRow.locator('button:has-text("Voir le proto")').count()) === 1);
+  await storyRow.locator('button:has-text("Voir le proto")').click(); await page.waitForTimeout(500);
+  check('from everywhere: it opens that prototype in full screen', (await page.evaluate(() => location.hash)) === '#proto/712' && /#712 Proto source/.test(await text(page, '#view')) && (await page.$('#view iframe.prev')) !== null);
+  check('from everywhere: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
   // ---- renderer: the project name is HTML-escaped ----

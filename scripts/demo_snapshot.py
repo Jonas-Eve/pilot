@@ -143,6 +143,13 @@ button{min-height:44px;padding:0 16px;border:0;border-radius:8px;background:#174
 <script>document.getElementById("b").onclick=function(){document.getElementById("alt").hidden=false;this.hidden=true}</script>"""
 
 
+PROTO_SENIOR = """<!doctype html><meta charset=utf8><title>Profil senior</title>
+<style>body{margin:0;font:16px system-ui;background:#F2F5F8;color:#121C26;padding:16px}.card{background:#fff;border:1px solid #D5DDE5;border-radius:12px;padding:14px;max-width:420px}
+body.big{font-size:22px}button{min-height:48px;padding:0 18px;border:0;border-radius:8px;background:#1747C9;color:#fff;font:inherit}</style>
+<div class=card><b>Mon trajet</b><p>Prochain départ : 14h32, quai 2, sans escalier.</p><button id=b>Agrandir les textes</button></div>
+<script>document.getElementById("b").onclick=function(){document.body.classList.toggle("big")}</script>"""
+
+
 def proto_documents():
     """The `protos` metadata documents and the `protoHtml` parts a /pilot-proto session would have written."""
     def meta(n, title, **extra):
@@ -154,7 +161,7 @@ def proto_documents():
                           brief="Tester l'alerte et la proposition d'un itinéraire de remplacement quand un ascenseur est en panne."),
         "proto-703": meta(703, "Relais humain depuis l'application", at=iso(30), decision="accepted", decidedAt=iso(29),
                           brief="Tester le bouton qui met le voyageur en relation avec un conseiller."),
-        "proto-704": meta(704, "Profil voyageur senior", at=iso(48), decision="accepted", decidedAt=iso(40), stories=[103, 111],
+        "proto-704": meta(704, "Profil voyageur senior", parts=1, height=300, at=iso(48), decision="accepted", decidedAt=iso(40), stories=[103, 111],
                           brief="Tester un profil qui agrandit les textes et simplifie les écrans."),
         "proto-705": meta(705, "Carte des équipements en temps réel", at=iso(200), decision="accepted", decidedAt=iso(150), stories=[990],
                           brief="Tester l'affichage en direct de l'état des ascenseurs sur une carte."),
@@ -162,7 +169,8 @@ def proto_documents():
                           reason="Trop coûteux pour le gain observé : le bouton de relais humain couvre déjà le besoin.",
                           brief="Tester un assistant vocal qui guide tout le trajet."),
     }
-    parts = {"protoHtml-702-0": {"n": 702, "k": 0, "html": PROTO_HTML}}
+    parts = {"protoHtml-702-0": {"n": 702, "k": 0, "html": PROTO_HTML},
+             "protoHtml-704-0": {"n": 704, "k": 0, "html": PROTO_SENIOR}}
     return {**metas, **parts}
 
 
