@@ -57,7 +57,8 @@ authoritative in that skill's own `SKILL.md` (`argument-hint`), not here:
 /pilot-review 57 --multi 3 → 3 instances of each default-set reviewer role independently
                            review #57 (no dialogue — reviewers stay isolated), each role
                            reconciled into one verdict
-/pilot-review 57 --agents architect → adds the architect to this round's review
+/pilot-review 57 --with architect → adds the architect to this round's review
+/pilot-review 57 --only techlead → only the tech lead re-reviews this round (reclaim)
                            (never in either default set) alongside whichever roles the
                            ticket's own type already selects
 

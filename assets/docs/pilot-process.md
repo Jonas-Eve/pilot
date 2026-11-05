@@ -1003,7 +1003,7 @@ leads, an optional validator, and personas the human may summon:
   turn-taking dialogue of `.pilot/pilot-link-agent-dialogue.md` (no round cap),
   `needs-human` only for the genuine disagreement that doc describes.
 - **Review** keeps its parallel, isolated reviewers (§6): `--with` there extends the
-  reviewer set at the start like `--agents`, and nothing can be summoned mid-run.
+  reviewer set at the start (`--only` instead fixes the exact set), and nothing can be summoned mid-run.
 
 ---
 
