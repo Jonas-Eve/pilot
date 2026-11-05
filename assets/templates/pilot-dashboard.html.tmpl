@@ -140,10 +140,12 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
   <div class="chips" id="conn" aria-label="État des connecteurs"></div>
   <nav class="tabs" id="tabs"></nav>
   <nav class="tabs sub" id="subtabs" aria-label="Sous-onglets" hidden></nav>
+  <nav class="tabs sub" id="subtabs2" aria-label="Sous-onglets" hidden></nav>
   <div id="banner"></div>
   <section id="idea" class="idea" aria-label="Nouvelle demande" hidden></section>
   <section id="batch" class="idea" aria-label="Lancer en lot" hidden></section>
   <section id="search" class="idea search" aria-label="Recherche" hidden></section>
+  <section id="protoNew" class="idea" aria-label="Nouveau prototype" hidden></section>
   <section id="designEdit" class="idea" aria-label="Créer ou modifier le design system" hidden></section>
   <main id="view"></main>
   <footer class="foot" id="version">Cockpit PILOT · v{{PILOT_VERSION}}</footer>
@@ -179,7 +181,7 @@ var PHASES=[
   {key:'review',name:'Review',n:4,role:'tech',statuses:['review-ready','in-review','approved']},
   {key:'qa',name:'QA humaine',n:5,role:'produit',statuses:['qa','in-qa']}
 ];
-var STATUS_FR={'draft':'brouillon','backlog':'à spécifier','in-spec':'spec en cours','dev-ready':'prêt à coder','in-dev':'dev en cours','changes-requested':'corrections demandées','review-ready':'à relire','in-review':'relecture en cours','approved':'approuvé, à merger','split':'découpée en tâches','qa':'à tester','in-qa':'test en cours'};
+var STATUS_FR={'poc-draft':'prototype en construction','poc-review':'prototype à décider','poc-validated':'prototype accepté','poc-rejected':'prototype rejeté','draft':'brouillon','backlog':'à spécifier','in-spec':'spec en cours','dev-ready':'prêt à coder','in-dev':'dev en cours','changes-requested':'corrections demandées','review-ready':'à relire','in-review':'relecture en cours','approved':'approuvé, à merger','split':'découpée en tâches','qa':'à tester','in-qa':'test en cours'};
 function phaseOf(status){for(var i=0;i<PHASES.length;i++)if(PHASES[i].statuses.indexOf(status)>-1)return PHASES[i];return null;}
 
 function lab(t,p){for(var i=0;i<t.labels.length;i++)if(t.labels[i].indexOf(p)===0)return t.labels[i].slice(p.length);return '';}
@@ -193,6 +195,7 @@ function actionFor(t){
   /* an epic or a split story is a container: /pilot-auto searches its open sub-issues and works the best candidate (--next keeps going) */
   if(has(t,'level:epic')||s==='split')return {kind:'run',cmd:'/pilot-auto '+n,container:true,label:'Traiter'};
   switch(s){
+    case 'poc-draft': return {kind:'run',cmd:'/pilot-proto --resume '+n,pairOnly:true,label:'Reprendre'};
     case 'draft': return {kind:'run',cmd:'/pilot-discovery --resume '+n,pairOnly:true,label:'Reprendre'};
     case 'backlog': return {kind:'run',cmd:'/pilot-spec '+n,label:'Spécifier'};
     case 'in-spec': return {kind:'run',cmd:'/pilot-spec --resume '+n,pairOnly:true,label:'Reprendre'};
@@ -228,7 +231,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, sub:{ensemble:'tableau',design:'charter',activite:'sessions'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, viewProto:0, sub3:'alancer', sub:{ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -288,6 +291,9 @@ function watchLive(){
   S.db.collection('activity').onSnapshot(function(snap){
     S.activity=snap.docs.map(function(d){var v=d.data(); return v&&v.kind==='activity'?v:null;}).filter(Boolean); render();
   },function(){});
+  try{S.db.collection('protos').onSnapshot(function(snap){
+    S.protos={}; snap.docs.forEach(function(d){var v=d.data(); if(v&&v.kind==='proto'&&v.n&&(!v.repo||snapId(v.repo)===snapId(S.repo)))S.protos[v.n]=v;}); render();
+  },function(){});}catch(e){}
   /* a dashboard published before the design tab has no rule for this collection: ignore the error */
   try{S.db.collection('design').onSnapshot(function(snap){
     S.design=null; snap.docs.forEach(function(d){var v=d.data(); if(v&&v.kind==='design'&&v.repo&&snapId(v.repo)===snapId(S.repo))S.design=v;}); render();
@@ -410,7 +416,12 @@ function rowCmds(t,a,o){
     auto:canAuto?(o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu+wt):null,
     pair:a.cmd+mu+wt+ot};
 }
+function protoOf(n){
+  if(!S._po){S._po={}; Object.keys(S.protos).forEach(function(k){var m=S.protos[k]; if(Math.floor(Number(m.parts)||0)>0)arr(m.stories).forEach(function(s){S._po[s]=Number(k);});});}
+  return S._po[n]||0;
+}
 function ticketRow(t,withLevel,depth){
+  if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
   var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
   var kids=depth<3?kidsOf(t.n):[];
@@ -433,6 +444,7 @@ function ticketRow(t,withLevel,depth){
             hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
           t.r?h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r):null,
+          protoOf(t.n)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+protoOf(t.n);}},'Voir le proto'):null,
           kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
           rc.canAuto?h('div',{class:'grp'},
@@ -561,16 +573,18 @@ function vSearch(){
 }
 
 /* ---------- sub-tabs: a second row under a main tab, addressed as #tab/sub (one component, reused by every tab that has them) ---------- */
-function subnav(tab,items,cur){
-  var el=document.getElementById('subtabs');
+function subnav(tab,items,cur,id,prefix){
+  var el=document.getElementById(id||'subtabs');
   el.hidden=!items.length;
   el.replaceChildren.apply(el,items.map(function(t){
-    return h('a',{href:'#'+tab+'/'+t[0],'aria-current':cur===t[0]?'page':null,onclick:function(){setSub(tab,t[0]);}},t[1]+(t[2]!=null?' ('+t[2]+')':''));}));
+    return h('a',{href:'#'+(prefix||tab)+'/'+t[0],'aria-current':cur===t[0]?'page':null,onclick:function(){if(id==='subtabs2')S.sub3=t[0];else setSub(tab,t[0]);}},t[1]+(t[2]!=null?' ('+t[2]+')':''));}));
 }
 function setSub(tab,key){S.sub[tab]=key;S.page=0;}
 var DESIGN_SUBS=[['charter','Charte'],['colors','Couleurs'],['type','Typographie'],['space','Espacements'],['components','Composants'],['a11y','Accessibilité']];
 var ACT_SUBS=[['sessions','Sessions'],['changements','Changements']];
-var SUBS={ensemble:null,design:DESIGN_SUBS,activite:ACT_SUBS};
+var PROTO_SUBS=[['encours','En cours'],['acceptes','Acceptés'],['rejetes','Rejetés']];
+var ACC_SUBS=[['alancer','À lancer'],['encours','En cours'],['termines','Terminés']];
+var SUBS={ensemble:null,design:DESIGN_SUBS,activite:ACT_SUBS,prototypes:PROTO_SUBS};
 var OV_SUBS=[['tableau','Tableau']].concat(PHASES.map(function(p){return [p.key,p.name];}));
 SUBS.ensemble=OV_SUBS;
 function phaseItems(p){
@@ -585,6 +599,7 @@ function subItems(tab){
     var n={colors:arr(d.colors).length,type:arr(ty.scale).length,space:arr(sp.spacing).length+arr(sp.radius).length,components:arr(d.components).length,a11y:arr(d.a11y).length};
     return DESIGN_SUBS.map(function(s){return [s[0],s[1],n[s[0]]||null];});
   }
+  if(tab==='prototypes'){var c=protoCounts();return [['encours','En cours',c.encours||null],['acceptes','Acceptés',c.acceptes||null],['rejetes','Rejetés',c.rejetes||null]];}
   if(tab==='activite')return [['sessions','Sessions',recentActs().length||null],['changements','Changements',Math.min(15,S.evlist.length)||null]];
   return [];
 }
@@ -697,6 +712,108 @@ function updateBatch(){
   if(c){open.setAttribute('href',claudeCodeUrl(c));open.removeAttribute('aria-disabled');}
   else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}
   document.getElementById('batchCopy').disabled=!c;
+}
+
+/* ---------- prototypes tab: tickets (type:poc, from the snapshot) joined to their metadata (the `protos` collection) ---------- */
+function protoList(){
+  var by={}, open={};
+  tickets().forEach(function(t){open[t.n]=1; if(has(t,'type:poc'))by[t.n]={n:t.n,title:t.title,status:t.status,updated:t.updated};});
+  Object.keys(S.protos).forEach(function(k){var m=S.protos[k], e=by[k]||(by[k]={n:Number(k),title:m.title||('#'+k),status:'',updated:m.at||''}); e.meta=m;});
+  return Object.keys(by).map(function(k){
+    var e=by[k], m=e.meta||{};
+    if(m.decision==='rejected'||e.status==='poc-rejected'){e.group='rejetes';}
+    else if(m.decision==='accepted'||e.status==='poc-validated'){
+      var ss=arr(m.stories); e.group='acceptes';
+      e.sub=!ss.length?'alancer':ss.some(function(s){return open[s];})?'encours':'termines';
+    }else e.group='encours';
+    return e;
+  });
+}
+function protoCounts(){var c={}; protoList().forEach(function(e){c[e.group]=(c[e.group]||0)+1;}); return c;}
+function protoSubItems(){var c={}; protoList().forEach(function(e){if(e.group==='acceptes')c[e.sub]=(c[e.sub]||0)+1;}); return ACC_SUBS.map(function(s){return [s[0],s[1],c[s[0]]||null];});}
+function loadProto(n){
+  var m=S.protos[n]; if(!m||S.html[n]!==undefined||!S.db)return;
+  S.html[n]='loading';
+  var parts=Math.min(Math.max(0,Math.floor(Number(m.parts)||0)),6), ps=[];
+  for(var k=0;k<parts;k++)ps.push(S.db.doc('protoHtml/'+n+'-'+k).get().then(function(s){var d=s.exists?s.data():null;return d&&typeof d.html==='string'?d.html:'';}));
+  Promise.all(ps).then(function(a){S.html[n]=a.join('');render();}).catch(function(){S.html[n]='';render();});
+}
+/* the mockup runs in an isolated frame: its own scripts and styles only, no network, no access to the page */
+function protoFrame(n,full){
+  var html=S.html[n], m=S.protos[n]||{};
+  if(html===undefined){loadProto(n);return h('p',{class:'note'},'Chargement de la maquette…');}
+  if(html==='loading')return h('p',{class:'note'},'Chargement de la maquette…');
+  if(!html)return h('p',{class:'note'},'Maquette indisponible.');
+  var doc='<!doctype html><meta charset=utf8><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data:; font-src data:">'+html.replace(/^\s*<!doctype[^>]*>/i,'');
+  return h('iframe',{class:'prev',title:'Maquette du prototype #'+n,sandbox:'allow-scripts',srcdoc:doc,style:full?'height:calc(100vh - 230px);min-height:420px':'height:'+clampN(m.height,200,900,480)+'px'});
+}
+function protoRow(e){
+  var m=e.meta||{}, n=e.n, st=e.status, open=!!S.protoOpen[n], hasHtml=Math.floor(Number(m.parts)||0)>0;
+  var lead=null, acts=[];
+  if(st==='poc-draft'&&e.group==='encours'){lead='/pilot-proto --resume '+n; acts.push(openLink(lead,'Reprendre',true));}
+  else if(e.group==='encours'&&st==='poc-review'){
+    lead='/pilot-proto '+n+' --accept';
+    acts.push(openLink(lead,'Accepter',true),openLink('/pilot-proto '+n+' --reject','Rejeter'));
+  }else if(e.group==='acceptes'&&e.sub==='alancer'){
+    lead='/pilot-discovery --from-proto '+n;
+    acts.push(openLink(lead,'Lancer la Discovery',true),openLink('/pilot-proto '+n+' --reject','Rejeter'));
+  }
+  if(lead)acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(ev){copyCmd(lead,ev.target);}},'Copier'));
+  if(hasHtml)acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+n;}},'Plein écran'));
+  if(hasHtml)acts.push(h('button',{class:'btn ghost',type:'button','aria-expanded':String(open),onclick:function(){S.protoOpen[n]=!open;render();}},(open?'▾ Masquer':'▸ Voir')+' la maquette'));
+  var stories=arr(m.stories);
+  return h('div',{class:'row'+(st==='poc-review'?' flag':'')},
+    h('div',{class:'main'},
+      h('div',{class:'t'},h('span',{class:'num'},'#'+n+' '),e.title),
+      h('div',{class:'meta'},st?h('span',{class:'chip acc'},STATUS_FR[st]||st):null,
+        e.group==='rejetes'?h('span',{class:'chip crit'},'rejeté'):null,
+        stories.length?h('span',{class:'chip'},stories.length+' stor'+(stories.length>1?'ies':'y')+' : '+stories.map(function(s){return '#'+s;}).join(' ')):null,
+        h('span',{class:'note'},ago(m.decidedAt||e.updated)),
+        hasHtml?null:h('span',{class:'note'},'Pas de maquette enregistrée')),
+      m.brief?h('p',{class:'note'},str(m.brief,300)):null,
+      e.group==='rejetes'&&m.reason?h('p',{class:'note'},'Raison : '+str(m.reason,300)):null),
+    acts.length?h('div',{class:'acts'},acts):null,
+    open?h('div',{class:'kids'},protoFrame(n)):null);
+}
+function vProtoFull(n){
+  var e=protoList().filter(function(x){return x.n===n;})[0];
+  var back=h('a',{class:'btn',href:'#prototypes'},'← Prototypes');
+  if(!e)return h('div',{class:'list'},back,h('div',{class:'empty'},'Prototype introuvable.'));
+  return h('div',{class:'list'},h('div',{class:'refresh'},back,h('strong',{},'#'+n+' '+e.title),e.status?h('span',{class:'chip acc'},STATUS_FR[e.status]||e.status):null),
+    e.meta&&e.meta.brief?h('p',{class:'note'},str(e.meta.brief,300)):null,protoFrame(n,true));
+}
+function vProtos(){
+  if(S.viewProto)return vProtoFull(S.viewProto);
+  var g=S.sub.prototypes, sb=S.sub3, all=protoList();
+  var rows=all.filter(function(e){return e.group===g&&(g!=='acceptes'||e.sub===sb);}).sort(function(a,b){return String(b.meta&&b.meta.at||b.updated).localeCompare(String(a.meta&&a.meta.at||a.updated));});
+  var ttl=g==='encours'?'Prototypes en cours':g==='rejetes'?'Prototypes rejetés':'Prototypes acceptés · '+(ACC_SUBS.filter(function(s){return s[0]===sb;})[0]||[0,''])[1];
+  var none=all.length?'Aucun prototype dans cette vue.':'Aucun prototype pour l’instant. Utilisez « Nouveau prototype » ci-dessus pour en lancer un.';
+  return h('div',{class:'list'},h('h2',{},ttl+' · '+rows.length),rows.length?rows.map(protoRow):h('div',{class:'empty'},none));
+}
+function protoText(){var el=document.getElementById('protoText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
+function protoCmd(){var t=protoText();return '/pilot-proto'+(t?' '+t:'')+(S.protoWith?' --with architect':'');}
+function buildProtoNew(){
+  var box=document.getElementById('protoNew');
+  foldCard(box,'protoN','Nouveau prototype').append(
+    h('label',{for:'protoText',class:'note'},'Décrivez la fonction à tester : le PM vous aide à la cadrer, puis le designer la construit avec vous.'),
+    h('textarea',{id:'protoText',rows:3,maxlength:1500,placeholder:'Ex. : choisir un itinéraire sans escalier',oninput:updateProtoNew}),
+    h('div',{class:'filters'},h('span',{class:'note'},'Avec'),
+      h('button',{class:'tog',type:'button',id:'protoWith','aria-pressed':'false',onclick:function(){S.protoWith=S.protoWith?0:1;updateProtoNew();}},'Architecte'),
+      h('span',{class:'note'},'rejoint la discussion dès le départ')),
+    h('p',{class:'note'},'La commande est écrite, pas envoyée.'),
+    h('div',{class:'cmd',id:'protoCmd'}),
+    h('div',{class:'refresh'},
+      h('a',{class:'btn primary',id:'protoOpen',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
+      h('button',{class:'btn ghost',type:'button',onclick:function(e){if(protoText())copyCmd(protoCmd(),e.target);}},'Copier la commande')));
+  updateProtoNew();
+}
+function updateProtoNew(){
+  var c=document.getElementById('protoCmd'); if(!c)return;
+  var t=protoText(), a=document.getElementById('protoOpen');
+  document.getElementById('protoWith').setAttribute('aria-pressed',String(!!S.protoWith));
+  c.textContent=protoCmd();
+  if(t){a.setAttribute('href',claudeCodeUrl(protoCmd()));a.removeAttribute('aria-disabled');}else{a.removeAttribute('href');a.setAttribute('aria-disabled','true');}
+  document.getElementById('protoNSum').textContent=t?'brouillon en cours':'';
 }
 
 /* ---------- design tab: shows the project's `design` document, edited through a /pilot-design session ---------- */
@@ -824,29 +941,34 @@ function renderChrome(){
     return h('button',{type:'button','aria-pressed':String(S.role===r[0]),onclick:function(){S.role=r[0];S.page=0;store('cp.role',r[0]);render();}},r[1]);}));
   var alive=S.activity.filter(isAlive).length;
   var tabs=document.getElementById('tabs');
-  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')],['design','Design']].map(function(t){
+  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['prototypes','Prototypes'+(protoCounts().encours?' ('+protoCounts().encours+')':'')],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')],['design','Design']].map(function(t){
     return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
-  S._km=null;
+  S._km=null;S._po=null;
   renderChrome();renderConn();renderBanner();
   document.getElementById('idea').hidden=S.tab!=='file';updateIdea();
   document.getElementById('batch').hidden=S.tab!=='file';
   document.getElementById('search').hidden=S.tab!=='recherche';updateSearch();
   document.getElementById('designEdit').hidden=S.tab!=='design';updateDesign();
-  document.getElementById('banner').hidden=S.tab==='design';
+  document.getElementById('protoNew').hidden=S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
+  document.getElementById('banner').hidden=S.tab==='design'||(S.tab==='prototypes'&&!!S.viewProto);
   var items=subItems(S.tab), ph=PHASES.filter(function(p){return p.key===S.sub.ensemble;})[0];
-  if(items.length)subnav(S.tab,items,S.sub[S.tab]); else subnav('',[],'');
+  if(items.length&&!(S.tab==='prototypes'&&S.viewProto))subnav(S.tab,items,S.sub[S.tab]); else subnav('',[],'');
+  if(S.tab==='prototypes'&&!S.viewProto&&S.sub.prototypes==='acceptes')subnav('prototypes',protoSubItems(),S.sub3,'subtabs2','prototypes/acceptes'); else subnav('',[],'','subtabs2');
   var v=document.getElementById('view');
-  v.replaceChildren(S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():vFile());
+  v.replaceChildren(S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():S.tab==='prototypes'?vProtos():vFile());
 }
 
 /* ---------- boot ---------- */
 function fromHash(){
   var p=(location.hash||'').slice(1).split('/'), t=p[0];
-  if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design')S.tab=t;
+  S.viewProto=0;
+  if(t==='proto'){S.tab='prototypes';S.viewProto=Number(p[1])||0;}
+  else if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design'||t==='prototypes')S.tab=t;
   var list=SUBS[S.tab];
   if(list&&p[1]&&p[1]!==S.sub[S.tab]&&list.some(function(s){return s[0]===p[1];}))setSub(S.tab,p[1]);
+  if(S.tab==='prototypes'&&S.sub.prototypes==='acceptes'&&p[2]&&ACC_SUBS.some(function(s){return s[0]===p[2];}))S.sub3=p[2];
 }
 window.addEventListener('hashchange',function(){fromHash();render();});
 fromHash();
@@ -856,6 +978,7 @@ buildIdea();
 buildBatch();
 buildSearch();
 buildDesign();
+buildProtoNew();
 render();
 if(window.claude&&window.claude.use){
   window.claude.use('db').then(function(d){S.db=d;watchSnapshots();watchLive();}).catch(function(){S.db=null;watchSnapshots();});

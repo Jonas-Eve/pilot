@@ -28,18 +28,21 @@ const ticket = (n, labels, extra = {}) => ({ n, t: `Ticket ${n}`, l: labels, u: 
 const STUB = (opts) => `
 (() => {
   const OPTS = ${JSON.stringify(opts)};
-  const data = { snapshots: {}, events: {}, activity: {}, design: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [] };
+  const data = { snapshots: {}, events: {}, activity: {}, design: {}, protos: {}, protoHtml: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [], protos: [], protoHtml: [] };
   (OPTS.preload || []).forEach(d => { data.snapshots[d.repo.replace('/', '__')] = d; });
   (OPTS.events || []).forEach((d, k) => { data.events['e' + k] = d; });
   (OPTS.activity || []).forEach((d, k) => { data.activity['a' + k] = d; });
   (OPTS.design || []).forEach((d, k) => { data.design['d' + k] = d; });
+  (OPTS.protos || []).forEach((d) => { data.protos['p' + d.n] = d; });
+  (OPTS.protoHtml || []).forEach((d) => { data.protoHtml[d.n + '-' + d.k] = d; });
   const snap = (c) => ({ docs: Object.entries(data[c]).map(([id, d]) => ({ id, data: () => d, exists: true })) });
   const fire = (c) => listeners[c].forEach(f => f(snap(c)));
   const sub = (c) => ({ onSnapshot: (next) => { listeners[c].push(next); setTimeout(() => next(snap(c)), 0); return () => {}; } });
   window.__uses = []; window.__push = (c, id, d) => { data[c][id] = d; fire(c); };
   window.claude = { use: async (name) => {
     window.__uses.push(name);
-    if (name === 'db') return { collection: (c) => Object.assign(sub(c), { orderBy: () => ({ limit: () => sub(c) }) }) };
+    if (name === 'db') return { collection: (c) => Object.assign(sub(c), { orderBy: () => ({ limit: () => sub(c) }) }),
+      doc: (path) => ({ get: async () => { const [c, id] = path.split('/'); const d = (data[c] || {})[id]; return { id, exists: !!d, data: () => d }; } }) };
     return null;
   } };
 })();`;
@@ -769,6 +772,139 @@ const STUB = (opts) => `
   await page.goto(FILE + '#activite/changements'); await page.waitForTimeout(400);
   check('activity sub-tabs: #activite/changements opens that sub-tab directly', (await dNow()).startsWith('Changements') && /pris en charge/.test(await text(page, '#view')));
   check('activity sub-tabs: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+
+  // ---- prototypes tab: type:poc tickets joined to their metadata; sub-tabs En cours / Acceptés (3 more) / Rejetés ----
+  const PSNAP = snapshot([
+    ticket(701, ['type:poc', 'level:story', 'status:poc-draft'], { t: 'Proto brouillon' }),
+    ticket(702, ['type:poc', 'level:story', 'status:poc-review'], { t: 'Proto à décider' }),
+    ticket(703, ['type:poc', 'level:story', 'status:poc-validated'], { t: 'Proto accepté sans story' }),
+    ticket(704, ['type:poc', 'level:story', 'status:poc-validated'], { t: 'Proto accepté avec stories' }),
+    ticket(801, ['type:feature', 'level:story', 'status:in-dev'], { t: 'Story du proto 704' }),
+  ], 120);
+  const PM = (n, o = {}) => Object.assign({ kind: 'proto', n, repo: REPO, title: 'Proto ' + n, brief: 'Brief du proto ' + n, parts: 0, at: iso(60) }, o);
+  const PROTOS = [
+    PM(702, { title: 'Proto à décider', parts: 2, height: 300 }),
+    PM(704, { title: 'Proto accepté avec stories', decision: 'accepted', decidedAt: iso(30), stories: [801, 802] }),
+    PM(705, { title: 'Proto terminé', decision: 'accepted', decidedAt: iso(20), stories: [803] }),
+    PM(706, { title: 'Proto rejeté', decision: 'rejected', decidedAt: iso(10), reason: 'Trop complexe pour le gain', parts: 1 }),
+    PM(900, { repo: 'o/other', title: 'Proto d un autre projet' }),
+  ];
+  const PHTML = [
+    { n: 702, k: 0, html: '<!doctype html><h1 id="t">Maquette A</h1><button id="b" onclick="document.getElementById(\'t\').textContent=\'cliqué\'">Cliquer</button>' },
+    { n: 702, k: 1, html: '<p id="end">fin de la maquette</p><script>try{parent.__pwn=1}catch(e){document.body.setAttribute("data-blocked","1")}<\/script>' },
+    { n: 706, k: 0, html: '<p>Maquette rejetée</p>' },
+  ];
+  page = await open({ preload: [PSNAP], protos: PROTOS, protoHtml: PHTML });
+  const mainTabs = () => page.$$eval('nav#tabs a', (as) => as.map((a) => a.textContent));
+  const pSubs = () => page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent));
+  const pSubs2 = () => page.$$eval('#subtabs2 a', (as) => as.map((a) => a.textContent));
+  const pRows = () => page.$$eval('#view .row .t', (ts) => ts.map((t) => t.textContent));
+  await page.click('nav >> text=Prototypes'); await page.waitForTimeout(250);
+  check('prototypes: the third main tab, with the count of those in progress', JSON.stringify((await mainTabs()).slice(0, 4)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes (2)', 'Recherche']), JSON.stringify(await mainTabs()));
+  check('prototypes: sub-tabs En cours / Acceptés / Rejetés with their counts', JSON.stringify(await pSubs()) === JSON.stringify(['En cours (2)', 'Acceptés (3)', 'Rejetés (1)']), JSON.stringify(await pSubs()));
+  check('prototypes: "En cours" lists the draft and the one to decide, not the others', JSON.stringify((await pRows()).map((x) => x.replace(/^#\d+ /, '')).sort()) === JSON.stringify(['Proto brouillon', 'Proto à décider']), JSON.stringify(await pRows()));
+  check('prototypes: a draft is resumed, one under review is accepted or rejected (never sent to the Discovery yet) — all by command',
+        JSON.stringify(await rowHrefs(701)) === JSON.stringify(['/pilot-proto --resume 701']) &&
+        JSON.stringify(await rowHrefs(702)) === JSON.stringify(['/pilot-proto 702 --accept', '/pilot-proto 702 --reject']), JSON.stringify(await rowHrefs(702)));
+  check('prototypes: no link to GitHub anywhere in the list', (await page.$$('#view a[href*="github.com"]')).length === 0);
+  check('prototypes: the brief is shown', /Brief du proto 702/.test(await text(page, '#view')));
+  check('prototypes: a prototype with no mockup says so; one with a mockup does not',
+        /Pas de maquette enregistrée/.test(await page.locator('#view .row', { hasText: '#701 ' }).textContent()) && !/Pas de maquette enregistrée/.test(await page.locator('#view .row', { hasText: '#702 ' }).textContent()));
+  await page.click('#subtabs >> text=Acceptés'); await page.waitForTimeout(200);
+  check('prototypes: Acceptés has its own three sub-tabs, with counts', JSON.stringify(await pSubs2()) === JSON.stringify(['À lancer (1)', 'En cours (1)', 'Terminés (1)']), JSON.stringify(await pSubs2()));
+  await page.screenshot({ path: path.join(TMP, 'protos.png') });
+  check('prototypes: accepted and not started: only the Discovery and a rejection are offered', (await pRows()).join().includes('Proto accepté sans story') && JSON.stringify(await rowHrefs(703)) === JSON.stringify(['/pilot-discovery --from-proto 703', '/pilot-proto 703 --reject']), JSON.stringify(await rowHrefs(703)));
+  await page.click('#subtabs2 >> text=En cours'); await page.waitForTimeout(200);
+  check('prototypes: accepted with a story still open: in progress, its stories are listed',
+        (await pRows()).join().includes('Proto accepté avec stories') && /2 stories : #801 #802/.test(await text(page, '#view')) && (await page.evaluate(() => location.hash)) === '#prototypes/acceptes/encours', await text(page, '#view'));
+  await page.click('#subtabs2 >> text=Terminés'); await page.waitForTimeout(200);
+  check('prototypes: accepted with no story left open: finished (it need not be an open ticket)', (await pRows()).join().includes('Proto terminé') && !/Lancer la Discovery/.test(await text(page, '#view')));
+  await page.click('#subtabs >> text=Rejetés'); await page.waitForTimeout(200);
+  check('prototypes: rejected ones stay, with their reason, and no third level', (await pRows()).join().includes('Proto rejeté') && /Raison : Trop complexe pour le gain/.test(await text(page, '#view')) && (await page.$$('#subtabs2 a')).length === 0);
+  check('prototypes: another project\'s prototype is not shown', !/d un autre projet/.test(await page.textContent('body')));
+  await page.goto(FILE + '#prototypes/encours'); await page.waitForTimeout(300);
+  const row702 = page.locator('#view .row', { hasText: '#702 ' });
+  await row702.locator('button:has-text("la maquette")').click(); await page.waitForTimeout(500);
+  check('viewer: the mockup (read in two parts) is in an isolated frame that may run its own script only',
+        (await page.$eval('#view iframe.prev', (f) => f.getAttribute('sandbox'))) === 'allow-scripts' && /Content-Security-Policy[^>]*default-src 'none'[^>]*script-src 'unsafe-inline'/.test(await page.$eval('#view iframe.prev', (f) => f.getAttribute('srcdoc'))) &&
+        (await page.$eval('#view iframe.prev', (f) => f.style.height)) === '300px');
+  const pf = await (await page.$('#view iframe.prev')).contentFrame();
+  check('viewer: both parts are joined and the page is interactive', /fin de la maquette/.test(await pf.textContent('body')) && (await pf.$('#b')) !== null);
+  await pf.click('#b'); await page.waitForTimeout(100);
+  check('viewer: the mockup\'s own script works (click) but cannot reach the page', (await pf.textContent('#t')) === 'cliqué' && (await pf.$eval('body', (b) => b.getAttribute('data-blocked'))) === '1' && (await page.evaluate(() => window.__pwn)) === undefined);
+  await row702.locator('button:has-text("la maquette")').click(); await page.waitForTimeout(100);
+  check('viewer: hidden again on demand', (await page.$$('#view iframe.prev')).length === 0);
+  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(200);
+  check('new prototype card: folded by default; command with the idea, and with the architect when asked',
+        (await page.$eval('#protoNBody', (e) => e.hidden)) && (await page.$eval('#protoNew', (e) => !e.hidden)) && (await text(page, '#protoCmd')) === '/pilot-proto');
+  await page.click('#protoNToggle'); await page.fill('#protoText', 'Choisir un itinéraire\nsans escalier'); await page.click('#protoWith'); await page.waitForTimeout(100);
+  const pHref = async () => decodeURIComponent((await page.$eval('#protoOpen', (a) => a.getAttribute('href'))).split('?q=')[1].split('&repo=')[0]);
+  check('new prototype card: /pilot-proto <idea> --with architect, and the link carries it', (await text(page, '#protoCmd')) === '/pilot-proto Choisir un itinéraire sans escalier --with architect' && (await pHref()) === (await text(page, '#protoCmd')), await text(page, '#protoCmd'));
+  check('new prototype card hidden on the other tabs', (await tab(page, 'Recherche')) !== null && (await page.$eval('#protoNew', (e) => e.hidden)));
+  await page.evaluate((d) => window.__push('protos', 'p702', Object.assign({}, d, { decision: 'accepted', decidedAt: new Date().toISOString() })), PM(702, { title: 'Proto à décider', parts: 2 }));
+  await page.click('nav >> text=Prototypes'); await page.waitForTimeout(300);
+  check('a live update moves a prototype: accepted, so one fewer in progress', JSON.stringify(await pSubs()) === JSON.stringify(['En cours (1)', 'Acceptés (4)', 'Rejetés (1)']), JSON.stringify(await pSubs()));
+  check('prototypes: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+  page = await open({ preload: [PSNAP], protos: PROTOS });
+  await page.goto(FILE + '#prototypes/acceptes/termines'); await page.waitForTimeout(350);
+  check('#prototypes/acceptes/termines opens that third level directly', (await pRows()).join().includes('Proto terminé') && (await page.$eval('#subtabs2 a[aria-current=page]', (a) => a.textContent)).startsWith('Terminés'));
+  await tab(page, 'Recherche'); await page.fill('#searchText', '702'); await page.waitForTimeout(200);
+  check('search shows a prototype with its state in words and the command to accept it, not the Discovery', /prototype à décider/.test(await text(page, '#view')) && JSON.stringify(await rowHrefs(702)) === JSON.stringify(['/pilot-proto 702 --accept', '/pilot-proto 702 --reject']), await text(page, '#view'));
+  await page.close();
+  page = await open({ preload: [BASE] });
+  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
+  check('prototypes: with none at all, a hint to start one', /Aucun prototype pour l’instant/.test(await text(page, '#view')) && /Prototypes$/.test((await mainTabs())[2]));
+  await page.close();
+
+  // ---- prototype in full screen: its own address, a way back, the whole screen for the frame ----
+  page = await open({ preload: [PSNAP], protos: PROTOS, protoHtml: PHTML });
+  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
+  check('full view: only a prototype that has a mockup offers it', (await page.locator('#view .row', { hasText: '#702 ' }).locator('button:has-text("Plein écran")').count()) === 1 && (await page.locator('#view .row', { hasText: '#701 ' }).locator('button:has-text("Plein écran")').count()) === 0);
+  await page.locator('#view .row', { hasText: '#702 ' }).locator('button:has-text("Plein écran")').click(); await page.waitForTimeout(500);
+  check('full view: the address is #proto/<n> and the prototype is on its own, no sub-tabs and no card',
+        (await page.evaluate(() => location.hash)) === '#proto/702' && (await page.$$('#subtabs a')).length === 0 && (await page.$eval('#protoNew', (e) => e.hidden)) && /#702 Proto à décider/.test(await text(page, '#view')));
+  check('full view: the ticket banner is out of the way', await page.$eval('#banner', (e) => e.hidden));
+  const big = await page.$eval('#view iframe.prev', (f) => f.getBoundingClientRect().height);
+  await page.screenshot({ path: path.join(TMP, 'protofull.png') });
+  check('full view: the frame takes the room of the screen, more than the list\'s 300 px', big >= 420, String(big));
+  const ff = await (await page.$('#view iframe.prev')).contentFrame();
+  check('full view: it is the same live mockup (its own script runs)', (await ff.click('#b'), await ff.textContent('#t')) === 'cliqué');
+  await page.click('#view >> text=← Prototypes'); await page.waitForTimeout(300);
+  check('full view: the way back returns to the list with its sub-tabs', (await page.evaluate(() => location.hash)) === '#prototypes' && (await page.$$('#subtabs a')).length === 3);
+  await page.goto(FILE + '#proto/702'); await page.waitForTimeout(500);
+  check('full view: a direct link #proto/702 opens it', /#702 Proto à décider/.test(await text(page, '#view')) && (await page.$('#view iframe.prev')) !== null && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)).startsWith('Prototypes'));
+  await page.goto(FILE + '#proto/999'); await page.waitForTimeout(300);
+  check('full view: an unknown prototype says so and offers the way back', /Prototype introuvable/.test(await text(page, '#view')) && (await page.$('#view >> text=← Prototypes')) !== null);
+  check('full view: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+
+  // ---- the Discovery only for an accepted prototype; the prototype visible from everywhere it matters ----
+  const VSNAP = snapshot([
+    ticket(710, ['type:poc', 'level:story', 'status:poc-review'], { t: 'Proto en revue' }),
+    ticket(711, ['type:poc', 'level:story', 'status:poc-validated'], { t: 'Proto accepté' }),
+    ticket(801, ['type:feature', 'level:story', 'status:backlog', 'priority:P1'], { t: 'Story issue du proto' }),
+  ], 120);
+  const VP = [PM(710, { title: 'Proto en revue', parts: 1 }), PM(711, { title: 'Proto accepté', decision: 'accepted', parts: 1 }), PM(712, { title: 'Proto source', decision: 'accepted', stories: [801], parts: 1 })];
+  const VH = [710, 711, 712].map((n) => ({ n, k: 0, html: '<p id="t">Maquette ' + n + '</p>' }));
+  page = await open({ preload: [VSNAP], protos: VP, protoHtml: VH });
+  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
+  const allHrefs = async () => (await page.$$eval('#view a.btn', (as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1] || '').split('&repo=')[0]))).join(' | ');
+  check('discovery rule: a prototype under review offers Accepter / Rejeter and no Discovery', /pilot-proto 710 --accept/.test(await allHrefs()) && /pilot-proto 710 --reject/.test(await allHrefs()) && !/from-proto 710/.test(await allHrefs()), await allHrefs());
+  await page.click('#subtabs >> text=Acceptés'); await page.waitForTimeout(250);
+  check('discovery rule: the Discovery is offered once accepted', /pilot-discovery --from-proto 711/.test(await allHrefs()), await allHrefs());
+  await tab(page, 'Recherche'); await page.fill('#searchText', 'proto'); await page.waitForTimeout(250);
+  check('from everywhere: in Recherche a prototype is its prototype row (state, command, and its mockup one tap away)',
+        (await page.locator('#view .row', { hasText: '#710 ' }).locator('button:has-text("Plein écran")').count()) === 1 && !/from-proto 710/.test(await allHrefs()));
+  await page.locator('#view .row', { hasText: '#711 ' }).locator('button:has-text("la maquette")').click(); await page.waitForTimeout(500);
+  check('from everywhere: the mockup opens in place from Recherche', (await page.$('#view iframe.prev')) !== null);
+  await page.goto(FILE + '#file'); await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(250);
+  const storyRow = page.locator('#view .row', { hasText: '#801 ' });
+  check('from everywhere: a story created from a prototype offers it (Ma file)', (await storyRow.locator('button:has-text("Voir le proto")').count()) === 1);
+  await storyRow.locator('button:has-text("Voir le proto")').click(); await page.waitForTimeout(500);
+  check('from everywhere: it opens that prototype in full screen', (await page.evaluate(() => location.hash)) === '#proto/712' && /#712 Proto source/.test(await text(page, '#view')) && (await page.$('#view iframe.prev')) !== null);
+  check('from everywhere: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
   // ---- renderer: the project name is HTML-escaped ----
