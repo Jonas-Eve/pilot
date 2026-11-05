@@ -88,6 +88,7 @@ nav.tabs.sub a{padding:6px 12px;font-size:13px}
 .note.ok{color:var(--ok)} .note.crit{color:var(--crit)}
 .refresh{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
 .idea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.idea input[type=url]{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font:inherit;color:inherit}
 .idea textarea{width:100%;min-height:72px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;font:inherit;color:inherit;resize:vertical}
 [hidden]{display:none!important}
 .foot{color:var(--muted);font-size:12px;font-family:var(--mono);text-align:center;padding-top:8px}
@@ -231,7 +232,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, viewProto:0, sub3:'alancer', sub:{ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewProto:0, sub3:'alancer', sub:{ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -791,29 +792,43 @@ function vProtos(){
   return h('div',{class:'list'},h('h2',{},ttl+' · '+rows.length),rows.length?rows.map(protoRow):h('div',{class:'empty'},none));
 }
 function protoText(){var el=document.getElementById('protoText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
-function protoCmd(){var t=protoText();return '/pilot-proto'+(t?' '+t:'')+(S.protoWith?' --with architect':'');}
+/* an imported artifact is one of the human's own pages, addressed as claude.ai/artifact/<id> */
+var ART_RE=/^https:\/\/claude\.ai\/(?:code\/)?artifact\/[A-Za-z0-9_-]+$/;
+function protoUrl(){var el=document.getElementById('protoUrl');return el?el.value.trim():'';}
+function protoReady(){return S.protoImp?ART_RE.test(protoUrl()):!!protoText();}
+function protoCmd(){var t=protoText();return S.protoImp?'/pilot-proto --from-artifact '+protoUrl()+(t?' '+t:''):'/pilot-proto'+(t?' '+t:'')+(S.protoWith?' --with architect':'');}
 function buildProtoNew(){
   var box=document.getElementById('protoNew');
   foldCard(box,'protoN','Nouveau prototype').append(
-    h('label',{for:'protoText',class:'note'},'Décrivez la fonction à tester : le PM vous aide à la cadrer, puis le designer la construit avec vous.'),
-    h('textarea',{id:'protoText',rows:3,maxlength:1500,placeholder:'Ex. : choisir un itinéraire sans escalier',oninput:updateProtoNew}),
-    h('div',{class:'filters'},h('span',{class:'note'},'Avec'),
+    h('div',{class:'seg',role:'group','aria-label':'Origine du prototype'},
+      h('button',{type:'button',id:'protoSrcIdea',onclick:function(){S.protoImp=0;updateProtoNew();}},'À partir d’une idée'),
+      h('button',{type:'button',id:'protoSrcImp',onclick:function(){S.protoImp=1;updateProtoNew();}},'Importer un artefact')),
+    h('div',{class:'filters',id:'protoUrlWrap'},h('label',{for:'protoUrl',class:'note'},'Adresse de l’artefact (un des vôtres, une seule page autonome de moins de 1 Mo)'),
+      h('input',{id:'protoUrl',type:'url',placeholder:'https://claude.ai/artifact/…',oninput:updateProtoNew})),
+    h('label',{for:'protoText',class:'note',id:'protoLbl'}),
+    h('textarea',{id:'protoText',rows:3,maxlength:1500,oninput:updateProtoNew}),
+    h('div',{class:'filters',id:'protoWithWrap'},h('span',{class:'note'},'Avec'),
       h('button',{class:'tog',type:'button',id:'protoWith','aria-pressed':'false',onclick:function(){S.protoWith=S.protoWith?0:1;updateProtoNew();}},'Architecte'),
       h('span',{class:'note'},'rejoint la discussion dès le départ')),
     h('p',{class:'note'},'La commande est écrite, pas envoyée.'),
     h('div',{class:'cmd',id:'protoCmd'}),
     h('div',{class:'refresh'},
       h('a',{class:'btn primary',id:'protoOpen',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
-      h('button',{class:'btn ghost',type:'button',onclick:function(e){if(protoText())copyCmd(protoCmd(),e.target);}},'Copier la commande')));
+      h('button',{class:'btn ghost',type:'button',onclick:function(e){if(protoReady())copyCmd(protoCmd(),e.target);}},'Copier la commande')));
   updateProtoNew();
 }
 function updateProtoNew(){
   var c=document.getElementById('protoCmd'); if(!c)return;
-  var t=protoText(), a=document.getElementById('protoOpen');
+  var ok=protoReady(), a=document.getElementById('protoOpen'), imp=!!S.protoImp;
   document.getElementById('protoWith').setAttribute('aria-pressed',String(!!S.protoWith));
+  document.getElementById('protoSrcIdea').setAttribute('aria-pressed',String(!imp));
+  document.getElementById('protoSrcImp').setAttribute('aria-pressed',String(imp));
+  document.getElementById('protoUrlWrap').hidden=!imp; document.getElementById('protoWithWrap').hidden=imp;
+  document.getElementById('protoLbl').textContent=imp?'Une note pour le PM (facultatif) : ce que ce prototype doit permettre de décider.':'Décrivez la fonction à tester : le PM vous aide à la cadrer, puis le designer la construit avec vous.';
+  document.getElementById('protoText').setAttribute('placeholder',imp?'Ex. : vérifier que l’itinéraire se comprend sans explication':'Ex. : choisir un itinéraire sans escalier');
   c.textContent=protoCmd();
-  if(t){a.setAttribute('href',claudeCodeUrl(protoCmd()));a.removeAttribute('aria-disabled');}else{a.removeAttribute('href');a.setAttribute('aria-disabled','true');}
-  document.getElementById('protoNSum').textContent=t?'brouillon en cours':'';
+  if(ok){a.setAttribute('href',claudeCodeUrl(protoCmd()));a.removeAttribute('aria-disabled');}else{a.removeAttribute('href');a.setAttribute('aria-disabled','true');}
+  document.getElementById('protoNSum').textContent=(imp?protoUrl():protoText())?'brouillon en cours':'';
 }
 
 /* ---------- design tab: shows the project's `design` document, edited through a /pilot-design session ---------- */

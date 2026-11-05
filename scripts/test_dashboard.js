@@ -841,6 +841,17 @@ const STUB = (opts) => `
   await page.click('#protoNToggle'); await page.fill('#protoText', 'Choisir un itinéraire\nsans escalier'); await page.click('#protoWith'); await page.waitForTimeout(100);
   const pHref = async () => decodeURIComponent((await page.$eval('#protoOpen', (a) => a.getAttribute('href'))).split('?q=')[1].split('&repo=')[0]);
   check('new prototype card: /pilot-proto <idea> --with architect, and the link carries it', (await text(page, '#protoCmd')) === '/pilot-proto Choisir un itinéraire sans escalier --with architect' && (await pHref()) === (await text(page, '#protoCmd')), await text(page, '#protoCmd'));
+  await page.click('#protoSrcImp'); await page.waitForTimeout(100);
+  const openOff = () => page.$eval('#protoOpen', (a) => a.getAttribute('aria-disabled') === 'true');
+  check('import: the address field replaces "with", and the link stays off until the address is a claude.ai artifact',
+        !(await page.$eval('#protoUrlWrap', (e) => e.hidden)) && (await page.$eval('#protoWithWrap', (e) => e.hidden)) && (await openOff()));
+  await page.fill('#protoUrl', 'https://evil.example/artifact/abc'); await page.waitForTimeout(50);
+  check('import: another host is refused', await openOff());
+  await page.fill('#protoUrl', 'https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K'); await page.waitForTimeout(100);
+  check('import: /pilot-proto --from-artifact <url> <note>, and the link carries it',
+        (await text(page, '#protoCmd')) === '/pilot-proto --from-artifact https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K Choisir un itinéraire sans escalier' && (await pHref()) === (await text(page, '#protoCmd')), await text(page, '#protoCmd'));
+  await page.click('#protoSrcIdea'); await page.waitForTimeout(100);
+  check('back to an idea: the architect option returns', !(await page.$eval('#protoWithWrap', (e) => e.hidden)) && (await text(page, '#protoCmd')).indexOf('--from-artifact') < 0);
   check('new prototype card hidden on the other tabs', (await tab(page, 'Recherche')) !== null && (await page.$eval('#protoNew', (e) => e.hidden)));
   await page.evaluate((d) => window.__push('protos', 'p702', Object.assign({}, d, { decision: 'accepted', decidedAt: new Date().toISOString() })), PM(702, { title: 'Proto à décider', parts: 2 }));
   await page.click('nav >> text=Prototypes'); await page.waitForTimeout(300);
