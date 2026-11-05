@@ -32,7 +32,7 @@ fi
 
 # name|color(hex, no #)|description
 LABELS=(
-  "type:feature|1D76DB|PILOT: functional user story, formalized in Discovery (phase 1) by PM+architect"
+  "type:feature|1D76DB|PILOT: functional user story, formalized in Discovery (phase 1): drafted by the PM, validated by the architect"
   "type:tech|0E8A16|PILOT: technical need, formalized in Discovery alongside a feature, or standalone via Spec"
   "type:bug|D93F0B|PILOT: defect in shipped code, classified at Spec's own entry; always level:task, never splits"
   "type:e2e|FBCA04|PILOT: mandatory end-to-end task on every type:feature split; routes phase 3 to pilot-e2e"
