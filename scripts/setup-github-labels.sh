@@ -32,11 +32,11 @@ fi
 
 # name|color(hex, no #)|description
 LABELS=(
-  "type:feature|1D76DB|PILOT: functional user story, formalized in Discovery (phase 1): drafted by the PM, validated by the architect"
+  "type:feature|1D76DB|PILOT: functional user story, formalized in Discovery: drafted by the PM, validated by the architect"
   "type:tech|0E8A16|PILOT: technical need, formalized in Discovery alongside a feature, or standalone via Spec"
   "type:bug|D93F0B|PILOT: defect in shipped code, classified at Spec's own entry; always level:task, never splits"
   "type:e2e|FBCA04|PILOT: mandatory end-to-end task on every type:feature split; routes phase 3 to pilot-e2e"
-  "type:poc|D4C5F9|PILOT: prototype of a feature to test it before Discovery; never spec'd, built or reviewed; created by /pilot-proto"
+  "type:poc|D4C5F9|PILOT: prototype of a feature, decided before any Discovery; created by /pilot-proto, never built"
   "level:epic|5319E7|PILOT: always type:feature; groups several level:story tickets by theme; never spec'd or built"
   "level:story|BFD4F2|PILOT: root unit from Discovery (or Spec's tech entry); stays unsplit or becomes status:split"
   "level:task|C2C2C2|PILOT: dev-sized unit of a status:split story, or a standalone type:bug ticket; never split further"

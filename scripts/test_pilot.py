@@ -664,6 +664,16 @@ class LabelScriptTests(unittest.TestCase):
             in_script = set(re.findall(r'^  "([^|"]+)\|', handle.read(), re.M))
         self.assertEqual(in_script, set(pilot.REQUIRED_LABELS))
 
+    def test_every_label_description_fits_github_limit(self):
+        import os
+        import re
+        path = os.path.join(os.path.dirname(__file__), "setup-github-labels.sh")
+        with open(path, encoding="utf-8") as handle:
+            rows = re.findall(r'^  "([^|"]+)\|[0-9A-Fa-f]{6}\|(.*)"\s*$', handle.read(), re.M)
+        self.assertEqual(len(rows), len(pilot.REQUIRED_LABELS))
+        for name, description in rows:
+            self.assertLessEqual(len(description), 100, name)  # GitHub: "description is too long (maximum is 100 characters)"
+
 
 class MiscTests(unittest.TestCase):
     def test_repo_from_remote(self):
