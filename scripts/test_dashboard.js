@@ -932,6 +932,11 @@ const STUB = (opts) => `
   check('reference page: its own page (#aide) with the 7 agents, replacing the tab content, no tab marked current',
         /Agents et steps/.test(await text(page, '#view')) && (await page.$$('#view .agents .row')).length === 7 && (await page.$eval('#idea', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)) &&
         (await page.$$('#tabs a[aria-current="page"]')).length === 0 && (await page.$eval('#helpLink', (a) => a.getAttribute('aria-current'))) === 'page');
+  check('reference page: sub-tabs Agents (open) and Steps; the agents are not mixed with the table',
+        JSON.stringify(await page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent + (a.getAttribute('aria-current') ? '*' : '')))) === JSON.stringify(['Agents*', 'Steps']) && (await page.$$('#view table')).length === 0);
+  await page.click('#subtabs >> text=Steps'); await page.waitForTimeout(150);
+  check('reference page: Steps shows the table and the rule, #aide/steps, no agent cards',
+        (await page.evaluate(() => location.hash)) === '#aide/steps' && (await page.$$('#view table')).length === 1 && (await page.$$('#view .agents .row')).length === 0 && /le lead ouvre la discussion/.test(await text(page, '#view')));
   const docRows = fs.readFileSync(path.resolve(__dirname, '../assets/docs/pilot-process.md'), 'utf8').split('\n')
     .filter((l) => /^\| (Discovery|Spec|Dev|Review|QA|Proto|Design)\b/.test(l)).map((l) => l.split('|').slice(1, 5).map((c) => new Set((c.match(/pilot-(\w+)/g) || []).map((x) => x.slice(6)))));
   const KEYS = [['pm', 'PM'], ['architect', 'Architecte'], ['techlead', 'Tech lead'], ['dev', 'Dev'], ['e2e', 'E2E'], ['qa', 'QA'], ['designer', 'Designer']];
@@ -949,7 +954,7 @@ const STUB = (opts) => `
   // every tab and sub-tab fits a phone, in both themes, with no script error
   const ROUTES = ['file', 'ensemble', 'ensemble/discovery', 'ensemble/spec', 'ensemble/dev', 'ensemble/review', 'ensemble/qa',
     'prototypes/encours', 'prototypes/acceptes/alancer', 'prototypes/acceptes/encours', 'prototypes/acceptes/termines', 'prototypes/rejetes', 'proto/702',
-    'recherche', 'activite/sessions', 'activite/changements', 'aide',
+    'recherche', 'activite/sessions', 'activite/changements', 'aide/agents', 'aide/steps',
     'design/charter', 'design/colors', 'design/type', 'design/space', 'design/components', 'design/a11y'];
   const wide = [];
   for (const scheme of ['light', 'dark']) {
