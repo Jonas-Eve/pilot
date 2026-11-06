@@ -12,7 +12,7 @@ const path = require('path');
 const TEMPLATE = path.resolve(__dirname, '../assets/templates/pilot-dashboard.html.tmpl');
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
 const render = (name, repo, file) => {
-  const out = fs.readFileSync(TEMPLATE, 'utf8').split('{{PROJECT_NAME}}').join(esc(name)).split('{{REPO}}').join(repo).split('{{PILOT_VERSION}}').join('1.2.3');
+  const out = fs.readFileSync(TEMPLATE, 'utf8').split('{{PROJECT_NAME}}').join(esc(name)).split('{{REPO}}').join(repo).split('{{PILOT_VERSION}}').join('1.2.3').split('{{DEPLOYED_AT}}').join('2026-01-02T03:04:05Z');
   if (out.includes('{{')) throw new Error('unrendered placeholder');
   fs.writeFileSync(file, out); return 'file://' + file;
 };
@@ -76,7 +76,7 @@ const STUB = (opts) => `
   check('fresh snapshot: a refresh button is always there (opens /pilot-dashboard --refresh), with its copy fallback',
         /Actualiser l’instantané/.test(banner) && /Copier \/pilot-dashboard --refresh/.test(banner) &&
         (await page.$$eval('#banner a.btn', (as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])))).includes('/pilot-dashboard --refresh'), banner);
-  check('the footer shows the PILOT version', (await text(page, '#version')) === 'Cockpit PILOT · v1.2.3', await text(page, '#version'));
+  check('the footer shows the PILOT version and the deployment date', (await text(page, '#version')) === 'Cockpit PILOT · v1.2.3 · déployé le 2026-01-02T03:04:05Z', await text(page, '#version'));
   check('no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 

@@ -95,7 +95,7 @@ itself.
   matching canonical snippet here — never bare in the template** — that's what keeps a
   consuming project's own prose free of content only PILOT can keep current (see
   §3 below). `pilot-dashboard.html.tmpl` is different: the page `/pilot-dashboard`
-  renders (`{{PROJECT_NAME}}`, `{{REPO}}`, `{{PILOT_VERSION}}` — the `VERSION` file) and publishes as one private Artifact per
+  renders (`{{PROJECT_NAME}}`, `{{REPO}}`, `{{PILOT_VERSION}}` — the `VERSION` file — and `{{DEPLOYED_AT}}`, the publication time, substituted only into the published copy so the recorded hash ignores it) and publishes as one private Artifact per
   project; `/pilot-update` republishes it at the same address, so a page change ships
   with a PILOT release and the project's data (snapshot, events, activity) is kept. It
   is checked by `scripts/test_dashboard.js` (renders it, loads it in headless Chromium with
