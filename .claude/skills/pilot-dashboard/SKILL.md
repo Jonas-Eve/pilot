@@ -24,9 +24,13 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
    Repo = `owner/repo` from `git config --get remote.origin.url`; it must match
    `[\w.-]+/[\w.-]+`, else stop and ask the human. Replace `{{PROJECT_NAME}}` and `{{REPO}}`
    and `{{PILOT_VERSION}}` (the contents of `$PILOT_SRC/VERSION`, shown in the page's footer) in
-   the template, write the result to a temporary file, check no `{{` remains, and take its
-   `sha256sum`.
-3. **Publish** (skipped by `--refresh` when the hash is unchanged):
+   the template, write the result to a temporary file, check that `{{DEPLOYED_AT}}` is the only
+   `{{` left, and take its `sha256sum` — the hash is of that file, `{{DEPLOYED_AT}}` still in
+   place, so the deployment date never makes two identical renders differ.
+3. **Publish** (skipped by `--refresh` when the hash is unchanged). Before each publish, set the
+   deployment time `now` (UTC ISO 8601, e.g. `date -u +%Y-%m-%dT%H:%M:%SZ`) and publish a copy of
+   the rendered file with `{{DEPLOYED_AT}}` replaced by it (shown in the page's footer next to the
+   version); the copy's hash is never the one recorded:
    - No `dashboardUrl` → ask the human to confirm creating a private artifact named
      "Cockpit <project name>", then publish the file with `icon: "board"`, a one-sentence
      `description`, and the capabilities below.
@@ -44,9 +48,13 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
    that `file_path` (`get` it first and pass `if_version` if it already exists).
 5. **Prune** (with step 4). `events` documents whose `at` is older than the snapshot's `at`
    are obsolete, and so are `activity` documents whose `lastBeat` is over 24 h old: list the
-   collections (`out_dir`), then `delete` them in `batch`es of 50 (`if_version` each).
-6. **Record.** Write `dashboardUrl`, `dashboardHash` and `dashboardSyncedAt` (now, UTC ISO 8601)
-   into `.pilot/state.json`, leaving every other field alone.
+   collections (read them into the conversation: `out_dir` is refused for documents others may
+   have written), then `delete` them in `batch`es of 50 (`if_version` each).
+6. **Record**, only when step 3 published. Write `dashboardUrl`, `dashboardHash` and
+   `dashboardSyncedAt` (the deployment time `now` of step 3: when the dashboard's current
+   version went live, not when its data was last refreshed — that is the snapshot's `at`)
+   into `.pilot/state.json`, leaving every other field alone. A `--refresh` that published
+   nothing writes nothing there, so it never leaves a change to commit.
 7. **Report.** The address; created, updated or unchanged; the snapshot's ticket count. The
    page is private until shared from the artifact's Share menu — people whose sessions should
    push events or edit the design system need the Contributor level. The page only reads the project's own data: a ticket
