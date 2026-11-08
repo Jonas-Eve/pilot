@@ -1398,6 +1398,61 @@ class ReadingContractTests(unittest.TestCase):
             self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(argv)))
 
 
+class ContractTests(unittest.TestCase):
+    """A phase knows only its own contract; the chain is their composition."""
+
+    def test_the_contracts_compose(self):
+        self.assertEqual(pilot.composition_problems(), [])
+
+    def test_a_missing_producer_or_consumer_is_found(self):
+        saved = pilot.CONTRACTS["review"]["produces"]
+        try:
+            pilot.CONTRACTS["review"]["produces"] = ["status:approved"]  # nobody now produces changes-requested
+            codes = {(p["status"], p["code"]) for p in pilot.composition_problems()}
+            self.assertIn(("status:changes-requested", "no-producer"), codes)
+            pilot.CONTRACTS["review"]["produces"] = ["status:approved", "status:changes-requested", "status:nowhere"]
+            self.assertIn(("status:nowhere", "unknown-status"),
+                          {(p["status"], p["code"]) for p in pilot.composition_problems()})
+        finally:
+            pilot.CONTRACTS["review"]["produces"] = saved
+
+    def test_a_phase_contract_is_what_the_phase_reads_claims_and_leaves(self):
+        dev = pilot.phase_contract("dev")
+        self.assertEqual((dev["claims"], dev["produces"]), ("status:in-dev", ["status:review-ready"]))
+        self.assertEqual(dev["consumes"], ["status:changes-requested", "status:dev-ready", "status:in-dev"])
+        self.assertIn("status:split", pilot.phase_contract("spec")["consumes"])
+        self.assertEqual(pilot.phase_contract("discovery")["claims"], None)
+        with self.assertRaises(pilot.Refused):
+            pilot.phase_contract("nope")
+
+    def test_every_transition_a_skill_makes_is_admitted(self):
+        for current, new in (("status:in-spec", "status:dev-ready"), ("status:in-spec", "status:split"),
+                             ("status:in-spec", "status:wont-do"), ("status:backlog", "status:wont-do"),
+                             ("status:in-dev", "status:review-ready"), ("status:in-review", "status:approved"),
+                             ("status:in-review", "status:changes-requested"), ("status:in-qa", "status:done"),
+                             ("status:approved", "status:done"), ("status:split", "status:qa"),
+                             ("status:poc-draft", "status:poc-review"), ("status:poc-review", "status:poc-validated"),
+                             ("status:poc-validated", "status:poc-rejected"), ("", "status:draft")):
+            self.assertTrue(pilot.transition_allowed(current, new), (current, new))
+        for current, new in (("status:in-spec", "status:review-ready"), ("status:dev-ready", "status:approved"),
+                             ("status:in-dev", "status:done"), ("status:done", "status:in-dev")):
+            self.assertFalse(pilot.transition_allowed(current, new), (current, new))
+
+    def test_set_warns_about_a_transition_no_contract_admits_and_still_does_it(self):
+        m = pilot.Machine(FakeGh([issue(1, ["status:dev-ready"])]))
+        got = m.set(1, status="approved")
+        self.assertEqual(got["status"], "status:approved")
+        self.assertEqual((got["warning"]["code"], got["warning"]["from"], got["warning"]["to"]),
+                         ("unexpected-transition", "status:dev-ready", "status:approved"))
+        m = pilot.Machine(FakeGh([issue(2, ["status:in-dev"])]))
+        self.assertNotIn("warning", m.set(2, status="review-ready"))
+
+    def test_cli_contract_needs_no_github_and_fails_only_on_a_broken_chain(self):
+        self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(["contract"])))
+        self.assertTrue(pilot.run_contract(pilot.build_parser().parse_args(["contract"]))["ok"])
+        self.assertEqual(pilot.run_contract(pilot.build_parser().parse_args(["contract", "qa"]))["produces"], ["status:done"])
+
+
 class VersionBumpTests(unittest.TestCase):
     """A change to what projects copy must raise VERSION (CLAUDE.md §4). Compares with origin/main;
     skipped where that ref or git is not available."""

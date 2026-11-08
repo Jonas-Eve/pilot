@@ -9,6 +9,7 @@
   pilot.py flag    <issue> --comment TEXT      # needs-human + the mandatory why/what's-needed comment
   pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
   pilot.py doctor  [--verbose] [--no-wiki]      # preflight: can the commands above work here? (+ wiki/, when that module is on)
+  pilot.py contract [PHASE]                    # a phase's contract (statuses it consumes / claims / produces); bare: all, and whether they compose
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
@@ -57,6 +58,65 @@ STATUSES = {
     "changes-requested", "approved", "wont-do", "split", "qa", "in-qa", "done",
     "poc-draft", "poc-review", "poc-validated", "poc-rejected",
 }
+# What each phase produces (the statuses it sets), on top of what PHASES already says it consumes (fresh, reclaim,
+# in progress, resumable). `consumes` adds what a phase reads that PHASES does not list. A phase knows only these two
+# sides of itself; the chain is their composition, checked by `composition_problems`.
+CONTRACTS = {
+    "discovery": {"consumes": ["status:poc-validated"],
+                  "produces": ["status:draft", "status:backlog", "status:wont-do"]},
+    "spec": {"consumes": ["status:qa", "status:in-qa", "status:split"],
+             "produces": ["status:draft", "status:backlog", "status:dev-ready", "status:split", "status:wont-do"]},
+    "dev": {"consumes": [], "produces": ["status:review-ready"]},
+    "review": {"consumes": [], "produces": ["status:approved", "status:changes-requested"]},
+    "qa": {"consumes": [], "produces": ["status:done"]},
+    "proto": {"consumes": ["status:poc-review", "status:poc-validated"],
+              "produces": ["status:poc-draft", "status:poc-review", "status:poc-validated", "status:poc-rejected"]},
+}
+# transitions the merge/close workflow makes, not a phase
+EXTERNAL = (("status:approved", "status:done"), ("status:split", "status:done"), ("status:split", "status:qa"))
+SINKS = ("status:done", "status:wont-do", "status:poc-rejected")  # statuses nothing consumes
+
+
+def phase_contract(phase):
+    """One phase's contract: the statuses it consumes, the one it claims into, the ones it produces."""
+    if phase not in CONTRACTS:
+        raise Refused({"ok": False, "reason": "unknown-phase", "expected": sorted(CONTRACTS)})
+    cfg, extra = PHASES.get(phase, {}), CONTRACTS[phase]
+    consumes = {cfg.get("fresh"), cfg.get("reclaim"), cfg.get("inprog")} | set(cfg.get("resumable", ())) | set(extra["consumes"])
+    consumes.discard(None)
+    return {"ok": True, "phase": phase, "consumes": sorted(consumes), "claims": cfg.get("inprog"),
+            "produces": sorted(extra["produces"])}
+
+
+def composition_problems():
+    """The chain as the composition of the contracts: every status has a producer and a consumer, a sink apart."""
+    known = {f"status:{name}" for name in STATUSES}
+    produced = {cfg["inprog"] for cfg in PHASES.values()} | {b for _a, b in EXTERNAL}
+    consumed = {a for a, _b in EXTERNAL}
+    for phase in CONTRACTS:
+        contract = phase_contract(phase)
+        produced |= set(contract["produces"])
+        consumed |= set(contract["consumes"])
+    problems = [{"status": st, "code": "no-producer"} for st in sorted(known - produced)]
+    problems += [{"status": st, "code": "no-consumer"} for st in sorted(known - consumed - set(SINKS))]
+    problems += [{"status": st, "code": "unknown-status"} for st in sorted((produced | consumed) - known)]
+    return problems
+
+
+def transition_allowed(current, new):
+    """Whether some contract admits `current` -> `new` (a phase that consumes or claims `current` and produces `new`,
+    or the merge workflow). Creation (no status yet), no change and clearing the status are always fine."""
+    if not current or current == new or new == "status:none":
+        return True
+    if (current, new) in EXTERNAL:
+        return True
+    for phase in CONTRACTS:
+        contract = phase_contract(phase)
+        if current in contract["consumes"] + [contract["claims"]] and new in contract["produces"]:
+            return True
+    return False
+
+
 POC_OPEN = ("status:poc-draft", "status:poc-review", "status:poc-validated")  # a prototype can still be rejected
 RESCOPABLE = ("status:qa", "status:in-qa", "status:split")  # spec re-scopes these in place
 REQUIRED_LABELS = (
@@ -621,6 +681,7 @@ class Machine:
         if raw is None:
             raise Refused({"ok": False, "reason": "not-found", "issue": number})
         labels = set(normalize(raw)["labels"])
+        before = status_of(labels)
         if status is not None:
             name = status[len("status:"):] if status.startswith("status:") else status
             if name != "none" and name not in STATUSES:
@@ -634,9 +695,13 @@ class Machine:
         assignees = [self.gh.me()] if assign == "me" else [] if assign == "none" else None
         extra = {"state": "closed", "state_reason": "completed"} if close else None
         after = self._write(number, labels, assignees, extra)
-        return {"ok": True, "issue": number, "status": status_of(after["labels"]),
-                "labels": sorted(after["labels"]), "assignees": after["assignees"],
-                "state": after["state"], "event": self._event(after, "set", pr=pr)}
+        result = {"ok": True, "issue": number, "status": status_of(after["labels"]),
+                  "labels": sorted(after["labels"]), "assignees": after["assignees"],
+                  "state": after["state"], "event": self._event(after, "set", pr=pr)}
+        if not transition_allowed(before, result["status"]):
+            result["warning"] = {"code": "unexpected-transition", "from": before, "to": result["status"],
+                                 "hint": "no phase contract (`pilot.py contract`) takes a ticket from one to the other"}
+        return result
 
     def proto(self, number, verdict, reason=None):
         """accept / reject a prototype, or check it is accepted before a Discovery starts from it."""
@@ -1723,6 +1788,8 @@ def build_parser():
         w.add_argument("folder")
         w.add_argument("description")
 
+    p = sub.add_parser("contract", help="a phase's contract (consumes, claims, produces), or all of them and the check that they compose")
+    p.add_argument("phase", nargs="?", choices=sorted(CONTRACTS))
     p = sub.add_parser("wiki")
     p.add_argument("--dir", default=WIKI_DIR, help="the wiki directory (default: wiki)")
     ws = p.add_subparsers(dest="bundle_cmd", required=True)
@@ -1837,8 +1904,16 @@ def run_bundle(args, gh):
                     args.title, args.description)
 
 
+def run_contract(args):
+    if args.phase:
+        return phase_contract(args.phase)
+    problems = composition_problems()
+    return {"ok": not problems, "phases": {p: phase_contract(p) for p in sorted(CONTRACTS)}, "external": [list(t) for t in EXTERNAL],
+            "sinks": list(SINKS), "problems": problems}
+
+
 def needs_github(args):
-    if args.cmd == "module":
+    if args.cmd in ("module", "contract"):
         return False
     if args.cmd == "arch":
         return False
@@ -1856,6 +1931,8 @@ def run_module(args):
 def run(args, gh):
     if args.cmd == "module":
         return run_module(args)
+    if args.cmd == "contract":
+        return run_contract(args)
     if args.cmd in ("wiki", "arch"):
         return run_bundle(args, gh)
     machine = Machine(gh)
@@ -1903,7 +1980,7 @@ def main(argv=None):
         print(json.dumps({"error": str(err) or "gh CLI not found"}))
         return 2
     print(json.dumps({"repo": repo, **result} if repo else result, ensure_ascii=False))
-    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki", "arch") else 0
+    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki", "arch", "contract") else 0
 
 
 if __name__ == "__main__":

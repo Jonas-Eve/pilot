@@ -117,7 +117,7 @@ itself.
   into an Epic, stop — and why), `claim` (assignee + status swap, re-read), `set`
   (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with its
   mandatory comment), `snapshot` (every open ticket as the dashboard's snapshot document),
-  `proto` (accept or reject a prototype, or check it is accepted before a Discovery starts from it), `proto-pack`
+  `contract` (each phase's contract — the statuses it consumes, claims into and produces, `CONTRACTS` in the script — and the check that they compose, no status without a producer or a consumer, `done`/`wont-do` apart; `set` warns, never refuses, on a transition no contract admits), `proto` (accept or reject a prototype, or check it is accepted before a Discovery starts from it), `proto-pack`
   (check a prototype's mockup and split it into the cockpit's documents), `wiki`
   (the project's wiki under `wiki/`, an OKF bundle: `index` (`--under`, `--depth 1` for one level), `search` (ranked, lexical, with an extract), `describe` (a folder's one sentence), `reindex`, `show` (with what an entry cites and what cites it), `status`, `lint` (size warnings never fail it), `snapshot` (the dashboard's Wiki tab document), `add`/`set`/`remove`, the only
   writers of an entry's frontmatter and of the folder `index.md` files, and `migrate` — design in `docs/wiki-design.md`; used by `pilot-wiki` and, when the `wiki` module is enabled, by all five phases) and
