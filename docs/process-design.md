@@ -71,7 +71,7 @@ phases reads it. These are targets, not promises: each move is checked against t
 Today `pilot.py set` accepts any known status from any other: the graph exists only in prose, and an agent reading
 it is the only guard. Instead:
 
-1. `PHASES` in the script gains, per phase, the statuses it **consumes** and **produces** (it already has the
+**Done in step 2 (`pilot.py contract`, `CONTRACTS`, `composition_problems`, the `set` warning).** 1. `PHASES` in the script gains, per phase, the statuses it **consumes** and **produces** (it already has the
    pre-claim status), plus the cross-cutting exits (`needs-human`, `wont-do`).
 2. `pilot.py contract <phase>` prints that one phase's contract; its skill refers to it instead of restating it.
 3. A test checks the composition offline: every produced status has a consumer, every consumed status a producer,
