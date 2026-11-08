@@ -25,7 +25,7 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 
 ## Question (no flag)
 
-1. `arch index` for the entries; open (`arch show <id>`) only those that bear on the question.
+1. `arch index --active` for the entries in force (plain `arch index` when the question is about history); open (`arch show <id>`) only those that bear on the question.
 2. Answer from them, citing each as its `path` and status. A `proposed` entry is not yet a rule: say so; a
    `superseded` one is history, point at its successor. Where the architecture is silent, say it is not
    covered; do not fill the gap from the code.
@@ -35,7 +35,7 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 1. Check the decision meets the bar (`.pilot/pilot-link-architecture.md`: it outlives a ticket and someone could
    be tempted to reverse it); otherwise say it belongs in a guideline or a ticket and stop.
 2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-adr.md`,
-   `.pilot/pilot-link-architecture.md`, the decision, the entries `arch index` lists that bear on it and the
+   `.pilot/pilot-link-architecture.md`, the decision, `arch index --active` (the index, not the entries — the architect opens the ones that bear on it) and the
    relevant code — nothing else from this conversation. Validate the returned JSON; fix or call again.
 3. Show the draft to the human, who edits and validates it (pair); `--auto` is not offered: a decision is a
    human's.

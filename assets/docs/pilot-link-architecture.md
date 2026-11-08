@@ -15,6 +15,11 @@ entry's one-sentence description (`python3 .pilot/pilot.py arch index`); open on
 - `adr/<NNNN-title>.md` — an architecture decision record: context, decision, alternatives rejected,
   consequences. The number is the next free one; the file name is the id and never changes.
 
+**Reading it.** Never carry its files in a prompt. A phase gives you this document and the index of what is in
+force (`python3 .pilot/pilot.py arch index --active`: one row per entry — id, path, description, status —
+deprecated and superseded ones left out); open with `python3 .pilot/pilot.py arch show <id>` only the entries
+that bear on your task. A superseded entry is history: read it only to follow `supersededBy`.
+
 **Where a decision sits.** The wiki says *what* the product does; a guideline says *how* we build; an ADR says
 *why* a choice was made. A decision is an ADR when it outlives a ticket and someone could be tempted to reverse it.
 When a product rule forced it, the ADR cites the wiki entry; a wiki entry never carries the reasoning.

@@ -18,6 +18,11 @@ or changes that no entry states, an entry the PR leaves contradicting its code, 
 an entry and leaves it `specified`) is a `change`. An entry the code cannot satisfy as written is a
 `decision`. A PR never stamps an entry (`verifiedAt` stays empty: only a lint writes it).
 
+**Architecture** (only when the prompt carries the architecture index): open the entries that bear on the PR
+(`arch show <id>`) and run `python3 .pilot/pilot.py arch lint` on the PR's branch when it changes `architecture/` — a
+finding is a `change`. Code that breaks a guideline or contradicts an accepted ADR is a `change`; code that
+needs to break one is a `decision`. A PR that edits an accepted ADR instead of superseding it is a `change`.
+
 Then review the shipped PR for two separate things, giving each its own attention rather
 than letting the first crowd out the second:
 - **Spec conformance** — does the implementation match the ticket's own spec, and if it

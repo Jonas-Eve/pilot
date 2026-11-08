@@ -131,7 +131,8 @@ summoned persona's call.
      plus only what this phase needs beyond that: the ticket's current body (including,
      if resuming, the comment thread's resolution per §4), its parent Epic/linked tickets
      if any, pointers to this project's own coding standards/security conventions and
-     architecture docs, and, for a `status:qa`/`status:in-qa` reclaim (step 1), which
+     architecture docs (with the `architecture` module on: `.pilot/pilot-link-architecture.md` in full and
+     `python3 .pilot/pilot.py arch index --active`, the index only — they open the entries that bear on the story), and, for a `status:qa`/`status:in-qa` reclaim (step 1), which
      existing tasks are already `status:done` from the earlier round, including the e2e
      one. Not the conversation history. **Checkpoint as the dialogue progresses, not only
      once it converges**: this pass can produce a split decision plus several full specs
@@ -269,5 +270,9 @@ summoned persona's call.
    (`wiki set <id> --add-ticket <n>`) — never the `type:e2e` task. A `conflicts` question: pair → put it to
    the human; `--auto` → `python3 .pilot/pilot.py flag <story> --comment "<question>"` and write nothing for
    that entry. Commit, push, open one PR, never merge it.
+5c. **Architecture decisions** (only when the `architecture` module is enabled, and when the architect's **Architecture decisions** marked one `ADR`
+   — it outlives the ticket and someone could be tempted to reverse it, `.pilot/pilot-link-architecture.md`): per decision, run
+   `/pilot-architecture --adr` step 2-4 on it listing the story with `arch add --ticket`, on branch `architecture/spec-<story>`; pair →
+   the human validates the draft, `--auto` → add it `proposed` and say so in the PR. Commit, push, open one PR, never merge it.
 6. Report the outcome (ticket(s) split/spec'd, dependencies recorded, prerequisite
-   ticket(s) spun out, or closed as won't-do) back to the human, and the wiki PR if step 5b opened one.
+   ticket(s) spun out, or closed as won't-do) back to the human, and the wiki PR if step 5b opened one, and the architecture PR if step 5c did.

@@ -12,7 +12,7 @@
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
-  pilot.py arch    index|reindex|show|lint|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
+  pilot.py arch    index [--active]|reindex|show|lint|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
@@ -1022,10 +1022,18 @@ class Bundle:
                            "paths": sorted(e["path"] for e in found)})
         return found[0]
 
-    def index(self, ticket=None):
+    LIVE = ()  # statuses that are history, left out of a `--active` index
+
+    def index(self, ticket=None, active=False):
+        """Every entry; `active` keeps only what is in force and shrinks each row to id, path, description and
+        status (a line an agent can carry in its prompt, then open the entries that bear on its task)."""
         entries = self.parse()
-        shown = [e for e in entries if ticket is None or ticket in e["tickets"]]
-        return {"ok": True, "dir": self.root, "entries": [self._view(e) for e in shown],
+        shown = [e for e in entries if (ticket is None or ticket in e["tickets"])
+                 and not (active and e["status"] in self.LIVE)]
+        rows = [self._view(e) for e in shown]
+        if active:
+            rows = [{k: r[k] for k in ("id", "path", "description", "status")} for r in rows]
+        return {"ok": True, "dir": self.root, "entries": rows,
                 "problems": sum(len(e["problems"]) for e in entries)}
 
     # ---- index.md files -------------------------------------------------------------------
@@ -1358,6 +1366,7 @@ class Architecture(Bundle):
     OKF_STATUS = ARCH_OKF_STATUS
     DEFAULT_TYPE = "Guideline"
     DERIVED_NAMES = ()
+    LIVE = ("deprecated", "superseded")
 
     def _type_of(self, rel):
         return "ADR" if rel.startswith("adr/") else "Architecture" if rel == "overview.md" else self.DEFAULT_TYPE
@@ -1534,7 +1543,9 @@ def build_parser():
     p = sub.add_parser("arch")
     p.add_argument("--dir", default=ARCH_DIR, help="the architecture directory (default: architecture)")
     ws = p.add_subparsers(dest="bundle_cmd", required=True)
-    ws.add_parser("index", help="every entry: id, path, description, status (no GitHub call)").add_argument("--ticket", type=int, help=argparse.SUPPRESS)
+    w = ws.add_parser("index", help="every entry: id, path, description, status (no GitHub call)")
+    w.add_argument("--ticket", type=int, help=argparse.SUPPRESS)
+    w.add_argument("--active", action="store_true", help="only what is in force (no deprecated or superseded), one short row each")
     ws.add_parser("reindex", help="write the index.md of every folder")
     w = ws.add_parser("show", help="one entry's text; an ADR also its supersession")
     w.add_argument("id")
@@ -1571,7 +1582,7 @@ def build_parser():
 def run_bundle(args, gh):
     wiki = (Wiki if args.cmd == "wiki" else Architecture)(args.dir)
     if args.bundle_cmd == "index":
-        return wiki.index(args.ticket)
+        return wiki.index(args.ticket, getattr(args, "active", False))
     if args.bundle_cmd == "show":
         return wiki.show(args.id, gh)
     if args.bundle_cmd == "status":
