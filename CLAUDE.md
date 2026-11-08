@@ -176,6 +176,11 @@ the skill files) — never a fixed path, there is no installed location.
   goes, not just after): zero others → single-skill; some but not all → a link doc; all
   five phases → `pilot-process.md`. Tool names and API-call-level detail belong in the
   owning `SKILL.md` regardless of tier, never in `pilot-process.md` or a link doc.
+- **A phase documents only its contract:** where it comes from, what it does, where it goes — the
+  statuses and artifacts it consumes and produces, never the phases around it and never the whole chain
+  (`docs/process-design.md`). What links two phases is a link doc; the vocabulary and the cross-cutting flags every phase
+  shares are the only content of `pilot-process.md`; what `scripts/pilot.py` decides is stated there as a contract, not
+  restated. A paragraph that describes a neighbouring phase or the chain is the signal that it is in the wrong place.
 - **A link doc's own content must be identical across every consumer, not just topically
   adjacent:** the test is whether every consuming duty reads the *exact same text*, not
   whether the topic is related. A per-duty delta that only one duty ever reads stays in
