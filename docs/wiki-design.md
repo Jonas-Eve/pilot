@@ -62,7 +62,7 @@ tickets it lists — that list is what makes ownership and conflicts decidable.
 | derived | `in-dev` | a listed ticket is `status:in-dev` | labels |
 | derived | `in-review` | a listed PR is `review-ready`/`in-review`/`changes-requested` | labels |
 | derived | `in-qa` | the story is `status:qa`/`in-qa` | labels |
-| derived | `verified` | `implemented` and its story closed after QA | labels |
+| derived | `verified` | `implemented`, stamped by a lint, and its story closed after QA | labels + stamp |
 
 Reading shows file status plus the most advanced live overlay of the entry's open tickets
 (e.g. `specified · in-review (PR #42)`). A file never says `in-dev`.
