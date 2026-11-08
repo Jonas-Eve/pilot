@@ -61,6 +61,10 @@ dialogue rather than one handing a finished draft to the other
   - `/pilot-wiki` — the project's wiki (`wiki/`, an optional module switched on by `/pilot-init` or by `/pilot-wiki`), the source of truth for what the product does: ask it a
     question, `--lint` it against the code (a human arbitrates each divergence), or `--bootstrap` it from the
     closed tickets and the code — see `.claude/skills/pilot-wiki/SKILL.md`.
+  - `/pilot-architecture` — the project's architecture (`architecture/`, an optional module): the apps, the technical
+    guidelines AIs and developers must respect, and the decision records (ADR). Ask it a question, `--adr` a decision,
+    `--bootstrap` it from the existing apps, `--scaffold` new apps, or `--lint` it — see
+    `.claude/skills/pilot-architecture/SKILL.md`.
   - `/pilot-design` — create or revise the project's design system and brand charter with the
     designer, in a live discussion; the result is shown in the "Design" tab of the dashboard.
   - `/pilot-discovery`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,

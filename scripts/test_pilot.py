@@ -695,7 +695,8 @@ class DoctorTests(unittest.TestCase):
 
     def test_the_registry_lists_every_module_with_its_state(self):
         reg = pilot.module_registry({"dashboard": True})
-        self.assertEqual(sorted(reg), ["dashboard", "design", "proto", "wiki"])
+        self.assertEqual(sorted(reg), ["architecture", "dashboard", "design", "proto", "wiki"])
+        self.assertEqual((reg["architecture"]["use"], reg["architecture"]["bootstrap"]), ("/pilot-architecture", "/pilot-architecture --bootstrap"))
         self.assertEqual((reg["dashboard"]["enabled"], reg["design"]["enabled"], reg["design"]["requires"], reg["wiki"]["bootstrap"]),
                          (True, False, ["dashboard"], "/pilot-wiki --bootstrap"))
         self.assertEqual((reg["dashboard"]["use"], reg["dashboard"]["bootstrap"]), ("/pilot-dashboard", None))

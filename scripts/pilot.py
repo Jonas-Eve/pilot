@@ -79,12 +79,15 @@ PROTO_FORBIDDEN = (
 REMOTE_RE = re.compile(r"(?:github\.com[:/]|/git/)([\w.-]+)/([\w.-]+?)(?:\.git)?/?$")
 STATE_PATH = os.path.join(".pilot", "state.json")
 WIKI_DIR = "wiki"
+ARCH_DIR = "architecture"
 # The optional modules a project turns on in .pilot/state.json (`modules`): the skills each owns, the modules
 # it needs, the command that turns it on at first use (`use`), the one that drafts its content from what the
 # project already has (`bootstrap`, only where there is such content), and the folder (if any) `doctor` expects.
 MODULES = {
     "wiki": {"skills": ["pilot-wiki"], "requires": [], "use": "/pilot-wiki", "bootstrap": "/pilot-wiki --bootstrap",
              "dir": WIKI_DIR},
+    "architecture": {"skills": ["pilot-architecture"], "requires": [], "use": "/pilot-architecture",
+                     "bootstrap": "/pilot-architecture --bootstrap", "dir": ARCH_DIR},
     "dashboard": {"skills": ["pilot-dashboard"], "requires": [], "use": "/pilot-dashboard"},
     "design": {"skills": ["pilot-design"], "requires": ["dashboard"], "use": "/pilot-design"},
     "proto": {"skills": ["pilot-proto"], "requires": ["dashboard"], "use": "/pilot-proto"},
@@ -1335,7 +1338,6 @@ class Wiki(Bundle):
     """The functional wiki: statuses proposed / specified / implemented / deprecated, derived from tickets."""
 
 
-ARCH_DIR = "architecture"
 ARCH_STATUSES = ("proposed", "accepted", "deprecated", "superseded")
 ARCH_OKF_STATUS = {"proposed": "draft", "accepted": "stable", "deprecated": "deprecated", "superseded": "deprecated"}
 

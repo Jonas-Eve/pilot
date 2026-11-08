@@ -42,7 +42,7 @@ structural — the five-phase order comes from `.pilot/pilot-process.md`'s state
 not something to re-derive per run):
 
 1. Bootstrap/maintenance: `pilot-init`, `pilot-init-archi`, `pilot-update`, `pilot-dashboard`,
-   `pilot-design`, `pilot-proto`, `pilot-wiki`.
+   `pilot-design`, `pilot-proto`, `pilot-wiki`, `pilot-architecture`.
 2. The five phases, in phase order: `pilot-discovery`, `pilot-spec`,
    `pilot-dev`, `pilot-review`, `pilot-qa`.
 3. Dispatch/utility: `pilot-auto`, `pilot-help`.
