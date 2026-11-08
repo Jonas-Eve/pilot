@@ -53,7 +53,7 @@ dialogue rather than one handing a finished draft to the other
     `.claude/skills/pilot-update/SKILL.md`.
   - `/pilot-dashboard` — publish (or update) the project's team page as a private Claude
     Artifact with its own data: tickets by phase, each role's queue, the PILOT sessions
-    working right now, the project's design system and, when it has a wiki, a read-only Wiki tab. Run it again, or let `/pilot-update` do it, to get the latest page at
+    working right now, the project's design system and, when the wiki module is on, a read-only Wiki tab; its tabs follow the project's modules. Run it again, or let `/pilot-update` do it, to get the latest page at
     the same address.
   - `/pilot-proto` — build a prototype of a feature with the PM and the designer, in a live discussion, to decide
     whether to build it; an accepted one starts a Discovery (`/pilot-discovery --from-proto`). Shown in the

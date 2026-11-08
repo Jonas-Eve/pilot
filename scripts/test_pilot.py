@@ -6,6 +6,7 @@ import json
 import pathlib
 import contextlib
 import io
+import os
 import subprocess
 import tempfile
 import unittest
@@ -1144,6 +1145,30 @@ class WikiTests(unittest.TestCase):
         self.assertEqual((code, doc["reason"]), (1, "wiki-absent"))
 
 
+class SnapshotModulesTests(unittest.TestCase):
+    """The snapshot document carries the project's modules, so the dashboard's tabs can follow them."""
+
+    def snapshot_in(self, state):
+        with tempfile.TemporaryDirectory() as tmp:
+            old = os.getcwd()
+            os.chdir(tmp)
+            try:
+                if state is not None:
+                    os.makedirs(".pilot")
+                    pathlib.Path(".pilot/state.json").write_text(json.dumps(state))
+                return pilot.Machine(FakeGh([issue(1, ["status:backlog"])])).snapshot()
+            finally:
+                os.chdir(old)
+
+    def test_the_modules_field_is_copied_into_the_snapshot(self):
+        doc = self.snapshot_in({"projectName": "p", "modules": {"wiki": True, "design": False}})
+        self.assertEqual(doc["modules"], {"wiki": True, "design": False})
+
+    def test_a_state_without_the_field_or_without_a_state_adds_nothing(self):
+        self.assertNotIn("modules", self.snapshot_in({"projectName": "p"}))
+        self.assertNotIn("modules", self.snapshot_in(None))
+
+
 class VersionBumpTests(unittest.TestCase):
     """A change to what projects copy must raise VERSION (CLAUDE.md §4). Compares with origin/main;
     skipped where that ref or git is not available."""
@@ -1187,6 +1212,9 @@ class DemoSnapshotTests(unittest.TestCase):
         self.demo = importlib.util.module_from_spec(demo_spec)
         demo_spec.loader.exec_module(self.demo)
         self.doc = self.demo.snapshot()
+
+    def test_the_demo_snapshot_has_every_module_on(self):
+        self.assertEqual(self.doc["modules"], {name: True for name in pilot.MODULES})
 
     def test_wiki_document_has_the_shape_of_wiki_snapshot(self):
         doc = self.demo.wiki_document()

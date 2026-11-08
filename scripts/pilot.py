@@ -124,6 +124,18 @@ def module_registry(modules):
                    "use": meta["use"], "bootstrap": meta.get("bootstrap")} for name, meta in MODULES.items()}
 
 
+def state_modules(path=STATE_PATH):
+    """The `modules` field of `.pilot/state.json` as it stands, or None when the file or the field is absent
+    (a project from before modules: the dashboard then shows every tab)."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return None
+    modules = data.get("modules") if isinstance(data, dict) else None
+    return {k: bool(v) for k, v in modules.items()} if isinstance(modules, dict) else None
+
+
 def set_module(name, enabled, path=STATE_PATH, with_requires=False):
     """Turn a module on or off in `.pilot/state.json`, leaving every other field alone. Turning one on needs
     the modules it requires to be on (`with_requires` turns them on too); turning one off is refused while an
@@ -530,6 +542,9 @@ class Machine:
         rows.sort(key=lambda r: r["u"], reverse=True)
         doc = {"repo": self.gh.repo, "at": now_iso(), "source": "pilot.py", "total": len(rows),
                "truncated": False, "issues": rows}
+        modules = state_modules()
+        if modules is not None:
+            doc["modules"] = modules  # the dashboard's tabs follow the modules a project has on
         while len(json.dumps(doc, ensure_ascii=False).encode()) > SNAPSHOT_MAX_BYTES and rows:
             del rows[max(1, len(rows) * 9 // 10):]
             doc["truncated"] = True

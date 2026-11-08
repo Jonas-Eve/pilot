@@ -996,6 +996,29 @@ const STUB = (opts) => `
   await page.close();
   }
 
+  // ---- tabs follow the modules the snapshot says the project has on ----
+  {
+    const tabs = async (pg) => pg.$$eval('#tabs a', (a) => a.map((x) => x.textContent.replace(/ \(\d+\)$/, '')));
+    const withMods = (m) => Object.assign({}, BASE, { modules: m });
+    let page = await open({ preload: [withMods({ dashboard: true, wiki: false, design: false, proto: false })] });
+    check('modules: a module that is off hides its tab (Design, Prototypes, Wiki)',
+          JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Recherche', 'Activité']), JSON.stringify(await tabs(page)));
+    await page.goto(FILE + '#design'); await page.waitForTimeout(350);
+    check('modules: an address into a tab whose module is off falls back to the queue',
+          (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Ma file' && !(await page.$eval('#idea', (e) => e.hidden)));
+    await page.goto(FILE + '#proto/702'); await page.waitForTimeout(350);
+    check('modules: a prototype address with the proto module off falls back too', (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Ma file');
+    await page.evaluate((d) => window.__push('snapshots', 'Jonas-Eve__myavimobility', d), withMods({ dashboard: true, wiki: true, design: false, proto: true })); await page.waitForTimeout(250);
+    check('modules: turning a module on shows its tab at the next snapshot, the others stay hidden',
+          JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Activité', 'Wiki']), JSON.stringify(await tabs(page)));
+    check('modules: no page errors', page.errors.length === 0, page.errors.join('|'));
+    await page.close();
+    page = await open({ preload: [BASE] });
+    check('modules: a snapshot without the field shows every tab, as before',
+          JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Activité', 'Design', 'Wiki']), JSON.stringify(await tabs(page)));
+    await page.close();
+  }
+
   // every tab and sub-tab fits a phone, in both themes, with no script error
   const ROUTES = ['file', 'ensemble', 'ensemble/discovery', 'ensemble/spec', 'ensemble/dev', 'ensemble/review', 'ensemble/qa',
     'prototypes/encours', 'prototypes/acceptes/alancer', 'prototypes/acceptes/encours', 'prototypes/acceptes/termines', 'prototypes/rejetes', 'proto/702',

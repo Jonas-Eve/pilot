@@ -99,7 +99,7 @@ Each step is backward compatible; the last one is the break.
 1. **Done.** The switch (`modules`, `pilot.py module`, `doctor`), the `wiki` module, review/QA criteria,
    the dashboard Wiki tab.
 2. **Done.** The registry with `requires`, `module list` as above, the dependency checks.
-3. `dashboard`, `design`, `proto` under the switch: their skills' first-use flow, the dashboard tabs
+3. **Done.** `dashboard`, `design`, `proto` under the switch: their skills' first-use flow, the dashboard tabs
    following the modules, `/pilot-init --modules`, the `/pilot-update` migration, `/pilot-help` status.
 4. The `architecture` module, built beside the old skill: layout, ADR, guidelines in the dev and review
    prompts, `--bootstrap` from an existing `apps/`, `--scaffold`, the dashboard tab.

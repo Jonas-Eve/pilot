@@ -14,6 +14,9 @@ live (except `--accept` and `--reject`, which are one mechanical step).
 
 ## Steps
 
+-1. **The module.** `python3 .pilot/pilot.py module list`: with the `proto` module off, say so and propose turning
+   it on (`python3 .pilot/pilot.py module enable proto --with-requires`, which turns the `dashboard` module on
+   too); on a yes go on, on a no stop.
 0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported
    `ok: true`. `ok: false` or a failure → report and stop.
 1. **Input.**

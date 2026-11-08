@@ -122,7 +122,7 @@ itself.
   (the project's wiki under `wiki/`, an OKF bundle: `index`, `reindex`, `show`, `status`, `lint`, `snapshot` (the dashboard's Wiki tab document), `add`/`set`/`remove`, the only
   writers of an entry's frontmatter and of the folder `index.md` files, and `migrate` — design in `docs/wiki-design.md`; used by `pilot-wiki` and, when the `wiki` module is enabled, by all five phases) and
   `doctor` (preflight each phase skill runs as its step 0, once per session: python, gh auth,
-  repo access and push permission, the 32 PILOT labels, the `wiki/` directory when that module is on — `--no-wiki` lets `pilot-wiki` repair a missing one) and `module` (`list`, `enable`, `disable`: the optional modules of `.pilot/state.json`, with the prerequisites each declares). Every command prints one JSON
+  repo access and push permission, the 32 PILOT labels, the `wiki/` directory when that module is on — `--no-wiki` lets `pilot-wiki` repair a missing one) and `module` (`list`, `enable`, `disable`: the optional modules of `.pilot/state.json` — `wiki`, `dashboard`, `design`, `proto` — with the prerequisites each declares; the snapshot document carries them so the dashboard's tabs follow). Every command prints one JSON
   object; `claim`/`set`/`flag`/`unflag` also return the `event` (and `claim` the `activity`)
   the phase skills push to the dashboard (`pilot-link-dashboard.md`), and `event` builds one
   for a ticket a skill changed itself (Discovery, the tasks Spec creates). Judgment (which agent

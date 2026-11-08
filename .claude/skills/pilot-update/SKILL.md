@@ -122,13 +122,15 @@ from a previous run — the whole point is picking up upstream changes.
    exact command to run themselves later — don't block steps 2-4 or 6 on it, and leave
    `lastLabelsSyncAt` as whatever it already was.
 
-5c. **Check the modules.** `python3 .pilot/pilot.py module list`: a `state.json` with no `modules` field predates
-   them — add `"modules": {"wiki": false}` in step 6 and mention that the optional wiki module exists
-   (`.pilot/pilot-process.md` §8), offering `/pilot-wiki` to turn it on (and `--bootstrap` to draft it) (never run it unasked: it drafts
-   from the project's closed tickets and code and opens one PR per domain). Never enable a module here, and never
-   create or change anything under `wiki/`. With the module on but `wiki/` missing, say that `doctor` fails until
-   `/pilot-wiki` repairs it; with it on and entries still in the earlier format (several per page, `wiki lint`
-   reporting `no-frontmatter`), offer `python3 .pilot/pilot.py wiki migrate` (one PR).
+5c. **Check the modules.** `python3 .pilot/pilot.py module list`. A `state.json` with no `modules` field predates them:
+   record in step 6 what the project already uses, so nothing it relies on disappears — `dashboard` on when it has a
+   `dashboardUrl`, and `design` and `proto` on with it (they only worked with it), `wiki` off. Say which modules exist
+   (`.pilot/pilot-process.md` §8) and that each is turned on by its own skill (`/pilot-wiki`, `/pilot-dashboard`,
+   `/pilot-design`, `/pilot-proto`); never enable anything else here, and never create or change anything under
+   `wiki/`. With the `wiki` module on but `wiki/` missing, say that `doctor` fails until `/pilot-wiki` repairs it; with
+   it on and entries still in the earlier format (several per page, `wiki lint` reporting `no-frontmatter`), offer
+   `python3 .pilot/pilot.py wiki migrate` (one PR). When the project has closed tickets or code to document, mention
+   `/pilot-wiki --bootstrap`.
 
 5b. **Update the dashboard.** Only when `.pilot/state.json` has a `dashboardUrl`: run
    `/pilot-dashboard` (reusing this `$PILOT_SRC`), after asking the human whether to

@@ -1099,12 +1099,14 @@ for the human to raise via Discovery themselves; anything unclassifiable is a li
 failure resolved to "not actually a bug" → `status:done`, the one direct exception §3
 "`status:done`" already notes. `pilot-qa/SKILL.md` covers the rest of the mechanics.
 
-## 8. Optional modules: the wiki
+## 8. Optional modules
 
-A project turns an optional module on in `.pilot/state.json` (`"modules": {"wiki": true}`; `python3
+A project turns an optional module on in `.pilot/state.json` (`"modules": {"wiki": true, "dashboard": true, …}`; `python3
 .pilot/pilot.py module list|enable|disable`; a module may require another: `enable` refuses until it is on,
 `--with-requires` turns both on). A module that is off, or absent from the file, changes nothing: every step
-below that names it is skipped.
+below that names it is skipped. A module's own skill proposes turning it on at first use. The modules: `wiki`,
+`dashboard` (the team page; its tabs follow the modules a project has on), `design` and `proto` (the design system
+and the prototypes, which need `dashboard`).
 
 **`wiki`.** `wiki/` at the project root is the source of truth for what the product does and what is
 promised, and every phase works with it: Discovery and Spec write the entries of a story (`proposed`, then

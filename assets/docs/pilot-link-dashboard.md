@@ -4,8 +4,8 @@ Read by `pilot-discovery`, `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa`
 publishes the page that reads these documents). Best-effort only: GitHub labels stay the
 source of truth, and a push that fails or is skipped never blocks, delays or changes a phase.
 
-**When.** `.pilot/state.json` has `dashboardUrl` and the tool that writes to the dashboard's
-database is available. Otherwise skip everything below, silently. Decide once per session.
+**When.** `.pilot/state.json` has `dashboardUrl`, does not turn the `dashboard` module off (`modules.dashboard`
+set to `false`), and the tool that writes to the dashboard's database is available. Otherwise skip everything below, silently. Decide once per session.
 
 **What to push** (to the dashboard at `dashboardUrl`):
 - Every `event` returned by `.pilot/pilot.py claim|set|flag|unflag|proto`, and every entry of the

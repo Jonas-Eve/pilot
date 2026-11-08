@@ -15,6 +15,9 @@ from a scheduled sweep.
 
 ## Steps
 
+0. **The module.** `python3 .pilot/pilot.py module list`: with the `design` module off, say so and propose turning
+   it on (`python3 .pilot/pilot.py module enable design --with-requires`, which turns the `dashboard` module on
+   too); on a yes go on, on a no stop.
 1. **Preconditions.** `.pilot/state.json` has `dashboardUrl`, else stop and point at
    `/pilot-dashboard`. The tool that writes to the dashboard's database (`ArtifactData`,
    `ToolSearch` loads it if deferred) must be available, else say so and stop. Repo =
