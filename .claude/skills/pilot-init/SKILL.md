@@ -29,8 +29,6 @@ This skill's idempotency is tracked in `.pilot/state.json` at the project root:
   "pilotInitializedAt": "<ISO8601>",
   "pilotVersion": "<MAJOR.MINOR.PATCH, from $PILOT_SRC/VERSION>",
   "projectName": "<name>",
-  "archInitialized": false,
-  "archInitializedAt": null,
   "modules": {"wiki": <bool>, "architecture": <bool>, "dashboard": <bool>, "design": <bool>, "proto": <bool>},
   "lastProcessDocSyncAt": "<ISO8601>",
   "lastLabelsSyncAt": "<ISO8601>",
@@ -78,7 +76,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
 
 4. **Copy the skills and agents.** Copy every directory under `$PILOT_SRC/.claude/skills/` to
    `.claude/skills/` at the project root, and every file under `$PILOT_SRC/.claude/agents/` to
-   `.claude/agents/`, verbatim. All of it — including `pilot-init`, `pilot-init-archi`, and
+   `.claude/agents/`, verbatim. All of it — including `pilot-init` and
    `pilot-update` themselves — is PILOT-owned from here on: never hand-edit it in the
    project; `/pilot-update` re-copies all of it from a fresh `$PILOT_SRC` clone.
 
@@ -89,14 +87,14 @@ see `.claude/skills/pilot-update/SKILL.md`.
    `{{PROJECT_NAME}}` and `{{FUNCTIONAL_VISION}}` with the gathered values,
    `{{PILOT_INTRO_CLAUDE}}` / `{{PILOT_INTRO_README}}` with the verbatim contents of
    `$PILOT_SRC/assets/templates/pilot-intro-claude.md.tmpl` /
-   `pilot-intro-readme.md.tmpl`, and `{{PILOT_MAINTENANCE_CLAUDE}}` with the verbatim
-   contents of `$PILOT_SRC/assets/templates/pilot-maintenance-claude.md.tmpl` (each
+   `pilot-intro-readme.md.tmpl`, `{{PILOT_MAINTENANCE_CLAUDE}}` with the verbatim
+   contents of `$PILOT_SRC/assets/templates/pilot-maintenance-claude.md.tmpl`, and
+   `{{PILOT_ARCHITECTURE_CLAUDE}}`/`{{PILOT_ARCHITECTURE_README}}`/`{{PILOT_COMMANDS_CLAUDE}}`/`{{PILOT_COMMANDS_README}}` with the verbatim
+   contents of `pilot-architecture-claude.md.tmpl`/`pilot-architecture-readme.md.tmpl`/`pilot-commands-claude.md.tmpl`/`pilot-commands-readme.md.tmpl` (each
    inside its own `<!-- PILOT:*:START -->`/`END` markers — keep those markers in the
    output; `/pilot-update` looks for them later). Write the result to the
    project root (`CLAUDE.md`, `README.md`, `PROJECT-FUNCTIONAL-SCOPE.md`), respecting
-   step 3's per-file decision. The `<!-- PILOT:ARCHITECTURE:START -->` and
-   `<!-- PILOT:COMMANDS:START -->` marker blocks in `CLAUDE.md`/`README.md` are left as
-   their template placeholder text — `/pilot-init-archi` fills those in later.
+   step 3's per-file decision.
 
 6. **Copy the process docs.** Copy `$PILOT_SRC/assets/docs/pilot-process.md` to
    `.pilot/pilot-process.md`; every `$PILOT_SRC/assets/docs/pilot-process-*.md` companion
@@ -162,7 +160,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
     now (or left null for whichever of labels was skipped in step 9).
 
 11. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result. Summarize what
-    was created/updated/skipped (the wiki skeleton included, or the module left off), and suggest running
-    `/pilot-init-archi` next to describe the monorepo's apps and generate their scaffolds, and
+    was created/updated/skipped (the wiki skeleton included, or the module left off), and suggest
+    `/pilot-architecture --scaffold` (new apps) or `--bootstrap` (apps that already exist) when the `architecture` module is on, and
     offer `/pilot-dashboard` (a private team page: tickets by phase, each role's queue, live
     sessions) when the `dashboard` module is on — run it only if the human accepts, since it publishes a page.

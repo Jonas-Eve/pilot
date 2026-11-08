@@ -1324,6 +1324,31 @@ class ArchitectureTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             parser.parse_args(["wiki", "index", "--app", "web"])
 
+    def test_inventory_outlines_what_the_project_has_without_reading_it_whole(self):
+        base = pathlib.Path(self._tmp.name)
+        (base / "docs").mkdir()
+        (base / "docs/layers.md").write_text("# Layers\n\nThe domain never imports adapters.\n" + "more\n" * 400)
+        (base / "apps/web/docs").mkdir(parents=True)
+        (base / "apps/web/README.md").write_text("# Web\n\nThe React front end.\n")
+        (base / "apps/web/docs/state.md").write_text("# State\n\nOne store per page.\n")
+        (base / "apps/api").mkdir()
+        (base / ".pilot").mkdir()
+        (base / ".pilot/state.json").write_text(json.dumps({"apps": [{"name": "worker", "purpose": "jobs", "stack": "node"}]}))
+        (base / "CLAUDE.md").write_text("x\n<!-- PILOT:ARCHITECTURE:START -->\nThree apps.\n<!-- PILOT:ARCHITECTURE:END -->\n"
+                                        "<!-- PILOT:COMMANDS:START -->\n_Not yet defined — run `/pilot-init-archi`_\n<!-- PILOT:COMMANDS:END -->\n")
+        (base / "README.md").write_text("<!-- PILOT:ARCHITECTURE:START -->\nSee `architecture/` (`/pilot-architecture`).\n<!-- PILOT:ARCHITECTURE:END -->\n")
+        out = self.arch.inventory(str(base))
+        self.assertEqual(out["apps"], ["api", "web", "worker"])
+        rows = {d["path"]: d for d in out["docs"]}
+        self.assertEqual(sorted(rows), ["apps/web/README.md", "apps/web/docs/state.md", "docs/layers.md"])
+        self.assertEqual((rows["docs/layers.md"]["title"], rows["docs/layers.md"]["summary"], rows["docs/layers.md"]["app"]),
+                         ("Layers", "The domain never imports adapters.", ""))
+        self.assertEqual(rows["apps/web/docs/state.md"]["app"], "web")
+        self.assertNotIn("more", json.dumps(out))
+        self.assertEqual(out["blocks"], {"CLAUDE.md:ARCHITECTURE": "filled", "CLAUDE.md:COMMANDS": "placeholder",
+                                         "README.md:ARCHITECTURE": "pointer", "README.md:COMMANDS": "absent"})
+        self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(["arch", "inventory"])))
+
     def test_cli_needs_no_github(self):
         args = pilot.build_parser().parse_args(["arch", "lint"])
         self.assertFalse(pilot.needs_github(args))

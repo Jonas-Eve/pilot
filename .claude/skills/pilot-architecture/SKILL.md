@@ -45,15 +45,19 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 
 ## `--bootstrap`
 
-1. Gather the material: the apps (`apps/`, `apps` in `.pilot/state.json`), their manifests and READMEs, the
-   `PILOT:ARCHITECTURE`/`PILOT:COMMANDS` blocks and the technical rules of `CLAUDE.md`. Nothing to gather →
-   say so and propose `--scaffold`.
-2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-bootstrap.md`,
-   `.pilot/pilot-link-architecture.md`, that material and `git rev-parse HEAD`. Validate the returned JSON
-   (paths `overview.md` or `guidelines/<id>.md`, ids in `[a-z0-9-]+`, a one-sentence `description` each);
-   fix or call again.
-3. The human confirms or edits each guideline; write them with `arch add … --status accepted`.
-4. Branch `architecture/bootstrap`, commit, push, open one PR.
+For a project that already has apps and documents.
+1. Inventory: `python3 .pilot/pilot.py arch inventory` — the apps, an outline (path, size, title, first line) of `docs/**` and of each app's
+   `README.md`, `CLAUDE.md` and `docs/**`, and the state of the `PILOT:ARCHITECTURE`/`PILOT:COMMANDS` blocks of `CLAUDE.md` and `README.md`
+   (`placeholder`, `pointer`, `filled` with the project's own content, `absent`). Nothing to gather → say so and propose `--scaffold`.
+2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-bootstrap.md`, `.pilot/pilot-link-architecture.md`, the inventory and
+   `git rev-parse HEAD`; it opens only the documents it classifies as architecture or decision. Validate the returned JSON (paths `overview.md`,
+   `guidelines/<id>.md` or the same under `apps/<app>/`, ids in `[a-z0-9-]+`, a one-sentence `description` and a `source` each); fix or call again.
+3. The human confirms or edits each guideline; write them with `arch add … --status accepted`. A `decision` document becomes an ADR only once the human gives
+   the reasoning (`--adr`); a `functional` document is listed for `/pilot-wiki --bootstrap`, not converted here.
+4. Blocks: a `placeholder` block of `CLAUDE.md`/`README.md` is replaced by the canonical pointer (`pilot-architecture-*.md.tmpl`, `pilot-commands-*.md.tmpl`);
+   a `filled` one too, once the human agrees, since its content is now in `architecture/`.
+5. Branch `architecture/bootstrap`, commit, push, open one PR whose description lists the source documents now duplicated by an entry: the human decides
+   whether each is kept, trimmed to a pointer or deleted — never deleted here.
 
 ## `--scaffold`
 
@@ -66,7 +70,8 @@ For every framework or library introduced, read its latest stable compatible ver
 `build` and `test` scripts, a `README.md`): a backend gets `src/domain`, `src/application`, `src/adapters`,
 `src/infrastructure`, `src/main.ts` and `tests/`; a Vite or Expo frontend its entry files, with a lighter layering.
 Record the apps in `.pilot/state.json` (`apps`: `{name, purpose, stack}`), write `architecture/overview.md` (the apps,
-how they relate, the per-app commands), then branch `architecture/scaffold`, commit, push, open one PR.
+how they relate, the per-app commands), replace a `placeholder` block of `CLAUDE.md`/`README.md` by the canonical pointer, then branch
+`architecture/scaffold`, commit, push, open one PR.
 
 ## `--lint`
 

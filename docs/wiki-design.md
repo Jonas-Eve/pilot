@@ -33,7 +33,7 @@ truth, for agents and humans, as markdown files in the consuming project's repo.
 - Functional only, organized by **functional domain**: one folder per product area
   (`search/`, `export/`…), one markdown file per entry. Domains come from the project's epics.
   Architecture decisions are out of scope here: they will be handled by a reworked
-  `/pilot-init-archi`.
+  the `architecture` module (`/pilot-architecture`).
 - The bundle follows **OKF** (Open Knowledge Format, Google Cloud): one concept per file, a YAML
   frontmatter whose only required key is `type`, `index.md` and `log.md` reserved. PILOT's own keys live
   under `pilot:`; `log.md` is not used (git is the history).

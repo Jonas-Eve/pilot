@@ -35,15 +35,11 @@ dialogue rather than one handing a finished draft to the other
 - **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, the five
   PILOT phase commands, a dispatcher, and a help command — copied verbatim into a
   consuming project's `.claude/skills/`
-  (see "Installing in a project" below), so all of them, `pilot-init`/`pilot-init-archi`/
-  `pilot-update` included, are ordinary project-local commands once installed.
+  (see "Installing in a project" below), so all of them, `pilot-init`/`pilot-update`
+  included, are ordinary project-local commands once installed.
   - `/pilot-init` — one-time: name the project, write its functional vision, copy in
     PILOT's own skills/agents/docs, generate `CLAUDE.md` / `README.md` /
     `PROJECT-FUNCTIONAL-SCOPE.md`, and create the GitHub labels PILOT depends on.
-  - `/pilot-init-archi` — one-time: describe the monorepo's apps and technology choices (or
-    accept the defaults — Clean Architecture, Node.js backend, React frontend, Expo for
-    mobile, TypeScript throughout), generate each app's docs, and scaffold its skeleton
-    pinned to the latest compatible dependency versions.
   - `/pilot-update` — re-sync everything PILOT-owned (skills, agents,
     `.pilot/pilot-process.md`, its `.pilot/pilot-process-*.md` companion(s),
     `.pilot/pilot-link-*.md` cross-skill link doc(s), `.pilot/pilot-task-*.md` per-duty task
@@ -61,9 +57,9 @@ dialogue rather than one handing a finished draft to the other
   - `/pilot-wiki` — the project's wiki (`wiki/`, an optional module switched on by `/pilot-init` or by `/pilot-wiki`), the source of truth for what the product does: ask it a
     question, `--lint` it against the code (a human arbitrates each divergence), or `--bootstrap` it from the
     closed tickets and the code — see `.claude/skills/pilot-wiki/SKILL.md`.
-  - `/pilot-architecture` — the project's architecture (`architecture/`, an optional module): the apps, the technical
-    guidelines AIs and developers must respect, and the decision records (ADR). Ask it a question, `--adr` a decision,
-    `--bootstrap` it from the existing apps, `--scaffold` new apps, or `--lint` it — see
+  - `/pilot-architecture` — the project's architecture (`architecture/`, an optional module that replaces the old one-time `/pilot-init-archi`): the apps, the technical
+    guidelines AIs and developers must respect, and the decision records (ADR), one subfolder per app in a monorepo. Ask it a question, `--adr` a decision,
+    `--bootstrap` it from what the project already has (apps, `docs/`, each app's own documents), `--scaffold` new apps, or `--lint` it — see
     `.claude/skills/pilot-architecture/SKILL.md`.
   - `/pilot-design` — create or revise the project's design system and brand charter with the
     designer, in a live discussion; the result is shown in the "Design" tab of the dashboard.
