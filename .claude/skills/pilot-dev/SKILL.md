@@ -8,7 +8,7 @@ argument-hint: "<issue number, optional — picks the next dev-ready or can-resu
 
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
 protocol; this skill covers only phase 3's mechanics. Most likely phase to run as several
-parallel instances; the claim step below prevents collisions. The roster (`.pilot/pilot-link-agent-dialogue.md`
+parallel instances; the claim step below prevents collisions. The roster (`.pilot/pilot-link-roster.md`
 "Roster"): the dev (`pilot-e2e` for a `type:e2e` task) leads, no validator; the tech lead,
 architect and designer are summonable. Summons and dismissals are recorded in the ticket's
 checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned persona's call.
@@ -126,7 +126,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    - Blocking conflict: nothing further to set — the subagent already added
      `needs-human` and posted its comment itself (`status:in-dev` stays, per
      `.pilot/pilot-process.md` §3).
-   - Bug discovered mid-implementation (`.pilot/pilot-link-ticket-tree.md` "Prerequisite tech/bug tickets"): nothing further to set — the subagent
+   - Bug discovered mid-implementation (`.pilot/pilot-link-split-tickets.md` "Prerequisite tech/bug tickets"): nothing further to set — the subagent
      (`pilot-dev` or `pilot-e2e`) already originated the new `type:bug` ticket, linked it
      ("Blocks #M"/"Depends on #N"), pushed its WIP to a branch with a comment naming it,
      cleared the assignee, and moved the ticket back to `status:dev-ready` itself. It's

@@ -14,7 +14,7 @@ regardless of who's invoking it — a human describing a defect directly to `/pi
 created any other way, and never through Discovery — classifying a bug needs only the
 architect, no product judgment a PM would add.
 
-Distinct from a prerequisite *tech* ticket (`.pilot/pilot-link-ticket-tree.md` "Prerequisite
+Distinct from a prerequisite *tech* ticket (`.pilot/pilot-link-split-tickets.md` "Prerequisite
 tech/bug tickets" — a new technical need, no defect implied): a concrete **defect** in
 already-shipped code, most often surfacing while writing/running an e2e test or a phase-5
 manual case, but not limited to those.
@@ -40,7 +40,7 @@ mechanism is only the classification and the ticket's own content.
 
 **Linking, when discovered mid-another-ticket** (the prerequisite case, and the phase-3/5
 inline-discovery case alike): same mechanics as a prerequisite tech ticket
-(`.pilot/pilot-link-ticket-tree.md` "Prerequisite tech/bug tickets") — never a sub-issue of the
+(`.pilot/pilot-link-split-tickets.md` "Prerequisite tech/bug tickets") — never a sub-issue of the
 ticket being worked. Link the two directions: "Blocks #M" on the new bug ticket, "Depends
 on #N" in the discovering ticket's own body — always a hard blocker, since the
 discovering ticket cannot be finished until the bug is fixed.

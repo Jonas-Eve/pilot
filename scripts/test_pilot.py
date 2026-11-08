@@ -1349,6 +1349,16 @@ class ArchitectureTests(unittest.TestCase):
                                          "README.md:ARCHITECTURE": "pointer", "README.md:COMMANDS": "absent"})
         self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(["arch", "inventory"])))
 
+    def test_reindex_creates_the_folder_a_module_needs(self):
+        base = pathlib.Path(self._tmp.name)
+        for cls, name in ((pilot.Wiki, "fresh-wiki"), (pilot.Architecture, "fresh-arch")):
+            bundle = cls(str(base / name))
+            with self.assertRaises(pilot.Refused):
+                bundle.index()  # reading an absent bundle is refused
+            self.assertEqual(bundle.reindex(), ["index.md"])
+            self.assertIn('okf_version: "0.2"', (base / name / "index.md").read_text())
+            self.assertEqual(bundle.index()["entries"], [])
+
     def test_cli_needs_no_github(self):
         args = pilot.build_parser().parse_args(["arch", "lint"])
         self.assertFalse(pilot.needs_github(args))

@@ -9,7 +9,7 @@ argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if om
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
 protocol (§4) — and `.pilot/pilot-link-review-consensus.md` for the shared `change`/`decision`
 tags contract; this skill covers only phase 4's mechanics, including how it picks the
-reviewer set (step 3). `--with architect` (the only summonable persona here, `.pilot/pilot-link-agent-dialogue.md`
+reviewer set (step 3). `--with architect` (the only summonable persona here, `.pilot/pilot-link-roster.md`
 "Roster") adds the architect to that set, valid in a sweep too; `--only` (step 3) instead fixes the exact set
 (replacing or narrowing it); nothing can be summoned mid-review.
 
