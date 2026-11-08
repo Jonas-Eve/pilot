@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 import pathlib
+import re
 import contextlib
 import io
 import os
@@ -1451,6 +1452,63 @@ class ContractTests(unittest.TestCase):
         self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(["contract"])))
         self.assertTrue(pilot.run_contract(pilot.build_parser().parse_args(["contract"]))["ok"])
         self.assertEqual(pilot.run_contract(pilot.build_parser().parse_args(["contract", "qa"]))["produces"], ["status:done"])
+
+
+class ProcessReferencesTests(unittest.TestCase):
+    """Sections move between the generic file, the link docs and the skills; no citation may be left pointing at one that
+    is gone, whether it names a section of pilot-process.md or a titled section of another doc."""
+
+    ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+    @staticmethod
+    def flat(text):
+        return re.sub(r"\s+", " ", text.replace("`", ""))
+
+    def family(self):
+        files = list((self.ROOT / ".claude/skills").glob("*/SKILL.md")) + list((self.ROOT / ".claude/agents").glob("*.md"))
+        files += list((self.ROOT / "assets/docs").glob("*.md")) + list((self.ROOT / "assets/templates").glob("*.tmpl"))
+        files += [self.ROOT / "README.md", self.ROOT / "CLAUDE.md"]
+        return files
+
+    def headings(self, path):
+        """What a citation can name: a heading, a bullet's label (`- `status:done` — ...`) or a bold lead-in."""
+        text = path.read_text()
+        found = [self.flat(l.lstrip("#").strip()) for l in text.split("\n") if re.match(r"^#{1,4} ", l)]
+        found += [self.flat(m.group(1)) for m in re.finditer(r"(?m)^\s*- (.+?) —", text)]
+        found += [self.flat(m.group(1)) for m in re.finditer(r"\*\*([^*]+?)\*\*", text, flags=re.S)]
+        return found
+
+    def test_every_cited_section_of_the_generic_file_exists(self):
+        process = self.ROOT / "assets/docs/pilot-process.md"
+        heads = self.headings(process)
+        numbers = {m.group(1) for h in heads for m in [re.match(r"(\d+)\. ", h)] if m}
+        bad = []
+        for f in self.family():
+            text = re.sub(r"\s+", " ", f.read_text())
+            for m in re.finditer(r"pilot-process\.md`? ?(?:§(\d+))(?: \"([^\"]+)\")?", text):
+                num, title = m.group(1), m.group(2)
+                if num not in numbers:
+                    bad.append((f.name, "§" + num))
+                elif title and not any(self.flat(title).rstrip(".").lower() in h.lower() for h in heads):
+                    bad.append((f.name, "§%s %s" % (num, title)))
+        self.assertEqual(bad, [])
+
+    def test_every_cited_title_of_another_doc_exists_there(self):
+        bad = []
+        for f in self.family():
+            text = re.sub(r"\s+", " ", f.read_text())
+            for m in re.finditer(r"`(\.pilot/pilot-[\w-]+\.md|\.claude/skills/[\w-]+/SKILL\.md)` \"([^\"]+)\"", text):
+                ref, title = m.group(1), m.group(2)
+                dest = self.ROOT / (ref.replace(".pilot/", "assets/docs/") if ref.startswith(".pilot/") else ref)
+                if not dest.exists():
+                    bad.append((f.name, ref))
+                elif not any(self.flat(title).lower() in h.lower() for h in self.headings(dest)):
+                    bad.append((f.name, ref, title))
+        self.assertEqual(bad, [])
+
+    def test_the_generic_file_stays_small(self):
+        size = (self.ROOT / "assets/docs/pilot-process.md").stat().st_size
+        self.assertLess(size, 50_000, "pilot-process.md is loaded by every phase; move what only some read into a link doc or a skill")
 
 
 class VersionBumpTests(unittest.TestCase):

@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Read `.pilot/pilot-process.md` first — it is the source of truth for the roster. Here the
 designer leads, there is no validator (the human approves), and the PM and architect are
-summonable (`.pilot/pilot-process.md` §4 "Roster"); `.pilot/pilot-task-advise.md` is read and
+summonable (`.pilot/pilot-link-agent-dialogue.md` "Roster"); `.pilot/pilot-task-advise.md` is read and
 passed into a summoned persona's call. Always pair: it needs a human live and is never run
 from a scheduled sweep.
 

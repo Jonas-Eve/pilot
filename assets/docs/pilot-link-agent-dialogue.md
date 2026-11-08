@@ -14,7 +14,7 @@ before a human ever sees a draft — not one producing a finished artifact the o
 critiques separately:
 
 - **Discovery** — `pilot-pm` leading and `pilot-architect` validating the draft
-  (`.pilot/pilot-process.md` §4 "Roster"); this dialogue is the debate an objection opens,
+  (`.pilot/pilot-link-agent-dialogue.md` "Roster"); this dialogue is the debate an objection opens,
   turning a raw idea into a story (or several) with the architecture anticipated.
 - **Spec** — `pilot-architect` + `pilot-techlead`, splitting a story and writing the
   resulting spec(s) in the same pass — a spec-time feasibility concern can send the split
@@ -85,7 +85,7 @@ positions are the case, add `needs-human`
 comment quoting every position verbatim, never summarized or reduced to "two sides" when
 more than two actually differ — a human decides
 directly, including the "a human is live in the same session" path (`.pilot/pilot-process.md`
-§3): pair mode running this dialogue is still pair mode, so a human present right then
+`.pilot/pilot-process.md` §3): pair mode running this dialogue is still pair mode, so a human present right then
 answers immediately. Once they do, the agents proceed with that answer as the converged
 position, and the phase continues to its normal remaining steps. No live human on the
 spot → the ticket stays blocked and waits, same as any other `needs-human` ticket.
@@ -119,7 +119,7 @@ than running another round hoping it converges on its own.
 
 ### Once converged
 
-The converged proposal is what pair mode's own checkpoint shows the human (§4
+The converged proposal is what pair mode's own checkpoint shows the human (`.pilot/pilot-process.md` §4
 "Interaction modes"), or what `--auto` applies straight through — exactly as if it had
 been produced in one shot. For `--multi` on Dev specifically: once the N instances
 converge (or a live human resolves an escalation) on one implementation approach, exactly
@@ -132,3 +132,51 @@ An optional `--multi <N>` on `/pilot-auto` forwards verbatim to whichever phase 
 runs, same as documented in `.pilot/pilot-link-multi-consensus.md` — this doc only changes
 *how* Discovery/Spec/Dev's own ensemble converges internally, never which ticket gets
 claimed or how `/pilot-auto` itself behaves.
+
+## Roster: who is in the discussion
+
+A phase run is one discussion between the human and agents. Each step has fixed
+leads, an optional validator, and personas the human may summon:
+
+| Step | Lead(s) | Validator | Summonable |
+|------|---------|-----------|------------|
+| Discovery | `pilot-pm` | `pilot-architect` | `pilot-designer` |
+| Spec — `type:feature`/`type:tech` | `pilot-architect` + `pilot-techlead` | `pilot-pm` (`type:feature` only) | `pilot-designer` |
+| Spec — `type:bug`, raw report (no ticket yet) | `pilot-architect` + `pilot-techlead` | — | `pilot-designer` |
+| Spec — `type:bug`, existing ticket | `pilot-techlead` | — | `pilot-architect` |
+| Dev | `pilot-dev` (`pilot-e2e` for `type:e2e`) | — | `pilot-techlead`, `pilot-architect`, `pilot-designer` |
+| Review | `pilot-techlead` + `pilot-pm` (`type:feature`/`type:e2e`), `pilot-techlead` alone (`type:tech`/`type:bug`) | — | `pilot-architect` |
+| QA | `pilot-qa` | — | `pilot-designer` |
+| Proto (`/pilot-proto`, not a phase) | `pilot-designer`, after `pilot-pm` has framed the idea alone with the human | `pilot-pm` | `pilot-architect` |
+| Design (`/pilot-design`, not a phase) | `pilot-designer` | — | `pilot-pm`, `pilot-architect` |
+
+- **Lead.** The skill opens the discussion with the lead(s). `--with <persona>[,...]`
+  (any phase skill) adds personas from that step's Summonable column from the start; any
+  other name is refused.
+- **Validator.** Once the human says the lead's work is done, the validator joins the
+  same discussion and is given the deliverable only — not the discussion. Approves →
+  the step continues. Objects → it stays for the debate with the lead(s) and the human;
+  once the lead(s) have revised or contested the objection it goes dormant (no calls
+  while they work), then returns with only its own objections plus the revised
+  deliverable and gives a new verdict. Repeat until it approves: the verdict is always on
+  a deliverable, never on a conversation.
+- **Summon / dismiss.** The human may at any time summon a persona from the step's
+  Summonable column, or dismiss any persona in the discussion; a dismissed persona gets no
+  further call. Dismissing the last lead, or the validator, before the deliverable is
+  validated is refused — replace the validator instead by summoning one from the column, or
+  end the step with `needs-human` stating it was not validated. Each summon, dismissal and
+  validator verdict is recorded in the step's own checkpoint (above).
+- **Context.** Every call stays isolated (`.pilot/pilot-process.md` §5): a persona entering mid-discussion receives
+  the ticket's latest checkpoint — never the transcript — and, from then on, only the
+  messages posted since its own last turn (a validator: the deliverable, then the same).
+  A persona may ask the skill to show one specific earlier message.
+- **Advisory personas never block.** `pilot-designer` advises; its objection alone never
+  justifies `needs-human`.
+- **`--auto`** (no human, so no summon/dismiss; `--with` still applies): leads, then
+  validator, run in sequence; an objection sends the validator and lead(s) into the
+  turn-taking dialogue of `.pilot/pilot-link-agent-dialogue.md` (no round cap),
+  `needs-human` only for the genuine disagreement that doc describes.
+- **Review** keeps its parallel, isolated reviewers (`.pilot/pilot-link-review-consensus.md`): `--with` there extends the
+  reviewer set at the start (`--only` instead fixes the exact set), and nothing can be summoned mid-run.
+
+---

@@ -7,8 +7,8 @@ doc ever instructs a `Read` of this file), so keep it in sync by hand whenever t
 (Spec) restates only the one fact it needs — excluded from the coverage surface — not
 the rest. `.pilot/pilot-task-implement.md`/`-implement-e2e.md` (Dev) just cite it in
 passing, no restatement. Never by `.claude/agents/pilot-*.md`, which carry only identity
-now. See `.pilot/pilot-process.md` §2/§3/§4/§7 for the generic ticket types, labels, claim
-protocol, and phase-5 trigger this builds on.
+now. See `.pilot/pilot-process.md` §3/§4 for the generic labels, states and claim protocol, `.pilot/pilot-link-ticket-tree.md` for ticket types and
+levels, and `.claude/skills/pilot-qa/SKILL.md` for the phase-5 trigger this builds on.
 
 **Mandatory for every `type:feature` story, never for `type:tech`/`type:bug`.** A story is
 one feature — one integrated flow a human can exercise — so every `type:feature` story
@@ -20,7 +20,7 @@ they have no user-facing flow to exercise this way.
 
 Title convention: "E2E: <story summary>". A dev-sized ticket like any other, `level:task`
 under the story, going through Dev/Review exactly like its siblings, labeled `type:e2e` —
-its own type, never stacked with anything else (`.pilot/pilot-process.md` §2 intro). No new
+its own type, never stacked with anything else (`.pilot/pilot-link-ticket-tree.md` "Types and where each originates"). No new
 `status:` on the ticket itself.
 
 It depends on **every** other task in the same split, dev and tech alike — not a
@@ -28,14 +28,13 @@ judgment-selected subset: one "Depends on #N" line per sibling, so it naturally 
 claimable by Dev until all of them have merged, and structurally can never be the
 ticket that finishes the split before its siblings.
 
-**Excluded from the PM's split-coverage check** (`.pilot/pilot-process.md` §2 "Three
-levels"): neither the e2e task nor any `type:tech` sibling implements a criterion — the
+**Excluded from the PM's split-coverage check** (`.pilot/pilot-link-ticket-tree.md` "Three levels"): neither the e2e task nor any `type:tech` sibling implements a criterion — the
 e2e task verifies criteria the `type:feature` tasks already cover, and a `type:tech` task
 is an enabler, not a delivered piece of product behavior.
 
 **Once the e2e task reaches `status:done`, the whole split is structurally finished**
 (every dev sibling necessarily already is, per the dependency above) — this is what
-triggers `.pilot/pilot-process.md` §7 "Phase 5 — Human QA" instead of the ordinary cascade
+triggers `.claude/skills/pilot-qa/SKILL.md` "Phase 5 — Human QA" instead of the ordinary cascade
 straight to `status:done` (`.pilot/pilot-process.md` §3 "Cascading completion").
 
 Spec (architect+tech lead) writes the e2e task's spec as the test plan itself: which flow,

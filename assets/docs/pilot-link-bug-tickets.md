@@ -4,8 +4,8 @@ Injected whole by `.claude/skills/pilot-spec/SKILL.md` (both when a human invoke
 no-ticket `--bug` entry directly, and for a prerequisite bug the architect discovers
 mid-Spec), `pilot-dev/SKILL.md`, and `pilot-qa/SKILL.md` — the phase-specific delta
 (whether the discovering ticket needs unclaiming, and how) lives in each duty's own task
-doc instead, never here. See `.pilot/pilot-process.md` §2/§3/§4 for the generic ticket
-types, labels, and claim protocol this builds on.
+doc instead, never here. See `.pilot/pilot-process.md` §3/§4 for the generic labels and
+claim protocol, and `.pilot/pilot-link-ticket-tree.md` for the ticket types, this builds on.
 
 **One mechanism, four invokers.** A `type:bug` ticket is always created the same way,
 regardless of who's invoking it — a human describing a defect directly to `/pilot-spec
@@ -14,12 +14,12 @@ regardless of who's invoking it — a human describing a defect directly to `/pi
 created any other way, and never through Discovery — classifying a bug needs only the
 architect, no product judgment a PM would add.
 
-Distinct from a prerequisite *tech* ticket (`.pilot/pilot-process.md` §2 "Prerequisite
+Distinct from a prerequisite *tech* ticket (`.pilot/pilot-link-ticket-tree.md` "Prerequisite
 tech/bug tickets" — a new technical need, no defect implied): a concrete **defect** in
 already-shipped code, most often surfacing while writing/running an e2e test or a phase-5
 manual case, but not limited to those.
 
-**Classify it before creating anything** (`.pilot/pilot-process.md` §2 intro): genuinely a
+**Classify it before creating anything** (`.pilot/pilot-link-ticket-tree.md` "Types and where each originates"): genuinely a
 code defect against something already agreed on, or actually a new/different need in
 disguise. If it's not a bug, don't create a `type:bug` ticket: treat it as a prerequisite
 *tech* ticket if it's a new technical need (via Spec's own `--tech` entry, "Prerequisite
@@ -30,7 +30,7 @@ so and create nothing — a bug has no `status:wont-do` checkpoint to catch an i
 later.
 
 **If it genuinely is a bug, create it directly**: `type:bug`, `level:task`, unassigned —
-never `level:story` (`.pilot/pilot-process.md` §2 "Three levels" — a bug never splits),
+never `level:story` (`.pilot/pilot-link-ticket-tree.md` "Three levels" — a bug never splits),
 never grouped under a `level:epic`. Write it directly (what's
 broken, how to reproduce/observe it, best root-cause diagnosis and suggested fix location
 if known, severity/impact), with its own `priority:` (`.pilot/pilot-process.md` §3 — the
@@ -40,7 +40,7 @@ mechanism is only the classification and the ticket's own content.
 
 **Linking, when discovered mid-another-ticket** (the prerequisite case, and the phase-3/5
 inline-discovery case alike): same mechanics as a prerequisite tech ticket
-(`.pilot/pilot-process.md` §2 "Prerequisite tech/bug tickets") — never a sub-issue of the
+(`.pilot/pilot-link-ticket-tree.md` "Prerequisite tech/bug tickets") — never a sub-issue of the
 ticket being worked. Link the two directions: "Blocks #M" on the new bug ticket, "Depends
 on #N" in the discovering ticket's own body — always a hard blocker, since the
 discovering ticket cannot be finished until the bug is fixed.

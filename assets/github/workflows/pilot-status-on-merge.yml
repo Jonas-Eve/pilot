@@ -102,7 +102,7 @@ jobs:
 
               // An Epic carries no status: label — "done" is just every one of its
               // stories being closed already. No further parent to check
-              // (pilot-process.md §2 "Three levels" caps the tree at Epic).
+              // (pilot-link-ticket-tree.md "Three levels" caps the tree at Epic).
               if (parentLabels.includes('level:epic')) {
                 if (parent.state === 'closed') return;
 
@@ -166,7 +166,7 @@ jobs:
               // e2e task itself just finished. That story goes to status:qa for a
               // human to confirm (§7 "Phase 6 — Human QA") instead of straight to
               // status:done — a type:tech parent (the only other type that can reach
-              // status:split; type:bug never does, pilot-process.md §2 "Three levels")
+              // status:split; type:bug never does, pilot-link-ticket-tree.md "Three levels")
               // is unaffected, unchanged cascade.
               if (parentLabels.includes('type:feature')) {
                 core.info(`All sub-issues of #${parent.number} are done/wont-do; cascading status:qa (type:feature) to parent.`);

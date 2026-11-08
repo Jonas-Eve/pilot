@@ -213,3 +213,16 @@ sequenceDiagram
                            └─ objects → debate with PM + you → dormant → back on the revised draft
 "convoque l'architecte" / "congédie le designer"   # any time, from the step's own list
 ```
+
+## The five phases at a glance
+
+| # | Phase | Skill | Agent | Produces |
+|---|-------|-------|-------|----------|
+| 1 | Discovery | `/pilot-discovery` | `pilot-pm` first frames the idea with the human, then leads the story, which `pilot-architect` then validates (§4 "Roster") | One or more `level:story` — `type:feature`, and/or `type:tech` when the same effort genuinely needs a technical enabler alongside the product work — grouped under a new/reused `level:epic` (`type:feature` only) if it doesn't fit in one, with dependencies between them and early architecture decisions (interfaces, infra shape) already anticipated. Never splits into tasks — that's phase 2's job. `status:draft` until human approval, then `status:backlog`. Never for `type:tech` standalone or `type:bug` (§2 "Three levels") |
+| 2 | Spec | `/pilot-spec` | `pilot-architect` + `pilot-techlead`, in dialogue — plus `pilot-pm` when a `type:feature` story is split | Splits an already-formalized story into dev-sized tasks (mandatory for `type:feature`, a judgment call for `type:tech`) **and** writes each resulting ticket's technical spec, in one continuous pass — or, given no ticket at all (`--tech`/`--bug`, explicit or auto-detected), originates the ticket itself first (with a human live, after the architect and tech lead have challenged and verified the raw need with them), standalone, then splits/specs it the same way. `status:dev-ready` per resulting ticket (the tracker parent, if split, lands on `status:split` instead) |
+| 3 | Dev | `/pilot-dev` | `pilot-dev`, or `pilot-e2e` instead for a `type:e2e` task | An implementation + pull request (following `.github/pull_request_template.md`) |
+| 4 | Review | `/pilot-review` | `pilot-techlead` + `pilot-pm` (feature/e2e) or `pilot-techlead` alone (tech/bug) — `pilot-architect` optional in either set | A submitted GitHub PR review (Approve/Request changes/Comment): `status:approved`, or blocking points (`needs-human`, plus `status:changes-requested` if code-level) — merges only with `--merge`, otherwise a human merges by hand |
+| 5 | Human QA (`type:feature` only) | `/pilot-qa` | `pilot-qa` | A human-confirmed `status:done` once every task has merged, or a `needs-human` flag with what failed (§7) |
+
+Each phase skill is invoked on its own (`/pilot-spec 123`, etc.), as its own isolated
+agent call (see §5), one phase at a time.

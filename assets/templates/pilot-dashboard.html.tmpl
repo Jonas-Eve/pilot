@@ -184,7 +184,7 @@ function ago(iso){
   if(!isFinite(d))return ''; if(d<3600)return 'il y a '+Math.max(1,Math.round(d/60))+' min';
   if(d<86400)return 'il y a '+Math.round(d/3600)+' h'; return 'il y a '+Math.round(d/86400)+' j';
 }
-/* ---------- PILOT model (from pilot-process.md §1, §3, §4) ---------- */
+/* ---------- PILOT model (from pilot-process.md §3, §4) ---------- */
 var PHASES=[
   {key:'discovery',name:'Discovery',n:1,role:'produit',statuses:['draft']},
   {key:'spec',name:'Spec',n:2,role:'tech',statuses:['backlog','in-spec']},
@@ -416,7 +416,7 @@ function foldCard(box,key,title){
 /* what one ticket row can launch, given its chosen options: --next rides it through every phase via /pilot-auto,
    --multi N has N agents converge on the approach first (never on a resume, nor on QA) */
 function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false,w:{},only:{}});}
-/* personas a row can add with --with (the step's Summonable column, pilot-process.md §4 "Roster") and, for a review, narrow to with --only; never on a resume or a container */
+/* personas a row can add with --with (the step's Summonable column, `.pilot/pilot-link-agent-dialogue.md` "Roster") and, for a review, narrow to with --only; never on a resume or a container */
 var WITHS={'/pilot-spec':['designer'],'/pilot-dev':['techlead','architect','designer'],'/pilot-review':['architect'],'/pilot-qa':['designer']};
 var PERSONA_FR={techlead:'tech lead',architect:'architecte',designer:'designer',pm:'PM'};
 function phaseCmd(a){var m=/^\/pilot-(spec|dev|review|qa) /.exec(a.cmd||'');return m&&a.cmd.indexOf('--resume')<0&&!a.container?'/pilot-'+m[1]:null;}
@@ -1078,7 +1078,7 @@ function render(){
   v.replaceChildren(H?vHelp():S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():S.tab==='wiki'?vWiki():S.tab==='architecture'?vArch():S.tab==='prototypes'?vProtos():vFile());
 }
 
-/* ---------- reference panel: the agents and who leads, validates or can be summoned at each step (mirrors pilot-process.md §4 "Roster") ---------- */
+/* ---------- reference panel: the agents and who leads, validates or can be summoned at each step (mirrors `.pilot/pilot-link-agent-dialogue.md` "Roster") ---------- */
 var AGENTS=[
   ['pm','PM','Cadre votre idée avec vous, rédige les stories, vérifie qu’un découpage couvre les critères d’acceptation, relit les livraisons produit, cadre un prototype puis le contrôle.'],
   ['architect','Architecte','Anticipe l’architecture, challenge puis découpe les stories, tranche sur le périmètre et les dépendances.'],

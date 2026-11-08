@@ -2,7 +2,7 @@
 
 Injected by `.claude/skills/pilot-discovery/SKILL.md` into the `pilot-architect`
 persona's prompt as the validator of the story the PM drafted with
-`.pilot/pilot-task-write-story.md` (`.pilot/pilot-process.md` §4 "Roster"); an objection
+`.pilot/pilot-task-write-story.md` (`.pilot/pilot-link-agent-dialogue.md` "Roster"); an objection
 opens a debate with the PM (`.pilot/pilot-link-agent-dialogue.md`).
 
 You receive the human-validated brief (`.pilot/pilot-task-frame-idea.md`), the raw

@@ -20,7 +20,7 @@ same skill invocation, once this ticket is drafted and approved.
 1. Write the story's issue body: what the need actually is and why, concrete enough
    that the split/spec pass that follows can work it without re-litigating what you meant.
 2. **Always exactly one story, standalone, never grouped under an Epic** — there is no
-   `type:tech` epic (`.pilot/pilot-process.md` §2 "Three levels"), so a need too big for
+   `type:tech` epic (`.pilot/pilot-link-ticket-tree.md` "Three levels"), so a need too big for
    one story is never several standalone stories either: that's what the split step right
    after this one is for (mandatory-vs-judgment-call by `type:` — same as any `type:tech`
    story, `.pilot/pilot-task-scope-story.md`), turning this one story into dev-sized tasks

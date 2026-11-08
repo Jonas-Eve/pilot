@@ -10,7 +10,7 @@ no split decision to make.
 
 You receive one ticket carrying either the architect's split-time
 security/architecture decisions (a `level:story`'s own task, this same pass), or, for a
-`type:bug` ticket (which never splits — `.pilot/pilot-process.md` §2 "Three levels"), the
+`type:bug` ticket (which never splits — `.pilot/pilot-link-ticket-tree.md` "Three levels"), the
 architect's original diagnosis and suggested fix, recorded when the bug was created — the
 analogous judgment from a different moment.
 

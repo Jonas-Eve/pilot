@@ -9,19 +9,18 @@ number. Not Discovery (no such ticket to resolve, it starts from a raw idea or
 of this at all — giving it an Epic or a split story's number still just means "try the
 fixed order against that one ticket" (`pilot-auto/SKILL.md`); it's each of the three
 phases above that resolves what "that one ticket" actually is, the same delegation
-`/pilot-auto` already relies on for everything else. See `.pilot/pilot-process.md`
-§2/§3/§4 for the generic ticket levels, labels, and claim protocol this builds on.
+`/pilot-auto` already relies on for everything else. See `.pilot/pilot-process.md` §3/§4 for the generic labels and claim protocol and `.pilot/pilot-link-ticket-tree.md` for the ticket levels this builds on.
 
 **Not symmetric across all three.** `level:epic` never carries a `status:` of its own
 and is never any of the three's own territory, so all three trigger on it the same way.
 A `status:split` `level:story` is different: once split, it's never `/pilot-dev` or
 `/pilot-review`'s own territory either (an unsplit `type:tech` story,
-with no sub-issues at all, `.pilot/pilot-process.md` §2 "Three levels", is unaffected
+with no sub-issues at all, `.pilot/pilot-link-ticket-tree.md` "Three levels", is unaffected
 and still claimed by those two directly, same as always) — so those two trigger on
 a `status:split` story too — but `/pilot-spec` is the one phase that keeps a
 legitimate, documented direct path to a still-open `status:split` story: re-scoping it
 in place, adding more tasks to the existing split
-(`.pilot/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split is
+(`.pilot/pilot-link-ticket-tree.md` "Re-scoping a `type:feature` story after its split is
 done", "`status:split`, original e2e task not yet done"). This mechanism must never
 intercept that case, so `/pilot-spec` only triggers it for a `level:epic` — never for a
 `status:split` story, which it resolves through its own ordinary bullets untouched.
@@ -41,7 +40,7 @@ directly — for `/pilot-spec`, a `level:epic`; for the other two, a `level:epic
   every ticket in its sub-issue tree, at every depth — an Epic's open stories, plus, for
   any of those that's itself `status:split`, that story's own open tasks in turn
   (capped at two hops: the tree is never deeper than Epic → story → task,
-  `.pilot/pilot-process.md` §2 "Three levels", so this always terminates). Run this
+  `.pilot/pilot-link-ticket-tree.md` "Three levels", so this always terminates). Run this
   phase's own **ordinary bare-pool query** against that whole collected set — exactly
   the same query it runs with no ticket at all (`.pilot/pilot-process.md` §4 "Picking
   the next ticket when none is specified": its own pre-claim status, plus

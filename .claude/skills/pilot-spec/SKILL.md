@@ -1,6 +1,6 @@
 ---
 name: pilot-spec
-description: "Phase 2 of PILOT (see .pilot/pilot-process.md): the architect and tech lead work an already-formalized level:story together, in dialogue (.pilot/pilot-link-agent-dialogue.md) rather than one handing a finished decomposition to the other — split it into dev-sized tasks (mandatory for type:feature, a judgment call for type:tech) and write each resulting ticket's technical spec, in one continuous pass, so a spec-time feasibility concern can reshape the split immediately instead of surfacing later. For type:feature, the PM also checks the proposed type:feature tasks (excluding tech/e2e siblings) against the story's acceptance criteria before finalizing. Given a level:task instead (always a standalone type:bug ticket, dev-sized by nature — the only level:task that ever waits on its own spec, since a freshly split-off task is always spec'd in the same pass that creates it), just writes its spec directly, no split decision. Given no ticket at all and a raw need (--tech, or --bug, explicit or auto-detected), originates it first — with a human live, the architect and tech lead first challenge and verify the raw request with them before any ticket exists, then the architect alone classifies/drafts it, then the same pass splits/specs it — the one way a type:tech or type:bug ticket ever reaches this phase without a prior /pilot-discovery pass (type:bug never goes through /pilot-discovery at all). Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. The architect and tech lead lead, the PM validates a type:feature split, and --with adds summonable personas such as the designer upfront (.pilot/pilot-process.md §4 "Roster"). Defaults to pair mode (walks the decomposition/spec with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human) — except the no-ticket entry, which needs a human's raw input and so is pair in practice regardless. Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:in-spec then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. An optional --multi <N> runs an N-instance ensemble in dialogue with itself instead of one, converging with no fixed round cap, escalating to needs-human only on a genuine, unresolved disagreement (see .pilot/pilot-link-agent-dialogue.md). Use for splitting/speccing an already-created story, speccing a standalone task/bug, or originating and speccing a standalone technical need or bug report from scratch."
+description: "Phase 2 of PILOT (see .pilot/pilot-process.md): the architect and tech lead work an already-formalized level:story together, in dialogue (.pilot/pilot-link-agent-dialogue.md) rather than one handing a finished decomposition to the other — split it into dev-sized tasks (mandatory for type:feature, a judgment call for type:tech) and write each resulting ticket's technical spec, in one continuous pass, so a spec-time feasibility concern can reshape the split immediately instead of surfacing later. For type:feature, the PM also checks the proposed type:feature tasks (excluding tech/e2e siblings) against the story's acceptance criteria before finalizing. Given a level:task instead (always a standalone type:bug ticket, dev-sized by nature — the only level:task that ever waits on its own spec, since a freshly split-off task is always spec'd in the same pass that creates it), just writes its spec directly, no split decision. Given no ticket at all and a raw need (--tech, or --bug, explicit or auto-detected), originates it first — with a human live, the architect and tech lead first challenge and verify the raw request with them before any ticket exists, then the architect alone classifies/drafts it, then the same pass splits/specs it — the one way a type:tech or type:bug ticket ever reaches this phase without a prior /pilot-discovery pass (type:bug never goes through /pilot-discovery at all). Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. The architect and tech lead lead, the PM validates a type:feature split, and --with adds summonable personas such as the designer upfront (`.pilot/pilot-link-agent-dialogue.md` "Roster"). Defaults to pair mode (walks the decomposition/spec with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human) — except the no-ticket entry, which needs a human's raw input and so is pair in practice regardless. Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:in-spec then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. An optional --multi <N> runs an N-instance ensemble in dialogue with itself instead of one, converging with no fixed round cap, escalating to needs-human only on a genuine, unresolved disagreement (see .pilot/pilot-link-agent-dialogue.md). Use for splitting/speccing an already-created story, speccing a standalone task/bug, or originating and speccing a standalone technical need or bug report from scratch."
 argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume | --tech <raw need> | --bug <raw need>"
 ---
 
@@ -10,7 +10,7 @@ Read `.pilot/pilot-process.md` first — it's the source of
 truth for labels, states, and the claim protocol; this skill covers only the
 mechanics of running this phase. Read `.pilot/pilot-link-agent-dialogue.md` too — it
 covers the architect/tech lead turn-taking mechanic this skill relies on throughout, and
-what `--multi` means here. The roster (`.pilot/pilot-process.md` §4 "Roster") for this
+what `--multi` means here. The roster (`.pilot/pilot-link-agent-dialogue.md` "Roster") for this
 phase: the architect and tech lead lead together (the tech lead alone for an existing `type:bug` ticket), the PM
 validates a `type:feature` split (step 3's coverage check), and the designer is summonable —
 for an existing `type:bug` ticket it is the architect instead. Summons and dismissals are
@@ -41,7 +41,7 @@ summoned persona's call.
        referenced via "Blocks #M"/"Depends on #N" or a sub-issue relationship, as context,
        then step 2 (mode `fresh`).
      - `rescope` → a story at `status:qa`/`status:in-qa`, or a still-open `status:split` one:
-       a valid re-scope entry point (`.pilot/pilot-process.md` §2 "Re-scoping a
+       a valid re-scope entry point (`.pilot/pilot-link-ticket-tree.md` "Re-scoping a
        `type:feature` story after its split is done"). Read the ticket, its parent Epic (if
        linked), and its tasks (`status:done` ones included, such as the original e2e task) for
        context; for a `status:qa`/`status:in-qa` story, comment why (new scope found; any
@@ -58,7 +58,7 @@ summoned persona's call.
        never intercepted this way); resolve `pick.number` the same way. `pick: null` →
        report nothing to do for this ticket.
      - `stop` → report `reason` and stop. `closed` is terminal
-       (`.pilot/pilot-process.md` §2 "Re-scoping a `type:feature` story after its split is
+       (`.pilot/pilot-link-ticket-tree.md` "Re-scoping a `type:feature` story after its split is
        done"): say it's closed, point at opening a new ticket instead, never claim it.
        `epic-without-open-subissues`: there's nothing to work on the epic itself — point at
        its stories. Otherwise (`flagged`: unresolved `needs-human`/`on-hold`,
@@ -91,7 +91,7 @@ summoned persona's call.
     same way, and its answer fed back into the dialogue.
     - `--tech`: out of scope / not actionable → report, create nothing. Otherwise →
       always exactly one `type:tech` `level:story` (standalone — never grouped under an
-      epic, there is no `type:tech` epic, `.pilot/pilot-process.md` §2 "Three levels") —
+      epic, there is no `type:tech` epic, `.pilot/pilot-link-ticket-tree.md` "Three levels") —
       a need too big for one story is never several stories here, that's what step 3's
       own split judgment call is for, right after this same story is approved. Create it
       `status:draft`, assigned, its own initial `priority:`.
@@ -166,14 +166,14 @@ summoned persona's call.
      security/architecture decisions, dependencies, its own suggested priority, and its
      own written spec.
    - `type:feature`: always a set of proposed tasks — one or more dev tasks (each
-     its own `type:feature` or `type:tech`, whichever fits — `.pilot/pilot-process.md`
-     §2 "`type:` is never inherited"), plus exactly one flagged as the mandatory
+     its own `type:feature` or `type:tech`, whichever fits — `.pilot/pilot-link-ticket-tree.md`
+     "`type:` is never inherited"), plus exactly one flagged as the mandatory
      end-to-end-test task, its own `type:e2e` (`.pilot/pilot-link-e2e-tasks.md`),
      dependent on every other task in the set — each with its own written spec. Never a
      single unsplit body.
    - Or, for either: a verdict that it shouldn't be built at all.
    Independently, it may also flag one or more **prerequisite** needs — `type:tech`
-   (`.pilot/pilot-process.md` §2 "Prerequisite tech/bug tickets") or `type:bug`
+   (`.pilot/pilot-link-ticket-tree.md` "Prerequisite tech/bug tickets") or `type:bug`
    (`.pilot/pilot-link-bug-tickets.md`) — and whether each is a hard blocker; for a
    `level:task`, just its written spec, or a `needs-human` flag.
 4a. **If `type:feature`** (always split, step 4): call `Agent` again with
@@ -214,15 +214,14 @@ summoned persona's call.
      nothing to link to.
    - Split into tasks: create the sub-issues, link to the parent as native
      sub-issues, each labeled `level:task` plus its own `type:` as decided in step 4
-     (never the parent's — `.pilot/pilot-process.md` §2 "`type:` is never
-     inherited": `type:feature`/`type:tech` for a dev task, `type:e2e` for the
+     (never the parent's — `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited": `type:feature`/`type:tech` for a dev task, `type:e2e` for the
      end-to-end one), its own written spec, and **`status:dev-ready` directly** — split
      and spec happen in the same pass, so a fresh task never stops at an intermediate
      "scoped but not yet spec'd" status. Once the tasks are linked, one `python3 .pilot/pilot.py event
      <task> <task>... --action created --phase spec` gives their dashboard events (step 2a;
      they carry the parent). For a
      recorded dependency between two tasks, add a "Depends on #N" line to the
-     dependent one's body (`.pilot/pilot-process.md` §2 "Dependencies between tasks of
+     dependent one's body (`.pilot/pilot-link-ticket-tree.md` "Dependencies between tasks of
      the same split" — also how the e2e task's dependencies on every sibling get
      recorded). Set the parent's `status:` to `split` (its `level:` stays
      `level:story`), remove its own `priority:` label
