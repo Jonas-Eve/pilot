@@ -74,7 +74,8 @@ def snapshot():
             row["r"] = pr
         rows.append(row)
     rows.sort(key=lambda r: r["u"], reverse=True)
-    return {"repo": REPO, "at": iso(0.5), "source": "demo", "total": len(rows), "truncated": False, "issues": rows}
+    return {"repo": REPO, "at": iso(0.5), "source": "demo", "total": len(rows), "truncated": False, "issues": rows,
+            "modules": {"wiki": True, "dashboard": True, "design": True, "proto": True}}
 
 
 def live_documents():

@@ -17,6 +17,9 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
 
 ## Steps
 
+0. **The module.** `python3 .pilot/pilot.py module list` (when `.pilot/pilot.py` is there): with the `dashboard` module
+   off, say so and propose turning it on (`python3 .pilot/pilot.py module enable dashboard`); on a yes go on, on a
+   no stop. `design`, `proto` and the Wiki tab need the dashboard, so they cannot stay on without it.
 1. **Preconditions.** `.pilot/state.json` exists with `pilotInitialized: true`, else stop and
    point at `/pilot-init`. The `Artifact` tool must be available, else say so and stop —
    nothing else in PILOT depends on the dashboard.
@@ -45,7 +48,8 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
    `interact`).
 4. **Snapshot** (after a first publish, and for `--refresh`). `python3 .pilot/pilot.py
    snapshot --out <temp file>`, then `ArtifactData` `set` on `snapshots/<owner>__<repo>` with
-   that `file_path` (`get` it first and pass `if_version` if it already exists). When the `wiki` module is
+   that `file_path` (`get` it first and pass `if_version` if it already exists). The snapshot carries the project's
+   `modules`, which is what hides the tabs of a module that is off. When the `wiki` module is
    enabled, the same way with `python3 .pilot/pilot.py wiki snapshot --out <temp file>` on
    `wiki/<owner>__<repo>` — the Wiki tab reads it; a project without the module skips this.
 5. **Prune** (with step 4). `events` documents whose `at` is older than the snapshot's `at`

@@ -252,6 +252,9 @@ function cur(){
   if(S.gh.state==='live')return {src:'snapshot',list:S.gh.live,at:S.gh.at,truncated:S.gh.truncated,total:S.gh.total};
   return {src:'sample',list:SAMPLE};
 }
+/* a tab of an optional module shows only when the project has that module on; a snapshot without the field shows them all */
+var TAB_MODULE={prototypes:'proto',design:'design',wiki:'wiki'};
+function tabOn(tab){var m=S.gh&&S.gh.modules; return !TAB_MODULE[tab]||!m||m[TAB_MODULE[tab]]===true;}
 function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.at);}
 
 /* ---------- snapshots (db): written by Claude from GitHub, read by everyone ---------- */
@@ -260,7 +263,7 @@ function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updat
 function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
-  S.gh={state:'live',msg:'',live:(s.issues||[]).map(normSnap),at:s.at,total:s.total,truncated:!!s.truncated};
+  S.gh={state:'live',msg:'',live:(s.issues||[]).map(normSnap),at:s.at,total:s.total,truncated:!!s.truncated,modules:(s.modules&&typeof s.modules==='object'&&!Array.isArray(s.modules))?s.modules:null};
 }
 function watchSnapshots(){
   if(unGh){try{unGh();}catch(e){} unGh=null;}
@@ -1011,11 +1014,12 @@ function renderChrome(){
     return h('button',{type:'button','aria-pressed':String(S.role===r[0]),onclick:function(){S.role=r[0];S.page=0;store('cp.role',r[0]);render();}},r[1]);}));
   var alive=S.activity.filter(isAlive).length;
   var tabs=document.getElementById('tabs');
-  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['prototypes','Prototypes'+(protoCounts().encours?' ('+protoCounts().encours+')':'')],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')],['design','Design'],['wiki','Wiki'+(wikiEntries().length?' ('+wikiEntries().length+')':'')]].map(function(t){
+  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['prototypes','Prototypes'+(protoCounts().encours?' ('+protoCounts().encours+')':'')],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')],['design','Design'],['wiki','Wiki'+(wikiEntries().length?' ('+wikiEntries().length+')':'')]].filter(function(t){return tabOn(t[0]);}).map(function(t){
     return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]&&!S.viewHelp?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
   S._km=null;S._po=null;
+  if(!tabOn(S.tab)||(S.viewProto&&!tabOn('prototypes'))){S.tab='file';S.viewProto=0;} /* a tab whose module is off falls back to the queue */
   renderChrome();renderConn();renderBanner();
   var H=!!S.viewHelp; /* the reference page replaces everything under the tabs */
   var hl=document.getElementById('helpLink'); if(H)hl.setAttribute('aria-current','page'); else hl.removeAttribute('aria-current');
