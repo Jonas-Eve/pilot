@@ -120,7 +120,7 @@ itself.
   `proto` (accept or reject a prototype, or check it is accepted before a Discovery starts from it), `proto-pack`
   (check a prototype's mockup and split it into the cockpit's documents), `wiki`
   (the project's wiki under `wiki/`: `index`, `show`, `status`, `lint`, and `add`/`set`, the only
-  writers of an entry's meta line — design in `docs/wiki-design.md`, not yet used by any skill) and
+  writers of an entry's meta line — design in `docs/wiki-design.md`; used by `pilot-wiki` and, when the project has a `wiki/`, by `pilot-discovery`, `pilot-spec` and `pilot-dev`) and
   `doctor` (preflight each phase skill runs as its step 0, once per session: python, gh auth,
   repo access and push permission, the 32 PILOT labels). Every command prints one JSON
   object; `claim`/`set`/`flag`/`unflag` also return the `event` (and `claim` the `activity`)

@@ -31,7 +31,7 @@ truth, for agents and humans, as markdown files in the consuming project's repo.
 - Root: `wiki/` in the **project** repo. Project-owned: `/pilot-update` never touches it.
   Its absence is what `doctor` reports (§6).
 - Functional only, organized by **functional domain**: one folder per product area
-  (`search/`, `export/`…), one markdown file per topic, plus `glossary.md`. Domains come from
+  (`search/`, `export/`…), one markdown file per topic. Domains come from
   the project's epics. Architecture decisions are out of scope here: they will be handled
   by a reworked `/pilot-init-archi`.
 - No committed index: `pilot.py wiki index` prints it on demand (titles, entry ids,
@@ -175,7 +175,7 @@ version while nothing requires the wiki yet, so `main` is never half-migrated:
 
 1. `pilot.py wiki` (index, show, status, lint, add, set) and its tests — done, 2.10.0.
 2. `/pilot-wiki` (query, `--lint`, `--init`) and the link/task docs — done, 2.11.0.
-3. Discovery and Spec wiki PRs, Dev flips to `implemented`.
+3. Discovery and Spec wiki PRs, Dev flips to `implemented` — done, 2.12.0 (only for a project that has a `wiki/`).
 4. Review and QA criteria, the dashboard "Wiki" tab.
 5. Last PR: the `doctor` check makes the wiki mandatory, `/pilot-init` and `/pilot-update`
    run or propose `--init`, `VERSION` goes to 3.0.0.

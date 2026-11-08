@@ -794,6 +794,15 @@ class WikiTests(unittest.TestCase):
         self.assertRegex(out["verifiedAt"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
         self.assertEqual(self.wiki.index()["entries"][0]["verifiedCommit"], "deadbeef")
 
+    def test_set_clear_stamp_forgets_the_verification(self):
+        out = self.wiki.set("search-sort", status="specified", clear_stamp=True)
+        self.assertEqual((out["verifiedAt"], out["verifiedCommit"]), ("", ""))
+        self.assertEqual(self.wiki.index()["problems"], 0)
+
+    def test_derived_tickets_carry_their_level(self):
+        out = self.derived("search-filter", issue(12, ["level:task", "status:in-dev"]), issue(15, ["level:story", "status:split"]))
+        self.assertEqual([t["level"] for t in out["tickets"]], ["task", "story"])
+
     def test_set_refuses_a_derived_status_and_an_unknown_entry(self):
         for derived in ("in-dev", "verified"):
             with self.assertRaises(pilot.Refused) as caught:
