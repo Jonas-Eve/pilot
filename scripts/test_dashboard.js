@@ -28,12 +28,13 @@ const ticket = (n, labels, extra = {}) => ({ n, t: `Ticket ${n}`, l: labels, u: 
 const STUB = (opts) => `
 (() => {
   const OPTS = ${JSON.stringify(opts)};
-  const data = { snapshots: {}, events: {}, activity: {}, design: {}, wiki: {}, protos: {}, protoHtml: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [], wiki: [], protos: [], protoHtml: [] };
+  const data = { snapshots: {}, events: {}, activity: {}, design: {}, wiki: {}, architecture: {}, protos: {}, protoHtml: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [], wiki: [], architecture: [], protos: [], protoHtml: [] };
   (OPTS.preload || []).forEach(d => { data.snapshots[d.repo.replace('/', '__')] = d; });
   (OPTS.events || []).forEach((d, k) => { data.events['e' + k] = d; });
   (OPTS.activity || []).forEach((d, k) => { data.activity['a' + k] = d; });
   (OPTS.design || []).forEach((d, k) => { data.design['d' + k] = d; });
   (OPTS.wiki || []).forEach((d, k) => { data.wiki['w' + k] = d; });
+  (OPTS.architecture || []).forEach((d, k) => { data.architecture['r' + k] = d; });
   (OPTS.protos || []).forEach((d) => { data.protos['p' + d.n] = d; });
   (OPTS.protoHtml || []).forEach((d) => { data.protoHtml[d.n + '-' + d.k] = d; });
   const snap = (c) => ({ docs: Object.entries(data[c]).map(([id, d]) => ({ id, data: () => d, exists: true })) });
@@ -996,26 +997,67 @@ const STUB = (opts) => `
   await page.close();
   }
 
+  // ---- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ----
+  const ARCH = { kind: 'architecture', repo: REPO, at: iso(20), total: 4, truncated: false, entries: [
+    { id: 'overview', title: 'Overview', description: 'The apps and how they relate.', path: 'overview.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'One CLI <img src=x onerror="window.__pwn=1">.' },
+    { id: 'layering', title: 'Layering', description: 'Domain never imports adapters.', path: 'guidelines/layering.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Domain never imports adapters.' },
+    { id: '0001-compute', title: 'Catalog computed', description: 'Compute the catalog.', path: 'adr/0001-compute.md', status: 'superseded', tickets: [5], supersedes: '', supersededBy: '0002-store', text: '' },
+    { id: '0002-store', title: 'Catalog stored', description: 'The catalog is stored, not computed.', path: 'adr/0002-store.md', status: 'accepted', tickets: [12], supersedes: '0001-compute', supersededBy: '', text: 'Stored.' }] };
+  { let page = await open({ preload: [BASE] });
+  await page.goto(FILE + '#architecture'); await page.waitForTimeout(350);
+  check('architecture tab: empty state names the commands, no ticket banner', /Aucune architecture publiée/.test(await text(page, '#view')) && /pilot-architecture --bootstrap/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Architecture');
+  await page.evaluate((d) => window.__push('architecture', 'r0', d), ARCH); await page.waitForTimeout(200);
+  const av = await text(page, '#view');
+  check('architecture tab: counted in the tab, grouped by overview, rules and decisions', (await page.$$eval('#tabs a', (a) => a.map((x) => x.textContent))).includes('Architecture (4)') && /Vue d’ensemble/.test(av) && /Règles/.test(av) && /Décisions/.test(av) && /Catalog stored/.test(av), av);
+  check('architecture sub-tabs: Tous, then one per group with its count',
+        JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))) === JSON.stringify(['Tous (4)', 'Vue d’ensemble (1)', 'Règles (1)', 'Décisions (2)']), JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))));
+  check('architecture summary and supersession chips', /3 accepté/.test(av) && /1 remplacé/.test(av) && /remplace 0001-compute/.test(av) && /remplacé par 0002-store/.test(av), av);
+  check('architecture: ticket link, and HTML in an entry stays text', (await page.$eval('#view a[href$="/issues/12"]', (a) => a.getAttribute('href'))) === 'https://github.com/' + REPO + '/issues/12' && (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined);
+  await page.click('#subtabs >> text=Décisions'); await page.waitForTimeout(150);
+  const af = await text(page, '#view');
+  check('architecture sub-tab: shows only that group, the address follows', /Catalog stored/.test(af) && !/Layering/.test(af) && (await page.evaluate(() => location.hash)) === '#architecture/adr', af);
+  await page.evaluate((d) => window.__push('architecture', 'r1', Object.assign({}, d, { repo: 'o/other', entries: [{ id: 'x', title: 'Autre projet', path: 'overview.md', status: 'proposed', tickets: [], text: '' }] })), ARCH); await page.waitForTimeout(150);
+  check('architecture: another repo\'s document is not shown', !/Autre projet/.test(await text(page, '#view')));
+  check('architecture tab: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+  page = await open({ preload: [BASE], architecture: [ARCH] });
+  await page.goto(FILE + '#architecture/guidelines'); await page.waitForTimeout(400);
+  check('architecture: #architecture/<group> opens that group from a preloaded document', /Layering/.test(await text(page, '#view')) && !/Catalog stored/.test(await text(page, '#view')));
+  await page.evaluate(() => { location.hash = 'architecture/zzz'; }); await page.waitForTimeout(200);
+  check('architecture: an unknown group falls back to Tous', /Layering/.test(await text(page, '#view')) && /Catalog stored/.test(await text(page, '#view')));
+  const awide = [];
+  for (const scheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const r of ['architecture', 'architecture/adr', 'architecture/guidelines']) {
+      await page.evaluate((x) => { location.hash = x; }, r); await page.waitForTimeout(150);
+      const w = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (w > 0) awide.push(scheme + ' #' + r + ' (+' + w + 'px)');
+    }
+  }
+  check('architecture tab fits a 400px phone, light and dark', awide.length === 0 && page.errors.length === 0, awide.join(', ') + ' ' + page.errors.join(' | '));
+  await page.close();
+  }
+
   // ---- tabs follow the modules the snapshot says the project has on ----
   {
     const tabs = async (pg) => pg.$$eval('#tabs a', (a) => a.map((x) => x.textContent.replace(/ \(\d+\)$/, '')));
     const withMods = (m) => Object.assign({}, BASE, { modules: m });
-    let page = await open({ preload: [withMods({ dashboard: true, wiki: false, design: false, proto: false })] });
-    check('modules: a module that is off hides its tab (Design, Prototypes, Wiki)',
+    let page = await open({ preload: [withMods({ dashboard: true, wiki: false, architecture: false, design: false, proto: false })] });
+    check('modules: a module that is off hides its tab (Design, Prototypes, Wiki, Architecture)',
           JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Recherche', 'Activité']), JSON.stringify(await tabs(page)));
     await page.goto(FILE + '#design'); await page.waitForTimeout(350);
     check('modules: an address into a tab whose module is off falls back to the queue',
           (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Ma file' && !(await page.$eval('#idea', (e) => e.hidden)));
     await page.goto(FILE + '#proto/702'); await page.waitForTimeout(350);
     check('modules: a prototype address with the proto module off falls back too', (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Ma file');
-    await page.evaluate((d) => window.__push('snapshots', 'Jonas-Eve__myavimobility', d), withMods({ dashboard: true, wiki: true, design: false, proto: true })); await page.waitForTimeout(250);
+    await page.evaluate((d) => window.__push('snapshots', 'Jonas-Eve__myavimobility', d), withMods({ dashboard: true, wiki: true, architecture: false, design: false, proto: true })); await page.waitForTimeout(250);
     check('modules: turning a module on shows its tab at the next snapshot, the others stay hidden',
           JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Activité', 'Wiki']), JSON.stringify(await tabs(page)));
     check('modules: no page errors', page.errors.length === 0, page.errors.join('|'));
     await page.close();
     page = await open({ preload: [BASE] });
     check('modules: a snapshot without the field shows every tab, as before',
-          JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Activité', 'Design', 'Wiki']), JSON.stringify(await tabs(page)));
+          JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Activité', 'Design', 'Wiki', 'Architecture']), JSON.stringify(await tabs(page)));
     await page.close();
   }
 

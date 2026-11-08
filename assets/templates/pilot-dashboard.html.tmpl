@@ -242,7 +242,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'agents',ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours',wiki:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'agents',ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -253,7 +253,7 @@ function cur(){
   return {src:'sample',list:SAMPLE};
 }
 /* a tab of an optional module shows only when the project has that module on; a snapshot without the field shows them all */
-var TAB_MODULE={prototypes:'proto',design:'design',wiki:'wiki'};
+var TAB_MODULE={prototypes:'proto',design:'design',wiki:'wiki',architecture:'architecture'};
 function tabOn(tab){var m=S.gh&&S.gh.modules; return !TAB_MODULE[tab]||!m||m[TAB_MODULE[tab]]===true;}
 function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.at);}
 
@@ -315,6 +315,10 @@ function watchLive(){
   /* same for the wiki tab: a dashboard published before it has no rule for this collection */
   try{S.db.collection('wiki').onSnapshot(function(snap){
     S.wiki=null; snap.docs.forEach(function(d){var v=d.data(); if(v&&v.kind==='wiki'&&v.repo&&snapId(v.repo)===snapId(S.repo))S.wiki=v;}); render();
+  },function(){});}catch(e){}
+  /* and the architecture tab */
+  try{S.db.collection('architecture').onSnapshot(function(snap){
+    S.arch=null; snap.docs.forEach(function(d){var v=d.data(); if(v&&v.kind==='architecture'&&v.repo&&snapId(v.repo)===snapId(S.repo))S.arch=v;}); render();
   },function(){});}catch(e){}
 }
 function minutesSince(iso){var d=(Date.now()-new Date(iso).getTime())/60000; return isFinite(d)?d:1e9;}
@@ -623,6 +627,11 @@ function subItems(tab){
     var ds=wikiDomains(); if(!ds.length)return [];
     if(S.sub.wiki!=='tous'&&!ds.some(function(x){return x[0]===S.sub.wiki;}))S.sub.wiki='tous';
     return [['tous','Tous',wikiEntries().length||null]].concat(ds);
+  }
+  if(tab==='architecture'){
+    var gs=archGroups(); if(!gs.length)return [];
+    if(S.sub.architecture!=='tous'&&!gs.some(function(x){return x[0]===S.sub.architecture;}))S.sub.architecture='tous';
+    return [['tous','Tous',archEntries().length||null]].concat(gs);
   }
   if(tab==='prototypes'){var c=protoCounts();return [['encours','En cours',c.encours||null],['acceptes','Acceptés',c.acceptes||null],['rejetes','Rejetés',c.rejetes||null]];}
   if(tab==='activite')return [['sessions','Sessions',recentActs().length||null],['changements','Changements',Math.min(15,S.evlist.length)||null]];
@@ -972,6 +981,38 @@ function vWiki(){
     pages.length?pages.map(function(k){return h('section',{class:'list','aria-label':k},h('h2',{},k),by[k].map(wikiEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
 }
 
+/* ---------- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ---------- */
+var ARCH_FR={proposed:'proposé',accepted:'accepté',deprecated:'déprécié',superseded:'remplacé'};
+var ARCH_CLS={proposed:'',accepted:'ok',deprecated:'warn',superseded:'warn'};
+var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',adr:'Décisions'};
+function archEntries(){return S.arch&&Array.isArray(S.arch.entries)?S.arch.entries.slice(0,2000):[];}
+function archGroup(e){var p=str(e.path,200).split('/'); return p.length>1&&ARCH_GROUPS[p[0]]?p[0]:'overview';}
+function archGroups(){
+  var n={}; archEntries().forEach(function(e){var g=archGroup(e); n[g]=(n[g]||0)+1;});
+  return Object.keys(ARCH_GROUPS).filter(function(g){return n[g];}).map(function(g){return [g,ARCH_GROUPS[g],n[g]];});
+}
+function archEntry(e){
+  var chips=[h('span',{class:'chip '+(ARCH_CLS[e.status]||'')},ARCH_FR[e.status]||str(e.status,40))];
+  if(e.supersedes)chips.push(h('span',{class:'chip'},'remplace '+str(e.supersedes,80)));
+  if(e.supersededBy)chips.push(h('span',{class:'chip warn'},'remplacé par '+str(e.supersededBy,80)));
+  (Array.isArray(e.tickets)?e.tickets.slice(0,20):[]).forEach(function(n){n=Math.floor(Number(n));
+    if(n>0)chips.push(h('a',{class:'chip',href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n));});
+  var text=str(e.text,1600);
+  return drow(h('div',{class:'t'},str(e.title,160)),e.description?h('p',{class:'note'},str(e.description,300)):null,h('div',{class:'meta'},chips),
+    text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null);
+}
+function vArch(){
+  var a=S.arch;
+  if(!a)return h('div',{class:'list'},h('h2',{},'Architecture'),h('div',{class:'empty'},S.db?'Aucune architecture publiée pour ce projet. Activez-la avec « /pilot-architecture » (puis « /pilot-architecture --bootstrap » pour l’amorcer depuis les apps existantes), puis publiez-la avec « /pilot-dashboard --refresh ».':'La base partagée n’est pas disponible.'));
+  var cur=S.sub.architecture, shown=archEntries().filter(function(e){return cur==='tous'||archGroup(e)===cur;}), counts={}, pages=[], by={};
+  shown.forEach(function(e){counts[e.status]=(counts[e.status]||0)+1; var k=archGroup(e); if(!by[k]){by[k]=[];pages.push(k);} by[k].push(e);});
+  var sum=Object.keys(ARCH_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+ARCH_CLS[k]},counts[k]+' '+ARCH_FR[k]);});
+  return h('div',{class:'list'},h('h2',{},'Architecture · mis à jour '+ago(a.at)+(a.truncated?' · textes raccourcis':'')),
+    h('div',{class:'refresh'},openLink('/pilot-architecture','Interroger l’architecture',true),openLink('/pilot-architecture --adr','Consigner une décision')),
+    sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
+    pages.length?Object.keys(ARCH_GROUPS).filter(function(k){return by[k];}).map(function(k){return h('section',{class:'list','aria-label':ARCH_GROUPS[k]},h('h2',{},ARCH_GROUPS[k]),by[k].map(archEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
+}
+
 /* ---------- banner, chips, chrome ---------- */
 var REFRESH_CMD='/pilot-dashboard --refresh';
 function note(kind,text){return h('span',{class:'note '+kind,role:'status'},text);}
@@ -1014,7 +1055,7 @@ function renderChrome(){
     return h('button',{type:'button','aria-pressed':String(S.role===r[0]),onclick:function(){S.role=r[0];S.page=0;store('cp.role',r[0]);render();}},r[1]);}));
   var alive=S.activity.filter(isAlive).length;
   var tabs=document.getElementById('tabs');
-  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['prototypes','Prototypes'+(protoCounts().encours?' ('+protoCounts().encours+')':'')],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')],['design','Design'],['wiki','Wiki'+(wikiEntries().length?' ('+wikiEntries().length+')':'')]].filter(function(t){return tabOn(t[0]);}).map(function(t){
+  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['prototypes','Prototypes'+(protoCounts().encours?' ('+protoCounts().encours+')':'')],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')],['design','Design'],['wiki','Wiki'+(wikiEntries().length?' ('+wikiEntries().length+')':'')],['architecture','Architecture'+(archEntries().length?' ('+archEntries().length+')':'')]].filter(function(t){return tabOn(t[0]);}).map(function(t){
     return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]&&!S.viewHelp?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
@@ -1028,13 +1069,13 @@ function render(){
   document.getElementById('search').hidden=H||S.tab!=='recherche';updateSearch();
   document.getElementById('designEdit').hidden=H||S.tab!=='design';updateDesign();
   document.getElementById('protoNew').hidden=H||S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
-  document.getElementById('banner').hidden=H||S.tab==='design'||S.tab==='wiki'||(S.tab==='prototypes'&&!!S.viewProto);
+  document.getElementById('banner').hidden=H||S.tab==='design'||S.tab==='wiki'||S.tab==='architecture'||(S.tab==='prototypes'&&!!S.viewProto);
   var items=subItems(S.tab), ph=PHASES.filter(function(p){return p.key===S.sub.ensemble;})[0];
   if(H)subnav('aide',HELP_SUBS,S.sub.aide);
   else if(items.length&&!(S.tab==='prototypes'&&S.viewProto))subnav(S.tab,items,S.sub[S.tab]); else subnav('',[],'');
   if(!H&&S.tab==='prototypes'&&!S.viewProto&&S.sub.prototypes==='acceptes')subnav('prototypes',protoSubItems(),S.sub3,'subtabs2','prototypes/acceptes'); else subnav('',[],'','subtabs2');
   var v=document.getElementById('view');
-  v.replaceChildren(H?vHelp():S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():S.tab==='wiki'?vWiki():S.tab==='prototypes'?vProtos():vFile());
+  v.replaceChildren(H?vHelp():S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():S.tab==='wiki'?vWiki():S.tab==='architecture'?vArch():S.tab==='prototypes'?vProtos():vFile());
 }
 
 /* ---------- reference panel: the agents and who leads, validates or can be summoned at each step (mirrors pilot-process.md §4 "Roster") ---------- */
@@ -1078,8 +1119,9 @@ function fromHash(){
   S.viewProto=0; S.viewHelp=t==='aide'?1:0;
   if(S.viewHelp&&p[1]&&HELP_SUBS.some(function(s){return s[0]===p[1];}))S.sub.aide=p[1];
   if(t==='proto'){S.tab='prototypes';S.viewProto=Number(p[1])||0;}
-  else if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design'||t==='prototypes'||t==='wiki')S.tab=t;
+  else if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design'||t==='prototypes'||t==='wiki'||t==='architecture')S.tab=t;
   if(S.tab==='wiki'&&p[1])S.sub.wiki=p[1];
+  if(S.tab==='architecture'&&p[1])S.sub.architecture=p[1];
   var list=SUBS[S.tab];
   if(list&&p[1]&&p[1]!==S.sub[S.tab]&&list.some(function(s){return s[0]===p[1];}))setSub(S.tab,p[1]);
   if(S.tab==='prototypes'&&S.sub.prototypes==='acceptes'&&p[2]&&ACC_SUBS.some(function(s){return s[0]===p[2];}))S.sub3=p[2];

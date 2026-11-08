@@ -1,6 +1,6 @@
 ---
 name: pilot-dashboard
-description: "Publishes — or updates — the project's PILOT dashboard: one private Claude Artifact per project, with its own data, showing tickets by phase, each person's queue by role, the PILOT sessions working right now, and the project's design system and brand charter (written by /pilot-design) and its prototypes (written by /pilot-proto), both left untouched by --refresh, and, when the project has a wiki/, a read-only Wiki tab (entries by functional domain with their status, re-read by --refresh). Renders the project's name and GitHub repo into a template from github.com/Jonas-Eve/pilot, publishes it, records its address in .pilot/state.json (dashboardUrl), and seeds its ticket snapshot. Run again, or let /pilot-update run it, to republish the latest template at the same address — the data is kept. --refresh re-reads the tickets (and the wiki) into the snapshot and prunes obsolete events. Run only when asked (by the human, /pilot-init or /pilot-update): it publishes a page. Needs the Artifact tool, which not every surface has."
+description: "Publishes — or updates — the project's PILOT dashboard: one private Claude Artifact per project, with its own data, showing tickets by phase, each person's queue by role, the PILOT sessions working right now, and the project's design system and brand charter (written by /pilot-design) and its prototypes (written by /pilot-proto), both left untouched by --refresh, and, when the project has a wiki/, a read-only Wiki tab (entries by functional domain with their status, re-read by --refresh) and, when it has an architecture/, a read-only Architecture tab (overview, guidelines and decisions, re-read by --refresh). Renders the project's name and GitHub repo into a template from github.com/Jonas-Eve/pilot, publishes it, records its address in .pilot/state.json (dashboardUrl), and seeds its ticket snapshot. Run again, or let /pilot-update run it, to republish the latest template at the same address — the data is kept. --refresh re-reads the tickets (and the wiki) into the snapshot and prunes obsolete events. Run only when asked (by the human, /pilot-init or /pilot-update): it publishes a page. Needs the Artifact tool, which not every surface has."
 argument-hint: "[--refresh]"
 ---
 
@@ -19,7 +19,7 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
 
 0. **The module.** `python3 .pilot/pilot.py module list` (when `.pilot/pilot.py` is there): with the `dashboard` module
    off, say so and propose turning it on (`python3 .pilot/pilot.py module enable dashboard`); on a yes go on, on a
-   no stop. `design`, `proto` and the Wiki tab need the dashboard, so they cannot stay on without it.
+   no stop. `design`, `proto` and the Wiki and Architecture tabs need the dashboard, so they cannot stay on without it.
 1. **Preconditions.** `.pilot/state.json` exists with `pilotInitialized: true`, else stop and
    point at `/pilot-init`. The `Artifact` tool must be available, else say so and stop —
    nothing else in PILOT depends on the dashboard.
@@ -44,14 +44,16 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
      republish), stop and say so — never create a second artifact for the project.
 
    Capabilities, always the full set and nothing else (no connector): `db` with rules
-   `snapshots` (read `view`, write `admin`), `design`, `wiki`, `protos`, `protoHtml`, `events` and `activity` (read `view`, write
+   `snapshots` (read `view`, write `admin`), `design`, `wiki`, `architecture`, `protos`, `protoHtml`, `events` and `activity` (read `view`, write
    `interact`).
 4. **Snapshot** (after a first publish, and for `--refresh`). `python3 .pilot/pilot.py
    snapshot --out <temp file>`, then `ArtifactData` `set` on `snapshots/<owner>__<repo>` with
    that `file_path` (`get` it first and pass `if_version` if it already exists). The snapshot carries the project's
    `modules`, which is what hides the tabs of a module that is off. When the `wiki` module is
    enabled, the same way with `python3 .pilot/pilot.py wiki snapshot --out <temp file>` on
-   `wiki/<owner>__<repo>` — the Wiki tab reads it; a project without the module skips this.
+   `wiki/<owner>__<repo>` — the Wiki tab reads it; a project without the module skips this. Likewise with the
+   `architecture` module: `python3 .pilot/pilot.py arch snapshot --out <temp file>` on
+   `architecture/<owner>__<repo>`, which the Architecture tab reads.
 5. **Prune** (with step 4). `events` documents whose `at` is older than the snapshot's `at`
    are obsolete, and so are `activity` documents whose `lastBeat` is over 24 h old: list the
    collections (read them into the conversation: `out_dir` is refused for documents others may

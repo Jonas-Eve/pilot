@@ -12,7 +12,7 @@
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
-  pilot.py arch    index [--active]|reindex|show|lint|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
+  pilot.py arch    index [--active]|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
@@ -1182,6 +1182,11 @@ class Bundle:
                          "status": e["status"], "derived": d["derived"], "display": d["display"],
                          "tickets": e["tickets"], "verifiedAt": e["verifiedAt"], "text": e["text"]})
         doc = {"kind": "wiki", "repo": gh.repo, "at": now_iso(), "total": len(rows), "truncated": False, "entries": rows}
+        return self._fit(doc, rows)
+
+    @staticmethod
+    def _fit(doc, rows):
+        """Shorten, then drop, the entries' text until the document fits a database document."""
         full = [r["text"] for r in rows]
         for cap in (1500, 400, 0):
             for r, text in zip(rows, full):
@@ -1377,6 +1382,19 @@ class Architecture(Bundle):
         return {"ok": True, **self._view(entry), "type": entry["type"], "text": entry["text"],
                 "supersedes": pilot.get("supersedes") or "", "supersededBy": pilot.get("supersededBy") or ""}
 
+    def snapshot(self, repo):
+        """Every managed entry as the dashboard's architecture document (no GitHub call): frontmatter fields, the
+        supersession links and the entry's text, shortened to fit."""
+        rows = []
+        for e in self._managed(self.parse()):
+            fm = e["fm"]["pilot"] if isinstance(e.get("fm"), dict) and isinstance(e["fm"].get("pilot"), dict) else {}
+            rows.append({"id": e["id"], "title": e["title"], "description": e["description"], "path": e["path"],
+                         "status": e["status"], "tickets": e["tickets"], "supersedes": str(fm.get("supersedes") or ""),
+                         "supersededBy": str(fm.get("supersededBy") or ""), "text": e["text"]})
+        doc = {"kind": "architecture", "repo": repo, "at": now_iso(), "total": len(rows), "truncated": False,
+               "entries": rows}
+        return self._fit(doc, rows)
+
     def supersede(self, new_id, old_id):
         """A new ADR replaces an accepted one: the old becomes `superseded` (and links forward), the new links back."""
         if new_id == old_id:
@@ -1547,6 +1565,8 @@ def build_parser():
     w.add_argument("--ticket", type=int, help=argparse.SUPPRESS)
     w.add_argument("--active", action="store_true", help="only what is in force (no deprecated or superseded), one short row each")
     ws.add_parser("reindex", help="write the index.md of every folder")
+    w = ws.add_parser("snapshot", help="every entry as the dashboard's architecture document (no GitHub call)")
+    w.add_argument("--out", help="write the document to this file and print only a summary")
     w = ws.add_parser("show", help="one entry's text; an ADR also its supersession")
     w.add_argument("id")
     ws.add_parser("lint", help="mechanical checks, no judgment")
@@ -1590,7 +1610,7 @@ def run_bundle(args, gh):
     if args.bundle_cmd == "lint":
         return wiki.lint(gh)
     if args.bundle_cmd == "snapshot":
-        doc = wiki.snapshot(gh)
+        doc = wiki.snapshot(gh) if args.cmd == "wiki" else wiki.snapshot(args.repo or resolve_repo())
         if not args.out:
             return doc
         with open(args.out, "w", encoding="utf-8") as handle:

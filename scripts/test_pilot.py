@@ -1259,6 +1259,18 @@ class ArchitectureTests(unittest.TestCase):
         self.assertNotIn("BBBB", out)
         self.assertLess(len(out), 30 * 200)
 
+    def test_snapshot_carries_links_and_needs_no_github(self):
+        self.add("adr/0001-a.md", "accepted")
+        self.add("adr/0002-b.md", "proposed")
+        self.arch.supersede("0002-b", "0001-a")
+        doc = self.arch.snapshot("o/r")
+        rows = {r["id"]: r for r in doc["entries"]}
+        self.assertEqual((doc["kind"], doc["repo"], doc["total"]), ("architecture", "o/r", 2))
+        self.assertEqual((rows["0001-a"]["status"], rows["0001-a"]["supersededBy"], rows["0002-b"]["supersedes"]),
+                         ("superseded", "0002-b", "0001-a"))
+        args = pilot.build_parser().parse_args(["arch", "snapshot"])
+        self.assertFalse(pilot.needs_github(args))
+
     def test_cli_needs_no_github(self):
         args = pilot.build_parser().parse_args(["arch", "lint"])
         self.assertFalse(pilot.needs_github(args))
