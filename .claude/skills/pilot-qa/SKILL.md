@@ -46,11 +46,14 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Gather context: the story's own body (acceptance criteria) and, for each of its dev and
    e2e tasks, the spec (phase 2) and the merged PR (`mcp__github__issue_read`,
-   `mcp__github__pull_request_read`) — not the running conversation history.
+   `mcp__github__pull_request_read`) — not the running conversation history. When `wiki/` exists at the
+   project root, also the story's entries (`python3 .pilot/pilot.py wiki index --ticket <issue>`, each
+   with `wiki show <id>`).
 4. Call the `Agent` tool with `subagent_type: "pilot-qa"`. Read `.pilot/pilot-task-human-qa.md`
    and pass its content as part of the prompt, plus `.pilot/pilot-link-bug-tickets.md` in
    full (the classify/originate mechanic for step 3's "real-bug failures" case — the task
-   doc covers the phase-5-specific delta itself), along with that context. The agent
+   doc covers the phase-5-specific delta itself), along with that context (and `.pilot/pilot-link-wiki.md`
+   in full when it includes entries). The agent
    returns a manual test plan: concrete cases and how to test each.
 5. Walk the human through it (pair, always — no `--auto`): show the plan, then go case by
    case — ask them to run one, report what happened, feed that back to the agent, move to

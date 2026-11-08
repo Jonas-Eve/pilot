@@ -1098,3 +1098,14 @@ for the human to raise via Discovery themselves; anything unclassifiable is a li
 `needs-human` block (§3 "A human is live in the same session"). Confirmed, or every
 failure resolved to "not actually a bug" → `status:done`, the one direct exception §3
 "`status:done`" already notes. `pilot-qa/SKILL.md` covers the rest of the mechanics.
+
+## 8. The project's wiki
+
+When the project has a `wiki/` at its root, it is the source of truth for what the product does and
+what is promised, and every phase works with it: Discovery and Spec write the entries of a story
+(`proposed`, then `specified`), Dev completes them (`implemented`), Review checks a PR against them,
+QA builds its test plan from them. **When the wiki and the code disagree, the wiki is right**; a
+divergence is a human's call, never settled silently. **Only a PR changes the wiki** — a code PR
+carries its own wiki change — so `main` and every branch stay coherent. The entry format, statuses
+and rules are `.pilot/pilot-link-wiki.md`; the mechanics are `python3 .pilot/pilot.py wiki …` and
+`/pilot-wiki`. A project without a `wiki/` skips all of it, silently.

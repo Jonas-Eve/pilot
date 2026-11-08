@@ -11,6 +11,13 @@ claim is an automatic block. This matters most with no CI yet, since your re-run
 only check that actually executes anything; once CI exists, treat a red or pending run
 the same way.
 
+**Wiki** (only when the prompt carries entries): also run `python3 .pilot/pilot.py wiki lint` on the
+PR's branch — a finding is a `change`. The entries state what the code must do. Behavior the PR adds
+or changes that no entry states, an entry the PR leaves contradicting its code, or an entry moved to
+`implemented` while another dev task it lists is still open (or the other way round: the PR completes
+an entry and leaves it `specified`) is a `change`. An entry the code cannot satisfy as written is a
+`decision`. A PR never stamps an entry (`verifiedAt` stays empty: only a lint writes it).
+
 Then review the shipped PR for two separate things, giving each its own attention rather
 than letting the first crowd out the second:
 - **Spec conformance** — does the implementation match the ticket's own spec, and if it
