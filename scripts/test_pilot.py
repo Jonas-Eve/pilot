@@ -639,7 +639,7 @@ class DoctorTests(unittest.TestCase):
         got = pilot.Machine(FakeGh([])).doctor(str(self.wiki_dir / "missing"), {"wiki": True})
         self.assertFalse(got["ok"])
         self.assertEqual([c["name"] for c in got["failed"]], ["wiki"])
-        self.assertIn("/pilot-wiki --init", got["failed"][0]["detail"])
+        self.assertIn("run /pilot-wiki", got["failed"][0]["detail"])
 
     def test_a_disabled_or_absent_wiki_module_is_not_checked(self):
         for modules in ({"wiki": False}, {}):
@@ -695,15 +695,17 @@ class DoctorTests(unittest.TestCase):
     def test_the_registry_lists_every_module_with_its_state(self):
         reg = pilot.module_registry({"dashboard": True})
         self.assertEqual(sorted(reg), ["dashboard", "design", "proto", "wiki"])
-        self.assertEqual((reg["dashboard"]["enabled"], reg["design"]["enabled"], reg["design"]["requires"], reg["wiki"]["init"]),
-                         (True, False, ["dashboard"], "/pilot-wiki --init"))
-        self.assertTrue(all(set(m) == {"enabled", "requires", "skills", "init"} for m in reg.values()))
+        self.assertEqual((reg["dashboard"]["enabled"], reg["design"]["enabled"], reg["design"]["requires"], reg["wiki"]["bootstrap"]),
+                         (True, False, ["dashboard"], "/pilot-wiki --bootstrap"))
+        self.assertEqual((reg["dashboard"]["use"], reg["dashboard"]["bootstrap"]), ("/pilot-dashboard", None))
+        self.assertTrue(all(set(m) == {"enabled", "requires", "skills", "use", "bootstrap"} for m in reg.values()))
 
     def test_every_module_requires_only_known_modules_and_names_a_pilot_skill(self):
         for name, meta in pilot.MODULES.items():
             self.assertTrue(set(meta["requires"]) <= set(pilot.MODULES), name)
             self.assertTrue(all(s.startswith("pilot-") for s in meta["skills"]), name)
-            self.assertTrue(meta["init"].startswith("/pilot-"), name)
+            self.assertTrue(meta["use"].startswith("/pilot-"), name)
+            self.assertTrue(meta.get("bootstrap", meta["use"]).startswith(meta["use"]), name)
 
     def test_set_module_refuses_an_unknown_module_and_a_missing_state(self):
         with self.assertRaises(pilot.Refused) as caught:

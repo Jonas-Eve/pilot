@@ -1113,4 +1113,4 @@ from them. **When the wiki and the code disagree, the wiki is right**; a diverge
 settled silently. **Only a PR changes the wiki** — a code PR carries its own wiki change — so `main` and
 every branch stay coherent. With the module on, `python3 .pilot/pilot.py doctor` also requires `wiki/`. The
 entry format, statuses and rules are `.pilot/pilot-link-wiki.md`; the mechanics are `python3 .pilot/pilot.py
-wiki …` and `/pilot-wiki` (`--init` turns the module on and drafts the wiki).
+wiki …` and `/pilot-wiki` (it turns the module on; `--bootstrap` drafts the wiki from the project's tickets and code).

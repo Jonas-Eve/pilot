@@ -959,7 +959,7 @@ function wikiEntry(e){
 }
 function vWiki(){
   var w=S.wiki;
-  if(!w)return h('div',{class:'list'},h('h2',{},'Wiki'),h('div',{class:'empty'},S.db?'Aucun wiki publié pour ce projet. Créez-le avec « /pilot-wiki --init », puis publiez-le avec « /pilot-dashboard --refresh ».':'La base partagée n’est pas disponible.'));
+  if(!w)return h('div',{class:'list'},h('h2',{},'Wiki'),h('div',{class:'empty'},S.db?'Aucun wiki publié pour ce projet. Activez-le avec « /pilot-wiki » (puis « /pilot-wiki --bootstrap » pour l’amorcer depuis les tickets et le code), puis publiez-le avec « /pilot-dashboard --refresh ».':'La base partagée n’est pas disponible.'));
   var cur=S.sub.wiki, shown=wikiEntries().filter(function(e){return cur==='tous'||wikiDomain(e)===cur;}), counts={}, pages=[], by={};
   shown.forEach(function(e){counts[e.status]=(counts[e.status]||0)+1; var k=wikiDomain(e); if(!by[k]){by[k]=[];pages.push(k);} by[k].push(e);});
   var sum=Object.keys(WIKI_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+WIKI_CLS[k]},counts[k]+' '+WIKI_FR[k]);});

@@ -960,7 +960,7 @@ const STUB = (opts) => `
     { id: 'old-rule', title: 'Old rule', description: 'Retired.', path: 'old-rule.md', status: 'deprecated', derived: '', display: 'deprecated', tickets: [], verifiedAt: '', text: '' }] };
   { let page = await open({ preload: [BASE] });
   await page.goto(FILE + '#wiki'); await page.waitForTimeout(350);
-  check('wiki tab: empty state names the commands, no ticket banner', /Aucun wiki publié/.test(await text(page, '#view')) && /pilot-wiki --init/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Wiki');
+  check('wiki tab: empty state names the commands, no ticket banner', /Aucun wiki publié/.test(await text(page, '#view')) && /pilot-wiki --bootstrap/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Wiki');
   await page.evaluate((d) => window.__push('wiki', 'w0', d), WIKI); await page.waitForTimeout(200);
   const wv = await text(page, '#view');
   check('wiki tab: the tab counts the entries, the page shows them grouped by page', (await page.$$eval('#tabs a', (a) => a.map((x) => x.textContent))).includes('Wiki (4)') && /search/.test(wv) && /Search places by name/.test(wv) && /A traveler searches places by name\./.test(wv) && /output/.test(wv), wv);

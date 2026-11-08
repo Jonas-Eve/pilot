@@ -1,7 +1,7 @@
 # PILOT link — the project's wiki
 
 Read by `pilot-wiki` and by the persona calls it makes (`pilot-task-wiki-lint.md`,
-`pilot-task-wiki-init.md`), and by `pilot-discovery`, `pilot-spec` and `pilot-dev`
+`pilot-task-wiki-bootstrap.md`), and by `pilot-discovery`, `pilot-spec` and `pilot-dev`
 (`pilot-task-wiki-entries.md`), `pilot-review` and `pilot-qa`, when the project's `wiki` module is enabled.
 The wiki is the project's source of truth for what the product does and what is promised: **when the wiki
 and the code disagree, the wiki is right** and the divergence is arbitrated by a human, never settled

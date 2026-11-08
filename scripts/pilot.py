@@ -79,12 +79,14 @@ REMOTE_RE = re.compile(r"(?:github\.com[:/]|/git/)([\w.-]+)/([\w.-]+?)(?:\.git)?
 STATE_PATH = os.path.join(".pilot", "state.json")
 WIKI_DIR = "wiki"
 # The optional modules a project turns on in .pilot/state.json (`modules`): the skills each owns, the modules
-# it needs, the command that initializes it, and the folder (if any) `doctor` expects while it is on.
+# it needs, the command that turns it on at first use (`use`), the one that drafts its content from what the
+# project already has (`bootstrap`, only where there is such content), and the folder (if any) `doctor` expects.
 MODULES = {
-    "wiki": {"skills": ["pilot-wiki"], "requires": [], "init": "/pilot-wiki --init", "dir": WIKI_DIR},
-    "dashboard": {"skills": ["pilot-dashboard"], "requires": [], "init": "/pilot-dashboard"},
-    "design": {"skills": ["pilot-design"], "requires": ["dashboard"], "init": "/pilot-design"},
-    "proto": {"skills": ["pilot-proto"], "requires": ["dashboard"], "init": "/pilot-proto"},
+    "wiki": {"skills": ["pilot-wiki"], "requires": [], "use": "/pilot-wiki", "bootstrap": "/pilot-wiki --bootstrap",
+             "dir": WIKI_DIR},
+    "dashboard": {"skills": ["pilot-dashboard"], "requires": [], "use": "/pilot-dashboard"},
+    "design": {"skills": ["pilot-design"], "requires": ["dashboard"], "use": "/pilot-design"},
+    "proto": {"skills": ["pilot-proto"], "requires": ["dashboard"], "use": "/pilot-proto"},
 }
 WIKI_SNAPSHOT_MAX_BYTES = 240_000  # a database document holds at most 256 KiB
 WIKI_STATUSES = ("proposed", "specified", "implemented", "deprecated")  # the only ones a file holds
@@ -117,9 +119,9 @@ def read_modules(path=STATE_PATH):
 
 
 def module_registry(modules):
-    """Every known module with whether it is on, what it needs, its skills and its init command."""
+    """Every known module with whether it is on, what it needs, its skills, its first-use command and its bootstrap."""
     return {name: {"enabled": bool(modules.get(name)), "requires": meta["requires"], "skills": meta["skills"],
-                   "init": meta["init"]} for name, meta in MODULES.items()}
+                   "use": meta["use"], "bootstrap": meta.get("bootstrap")} for name, meta in MODULES.items()}
 
 
 def set_module(name, enabled, path=STATE_PATH, with_requires=False):
@@ -479,7 +481,7 @@ class Machine:
             if modules.get(name) and folder:
                 check(name, os.path.isdir(folder),
                       f"{folder}/ found" if os.path.isdir(folder) else
-                      f"the {name} module is enabled but {folder}/ is missing: run {meta['init']}")
+                      f"the {name} module is enabled but {folder}/ is missing: run {meta['use']}")
         failed = [c for c in checks if not c["ok"]]
         return {"ok": not failed, "login": login, "failed": failed, "checks": checks}
 
@@ -874,7 +876,7 @@ class Wiki:
     def _concept_files(self):
         if not os.path.isdir(self.root):
             raise Refused({"ok": False, "reason": "wiki-absent", "dir": self.root,
-                           "hint": "run /pilot-wiki --init"})
+                           "hint": "run /pilot-wiki (it turns the wiki module on and creates wiki/)"})
         found = []
         for base, _dirs, names in os.walk(self.root):
             found.extend(os.path.join(base, n) for n in names if n.endswith(".md") and n not in WIKI_RESERVED)
@@ -1334,7 +1336,7 @@ def build_parser():
     p.add_argument("--out", help="write the document to this file and print only a summary")
     p = sub.add_parser("doctor")
     p.add_argument("--verbose", action="store_true", help="list every check, not only failures")
-    p.add_argument("--no-wiki", action="store_true", help="skip the wiki check (/pilot-wiki --init repairing a missing wiki/)")
+    p.add_argument("--no-wiki", action="store_true", help="skip the wiki check (/pilot-wiki repairing a missing wiki/)")
     p = sub.add_parser("module")
     p.add_argument("action", choices=["list", "enable", "disable"])
     p.add_argument("name", nargs="?", choices=list(MODULES))

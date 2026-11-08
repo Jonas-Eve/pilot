@@ -1,6 +1,6 @@
 # PILOT task — Draft one domain of the wiki from tickets and code
 
-Injected by `.claude/skills/pilot-wiki/SKILL.md` (`--init`) into the `pilot-techlead` persona's
+Injected by `.claude/skills/pilot-wiki/SKILL.md` (`--bootstrap`) into the `pilot-techlead` persona's
 prompt, once per domain, together with `.pilot/pilot-link-wiki.md`.
 
 You receive a domain (a functional area of the product, a folder of `wiki/`, e.g. `search/`), the closed tickets and accepted

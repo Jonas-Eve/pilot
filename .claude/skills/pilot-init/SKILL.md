@@ -65,7 +65,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
    "In scope"/"Out of scope" themselves later, as the product takes shape).
    Also decide the optional **wiki module** (`.pilot/pilot-process.md` §8): `--wiki` or `--no-wiki` if given,
    otherwise ask the human whether to enable it (recommended when there is a product to describe; it can be
-   turned on later with `/pilot-wiki --init`).
+   turned on later with `/pilot-wiki`).
 
 3. **Check for pre-existing root docs.** If `CLAUDE.md`, `README.md`, or
    `PROJECT-FUNCTIONAL-SCOPE.md` already exist at the project root (retrofitting PILOT
@@ -147,7 +147,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
 9b. **Create the wiki** (only when the wiki module is on). If the project has no `wiki/` yet, run
     `python3 .pilot/pilot.py wiki reindex`: it creates `wiki/` with its root `index.md`. From here it is
     project-owned: `/pilot-update` never touches it. When the project already has closed tickets or code to
-    document, tell the human to run `/pilot-wiki --init` to fill it.
+    document, tell the human to run `/pilot-wiki --bootstrap` to fill it.
 
 10. **Write the state marker.** Create `.pilot/state.json` per the schema above, with
     `pilotInitialized: true`, the current timestamp, the project name, `pilotVersion`, `modules`, and
