@@ -30,7 +30,7 @@ when it needs it.
 |---|---|---|---|---|---|
 | `wiki` | `/pilot-wiki` | — | `wiki/` | functional wiki, one folder per domain (`wiki-design.md`) | `/pilot-wiki --init` |
 | `architecture` | `/pilot-architecture` | — | `architecture/` | overview, technical guidelines, ADR (§6) | `/pilot-architecture --init` |
-| `dashboard` | `/pilot-dashboard` | — | `dashboardUrl` set | the team page and its database | `/pilot-dashboard` |
+| `dashboard` | `/pilot-dashboard` | — | — (its pushes are best-effort) | the team page and its database | `/pilot-dashboard` |
 | `design` | `/pilot-design` | `dashboard` | — | design system and charter (dashboard database) | `/pilot-design` |
 | `proto` | `/pilot-proto` | `dashboard` | — | prototypes (dashboard database) | `/pilot-proto` |
 
@@ -95,7 +95,7 @@ Each step is backward compatible; the last one is the break.
 
 1. **Done.** The switch (`modules`, `pilot.py module`, `doctor`), the `wiki` module, review/QA criteria,
    the dashboard Wiki tab.
-2. The registry with `requires`, `module list` as above, the dependency checks.
+2. **Done.** The registry with `requires`, `module list` as above, the dependency checks.
 3. `dashboard`, `design`, `proto` under the switch: their skills' first-use flow, the dashboard tabs
    following the modules, `/pilot-init --modules`, the `/pilot-update` migration, `/pilot-help` status.
 4. The `architecture` module, built beside the old skill: layout, ADR, guidelines in the dev and review

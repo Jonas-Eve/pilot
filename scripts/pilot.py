@@ -9,7 +9,7 @@
   pilot.py flag    <issue> --comment TEXT      # needs-human + the mandatory why/what's-needed comment
   pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
   pilot.py doctor  [--verbose] [--no-wiki]      # preflight: can the commands above work here? (+ wiki/, when that module is on)
-  pilot.py module  list|enable|disable [NAME]  # the optional modules of .pilot/state.json (`wiki`)
+  pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index|show|status|lint|snapshot|add|set  # the project's wiki (wiki/): entries, derived statuses, checks, dashboard document
 
@@ -76,8 +76,15 @@ PROTO_FORBIDDEN = (
 )
 REMOTE_RE = re.compile(r"(?:github\.com[:/]|/git/)([\w.-]+)/([\w.-]+?)(?:\.git)?/?$")
 STATE_PATH = os.path.join(".pilot", "state.json")
-MODULES = ("wiki",)  # the optional modules a project turns on in .pilot/state.json (`modules`)
 WIKI_DIR = "wiki"
+# The optional modules a project turns on in .pilot/state.json (`modules`): the skills each owns, the modules
+# it needs, the command that initializes it, and the folder (if any) `doctor` expects while it is on.
+MODULES = {
+    "wiki": {"skills": ["pilot-wiki"], "requires": [], "init": "/pilot-wiki --init", "dir": WIKI_DIR},
+    "dashboard": {"skills": ["pilot-dashboard"], "requires": [], "init": "/pilot-dashboard"},
+    "design": {"skills": ["pilot-design"], "requires": ["dashboard"], "init": "/pilot-design"},
+    "proto": {"skills": ["pilot-proto"], "requires": ["dashboard"], "init": "/pilot-proto"},
+}
 WIKI_SNAPSHOT_MAX_BYTES = 240_000  # a database document holds at most 256 KiB
 WIKI_STATUSES = ("proposed", "specified", "implemented", "deprecated")  # the only ones a file holds
 WIKI_KEYS = ("status", "tickets", "verifiedAt", "verifiedCommit")
@@ -108,8 +115,16 @@ def read_modules(path=STATE_PATH):
     return {k: bool(v) for k, v in modules.items()} if isinstance(modules, dict) else {}
 
 
-def set_module(name, enabled, path=STATE_PATH):
-    """Turn a module on or off in `.pilot/state.json`, leaving every other field alone."""
+def module_registry(modules):
+    """Every known module with whether it is on, what it needs, its skills and its init command."""
+    return {name: {"enabled": bool(modules.get(name)), "requires": meta["requires"], "skills": meta["skills"],
+                   "init": meta["init"]} for name, meta in MODULES.items()}
+
+
+def set_module(name, enabled, path=STATE_PATH, with_requires=False):
+    """Turn a module on or off in `.pilot/state.json`, leaving every other field alone. Turning one on needs
+    the modules it requires to be on (`with_requires` turns them on too); turning one off is refused while an
+    enabled module requires it."""
     if name not in MODULES:
         raise Refused({"ok": False, "reason": "unknown-module", "expected": list(MODULES)})
     try:
@@ -118,6 +133,22 @@ def set_module(name, enabled, path=STATE_PATH):
     except FileNotFoundError:
         raise Refused({"ok": False, "reason": "no-state", "hint": "run /pilot-init"})
     modules = data.get("modules") if isinstance(data.get("modules"), dict) else {}
+    if enabled:
+        pending, missing = [name], []
+        while pending:
+            for needed in MODULES[pending.pop()]["requires"]:
+                if not modules.get(needed) and needed not in missing:
+                    missing.append(needed)
+                    pending.append(needed)
+        if missing and not with_requires:
+            raise Refused({"ok": False, "reason": "requires", "missing": missing,
+                           "hint": "--with-requires turns them on too"})
+        for needed in missing:
+            modules[needed] = True
+    else:
+        by = [n for n, meta in MODULES.items() if modules.get(n) and name in meta["requires"]]
+        if by:
+            raise Refused({"ok": False, "reason": "required-by", "by": by})
     modules[name] = bool(enabled)
     data["modules"] = modules
     with open(path, "w", encoding="utf-8") as handle:
@@ -442,10 +473,12 @@ class Machine:
                 check("repo-readable", False, str(err))
         if modules is None:
             modules = read_modules()
-        if modules.get("wiki"):
-            check("wiki", os.path.isdir(wiki_dir),
-                  f"{wiki_dir}/ found" if os.path.isdir(wiki_dir) else
-                  f"the wiki module is enabled but {wiki_dir}/ is missing: run /pilot-wiki --init")
+        for name, meta in MODULES.items():
+            folder = wiki_dir if name == "wiki" else meta.get("dir")
+            if modules.get(name) and folder:
+                check(name, os.path.isdir(folder),
+                      f"{folder}/ found" if os.path.isdir(folder) else
+                      f"the {name} module is enabled but {folder}/ is missing: run {meta['init']}")
         failed = [c for c in checks if not c["ok"]]
         return {"ok": not failed, "login": login, "failed": failed, "checks": checks}
 
@@ -1033,6 +1066,7 @@ def build_parser():
     p = sub.add_parser("module")
     p.add_argument("action", choices=["list", "enable", "disable"])
     p.add_argument("name", nargs="?", choices=list(MODULES))
+    p.add_argument("--with-requires", action="store_true", help="enable: turn the modules it needs on too")
     p = sub.add_parser("wiki")
     p.add_argument("--dir", default=WIKI_DIR, help="the wiki directory (default: wiki)")
     ws = p.add_subparsers(dest="wiki_cmd", required=True)
@@ -1096,10 +1130,10 @@ def needs_github(args):
 
 def run_module(args):
     if args.action == "list":
-        return {"ok": True, "modules": read_modules()}
+        return {"ok": True, "modules": module_registry(read_modules())}
     if not args.name:
         raise Refused({"ok": False, "reason": "module-name-required", "expected": list(MODULES)})
-    return set_module(args.name, args.action == "enable")
+    return set_module(args.name, args.action == "enable", with_requires=args.with_requires)
 
 
 def run(args, gh):
