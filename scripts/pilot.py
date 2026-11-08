@@ -13,7 +13,7 @@
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
-  pilot.py arch    index [--active] [--app A] [--under D] [--depth 1]|search|describe|next-number|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
+  pilot.py arch    index [--active] [--app A] [--under D] [--depth 1]|search|describe|next-number|inventory|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
@@ -1636,6 +1636,64 @@ class Architecture(Bundle):
         parts = entry["path"].split("/")
         return parts[0] != "apps" or (len(parts) > 1 and parts[1] == app)
 
+    INVENTORY_MAX = 200
+
+    def inventory(self, root="."):
+        """What the project already has that could become architecture entries, as outlines only — a path, a size, a
+        title, a first line — so a first look costs nothing however much there is: the apps, `docs/**` and each app's own
+        `README.md`/`CLAUDE.md`/`docs/**`, and whether the `PILOT:ARCHITECTURE`/`PILOT:COMMANDS` blocks of `CLAUDE.md`
+        and `README.md` are placeholders, pointers or the project's own content."""
+        apps = set()
+        apps_dir = os.path.join(root, "apps")
+        if os.path.isdir(apps_dir):
+            apps |= {n for n in os.listdir(apps_dir) if os.path.isdir(os.path.join(apps_dir, n)) and not n.startswith(".")}
+        try:
+            with open(os.path.join(root, STATE_PATH), encoding="utf-8") as handle:
+                listed = json.load(handle).get("apps")
+            apps |= {a["name"] for a in listed if isinstance(a, dict) and a.get("name")} if isinstance(listed, list) else set()
+        except (OSError, ValueError, AttributeError):
+            pass
+        found = []
+        candidates = []
+        for base, _dirs, names in os.walk(os.path.join(root, "docs")):
+            candidates += [os.path.join(base, n) for n in names if n.endswith(".md")]
+        for app in sorted(apps):
+            for name in ("README.md", "CLAUDE.md"):
+                candidates.append(os.path.join(apps_dir, app, name))
+            for base, _dirs, names in os.walk(os.path.join(apps_dir, app, "docs")):
+                candidates += [os.path.join(base, n) for n in names if n.endswith(".md")]
+        for path in sorted(set(candidates)):
+            if not os.path.isfile(path):
+                continue
+            rel = os.path.relpath(path, root).replace(os.sep, "/")
+            with open(path, encoding="utf-8", errors="replace") as handle:
+                text = handle.read()
+            title = next((l.lstrip("# ").strip() for l in text.split("\n") if l.startswith("#")), "")
+            first = next((l.strip() for l in text.split("\n") if l.strip() and not l.startswith(("#", "---", "<!--"))), "")
+            parts = rel.split("/")
+            found.append({"path": rel, "bytes": len(text.encode("utf-8")), "title": title[:120], "summary": first[:160],
+                          "app": parts[1] if parts[0] == "apps" and len(parts) > 2 else ""})
+        blocks = {}
+        for name in ("CLAUDE.md", "README.md"):
+            try:
+                with open(os.path.join(root, name), encoding="utf-8") as handle:
+                    text = handle.read()
+            except OSError:
+                continue
+            for marker in ("ARCHITECTURE", "COMMANDS"):
+                m = re.search(r"<!-- PILOT:%s:START -->\n(.*?)\n<!-- PILOT:%s:END -->" % (marker, marker), text, flags=re.S)
+                if not m:
+                    state = "absent"
+                elif "pilot-init-archi" in m.group(1):
+                    state = "placeholder"
+                elif "/pilot-architecture" in m.group(1) or "architecture/" in m.group(1):
+                    state = "pointer"
+                else:
+                    state = "filled"
+                blocks[f"{name}:{marker}"] = state
+        return {"ok": True, "apps": sorted(apps), "docs": found[:self.INVENTORY_MAX], "truncated": len(found) > self.INVENTORY_MAX,
+                "blocks": blocks}
+
     def next_number(self):
         """The next free ADR number, counted across the whole bundle (an app's ADRs share the sequence)."""
         used = [int(m.group(1)) for e in self.parse() for m in [re.match(r"(\d{4})-", e["id"])] if m]
@@ -1871,6 +1929,7 @@ def build_parser():
     w = ws.add_parser("snapshot", help="every entry as the dashboard's architecture document (no GitHub call)")
     w.add_argument("--out", help="write the document to this file and print only a summary")
     ws.add_parser("next-number", help="the next free ADR number, counted across the whole bundle")
+    ws.add_parser("inventory", help="what the project already has that could become entries: apps, docs, the CLAUDE.md/README.md blocks (outlines only)")
     w = ws.add_parser("show", help="one entry's text; an ADR also its supersession")
     w.add_argument("id")
     ws.add_parser("lint", help="mechanical checks, no judgment")
@@ -1912,6 +1971,8 @@ def run_bundle(args, gh):
         return wiki.index(args.ticket, args.active, args.under, app)
     if args.bundle_cmd == "next-number":
         return wiki.next_number()
+    if args.bundle_cmd == "inventory":
+        return wiki.inventory()
     if args.bundle_cmd == "search":
         return wiki.search(args.query, args.under or "", args.limit, args.all, getattr(args, "app", None))
     if args.bundle_cmd == "describe":

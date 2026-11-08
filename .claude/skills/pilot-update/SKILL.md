@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # PILOT maintenance — `pilot-update`
 
-Not one of the five PILOT phases, and not `pilot-init`/`pilot-init-archi`'s one-time setup —
+Not one of the five PILOT phases, and not `pilot-init`'s one-time setup —
 this is the ongoing maintenance command, safe to run repeatedly.
 
 ## Get a fresh copy of the source repo
@@ -21,7 +21,7 @@ from a previous run — the whole point is picking up upstream changes.
 - **Every skill under `.claude/skills/`** whose directory name matches one that exists
   under `$PILOT_SRC/.claude/skills/` (i.e. every PILOT skill: `pilot-discovery`,
   `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa`, `pilot-auto`, `pilot-help`,
-  `pilot-init`, `pilot-init-archi`, `pilot-update`, `pilot-dashboard`) — and every agent under `.claude/agents/` matching
+  `pilot-init`, `pilot-update`, `pilot-dashboard`, `pilot-architecture`) — and every agent under `.claude/agents/` matching
   `$PILOT_SRC/.claude/agents/pilot-*.md` — are PILOT-owned. This command re-copies all of them
   verbatim from `$PILOT_SRC`, **overwriting with no merge**. If a project-local skill or
   agent directory doesn't match anything under `$PILOT_SRC` (the project's own, unrelated
@@ -68,7 +68,7 @@ from a previous run — the whole point is picking up upstream changes.
    - If the project has a matching one and its content differs, show a diff and ask for
      confirmation before overwriting (same no-merge treatment as any other PILOT-owned
      file). Identical content needs no confirmation.
-   Then check the reverse direction: for each `.claude/skills/pilot-*` or `.claude/skills/pilot-init-archi`
+   Then check the reverse direction: for each `.claude/skills/pilot-*`
    and `.claude/agents/pilot-*.md` the project has, if nothing matching exists under
    `$PILOT_SRC` any more (renamed or removed upstream), flag it to the human as orphaned
    and ask before deleting — don't delete silently, and don't guess at a replacement name;
@@ -110,7 +110,11 @@ from a previous run — the whole point is picking up upstream changes.
      `$PILOT_SRC/assets/templates/<canonical snippet>`. If it differs, show the diff and
      ask for confirmation before replacing the block's contents — same treatment as step
      3. Never touch anything outside the markers.
-   These blocks aren't limited to the three above — if this repo's own templates gain
+   `PILOT:ARCHITECTURE` and `PILOT:COMMANDS` (snippets `pilot-architecture-claude.md.tmpl`/`pilot-architecture-readme.md.tmpl` and
+   `pilot-commands-claude.md.tmpl`/`pilot-commands-readme.md.tmpl`, for `CLAUDE.md` and `README.md`) are different: a project may have filled them with
+   its own apps and commands. Replace one only when it still holds the placeholder (it names `/pilot-init-archi`) or an earlier copy of the
+   pointer; a block with real content is left exactly as it is, and `/pilot-architecture --bootstrap` is what converts it.
+   These blocks aren't limited to those above — if this repo's own templates gain
    another `PILOT:<name>:START`/`END` marker later, treat it the same way.
 
 5. **Re-provision GitHub labels.** Resolve the repo (`gh repo view --json
@@ -130,7 +134,11 @@ from a previous run — the whole point is picking up upstream changes.
    `wiki/` or `architecture/`. With the `wiki` module on but `wiki/` missing, say that `doctor` fails until `/pilot-wiki` repairs it; with
    it on and entries still in the earlier format (several per page, `wiki lint` reporting `no-frontmatter`), offer
    `python3 .pilot/pilot.py wiki migrate` (one PR). When the project has closed tickets or code to document, mention
-   `/pilot-wiki --bootstrap`; when it has `apps/` or `archInitialized`, mention `/pilot-architecture --bootstrap`.
+   `/pilot-wiki --bootstrap`. A project that ran `/pilot-init-archi` (a `state.json` with `archInitialized: true`, or `apps`, or real content in
+   its `PILOT:ARCHITECTURE` block) keeps all of it working untouched: the module stays off unless the human asks; offer `/pilot-architecture
+   --bootstrap`, which turns it on, reads that content, `docs/` and each app's own documents (`python3 .pilot/pilot.py arch inventory`), and drafts
+   `architecture/` in one PR. Leave `archInitialized` and `apps` in place (the personas read `apps`); `archInitialized` is no longer written or read.
+   The `/pilot-init-archi` skill is gone upstream, so step 3 flags it as orphaned: offer to delete it once nothing needs it.
 
 5b. **Update the dashboard.** Only when `.pilot/state.json` has a `dashboardUrl`: run
    `/pilot-dashboard` (reusing this `$PILOT_SRC`), after asking the human whether to

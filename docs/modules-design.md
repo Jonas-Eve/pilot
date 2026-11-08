@@ -101,10 +101,11 @@ Each step is backward compatible; the last one is the break.
 2. **Done.** The registry with `requires`, `module list` as above, the dependency checks.
 3. **Done.** `dashboard`, `design`, `proto` under the switch: their skills' first-use flow, the dashboard tabs
    following the modules, `/pilot-init --modules`, the `/pilot-update` migration, `/pilot-help` status.
-4. **Under way.** The `architecture` module, built beside the old skill (`arch` command, `/pilot-architecture` skill and the phases reading the index done; dashboard tab done): layout, ADR, guidelines in the dev and review
-   prompts, `--bootstrap` from an existing `apps/`, `--scaffold`, the dashboard tab.
-5. **v3**: `pilot-init-archi` removed, `archInitialized` and the `PILOT:ARCHITECTURE`/`PILOT:COMMANDS`
-   blocks replaced by the module's pointer, `/pilot-update` migrating each project (§4).
+4. **Done.** The `architecture` module: layout with one subfolder per app, ADR, the phases reading it through its index, `--bootstrap` from what
+   the project has (apps, `docs/`, each app's documents), `--scaffold`, the dashboard tab; and the reading engine behind it (levels, search, links).
+5. **Done, v3.0.0.** `pilot-init-archi` removed; the `PILOT:ARCHITECTURE`/`PILOT:COMMANDS` blocks are pointers to the module (replaced only while a project's
+   block still holds the placeholder, converted by `--bootstrap` otherwise); `archInitialized` is no longer written or read; `/pilot-update` offers the
+   conversion and never enables the module unasked.
 
 ## 8. Open points
 
