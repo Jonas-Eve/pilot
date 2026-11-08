@@ -127,7 +127,8 @@ from a previous run — the whole point is picking up upstream changes.
    (`.pilot/pilot-process.md` §8), offering `/pilot-wiki --init` to turn it on (never run it unasked: it drafts
    from the project's closed tickets and code and opens one PR per domain). Never enable a module here, and never
    create or change anything under `wiki/`. With the module on but `wiki/` missing, say that `doctor` fails until
-   `/pilot-wiki --init` repairs it.
+   `/pilot-wiki --init` repairs it; with it on and entries still in the earlier format (several per page, `wiki lint`
+   reporting `no-frontmatter`), offer `python3 .pilot/pilot.py wiki migrate` (one PR).
 
 5b. **Update the dashboard.** Only when `.pilot/state.json` has a `dashboardUrl`: run
    `/pilot-dashboard` (reusing this `$PILOT_SRC`), after asking the human whether to

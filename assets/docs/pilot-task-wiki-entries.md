@@ -5,7 +5,7 @@ Injected by `.claude/skills/pilot-discovery/SKILL.md` (target status `proposed`)
 prompt, together with `.pilot/pilot-link-wiki.md`, when the project's `wiki` module is enabled.
 
 You receive the story as finalized (title, body, acceptance criteria; for Spec also its tasks),
-the entries that already exist in the domains it touches (id, title, page, status, text), the
+the entries that already exist in the domains it touches (id, title, path, status, text), the
 target status, and the project's functional domains (the folders of `wiki/`).
 
 1. **One entry per behavior or rule a user can observe**, written in the present tense as what
@@ -15,7 +15,8 @@ target status, and the project's functional domains (the folders of `wiki/`).
    revises that entry (same id, new text); a new entry is for new behavior only; never write
    the same behavior twice. A story that removes behavior deprecates the entry that states it.
 3. **Place each entry in a functional domain**: an existing folder that fits, else a new
-   lowercase folder named for the product area. A page is one topic of that domain.
+   lowercase folder named for the product area. One entry is one file `<domain>/<id>.md`, the id in lowercase
+   letters, digits and dashes.
 4. **Conflicts are not yours to settle.** If the story contradicts an existing entry without
    saying it replaces it, return it under `conflicts` with the question to put to a human, and
    write nothing for that entry.
@@ -23,9 +24,10 @@ target status, and the project's functional domains (the folders of `wiki/`).
 Return one JSON object, nothing else:
 
 ```json
-{"entries": [{"action": "add|update|deprecate", "id": "", "title": "", "page": "<domain>/<topic>.md", "body": ""}],
+{"entries": [{"action": "add|update|deprecate", "id": "", "title": "", "path": "<domain>/<id>.md", "description": "", "body": ""}],
  "conflicts": [{"id": "", "question": ""}]}
 ```
 
-`body` is the entry's prose only (empty for `deprecate`); the skill writes the ticket numbers and
+`description` is one sentence (it is the entry's line in the index), `body` the prose only (both empty for
+`deprecate`); the skill writes the ticket numbers and
 the status.

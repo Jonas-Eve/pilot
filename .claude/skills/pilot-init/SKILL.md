@@ -144,8 +144,8 @@ see `.claude/skills/pilot-update/SKILL.md`.
    authenticated or the repo can't be resolved, tell the human and give them the exact
    command to run themselves later — don't block the rest of this skill on it.
 
-9b. **Create the wiki** (only when the wiki module is on). If the project has no `wiki/` yet, copy
-    `$PILOT_SRC/assets/templates/wiki-README.md.tmpl` to `wiki/README.md`, creating `wiki/`. From here it is
+9b. **Create the wiki** (only when the wiki module is on). If the project has no `wiki/` yet, run
+    `python3 .pilot/pilot.py wiki reindex`: it creates `wiki/` with its root `index.md`. From here it is
     project-owned: `/pilot-update` never touches it. When the project already has closed tickets or code to
     document, tell the human to run `/pilot-wiki --init` to fill it.
 

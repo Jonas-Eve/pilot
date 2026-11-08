@@ -119,8 +119,8 @@ itself.
   mandatory comment), `snapshot` (every open ticket as the dashboard's snapshot document),
   `proto` (accept or reject a prototype, or check it is accepted before a Discovery starts from it), `proto-pack`
   (check a prototype's mockup and split it into the cockpit's documents), `wiki`
-  (the project's wiki under `wiki/`: `index`, `show`, `status`, `lint`, `snapshot` (the dashboard's Wiki tab document), and `add`/`set`, the only
-  writers of an entry's meta line — design in `docs/wiki-design.md`; used by `pilot-wiki` and, when the `wiki` module is enabled, by all five phases) and
+  (the project's wiki under `wiki/`, an OKF bundle: `index`, `reindex`, `show`, `status`, `lint`, `snapshot` (the dashboard's Wiki tab document), `add`/`set`/`remove`, the only
+  writers of an entry's frontmatter and of the folder `index.md` files, and `migrate` — design in `docs/wiki-design.md`; used by `pilot-wiki` and, when the `wiki` module is enabled, by all five phases) and
   `doctor` (preflight each phase skill runs as its step 0, once per session: python, gh auth,
   repo access and push permission, the 32 PILOT labels, the `wiki/` directory when that module is on — `--no-wiki` lets `pilot-wiki` repair a missing one) and `module` (`list`, `enable`, `disable`: the optional modules of `.pilot/state.json`, with the prerequisites each declares). Every command prints one JSON
   object; `claim`/`set`/`flag`/`unflag` also return the `event` (and `claim` the `activity`)

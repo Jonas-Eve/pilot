@@ -148,10 +148,10 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    (target status `proposed`), `.pilot/pilot-link-wiki.md`, the story as finalized and the existing entries
    of the domains it touches (`python3 .pilot/pilot.py wiki index`, then `wiki show <id>`). Put each
    `conflicts` question to the human and settle it first. Then apply on branch `wiki/discovery-<first story n>`:
-   `add` → `python3 .pilot/pilot.py wiki add <page> <id> --title … --status proposed --ticket <story> --body …`;
-   `update` → edit that entry's prose in its file, then `wiki set <id> --status proposed --add-ticket <story>
-   --clear-stamp`; `deprecate` → `wiki set <id> --status deprecated --add-ticket <story>`. Check with
-   `wiki lint`, commit (`docs(wiki): …`), push, open one PR (`mcp__github__create_pull_request`) listing the
+   `add` → `python3 .pilot/pilot.py wiki add <domain>/<id>.md --title … --description … --status proposed --ticket
+   <story> --body …`; `update` → edit that entry's prose below its frontmatter, then `wiki set <id> --status
+   proposed --add-ticket <story> --clear-stamp` (`--description` when it changed); `deprecate` → `wiki set <id> --status deprecated --add-ticket <story>`. The script refreshes the `index.md` files. Check
+   with `wiki lint`, commit (`docs(wiki): …`, indexes included), push, open one PR (`mcp__github__create_pull_request`) listing the
    entries and their status, and give the human its link to merge — never merge it here.
 8. Report the issue number(s)/URL(s) back to the human, and the wiki PR if step 7b opened one.
 

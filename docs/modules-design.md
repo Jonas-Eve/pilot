@@ -63,7 +63,8 @@ shows today's tabs.
 ## 6. The `architecture` module
 
 What `/pilot-init-archi` did once, as living content under `architecture/` at the project root, owned
-by the project and changed only by pull requests:
+by the project and changed only by pull requests. Like the wiki it is an OKF bundle: one concept per file,
+a YAML frontmatter, an `index.md` per folder, so an agent reads the index and opens only what it needs:
 
 - `overview.md` — the apps or services, each one's purpose and stack, how they relate, the per-app
   commands. Replaces the `PILOT:ARCHITECTURE` and `PILOT:COMMANDS` blocks of `CLAUDE.md`/`README.md`,
@@ -105,7 +106,7 @@ Each step is backward compatible; the last one is the break.
 
 ## 8. Open points
 
-- The ADR mechanics: one file per ADR with the wiki's meta-line convention, or its own front matter.
+- The ADR frontmatter: `type: ADR` with the same OKF and `pilot:` conventions as a wiki entry, plus what an ADR needs (`supersedes`), or keys of its own.
 - Whether `guidelines/` entries carry stamps like wiki entries (verified against the code by a lint) or
   stay plain prose.
 - Whether a module may be disabled once it holds content (kept on disk, ignored), and what `doctor`

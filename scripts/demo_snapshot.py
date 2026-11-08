@@ -152,20 +152,21 @@ body.big{font-size:22px}button{min-height:48px;padding:0 18px;border:0;border-ra
 
 def wiki_document():
     """The `wiki/Jonas-Eve__pilot` document `pilot.py wiki snapshot` would have written."""
-    def entry(eid, title, page, status, derived, tickets, verified, text):
+    def entry(eid, title, path, status, derived, tickets, verified, text):
         shown = status + (" · " + derived if derived else "")
-        return {"id": eid, "title": title, "page": page, "status": status, "derived": derived, "display": shown,
-                "tickets": tickets, "verifiedAt": iso(verified) if verified else "", "text": text}
+        return {"id": eid, "title": title, "description": text.split(".")[0] + ".", "path": path, "status": status,
+                "derived": derived, "display": shown, "tickets": tickets,
+                "verifiedAt": iso(verified) if verified else "", "text": text}
     entries = [
-        entry("search-by-name", "Rechercher un lieu par son nom", "recherche/nom.md", "implemented", "verified", [1], 40,
+        entry("search-by-name", "Rechercher un lieu par son nom", "recherche/search-by-name.md", "implemented", "verified", [1], 40,
               "On cherche un lieu par une partie de son nom, sans tenir compte des majuscules."),
-        entry("filter-step-free", "Filtrer sur l'accès de plain-pied", "recherche/filtres.md", "implemented", "", [2], 40,
+        entry("filter-step-free", "Filtrer sur l'accès de plain-pied", "recherche/filter-step-free.md", "implemented", "", [2], 40,
               "Avec l'option, seuls les lieux dont l'accès de plain-pied est confirmé sont proposés."),
-        entry("sort-by-distance", "Trier par distance, le plus proche d'abord", "recherche/tri.md", "implemented", "", [3], 0,
+        entry("sort-by-distance", "Trier par distance, le plus proche d'abord", "recherche/sort-by-distance.md", "implemented", "", [3], 0,
               "Les résultats sont triés du plus proche au plus éloigné."),
-        entry("km-display", "Afficher les longues distances en km", "affichage/distances.md", "specified", "in-review", [12, 14], 0,
+        entry("km-display", "Afficher les longues distances en km", "affichage/km-display.md", "specified", "in-review", [12, 14], 0,
               "Une distance de 1000 m ou plus est affichée en kilomètres avec une décimale."),
-        entry("csv-export", "Exporter le résultat en CSV", "export/csv.md", "proposed", "", [4], 0,
+        entry("csv-export", "Exporter le résultat en CSV", "export/csv-export.md", "proposed", "", [4], 0,
               "Une option affiche le résultat en CSV avec une ligne d'en-tête."),
     ]
     return {"kind": "wiki", "repo": REPO, "at": iso(3), "total": len(entries), "truncated": False, "entries": entries}

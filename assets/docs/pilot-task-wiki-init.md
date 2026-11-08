@@ -15,7 +15,7 @@ independent sources for every behavior of the domain: **intent** (the tickets an
 
 Tickets that contradict each other over time: the most recent one wins; when that is not clear,
 the behavior is `divergent`. State each behavior as the product's rule in the present tense, in
-one short paragraph — what, never how. Pick a stable, lowercase, dash-separated id.
+one short paragraph — what, never how. Pick a stable, lowercase, dash-separated id (the file name) and write a one-sentence `description`.
 
 Every entry cites its two proofs: the ticket(s) and the `path:line` it found (or "none" for the
 missing side). For `divergent`, write the two readings and the question the human must settle.
@@ -24,7 +24,7 @@ Return one JSON object, nothing else:
 
 ```json
 {"domain": "",
- "entries": [{"id": "", "title": "", "page": "<domain>/<topic>.md", "body": "",
+ "entries": [{"id": "", "title": "", "path": "<domain>/<id>.md", "description": "", "body": "",
               "triage": "convergent|divergent|code-only|tickets-only",
               "tickets": [0], "ticketProof": "", "codeProof": "", "question": ""}]}
 ```

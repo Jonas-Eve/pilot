@@ -1,14 +1,14 @@
 ---
 name: pilot-wiki
-description: "The project's wiki (wiki/ at the project root, .pilot/pilot-link-wiki.md): the source of truth for what the product does and what is promised, read by agents and humans. No flag, or a question in free text → answers from the wiki with citations (page, entry id, status — including the in-flight status derived from the tickets), and says when the wiki does not cover it. --lint [page|entry-id] → checks implemented entries against the code, stamps the conforming ones, and has a human arbitrate each divergence (the wiki is right, the code conforms); one PR per run. --init [domain] → drafts the wiki from closed tickets, accepted prototypes and the code, one PR per domain, entries where tickets and code agree already stamped, divergences left to the human. Pair by default (a human arbitrates live); --auto lists divergences in the PR instead and decides nothing. Never merges a PR, never claims a ticket. Use to ask what the product does, to verify the wiki, or to create it."
-argument-hint: "[<question>] | --lint [<page or entry id>] [--auto] | --init [<domain>] [--auto]"
+description: "The project's wiki (wiki/ at the project root, .pilot/pilot-link-wiki.md): the source of truth for what the product does and what is promised, read by agents and humans. No flag, or a question in free text → answers from the wiki with citations (path, status — including the in-flight status derived from the tickets), and says when the wiki does not cover it. --lint [domain|entry-id] → checks implemented entries against the code, stamps the conforming ones, and has a human arbitrate each divergence (the wiki is right, the code conforms); one PR per run. --init [domain] → drafts the wiki from closed tickets, accepted prototypes and the code, one PR per domain, entries where tickets and code agree already stamped, divergences left to the human. Pair by default (a human arbitrates live); --auto lists divergences in the PR instead and decides nothing. Never merges a PR, never claims a ticket. Use to ask what the product does, to verify the wiki, or to create it."
+argument-hint: "[<question>] | --lint [<domain or entry id>] [--auto] | --init [<domain>] [--auto]"
 ---
 
 # PILOT wiki — `pilot-wiki`
 
 Read `.pilot/pilot-link-wiki.md` first (entry format, statuses, the rules below). Mechanics are
-in `python3 .pilot/pilot.py wiki …` (`index`, `show`, `status`, `lint`, `add`, `set`); run the
-script, never hand-edit an entry's `<!-- wiki: … -->` line. Not one of the five phases: it
+in `python3 .pilot/pilot.py wiki …` (`index`, `reindex`, `show`, `status`, `lint`, `add`, `set`, `remove`,
+`migrate`); run the script, never hand-edit an entry's frontmatter or an `index.md`. Not one of the five phases: it
 claims no ticket and changes no label.
 
 ## Preflight
@@ -21,7 +21,7 @@ module list` tells whether the module is on).
 ## Question (no flag)
 
 1. `wiki index` for the entries; open (`wiki show <id>`) only those that bear on the question.
-2. Answer from them, citing each as `page#id` with its `display` status (e.g. `specified · in-review`).
+2. Answer from them, citing each as its `path` with its `display` status (e.g. `specified · in-review`).
    A `proposed`/`specified` entry is a promise, not behavior: say so. Where the wiki is silent,
    say it is not covered; do not fill the gap from the code.
 
@@ -47,16 +47,17 @@ module list` tells whether the module is on).
    of document. Domains: the given one, else propose the list — one per `level:epic` ticket
    (its stories are the domain's tickets), and for stories under no epic, the areas the tickets and
    the code suggest — and have the human confirm it; `--auto` takes the proposal as is. First enable the
-   module (`python3 .pilot/pilot.py module enable wiki`) and, if `wiki/` is absent, create it with a short
-   `README.md` saying what the folder is (functional wiki, by domain, only a PR changes it).
+   module (`python3 .pilot/pilot.py module enable wiki`) and, if `wiki/` is absent, create it (`python3
+   .pilot/pilot.py wiki reindex` writes its root `index.md`).
 2. Per domain, gather the intent: closed tickets at `status:done` and prototypes at
    `status:poc-validated` that belong to it (`gh issue list`/`gh issue view`, with comments), and
    where its code lives. Nothing to gather → skip the domain, say so.
 3. Call `Agent` for `pilot-techlead` with `.pilot/pilot-task-wiki-init.md`,
    `.pilot/pilot-link-wiki.md`, that material and `git rev-parse HEAD`. Validate the returned JSON
-   (ids match `[a-z0-9-]+`, pages end in `.md`, no id already in the wiki); fix or call again.
+   (paths `<domain>/<id>.md` with the id in `[a-z0-9-]+` and no id already in the wiki, a one-sentence
+   `description` each); fix or call again.
 4. Write per triage:
-   - `convergent` → `wiki add … --status implemented --ticket …`, then `wiki set <id> --stamp <commit>`.
+   - `convergent` → `wiki add <path> --title … --description … --status implemented --ticket …`, then `wiki set <id> --stamp <commit>`.
    - `divergent` → ask the human the entry's `question`; what they settle decides the entry's text
      (then add and stamp it) or a `/pilot-spec --bug`. `--auto`: add unstamped, list under "To arbitrate".
    - `code-only` → add unstamped, listed as "undocumented"; the human may drop it.

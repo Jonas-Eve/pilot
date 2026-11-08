@@ -954,16 +954,16 @@ const STUB = (opts) => `
 
   // ---- wiki tab: the project's wiki document (built by `pilot.py wiki snapshot`), read-only ----
   const WIKI = { kind: 'wiki', repo: REPO, at: iso(20), total: 4, truncated: false, entries: [
-    { id: 'search-by-name', title: 'Search places by name', page: 'search/matching.md', status: 'implemented', derived: 'verified', display: 'implemented · verified', tickets: [1], verifiedAt: iso(30), text: 'A traveler searches places <img src=x onerror="window.__pwn=1"> by part of their name.' },
-    { id: 'sort-by-distance', title: 'Results are sorted by distance', page: 'search/sorting.md', status: 'implemented', derived: '', display: 'implemented', tickets: [3], verifiedAt: '', text: 'Nearest place first.' },
-    { id: 'default-text-output', title: 'Default output', page: 'output/formats.md', status: 'specified', derived: 'in-review', display: 'specified · in-review', tickets: [12, 14], verifiedAt: '', text: 'One line per place.' },
-    { id: 'old-rule', title: 'Old rule', page: 'glossaire.md', status: 'deprecated', derived: '', display: 'deprecated', tickets: [], verifiedAt: '', text: '' }] };
+    { id: 'search-by-name', title: 'Search places by name', description: 'A traveler searches places by name.', path: 'search/search-by-name.md', status: 'implemented', derived: 'verified', display: 'implemented · verified', tickets: [1], verifiedAt: iso(30), text: 'A traveler searches places <img src=x onerror="window.__pwn=1"> by part of their name.' },
+    { id: 'sort-by-distance', title: 'Results are sorted by distance', description: 'Nearest first.', path: 'search/sort-by-distance.md', status: 'implemented', derived: '', display: 'implemented', tickets: [3], verifiedAt: '', text: 'Nearest place first.' },
+    { id: 'default-text-output', title: 'Default output', description: 'One line per place.', path: 'output/default-text-output.md', status: 'specified', derived: 'in-review', display: 'specified · in-review', tickets: [12, 14], verifiedAt: '', text: 'One line per place.' },
+    { id: 'old-rule', title: 'Old rule', description: 'Retired.', path: 'old-rule.md', status: 'deprecated', derived: '', display: 'deprecated', tickets: [], verifiedAt: '', text: '' }] };
   { let page = await open({ preload: [BASE] });
   await page.goto(FILE + '#wiki'); await page.waitForTimeout(350);
   check('wiki tab: empty state names the commands, no ticket banner', /Aucun wiki publié/.test(await text(page, '#view')) && /pilot-wiki --init/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Wiki');
   await page.evaluate((d) => window.__push('wiki', 'w0', d), WIKI); await page.waitForTimeout(200);
   const wv = await text(page, '#view');
-  check('wiki tab: the tab counts the entries, the page shows them grouped by page', (await page.$$eval('#tabs a', (a) => a.map((x) => x.textContent))).includes('Wiki (4)') && /search\/matching\.md/.test(wv) && /Search places by name/.test(wv) && /output\/formats\.md/.test(wv), wv);
+  check('wiki tab: the tab counts the entries, the page shows them grouped by page', (await page.$$eval('#tabs a', (a) => a.map((x) => x.textContent))).includes('Wiki (4)') && /search/.test(wv) && /Search places by name/.test(wv) && /A traveler searches places by name\./.test(wv) && /output/.test(wv), wv);
   check('wiki sub-tabs: Tous, then one per functional domain with its count',
         JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))) === JSON.stringify(['Tous (4)', 'général (1)', 'output (1)', 'search (2)']), JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))));
   check('wiki summary: one chip per status', /2 implémenté/.test(wv) && /1 spécifié/.test(wv) && /1 déprécié/.test(wv), wv);
@@ -973,7 +973,7 @@ const STUB = (opts) => `
   await page.click('#subtabs >> text=search'); await page.waitForTimeout(150);
   const wf = await text(page, '#view');
   check('wiki sub-tab: shows only that domain, the address follows', /Search places by name/.test(wf) && /sorted by distance/.test(wf) && !/Default output/.test(wf) && (await page.evaluate(() => location.hash)) === '#wiki/search', wf);
-  await page.evaluate((d) => window.__push('wiki', 'w1', Object.assign({}, d, { repo: 'o/other', entries: [{ id: 'x', title: 'Autre projet', page: 'x/y.md', status: 'proposed', tickets: [], text: '' }] })), WIKI); await page.waitForTimeout(150);
+  await page.evaluate((d) => window.__push('wiki', 'w1', Object.assign({}, d, { repo: 'o/other', entries: [{ id: 'x', title: 'Autre projet', path: 'x/y.md', status: 'proposed', tickets: [], text: '' }] })), WIKI); await page.waitForTimeout(150);
   check('wiki: another repo\'s document is not shown', !/Autre projet/.test(await text(page, '#view')));
   check('wiki tab: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
