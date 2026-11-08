@@ -291,6 +291,10 @@ the skill files) — never a fixed path, there is no installed location.
   fixes or completes the change the immediately preceding, not-yet-merged commit made,
   amend that commit instead of stacking a separate one. Once merged into `main`, or once
   another branch depends on it, it's shared history — never amend or force-push it.
+- **Keep A Work Branch Current By Rebasing, Never By Merging `main` In:** bring a work branch up to date
+  with `git rebase origin/main`, then push it with `--force-with-lease` (the branch is yours alone, and a
+  branch that only carries already-merged history is restarted from `main` the same way), so its history stays
+  linear and every commit stays meaningful. Never create a merge commit, on a branch or on `main`.
 - **Trunk-Based Development:** `main` is the single trunk; short-lived branches merge
   back quickly, no long-lived feature branches.
 - **Conventional Commits:** `type(scope): description` (e.g.
