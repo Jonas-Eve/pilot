@@ -58,6 +58,9 @@ dialogue rather than one handing a finished draft to the other
   - `/pilot-proto` — build a prototype of a feature with the PM and the designer, in a live discussion, to decide
     whether to build it; an accepted one starts a Discovery (`/pilot-discovery --from-proto`). Shown in the
     dashboard's "Prototypes" tab.
+  - `/pilot-wiki` — the project's wiki (`wiki/`), the source of truth for what the product does: ask it a
+    question, `--lint` it against the code (a human arbitrates each divergence), or `--init` it from the
+    closed tickets and the code — see `.claude/skills/pilot-wiki/SKILL.md`.
   - `/pilot-design` — create or revise the project's design system and brand charter with the
     designer, in a live discussion; the result is shown in the "Design" tab of the dashboard.
   - `/pilot-discovery`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
