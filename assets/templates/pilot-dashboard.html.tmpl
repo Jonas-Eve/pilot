@@ -172,13 +172,327 @@ function h(tag,attrs){
   var e=document.createElement(tag), a=attrs||{}, k;
   for(k in a){var v=a[k]; if(v==null||v===false)continue;
     if(k==='class')e.className=v; else if(k.slice(0,2)==='on')e.addEventListener(k.slice(2),v);
-    else e.setAttribute(k,v===true?'':v);}
+    else e.setAttribute(k,v===true?'':(TR_ATTRS[k]?tr(v):v));}
   for(var i=2;i<arguments.length;i++){(function add(c){
     if(c==null||c===false)return; if(Array.isArray(c)){c.forEach(add);return;}
-    e.append(c.nodeType?c:document.createTextNode(String(c)));})(arguments[i]);}
+    e.append(c.nodeType?c:document.createTextNode(tr(String(c))));})(arguments[i]);}
   return e;
 }
 function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
+/* ---------- language: the page text is written in French; EN maps a French text to its English one (exact for short texts, by fragment for the long ones; a ticket title is never a key) ---------- */
+var EN={
+"La commande est écrite, pas envoyée.": "The command is written, not sent.",
+"Lancez la mise à jour depuis une session du projet.": "Run the update from a project session.",
+"Filtres ": "Filters ",
+"Sous-tickets (": "Sub-tickets (",
+" appliqué": " applied",
+" au total)": " in total)",
+" avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.": " with the command already written: press Enter to send it. You can also copy it into a session that is already open. Auto mode works on the ticket alone; pair mode has you dialogue with the agent.",
+" avec le designer, en discussion avec vous. La commande est écrite, pas envoyée.": " with the designer, in discussion with you. The command is written, not sent.",
+" en cours": " in progress",
+" la maquette": " the mockup",
+" la section « ": " the section « ",
+" sans statut PILOT.": " without a PILOT status.",
+" story suivie par ses tâches (split)": " story followed by its tasks (split)",
+" terminés": " done",
+" tickets ouverts": " open tickets",
+" tickets ouverts · instantané pris ": " open tickets · snapshot taken ",
+" tout le design system": " the whole design system",
+" · dernier signe ": " · last sign ",
+" · liste tronquée (": " · list truncated (",
+" · textes raccourcis": " · shortened texts",
+"(sans titre)": "(untitled)",
+"Accepter": "Accept",
+"Acceptés": "Accepted",
+"Accessibilité": "Accessibility",
+"Activité": "Activity",
+"Actualiser l’instantané": "Refresh the snapshot",
+"Adresse de l’artefact (un des vôtres, une seule page autonome de moins de 1 Mo)": "Artifact address (one of yours, a single self-contained page under 1 MB)",
+"Afficher les ": "Show the ",
+"Agents à convoquer dès le départ": "Agents to summon from the start",
+"Anticipe l’architecture, challenge puis découpe les stories, tranche sur le périmètre et les dépendances.": "Anticipates the architecture, challenges then splits the stories, rules on scope and dependencies.",
+"Aperçu : ": "Preview: ",
+"Aperçu trop volumineux pour être affiché.": "Preview too large to display.",
+"Après chaque ticket, en prend un nouveau, jusqu’à ce que plus aucune file n’ait rien à faire.": "After each ticket, takes a new one, until no queue has anything left to do.",
+"Architecte": "Architect",
+"Architecture · mis à jour ": "Architecture · updated ",
+"Assigné": "Assigned",
+"Assignés à moi": "Assigned to me",
+"Attend un humain": "Waiting for a human",
+"Aucun changement signalé par les sessions pour le moment.": "No change reported by the sessions for now.",
+"Aucun design system pour ce projet. Utilisez « Créer ou modifier » ci-dessus pour le lancer.": "No design system for this project. Use “Create or modify” above to start one.",
+"Aucun instantané pour ": "No snapshot for ",
+"Aucun prototype dans cette vue.": "No prototype in this view.",
+"Aucun prototype pour l’instant. Utilisez « Nouveau prototype » ci-dessus pour en lancer un.": "No prototype yet. Use “New prototype” above to start one.",
+"Aucun ticket": "No ticket",
+"Aucun ticket dans cette phase.": "No ticket in this phase.",
+"Aucun ticket ne correspond.": "No ticket matches.",
+"Aucun ticket ne vous est assigné.": "No ticket is assigned to you.",
+"Aucun wiki publié pour ce projet. Activez-le avec « /pilot-wiki » (puis « /pilot-wiki --bootstrap » pour l’amorcer depuis les tickets et le code), puis publiez-le avec « /pilot-dashboard --refresh ».": "No wiki published for this project. Enable it with “/pilot-wiki” (then “/pilot-wiki --bootstrap” to seed it from the tickets and the code), then publish it with “/pilot-dashboard --refresh”.",
+"Aucune architecture publiée pour ce projet. Activez-la avec « /pilot-architecture » (puis « /pilot-architecture --bootstrap » pour l’amorcer depuis les apps existantes), puis publiez-la avec « /pilot-dashboard --refresh ».": "No architecture published for this project. Enable it with “/pilot-architecture” (then “/pilot-architecture --bootstrap” to seed it from the existing apps), then publish it with “/pilot-dashboard --refresh”.",
+"Aucune entrée.": "No entry.",
+"Aucune session n’a signalé d’activité récemment.": "No session has reported activity recently.",
+"Avec": "With",
+"Besoin technique": "Technical need",
+"Cadre votre idée avec vous, rédige les stories, vérifie qu’un découpage couvre les critères d’acceptation, relit les livraisons produit, cadre un prototype puis le contrôle.": "Frames your idea with you, writes the stories, checks that a split covers the acceptance criteria, reviews product deliveries, frames a prototype then checks it.",
+"Changements": "Changes",
+"Chargement de la maquette…": "Loading the mockup…",
+"Charte": "Charter",
+"Charte graphique": "Brand charter",
+"Choisissez au moins une phase.": "Choose at least one phase.",
+"Coder": "Code",
+"Composants": "Components",
+"Consigner une décision": "Record a decision",
+"Construit le design system, la charte et les prototypes avec vous ; conseille sur l’usage, l’interface et l’accessibilité. Ne valide jamais une phase.": "Builds the design system, the charter and the prototypes with you; advises on usage, interface and accessibility. Never validates a phase.",
+"Convocable": "Summonable",
+"Copie impossible : sélectionnez la commande": "Copy failed: select the command",
+"Copier": "Copy",
+"Copier ": "Copy ",
+"Copier auto": "Copy auto",
+"Copier la commande": "Copy the command",
+"Copier pair": "Copy pair",
+"Copié": "Copied",
+"Corriger": "Fix",
+"Couleurs": "Colors",
+"Créer": "Create",
+"Créer ou modifier": "Create or modify",
+"Derniers changements": "Latest changes",
+"Design (hors phase)": "Design (outside a phase)",
+"Design · mis à jour ": "Design · updated ",
+"Discovery : le PM rédige, l’architecte valide, pour une ou plusieurs stories.": "Discovery: the PM writes, the architect validates, for one or several stories.",
+"Données d’exemple. ": "Sample data. ",
+"Drapeau": "Flag",
+"Décisions": "Decisions",
+"Décrivez ce que vous voulez créer ou changer (facultatif).": "Describe what you want to create or change (optional).",
+"Décrivez la fonction à tester : le PM vous aide à la cadrer, puis le designer la construit avec vous.": "Describe the feature to test: the PM helps you frame it, then the designer builds it with you.",
+"Décrivez l’idée, le besoin technique ou le bug.": "Describe the idea, the technical need or the bug.",
+"Déroule avec vous le plan de test d’une story et rend le verdict.": "Walks you through a story’s test plan and gives the verdict.",
+"E2E pour une tâche e2e": "E2E for an e2e task",
+"En cours": "In progress",
+"En pause": "Paused",
+"Enchaîner (--next)": "Chain (--next)",
+"Espacement ": "Spacing ",
+"Espacements": "Spacings",
+"Espacements et rayons": "Spacings and radii",
+"Ex. : ajouter un thème à fort contraste": "E.g.: add a high-contrast theme",
+"Ex. : choisir un itinéraire sans escalier": "E.g.: pick a step-free route",
+"Ex. : profil, #418, mot de passe": "E.g.: profile, #418, password",
+"Ex. : signaler un ascenseur en panne sur le trajet": "E.g.: report a broken elevator on the route",
+"Ex. : vérifier que l’itinéraire se comprend sans explication": "E.g.: check that the route is understood without explanation",
+"Famille : ": "Family: ",
+"Idée produit": "Product idea",
+"Implémente un ticket spécifié, relit son propre diff et ouvre la PR.": "Implements a specified ticket, reviews its own diff and opens the PR.",
+"Importer un artefact": "Import an artifact",
+"Indiquez votre identifiant GitHub (en haut de la page) pour que « moi » désigne vos tickets.": "Enter your GitHub username (top of the page) so that “me” designates your tickets.",
+"Indiquez votre identifiant GitHub (en haut de la page) pour voir les tickets qui vous sont assignés.": "Enter your GitHub username (top of the page) to see the tickets assigned to you.",
+"Instantané ancien : relancez la mise à jour depuis une session du projet.": "Old snapshot: run the update again from a project session.",
+"Instantané · ": "Snapshot · ",
+"Interroger le wiki": "Query the wiki",
+"Interroger l’architecture": "Query the architecture",
+"La base ne répond pas pour le moment.": "The database is not responding for now.",
+"La base partagée n’est pas disponible dans cette vue.": "The shared database is not available in this view.",
+"La base partagée n’est pas disponible.": "The shared database is not available.",
+"Lancer en lot": "Run in batch",
+"Lancer la Discovery": "Start the Discovery",
+"Lecture de la base impossible (": "Cannot read the database (",
+"Lecture des données en cours. Exemples affichés en attendant.": "Reading the data. Examples shown meanwhile.",
+"Ma file": "My queue",
+"Ma file · ": "My queue · ",
+"Maquette du prototype #": "Mockup of prototype #",
+"Maquette indisponible.": "Mockup unavailable.",
+"Merger sur GitHub": "Merge on GitHub",
+"Modifier": "Modify",
+"Mot-clé dans le titre ou le numéro (majuscules et accents ignorés). Plusieurs mots : tous doivent y figurer.": "Keyword in the title or the number (case and accents ignored). Several words: all must appear.",
+"N agents dialoguent avant d’agir": "N agents dialogue before acting",
+"Niveau": "Level",
+"Non": "No",
+"Nouveau prototype": "New prototype",
+"Nouvelle demande": "New request",
+"Origine du prototype": "Prototype origin",
+"Ouvrez cette page dans claude.ai pour lire les données.": "Open this page in claude.ai to read the data.",
+"Ouvrir (auto)": "Open (auto)",
+"Ouvrir (pair)": "Open (pair)",
+"Ouvrir dans Claude Code": "Open in Claude Code",
+"Ouvrir en pair": "Open in pair",
+"Pas de maquette enregistrée": "No mockup saved",
+"Plein écran": "Full screen",
+"Prend un candidat et le suit dans toutes les phases jusqu’à la fin, un blocage ou sa fermeture.": "Takes a candidate and follows it through all the phases until the end, a block or its closing.",
+"Produit": "Product",
+"Prototype (hors phase)": "Prototype (outside a phase)",
+"Prototype introuvable.": "Prototype not found.",
+"Prototypes acceptés · ": "Accepted prototypes · ",
+"Prototypes en cours": "Prototypes in progress",
+"Prototypes rejetés": "Rejected prototypes",
+"Prototypes, Discovery et QA humaine": "Prototypes, Discovery and human QA",
+"Précédent": "Previous",
+"Raison : ": "Reason: ",
+"Rayon ": "Radius ",
+"Recherche": "Search",
+"Rejeter": "Reject",
+"Rejetés": "Rejected",
+"Relire": "Review",
+"Reprendre": "Resume",
+"Retirer le filtre ": "Remove the filter ",
+"Rien de défini pour l’instant.": "Nothing defined yet.",
+"Rien n’attend ce rôle pour le moment.": "Nothing is waiting for this role for now.",
+"Rien à prendre pour ce rôle pour le moment.": "Nothing to take for this role for now.",
+"Règles": "Rules",
+"Règles d’usage": "Usage rules",
+"Réduire": "Collapse",
+"Réinitialiser": "Reset",
+"Répondre sur GitHub": "Reply on GitHub",
+"Répétition": "Repetition",
+"Résultats · ": "Results · ",
+"Sessions en cours · ": "Running sessions · ",
+"Seulement": "Only",
+"Spec : l’architecte et le tech lead cadrent et spécifient le besoin.": "Spec: the architect and the tech lead frame and specify the need.",
+"Spec : l’architecte qualifie le défaut, puis crée le ticket.": "Spec: the architect qualifies the defect, then creates the ticket.",
+"Spec · bug, signalement brut": "Spec · bug, raw report",
+"Spec · bug, ticket existant": "Spec · bug, existing ticket",
+"Spec · feature ou tech": "Spec · feature or tech",
+"Spec, Dev et Review": "Spec, Dev and Review",
+"Spécifier": "Specify",
+"Statuts": "Statuses",
+"Suivant": "Next",
+"Tableau": "Table",
+"Terminés": "Done",
+"Tester": "Test",
+"Tickets ouverts hors file : ": "Open tickets outside a queue: ",
+"Tous": "All",
+"Tous rôles": "All roles",
+"Tout le design system": "The whole design system",
+"Toutes les phases": "All phases",
+"Traite un seul ticket prêt, puis s’arrête.": "Handles a single ready ticket, then stops.",
+"Traiter": "Handle",
+"Type de demande": "Request type",
+"Typographie": "Typography",
+"Un candidat": "One candidate",
+"Une note pour le PM (facultatif) : ce que ce prototype doit permettre de décider.": "A note for the PM (optional): what this prototype should allow to decide.",
+"Une seule commande /pilot-auto qui choisit elle-même le prochain ticket prêt (Discovery et QA humaine n’ont pas de mode auto).": "A single /pilot-auto command that picks the next ready ticket itself (Discovery and human QA have no auto mode).",
+"Validateur": "Validator",
+"Voir le proto": "See the proto",
+"Voir sur GitHub": "See on GitHub",
+"Vue d’ensemble": "Overview",
+"Vérifie le besoin dans le code, écrit la spec technique de chaque ticket, relit la conformité et la qualité des PR.": "Checks the need against the code, writes each ticket’s technical spec, reviews the PRs for conformity and quality.",
+"Vérifier le wiki": "Check the wiki",
+"Wiki · mis à jour ": "Wiki · updated ",
+"accepté": "accepted",
+"approuvé (": "approved (",
+"approuvé, à merger": "approved, to merge",
+"après le cadrage par le PM": "after the PM’s framing",
+"assignés à ": "assigned to ",
+"attend un humain": "waiting for a human",
+"blocage levé": "block lifted",
+"brouillon en cours": "draft in progress",
+"corrections demandées": "changes requested",
+"créé (": "created (",
+"dev en cours": "dev in progress",
+"découpée en tâches": "split into tasks",
+"démarré ": "started ",
+"déprécié": "deprecated",
+"en cours": "in progress",
+"en dev": "in dev",
+"en pause": "paused",
+"en review": "in review",
+"enchaîné": "chained",
+"feature seulement": "feature only",
+"fermé": "closed",
+"général": "general",
+"implémenté": "implemented",
+"le designer rejoint la discussion dès le départ": "the designer joins the discussion from the start",
+"le tech lead seul pour une tâche tech ou bug": "the tech lead alone for a tech or bug task",
+"lecture…": "reading…",
+"ne relancent que ces relecteurs, en pair ; possible après une première relecture": "rerun only these reviewers, in pair; possible after a first review",
+"non assigné": "unassigned",
+"non vérifié": "not verified",
+"plusieurs PM, chacun validé par l’architecte, puis les propositions convergent": "several PMs, each validated by the architect, then the proposals converge",
+"pris en charge (": "taken over (",
+"proposé": "proposed",
+"prototype accepté": "prototype accepted",
+"prototype en construction": "prototype under construction",
+"prototype rejeté": "prototype rejected",
+"prototype à décider": "prototype to decide",
+"prêt à coder": "ready to code",
+"rejeté": "rejected",
+"rejoint la discussion dès le départ": "joins the discussion from the start",
+"relecture en cours": "review in progress",
+"remplacé": "superseded",
+"remplacé par ": "superseded by ",
+"sans signe de vie": "no sign of life",
+"sans statut": "no status",
+"sinon : seulement la section ouverte": "otherwise: only the open section",
+"spec en cours": "spec in progress",
+"spécifié": "specified",
+"statut : ": "status: ",
+"suit ce ticket dans toutes les phases suivantes, jusqu’à la fin ou un blocage": "follows this ticket through all the following phases, until the end or a block",
+"test en cours": "test in progress",
+"traite ce qui est prêt dans cette arborescence, ticket après ticket, jusqu’à la fin ou un blocage": "handles what is ready in this tree, ticket after ticket, until the end or a block",
+"tâche": "task",
+"vérifié ": "verified ",
+"« Ouvrir » lance une session Claude Code sur ": "“Open” starts a Claude Code session on ",
+"À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.": "At each step, the lead opens the discussion with you. When done, the validator joins and checks the deliverable alone. A summonable agent is requested from the start with --with, or during the discussion, and you can dismiss one at any time.",
+"À lancer": "To launch",
+"À partir d’une idée": "From an idea",
+"À prendre": "To take",
+"Écran de préférences d’accessibilité": "Accessibility preferences screen",
+"Écrit le test de bout en bout que chaque story produit exige, une fois les tâches fusionnées.": "Writes the end-to-end test each product story requires, once the tasks are merged.",
+"État": "State",
+"à prendre · ": "to take · ",
+"à relire": "to review",
+"à spécifier": "to specify",
+"à tester": "to test",
+" Voir": " See",
+"▸ Voir": "▸ See",
+"▾ Masquer": "▾ Hide",
+" sur ": " of ",
+"Tickets par phase et file d’actions selon votre rôle, avec la commande PILOT prête à copier.": "Tickets by phase and action queue by your role, with the PILOT command ready to copy.",
+"Agents et steps": "Agents and steps",
+"Mon identifiant GitHub": "My GitHub username",
+"Rôle": "Role",
+"État des connecteurs": "Connectors state",
+"Langue":"Language","Sous-onglets": "Sub-tabs",
+"Créer ou modifier le design system": "Create or modify the design system",
+" · déployé le ": " · deployed on ",
+"QA humaine": "Human QA",
+"Texte": "Text",
+"Ton": "Tone"
+};
+var EN_RULES=[
+  function(s){return s.replace(/il y a (\d+) min\b/g,'$1 min ago').replace(/il y a (\d+) h\b/g,'$1 h ago').replace(/il y a (\d+) j\b/g,'$1 d ago');},
+  function(s){var m=/^(.+?) (\(\d+\))$/.exec(s);return m&&EN.hasOwnProperty(m[1])?EN[m[1]]+' '+m[2]:s;}, /* "Accepted (3)" */
+  function(s){var m=/^(\d+) (\S.*)$/.exec(s);return m&&EN.hasOwnProperty(m[2])?m[1]+' '+EN[m[2]]:s;}, /* "1 specified" */
+  function(s){return s.replace(/^Page (\d+) sur (\d+) · (\d+) tickets$/,'Page $1 of $2 · $3 tickets');}
+];
+var EN_SUB=Object.keys(EN).filter(function(k){return k.length>=12||/^\s|\s$/.test(k);}).sort(function(a,b){return b.length-a.length;});
+var LANG='en', TR_CACHE={}, TR_ATTRS={'title':1,'aria-label':1,'placeholder':1,'alt':1};
+function tr(s){
+  if(LANG!=='en'||typeof s!=='string'||!s)return s;
+  if(TR_CACHE.hasOwnProperty(s))return TR_CACHE[s];
+  var o=s,i;
+  if(EN.hasOwnProperty(s))o=EN[s];
+  else{
+    for(i=0;i<EN_RULES.length;i++)o=EN_RULES[i](o);
+    for(i=0;i<EN_SUB.length;i++)if(o.indexOf(EN_SUB[i])>-1)o=o.split(EN_SUB[i]).join(EN[EN_SUB[i]]);
+  }
+  return TR_CACHE[s]=o;
+}
+var STAT=[]; /* the page's own static texts and labels, kept in French so a language switch can redo them */
+function markStatic(){
+  document.querySelectorAll('[title],[aria-label],[placeholder]').forEach(function(e){['title','aria-label','placeholder'].forEach(function(a){if(e.hasAttribute(a))STAT.push([e,a,e.getAttribute(a)]);});});
+  ['.top .sub','#version'].forEach(function(q){var e=document.querySelector(q);if(e)STAT.push([e,'',e.textContent]);});
+}
+function applyStatic(){STAT.forEach(function(x){if(x[1])x[0].setAttribute(x[1],tr(x[2]));else x[0].textContent=tr(x[2]);});document.documentElement.lang=LANG;}
+function pickLang(l){return l==='fr'?'fr':'en';}
+var BUILT=false, TYPED=['ideaText','designText','searchText','protoText','protoUrl'];
+function setLang(l,user){
+  LANG=pickLang(l);if(user)store('cp.lang',LANG);TR_CACHE={};applyStatic();
+  if(!BUILT)return;
+  var keep={}; TYPED.forEach(function(i){var e=document.getElementById(i);if(e)keep[i]=e.value;}); /* the forms are built once, in the language of the moment: rebuild them, keeping what was typed */
+  ['idea','batch','search','protoNew','designEdit'].forEach(function(i){document.getElementById(i).replaceChildren();});
+  buildIdea();buildBatch();buildSearch();buildDesign();buildProtoNew();
+  TYPED.forEach(function(i){var e=document.getElementById(i);if(e&&keep[i])e.value=keep[i];});
+  render();
+}
 function ago(iso){
   if(!iso)return ''; var d=(Date.now()-new Date(iso).getTime())/1000;
   if(!isFinite(d))return ''; if(d<3600)return 'il y a '+Math.max(1,Math.round(d/60))+' min';
@@ -264,6 +578,7 @@ function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
   S.gh={state:'live',msg:'',live:(s.issues||[]).map(normSnap),at:s.at,total:s.total,truncated:!!s.truncated,modules:(s.modules&&typeof s.modules==='object'&&!Array.isArray(s.modules))?s.modules:null};
+  var sv=store('cp.lang'); if(sv!=='fr'&&sv!=='en'&&s.language&&pickLang(s.language)!==LANG)setLang(s.language,false); /* a reader's own choice wins over the project's language */
 }
 function watchSnapshots(){
   if(unGh){try{unGh();}catch(e){} unGh=null;}
@@ -380,7 +695,7 @@ function claudeCodeUrl(cmd){return 'https://claude.ai/code/new?q='+encodeURIComp
 function openLink(cmd,label,primary){return h('a',{class:'btn'+(primary?' primary':''),href:claudeCodeUrl(cmd),target:'_blank',rel:'noopener'},label);}
 function copyCmd(text,btn){
   var orig=btn.textContent;
-  function done(ok){btn.textContent=ok?'Copié':'Copie impossible : sélectionnez la commande';setTimeout(function(){btn.textContent=orig;},2500);}
+  function done(ok){btn.textContent=tr(ok?'Copié':'Copie impossible : sélectionnez la commande');setTimeout(function(){btn.textContent=orig;},2500);}
   try{navigator.clipboard.writeText(text).then(function(){done(true);},function(){done(false);});}catch(e){done(false);}
 }
 
@@ -699,13 +1014,13 @@ function updateIdea(){
   var k=kindNow(), text=ideaText(), seg=document.getElementById('kindSeg'), open=document.getElementById('ideaOpen');
   seg.replaceChildren.apply(seg,KINDS.map(function(x){
     return h('button',{type:'button','aria-pressed':String(x.key===k.key),onclick:function(){ideaKind=x.key;updateIdea();}},x.label);}));
-  document.getElementById('ideaHint').textContent=k.hint+' La commande est écrite, pas envoyée.';
+  document.getElementById('ideaHint').textContent=tr(k.hint+' La commande est écrite, pas envoyée.');
   document.getElementById('ideaCmd').textContent=ideaFull(k,text||'…');
   var mw=document.getElementById('ideaMultiWrap'), ms=document.getElementById('ideaMultiSeg');
   mw.hidden=k.key!=='produit'; ms.replaceChildren(multiSeg(S.ideaMulti,function(m){S.ideaMulti=m;updateIdea();},'Multi'));
   var ww=document.getElementById('ideaWithWrap'), ws=document.getElementById('ideaWithSeg');
   ww.hidden=false; ws.replaceChildren(h('button',{type:'button','aria-pressed':String(!!S.ideaDesigner),onclick:function(){S.ideaDesigner=S.ideaDesigner?0:1;updateIdea();}},'Designer'));
-  document.getElementById('ideaSum').textContent=text?'brouillon en cours':'';
+  document.getElementById('ideaSum').textContent=text?tr('brouillon en cours'):'';
   if(text){open.setAttribute('href',claudeCodeUrl(ideaFull(k,text)));open.removeAttribute('aria-disabled');}
   else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}
   document.getElementById('ideaCopy').disabled=!text;
@@ -740,7 +1055,7 @@ function updateBatch(){
   md.replaceChildren.apply(md,BMODES.map(function(m){
     return h('button',{class:'tog',type:'button','aria-pressed':String(S.b.mode===m[0]),onclick:function(){S.b.mode=m[0];updateBatch();}},m[1]);}));
   mu.replaceChildren(multiSeg(S.b.multi,function(m){S.b.multi=m;updateBatch();},'Multi'));
-  document.getElementById('batchHint').textContent=c?BHINT[S.b.mode]+' La commande est écrite, pas envoyée.':'Choisissez au moins une phase.';
+  document.getElementById('batchHint').textContent=tr(c?BHINT[S.b.mode]+' La commande est écrite, pas envoyée.':'Choisissez au moins une phase.');
   document.getElementById('batchCmd').textContent=c||'…';
   document.getElementById('batchSum').textContent=c?c.replace('/pilot-auto','').trim():'';
   if(c){open.setAttribute('href',claudeCodeUrl(c));open.removeAttribute('aria-disabled');}
@@ -820,7 +1135,7 @@ function vProtos(){
   if(S.viewProto)return vProtoFull(S.viewProto);
   var g=S.sub.prototypes, sb=S.sub3, all=protoList();
   var rows=all.filter(function(e){return e.group===g&&(g!=='acceptes'||e.sub===sb);}).sort(function(a,b){return String(b.meta&&b.meta.at||b.updated).localeCompare(String(a.meta&&a.meta.at||a.updated));});
-  var ttl=g==='encours'?'Prototypes en cours':g==='rejetes'?'Prototypes rejetés':'Prototypes acceptés · '+(ACC_SUBS.filter(function(s){return s[0]===sb;})[0]||[0,''])[1];
+  var ttl=g==='encours'?'Prototypes en cours':g==='rejetes'?'Prototypes rejetés':'Prototypes acceptés · '+tr((ACC_SUBS.filter(function(s){return s[0]===sb;})[0]||[0,''])[1]);
   var none=all.length?'Aucun prototype dans cette vue.':'Aucun prototype pour l’instant. Utilisez « Nouveau prototype » ci-dessus pour en lancer un.';
   return h('div',{class:'list'},h('h2',{},ttl+' · '+rows.length),rows.length?rows.map(protoRow):h('div',{class:'empty'},none));
 }
@@ -857,11 +1172,11 @@ function updateProtoNew(){
   document.getElementById('protoSrcIdea').setAttribute('aria-pressed',String(!imp));
   document.getElementById('protoSrcImp').setAttribute('aria-pressed',String(imp));
   document.getElementById('protoUrlWrap').hidden=!imp; document.getElementById('protoWithWrap').hidden=imp;
-  document.getElementById('protoLbl').textContent=imp?'Une note pour le PM (facultatif) : ce que ce prototype doit permettre de décider.':'Décrivez la fonction à tester : le PM vous aide à la cadrer, puis le designer la construit avec vous.';
-  document.getElementById('protoText').setAttribute('placeholder',imp?'Ex. : vérifier que l’itinéraire se comprend sans explication':'Ex. : choisir un itinéraire sans escalier');
+  document.getElementById('protoLbl').textContent=tr(imp?'Une note pour le PM (facultatif) : ce que ce prototype doit permettre de décider.':'Décrivez la fonction à tester : le PM vous aide à la cadrer, puis le designer la construit avec vous.');
+  document.getElementById('protoText').setAttribute('placeholder',tr(imp?'Ex. : vérifier que l’itinéraire se comprend sans explication':'Ex. : choisir un itinéraire sans escalier'));
   c.textContent=protoCmd();
   if(ok){a.setAttribute('href',claudeCodeUrl(protoCmd()));a.removeAttribute('aria-disabled');}else{a.removeAttribute('href');a.setAttribute('aria-disabled','true');}
-  document.getElementById('protoNSum').textContent=(imp?protoUrl():protoText())?'brouillon en cours':'';
+  document.getElementById('protoNSum').textContent=(imp?protoUrl():protoText())?tr('brouillon en cours'):'';
 }
 
 /* ---------- design tab: shows the project's `design` document, edited through a /pilot-design session ---------- */
@@ -888,10 +1203,10 @@ function updateDesign(){
   var wrap=document.getElementById('designAllWrap'); wrap.hidden=!S.design;
   document.getElementById('designAll').setAttribute('aria-pressed',String(designAll));
   var lab=DESIGN_SUBS.filter(function(x){return x[0]===S.sub.design;})[0];
-  hint.textContent=(S.design?'Modifier'+(designAll?' tout le design system':' la section « '+(lab?lab[1]:'')+' »'):'Créer')+' avec le designer, en discussion avec vous. La commande est écrite, pas envoyée.';
+  hint.textContent=tr((S.design?'Modifier'+(designAll?' tout le design system':' la section « '+(lab?lab[1]:'')+' »'):'Créer')+' avec le designer, en discussion avec vous. La commande est écrite, pas envoyée.');
   var c=designCmd(); document.getElementById('designCmd').textContent=c;
   document.getElementById('designOpen').setAttribute('href',claudeCodeUrl(c));
-  document.getElementById('designESum').textContent=designText()?'brouillon en cours':'';
+  document.getElementById('designESum').textContent=designText()?tr('brouillon en cours'):'';
 }
 function hexOk(x){return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(x==null?'':x));}
 function sw(hex){return hexOk(hex)?h('span',{class:'sw',style:'background:'+hex,'aria-hidden':'true'}):null;}
@@ -1106,6 +1421,7 @@ function vHelp(){
   function names(ks,note){return ks.length?ks.map(agentName).join(' + ')+(note?' ('+note+')':''):'—';}
   var steps=S.sub.aide==='steps';
   return h('div',{class:'list'},
+    h('div',{class:'pair'},h('span',{class:'note'},'Langue'),h('div',{class:'seg',role:'group','aria-label':'Langue',id:'langSeg'},['fr','en'].map(function(l){return h('button',{type:'button',lang:l,'aria-pressed':String(LANG===l),onclick:function(){setLang(l,true);}},l.toUpperCase());}))),
     steps?h('p',{class:'note'},'À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.'):null,
     steps?h('div',{class:'ref'},h('table',{},
       h('thead',{},h('tr',{},['Step','Lead','Validateur','Convocable'].map(function(t){return h('th',{scope:'col'},t);}))),
@@ -1130,6 +1446,8 @@ function fromHash(){
 }
 window.addEventListener('hashchange',function(){fromHash();render();});
 fromHash();
+markStatic();
+var sv0=store('cp.lang'); setLang(sv0==='fr'||sv0==='en'?sv0:'en',false);
 var me=document.getElementById('meInput'); me.value=S.me;
 me.addEventListener('input',function(){S.me=me.value.trim().replace(/^@/,'');store('cp.me',S.me);S.page=0;render();});
 buildIdea();
@@ -1137,6 +1455,7 @@ buildBatch();
 buildSearch();
 buildDesign();
 buildProtoNew();
+BUILT=true;
 render();
 if(window.claude&&window.claude.use){
   window.claude.use('db').then(function(d){S.db=d;watchSnapshots();watchLive();}).catch(function(){S.db=null;watchSnapshots();});

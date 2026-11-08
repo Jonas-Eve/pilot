@@ -641,6 +641,7 @@ class Machine:
         modules = state_modules()
         if modules is not None:
             doc["modules"] = modules  # the dashboard's tabs follow the modules a project has on
+        doc["language"] = read_language()  # the dashboard opens in it (a reader can switch)
         while len(json.dumps(doc, ensure_ascii=False).encode()) > SNAPSHOT_MAX_BYTES and rows:
             del rows[max(1, len(rows) * 9 // 10):]
             doc["truncated"] = True
