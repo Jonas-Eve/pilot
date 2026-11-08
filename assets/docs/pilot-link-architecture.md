@@ -13,7 +13,11 @@ architecture is right**, and a human arbitrates, never silently.
 - `guidelines/<id>.md` — a technical rule AIs and developers must respect (layering, testing, security, naming,
   dependencies), stated as a rule, one per file.
 - `adr/<NNNN-title>.md` — an architecture decision record: context, decision, alternatives rejected,
-  consequences. The number is the next free one; the file name is the id and never changes.
+  consequences. The number is the next free one across the whole bundle (`arch next-number`); the file name is the id and
+  never changes.
+- `apps/<app>/` — only in a monorepo, and only when a rule or a decision belongs to one app: `<app>-overview.md`,
+  `guidelines/<id>.md`, `adr/<NNNN-title>.md` under it. Everything transversal stays at the root. An id (the file name) is unique across
+  the whole bundle.
 
 **Where a decision sits.** The wiki says *what* the product does; a guideline says *how* we build; an ADR says
 *why* a choice was made. A decision is an ADR when it outlives a ticket and someone could be tempted to reverse it.

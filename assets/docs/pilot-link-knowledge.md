@@ -14,6 +14,8 @@ particular and stop as soon as you have what the task needs:
    entries it holds, and the entries sitting directly at that level. Descend with `--under <folder>`.
 2. **Narrow:** descend into the folder that fits, or `<b> search "<the task's own words>"` — the best entries
    first, each with one line of extract (`--under` restricts it, `--limit` bounds it).
+   For `architecture/` in a monorepo, add `--app <name>` (the app of the `apps/<name>/` paths the task touches): you see the
+   transversal entries and that app's, never the other apps'.
 3. **Open:** `<b> show <id>` only for the few entries that bear on the task. `show` also lists what the entry
    cites (`links`) and what cites it (`backlinks`): follow them instead of searching again.
 4. **A listing of what is in force:** `<b> index --active` (history left out) when you need the rows themselves; add

@@ -161,6 +161,8 @@ def architecture_document():
         entry("layering", "Couches", "guidelines/layering.md", "accepted", [], "Le domaine n'importe jamais les adaptateurs."),
         entry("0001-compute", "Catalogue calculé", "adr/0001-compute.md", "superseded", [5], "Le catalogue est recalculé à chaque appel.", "", "0002-store"),
         entry("0002-store", "Catalogue stocké", "adr/0002-store.md", "accepted", [12], "Le catalogue est stocké, pas calculé.", "0001-compute"),
+        entry("web-overview", "Application web", "apps/web/web-overview.md", "accepted", [], "L'interface web, en React."),
+        entry("a11y", "Accessible par défaut", "apps/web/guidelines/a11y.md", "accepted", [], "Chaque contrôle a un nom accessible."),
     ]
     return {"kind": "architecture", "repo": REPO, "at": iso(3), "total": len(entries), "truncated": False, "entries": entries}
 

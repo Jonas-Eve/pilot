@@ -39,7 +39,7 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
    relevant code — nothing else from this conversation. Validate the returned JSON; fix or call again.
 3. Show the draft to the human, who edits and validates it (pair); `--auto` is not offered: a decision is a
    human's.
-4. `arch add adr/<NNNN-title>.md … --status proposed` (NNNN = the next number), and `arch supersede <new> <old>`
+4. `arch add adr/<NNNN-title>.md … --status proposed` (`apps/<app>/adr/<NNNN-title>.md` when only one app is concerned) (NNNN = `arch next-number`), and `arch supersede <new> <old>`
    when it replaces an accepted ADR. Branch `architecture/adr-<NNNN>`, commit, push, open one PR; the human
    merging it accepts it — set `accepted` in that same PR when the human says so.
 

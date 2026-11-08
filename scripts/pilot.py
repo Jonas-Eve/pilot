@@ -13,7 +13,7 @@
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
-  pilot.py arch    index [--active] [--under D] [--depth 1]|search|describe|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
+  pilot.py arch    index [--active] [--app A] [--under D] [--depth 1]|search|describe|next-number|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
@@ -1105,24 +1105,28 @@ class Bundle:
     def _brief(self, entry):
         return {k: entry[k] for k in self.ROW}
 
-    def index(self, ticket=None, active=False, under=None):
+    def _scoped(self, entry, app):
+        """Whether an entry is in view for `app` (a bundle with no per-app content shows everything)."""
+        return True
+
+    def index(self, ticket=None, active=False, under=None, app=None):
         """Every entry; `active` keeps only what is in force and shrinks each row to id, path, description and
         status (a line an agent can carry in its prompt, then open the entries that bear on its task); `under`
         keeps the entries below one folder."""
         entries = self.parse()
         shown = [e for e in entries if (ticket is None or ticket in e["tickets"]) and self._under(e, under)
-                 and not (active and e["status"] in self.LIVE)]
+                 and self._scoped(e, app) and not (active and e["status"] in self.LIVE)]
         rows = [self._brief(e) if active else self._view(e) for e in shown]
         return {"ok": True, "dir": self.root, "entries": rows,
                 "problems": sum(len(e["problems"]) for e in entries)}
 
-    def outline(self, under="", active=False):
+    def outline(self, under="", active=False, app=None):
         """One level of the bundle: the sub-folders of `under` (each with its description and how many entries it
         holds below it) and the entries sitting directly in it. A fixed-size first look, however big the bundle."""
         under = (under or "").strip("/")
         counts, direct, known = {}, [], not under
         for e in self.parse():
-            if active and e["status"] in self.LIVE:
+            if (active and e["status"] in self.LIVE) or not self._scoped(e, app):
                 continue
             folder = posixpath.dirname(e["path"])
             if under and not (folder == under or folder.startswith(under + "/")):
@@ -1151,14 +1155,15 @@ class Bundle:
         words = re.findall(r"[a-z0-9]+", "".join(c for c in folded if not unicodedata.combining(c)))
         return [w[:-1] if len(w) > 3 and w.endswith("s") else w for w in words if len(w) > 1 and w not in cls._STOP]
 
-    def search(self, query, under="", limit=8, include_history=False):
+    def search(self, query, under="", limit=8, include_history=False, app=None):
         """The entries that best match some words, ranked (title, description, tags and id weigh more than the
         text; rarer words weigh more), each with a one-line extract. Lexical and deterministic."""
         terms = sorted(set(self._terms(query)))
         if not terms:
             raise Refused({"ok": False, "reason": "empty-query"})
         limit = max(1, min(int(limit), 25))
-        pool = [e for e in self.parse() if self._under(e, under) and (include_history or e["status"] not in self.LIVE)]
+        pool = [e for e in self.parse() if self._under(e, under) and self._scoped(e, app)
+                and (include_history or e["status"] not in self.LIVE)]
         docs = []
         for e in pool:
             tags = (e["fm"] or {}).get("tags") or []
@@ -1609,10 +1614,32 @@ class Architecture(Bundle):
     TITLE = "Architecture"
     ABSENT = "architecture-absent"
     ABSENT_HINT = "run /pilot-architecture (it turns the architecture module on and creates architecture/)"
-    PATH_HINT = "overview.md, guidelines/<id>.md or adr/<NNNN-title>.md"
+    PATH_HINT = ("overview.md, guidelines/<id>.md or adr/<NNNN-title>.md; for one app of a monorepo, the same under "
+                 "apps/<app>/ with its overview named <app>-overview.md (an id is unique across the whole bundle)")
+
+    @staticmethod
+    def _layout_ok(parts, app=None):
+        if len(parts) == 1:
+            return parts[0] == ("overview.md" if app is None else f"{app}-overview.md")
+        return len(parts) == 2 and parts[0] in ("guidelines", "adr")
 
     def _path_ok(self, rel):
-        return rel == "overview.md" or (rel.count("/") == 1 and rel.split("/")[0] in ("guidelines", "adr"))
+        parts = rel.split("/")
+        if parts[0] == "apps":
+            return len(parts) >= 3 and bool(WIKI_ID_RE.match(parts[1])) and self._layout_ok(parts[2:], parts[1])
+        return self._layout_ok(parts)
+
+    def _scoped(self, entry, app):
+        """The transversal entries plus those of one app (`apps/<app>/…`); none of the other apps'."""
+        if not app:
+            return True
+        parts = entry["path"].split("/")
+        return parts[0] != "apps" or (len(parts) > 1 and parts[1] == app)
+
+    def next_number(self):
+        """The next free ADR number, counted across the whole bundle (an app's ADRs share the sequence)."""
+        used = [int(m.group(1)) for e in self.parse() for m in [re.match(r"(\d{4})-", e["id"])] if m]
+        return {"ok": True, "next": "%04d" % (max(used, default=0) + 1)}
     DIR = ARCH_DIR
     STATUSES = ARCH_STATUSES
     OKF_STATUS = ARCH_OKF_STATUS
@@ -1621,7 +1648,11 @@ class Architecture(Bundle):
     LIVE = ("deprecated", "superseded")
 
     def _type_of(self, rel):
-        return "ADR" if rel.startswith("adr/") else "Architecture" if rel == "overview.md" else self.DEFAULT_TYPE
+        parts = rel.split("/")
+        stem = posixpath.splitext(parts[-1])[0]
+        if "adr" in parts[:-1]:
+            return "ADR"
+        return "Architecture" if stem == "overview" or stem.endswith("-overview") else self.DEFAULT_TYPE
 
     def show(self, entry_id, gh=None):
         entry = self._find(entry_id)
@@ -1773,14 +1804,18 @@ def build_parser():
     p.add_argument("action", choices=["list", "enable", "disable"])
     p.add_argument("name", nargs="?", choices=list(MODULES))
     p.add_argument("--with-requires", action="store_true", help="enable: turn the modules it needs on too")
-    def index_flags(w):
+    def index_flags(w, app=False):
+        if app:
+            w.add_argument("--app", metavar="APP", help="the transversal entries plus those of this app (apps/<APP>/…)")
         w.add_argument("--active", action="store_true", help="only what is in force, one short row each")
         w.add_argument("--under", metavar="FOLDER", help="only the entries below this folder")
         w.add_argument("--depth", type=int, choices=[1], help="one level: the sub-folders (description, entry count) and the entries directly here")
 
-    def read_cmds(ws):
+    def read_cmds(ws, app=False):
         w = ws.add_parser("search", help="the entries that best match some words, ranked, with an extract")
         w.add_argument("query")
+        if app:
+            w.add_argument("--app", metavar="APP", help="the transversal entries plus those of this app")
         w.add_argument("--under", metavar="FOLDER")
         w.add_argument("--limit", type=int, default=8)
         w.add_argument("--all", action="store_true", help="include entries that are history (deprecated, superseded)")
@@ -1828,13 +1863,14 @@ def build_parser():
     p = sub.add_parser("arch")
     p.add_argument("--dir", default=ARCH_DIR, help="the architecture directory (default: architecture)")
     ws = p.add_subparsers(dest="bundle_cmd", required=True)
-    read_cmds(ws)
+    read_cmds(ws, app=True)
     w = ws.add_parser("index", help="every entry: id, path, description, status (no GitHub call)")
     w.add_argument("--ticket", type=int, help=argparse.SUPPRESS)
-    index_flags(w)
+    index_flags(w, app=True)
     ws.add_parser("reindex", help="write the index.md of every folder")
     w = ws.add_parser("snapshot", help="every entry as the dashboard's architecture document (no GitHub call)")
     w.add_argument("--out", help="write the document to this file and print only a summary")
+    ws.add_parser("next-number", help="the next free ADR number, counted across the whole bundle")
     w = ws.add_parser("show", help="one entry's text; an ADR also its supersession")
     w.add_argument("id")
     ws.add_parser("lint", help="mechanical checks, no judgment")
@@ -1870,11 +1906,14 @@ def build_parser():
 def run_bundle(args, gh):
     wiki = (Wiki if args.cmd == "wiki" else Architecture)(args.dir)
     if args.bundle_cmd == "index":
+        app = getattr(args, "app", None)
         if args.depth:
-            return wiki.outline(args.under or "", args.active)
-        return wiki.index(args.ticket, args.active, args.under)
+            return wiki.outline(args.under or "", args.active, app)
+        return wiki.index(args.ticket, args.active, args.under, app)
+    if args.bundle_cmd == "next-number":
+        return wiki.next_number()
     if args.bundle_cmd == "search":
-        return wiki.search(args.query, args.under or "", args.limit, args.all)
+        return wiki.search(args.query, args.under or "", args.limit, args.all, getattr(args, "app", None))
     if args.bundle_cmd == "describe":
         return wiki.describe(args.folder, args.description)
     if args.bundle_cmd == "show":
