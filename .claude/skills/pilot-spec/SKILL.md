@@ -1,21 +1,16 @@
 ---
 name: pilot-spec
-description: "Phase 2 of PILOT (see .pilot/pilot-process.md): the architect and tech lead work an already-formalized level:story together, in dialogue (.pilot/pilot-link-agent-dialogue.md) rather than one handing a finished decomposition to the other — split it into dev-sized tasks (mandatory for type:feature, a judgment call for type:tech) and write each resulting ticket's technical spec, in one continuous pass, so a spec-time feasibility concern can reshape the split immediately instead of surfacing later. For type:feature, the PM also checks the proposed type:feature tasks (excluding tech/e2e siblings) against the story's acceptance criteria before finalizing. Given a level:task instead (always a standalone type:bug ticket, dev-sized by nature — the only level:task that ever waits on its own spec, since a freshly split-off task is always spec'd in the same pass that creates it), just writes its spec directly, no split decision. Given no ticket at all and a raw need (--tech, or --bug, explicit or auto-detected), originates it first — with a human live, the architect and tech lead first challenge and verify the raw request with them before any ticket exists, then the architect alone classifies/drafts it, then the same pass splits/specs it — the one way a type:tech or type:bug ticket ever reaches this phase without a prior /pilot-discovery pass (type:bug never goes through /pilot-discovery at all). Also records dependencies (a prerequisite type:tech/type:bug ticket, and/or between split tasks), decides status:wont-do, or flags needs-human. The architect and tech lead lead, the PM validates a type:feature split, and --with adds summonable personas such as the designer upfront (`.pilot/pilot-link-roster.md` "Roster"). Defaults to pair mode (walks the decomposition/spec with a live human, checkpointing into the ticket); --auto finalizes straight away (for a scheduled cron Routine, which has no live human) — except the no-ticket entry, which needs a human's raw input and so is pair in practice regardless. Also resumes a needs-human ticket once cleared, resumes a mid-pair ticket with --resume <issue number>, reclaims a type:feature story at status:qa/status:in-qa for a new round (status:in-spec then status:split — refuses on status:done, which needs a new ticket), and with no argument picks up fresh or resumable work (e.g. --auto from a cron Routine), skipping on-hold or unresolved-'Depends on #N' tickets. An optional --multi <N> runs an N-instance ensemble in dialogue with itself instead of one, converging with no fixed round cap, escalating to needs-human only on a genuine, unresolved disagreement (see .pilot/pilot-link-agent-dialogue.md). Use for splitting/speccing an already-created story, speccing a standalone task/bug, or originating and speccing a standalone technical need or bug report from scratch."
+description: "Phase 2 of PILOT: the architect and tech lead, in dialogue, split an already-formalized level:story into dev-sized tasks (mandatory for type:feature, a judgment call for type:tech) and write each ticket's technical spec in one pass; the PM checks a type:feature split against the acceptance criteria. Also specs a standalone type:bug task, originates a standalone type:tech need or a type:bug from a raw description (--tech, --bug), records dependencies, decides wont-do, and reclaims a story at status:qa for a new round. Pair by default, --auto for a Routine; --resume, --with, --multi; bare, it picks fresh or resumable work. Use to split and spec a story, spec a task or bug, or start a standalone technical need."
 argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume | --tech <raw need> | --bug <raw need>"
 ---
 
 # PILOT — Phase 2: Spec
 
-Read `.pilot/pilot-process.md` first — it's the source of
-truth for labels, states, and the claim protocol; this skill covers only the
-mechanics of running this phase. Read `.pilot/pilot-link-ticket-tree.md` (ticket types and levels) and `.pilot/pilot-link-split-tickets.md` (prerequisite tickets, dependencies between tasks, re-scoping) and `.pilot/pilot-link-agent-dialogue.md` too — it
-covers the architect/tech lead turn-taking mechanic this skill relies on throughout, and
-what `--multi` means here. The roster (`.pilot/pilot-link-roster.md` "Roster") for this
-phase: the architect and tech lead lead together (the tech lead alone for an existing `type:bug` ticket), the PM
-validates a `type:feature` split (step 3's coverage check), and the designer is summonable —
-for an existing `type:bug` ticket it is the architect instead. Summons and dismissals are
-recorded in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a
-summoned persona's call.
+Read `.pilot/pilot-process.md` first (labels, states, the claim protocol); this skill covers only the mechanics of this phase. Also read `.pilot/pilot-link-ticket-tree.md` (ticket
+types and levels), `.pilot/pilot-link-split-tickets.md` (prerequisite tickets, dependencies between tasks, re-scoping) and `.pilot/pilot-link-agent-dialogue.md` (the architect/tech lead
+turn-taking this skill relies on, and what `--multi` means here). The roster (`.pilot/pilot-link-roster.md` "Roster"): the architect and tech lead lead together (the tech lead alone for an
+existing `type:bug` ticket), the PM validates a `type:feature` split (step 4a), the designer is summonable (the architect, for an existing `type:bug`). Summons and dismissals are recorded
+in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned persona's call.
 
 ## Steps
 
@@ -65,53 +60,25 @@ summoned persona's call.
        `resume-mismatch`, `assigned`, `not-found`) report it.
      Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
      `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
-1a. **No-ticket entry** (`--tech`/`--bug`, explicit or auto-detected).
-    **Frame the need first, with the human, before any ticket exists** — this stage needs a
-    human live, so it never runs when another phase applies the shared bug mechanism on its
-    own (`.pilot/pilot-link-bug-tickets.md`). The architect talks with the human alone, round
-    by round (`.pilot/pilot-task-challenge-need.md`): call `Agent` for `pilot-architect` with
-    it, passing the raw need and the framing conversation so far, the human's answers
-    included — nothing else from this conversation. Each round, show the human the
-    architect's classification and challenges as a natural conversation — questions only where
-    useful, no set number or format (through whatever question tool you have, a provisional
-    default as the recommended option, when one helps); feed the human's replies back and call
-    it again. Stop when the architect says the need is ready and the human has confirmed it
-    (or says to go with the provisional defaults), or when it turns out not to belong here
-    (out of scope, a product idea for `/pilot-discovery`, not a real defect or a duplicate):
-    report and create nothing. No ticket exists during this stage, so an interrupted framing
-    is simply run again.
-    Only then do the architect and tech lead talk
-    (`.pilot/pilot-link-agent-dialogue.md`): alternating `pilot-architect`, with the matching
-    formalizing doc — `.pilot/pilot-task-formalize-tech-need.md` (`--tech`) or
-    `.pilot/pilot-task-formalize-bug-report.md` (`--bug`, alongside
-    `.pilot/pilot-link-bug-tickets.md` in full) — and `pilot-techlead`, with
-    `.pilot/pilot-task-verify-need.md` (checks the clarified need against the real code), each
-    passed the clarified need and the dialogue so far; the tech lead's check precedes
-    the architect's draft being created. A question that needs the human is put to them before anything is created, the
-    same way, and its answer fed back into the dialogue.
-    - `--tech`: out of scope / not actionable → report, create nothing. Otherwise →
-      always exactly one `type:tech` `level:story` (standalone — never grouped under an
-      epic, there is no `type:tech` epic, `.pilot/pilot-link-ticket-tree.md` "Three levels") —
-      a need too big for one story is never several stories here, that's what step 3's
-      own split judgment call is for, right after this same story is approved. Create it
-      `status:draft`, assigned, its own initial `priority:`.
-    - `--bug`: not a bug / not actionable → report, create nothing (same as
-      `.pilot/pilot-task-formalize-bug-report.md`'s own step 1). Genuine → create it
-      directly, `type:bug` + `level:task` + `status:draft`, assigned, its own
-      `priority:` (`.pilot/pilot-link-bug-tickets.md`) — always exactly one, a bug never
-      splits.
-    Either way, exactly one ticket exists at this point. Show the draft to the human
-    (pair — a raw need has no live human otherwise) and refine in place, writing each
-    round into the ticket, until approved — same discipline as `/pilot-discovery`'s own
-    drafting loop (`.pilot/pilot-process.md` §4 "Interaction modes"). Once approved, this
-    session already holds the claim (assignee set at creation) — continue directly to
-    step 3 with this same ticket, skipping step 2 (already claimed) and step 1's pool
-    selection entirely: `status:draft` → `status:in-spec` at this point, no
-    `status:backlog` stop in between, since this same run is about to split (if the
-    `--tech` case needs it) and spec it. Never combine with
-    `--resume` (a fresh idea, not a paused session) — `--resume <issue>` instead recovers
-    a no-ticket entry left mid-pair, `status:draft`, the same as `/pilot-discovery`'s own
-    resume.
+1a. **No-ticket entry** (`--tech`/`--bug`, explicit or auto-detected). **Frame the need with the human first, before any ticket exists.** This stage needs a human live, so it never runs
+    when another phase applies the shared bug mechanism on its own (`.pilot/pilot-link-bug-tickets.md`). The architect talks with the human alone, round by round
+    (`.pilot/pilot-task-challenge-need.md`): call `Agent` for `pilot-architect` with it, the raw need and the framing conversation so far, nothing else from this conversation. Each round,
+    show the human the architect's classification and challenges as a natural conversation (questions only where useful, a provisional default as the recommended option when one helps),
+    feed their replies back, call it again. Stop when the architect says the need is ready and the human confirmed (or accepts the provisional defaults), or when it does not belong here
+    (out of scope, a product idea for `/pilot-discovery`, not a real defect, a duplicate): report and create nothing. No ticket exists yet, so an interrupted framing is simply run again.
+    Only then do the architect and tech lead talk (`.pilot/pilot-link-agent-dialogue.md`): `pilot-architect` with `.pilot/pilot-task-formalize-tech-need.md` (`--tech`) or
+    `.pilot/pilot-task-formalize-bug-report.md` (`--bug`, with `.pilot/pilot-link-bug-tickets.md` in full), alternating with `pilot-techlead` and `.pilot/pilot-task-verify-need.md` (checks the
+    clarified need against the real code, before the architect's draft is created), each passed the clarified need and the dialogue so far. A question for the human goes to them before
+    anything is created.
+    - `--tech`: out of scope or not actionable → report, create nothing. Otherwise exactly one standalone `type:tech` `level:story` (never under an epic: there is no `type:tech` epic,
+      `.pilot/pilot-link-ticket-tree.md` "Three levels"); a need too big for one story is split by step 3's own judgment call right after approval. Create it `status:draft`, assigned, with its
+      own initial `priority:`.
+    - `--bug`: not a bug or not actionable → report, create nothing. Genuine → create it directly, `type:bug` + `level:task` + `status:draft`, assigned, its own `priority:`
+      (`.pilot/pilot-link-bug-tickets.md`); always exactly one, a bug never splits.
+    One ticket now exists. Show the draft to the human (pair: a raw need has no live human otherwise) and refine in place, writing each round into the ticket, until approved
+    (`.pilot/pilot-process.md` §4 "Interaction modes"). Once approved this session already holds the claim: continue to step 3 with this ticket, skipping step 2 and step 1's pool selection,
+    `status:draft` → `status:in-spec` directly (no `status:backlog` stop, since this run is about to split and spec it). Never with `--resume`; `--resume <issue>` instead recovers a
+    no-ticket entry left mid-pair at `status:draft`.
 2. **Claim** the ticket: `python3 .pilot/pilot.py claim spec <issue> --mode <mode>` (the mode
    named in step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-spec`, re-read to confirm). Skipped for the no-ticket entry (step 1a), which
@@ -134,22 +101,11 @@ summoned persona's call.
      architecture docs (with the `architecture` module on: `.pilot/pilot-link-knowledge.md` and `.pilot/pilot-link-architecture.md` in full — they
      read the entries that bear on the story themselves — instead of pointers to documents), and, for a `status:qa`/`status:in-qa` reclaim (step 1), which
      existing tasks are already `status:done` from the earlier round, including the e2e
-     one. Not the conversation history. **Checkpoint as the dialogue progresses, not only
-     once it converges**: this pass can produce a split decision plus several full specs
-     before a human ever sees any of it, all before the sub-issues themselves exist to
-     write into (step 5) — so keep the *parent story's* current state in **one** scratch
-     comment, updated in place (`mcp__github__update_issue_comment` — create it once,
-     from then on edit that same comment) each time a piece settles between the two
-     personas (the split shape once agreed, then each task's spec as it's drafted), rather
-     than posting a new one per milestone: that comment's latest edit is always the whole
-     current state, not a trail to reconstruct from piece by piece. Same "write
-     immediately, don't hold it in conversation" discipline pair mode already applies
-     everywhere else (`.pilot/pilot-process.md` §4 "Interaction modes"), just one comment
-     kept current instead of one comment per round. This is what an orphaned-claim
-     `--resume` reads (`.pilot/pilot-process.md` §4 "Resuming an orphaned
-     claim") if the session dies partway through this step, instead of restarting the
-     whole dialogue from nothing. Once step 5 actually applies the result, this scratch
-     comment has done its job — see step 5's own note on retiring it.
+     one. Not the conversation history. **Checkpoint as the dialogue progresses, not only once it converges**: the pass can produce a split plus several full specs before a human sees
+     any of it, and before the sub-issues exist to write into (step 5). Keep the *parent story's* current state in **one** scratch comment (`mcp__github__update_issue_comment`: create it
+     once, then edit that same comment) each time a piece settles — the split shape once agreed, then each task's spec — so its latest edit is the whole current state
+     (`.pilot/pilot-process.md` §4 "Interaction modes"). An orphaned-claim `--resume` reads it instead of restarting the dialogue (`.pilot/pilot-process.md` §4 "Resuming an orphaned claim");
+     step 5 retires it once the result is applied.
    - **`level:task`** (always a standalone `type:bug` — never a fresh split-off task,
      which is already spec'd in the same pass that created it, below): no split decision
      to make — call `Agent` with
@@ -208,10 +164,8 @@ summoned persona's call.
      spec and decisions, write the reconfirmed/revised `priority:` (for a `level:story` —
      still the ticket's own, since it's still the one leaf), then `python3 .pilot/pilot.py
      set <issue> --status dev-ready --unassign` (a claimed ticket must be unassigned to
-     enter phase 3's pool). If step 3 left a scratch comment, edit it down to one concise line (e.g.
-     "Spec written, status:dev-ready") — the content now lives in the ticket body itself,
-     so the comment's job is done; same retirement as the split case below, just with
-     nothing to link to.
+     enter phase 3's pool). Edit step 3's scratch comment down to one line (e.g. "Spec written,
+     status:dev-ready"): the content now lives in the ticket body.
    - Split into tasks: create the sub-issues, link to the parent as native
      sub-issues, each labeled `level:task` plus its own `type:` as decided in step 4
      (never the parent's — `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited": `type:feature`/`type:tech` for a dev task, `type:e2e` for the
@@ -227,11 +181,8 @@ summoned persona's call.
      `level:story`), remove its own `priority:` label
      (`.pilot/pilot-process.md` §3 — superseded by its tasks'), leave it open and
      unassigned as a tracker: `python3 .pilot/pilot.py set <parent> --status split
-     --unassign --remove priority:P<n>`. **Retire step 3's scratch comment**: its whole purpose was
-     letting a crash mid-dialogue recover the in-progress split/specs before the
-     sub-issues existed — now that they do, and hold the real content, edit that same
-     comment down to one concise line (e.g. "Split into #A, #B, #C — see each for its own
-     spec") instead of leaving the full in-progress draft sitting on the parent.
+     --unassign --remove priority:P<n>`. **Retire step 3's scratch comment**: the sub-issues now hold the content, so edit it down
+     to one line (e.g. "Split into #A, #B, #C — see each for its own spec").
    - Won't-do (clear-cut only): `python3 .pilot/pilot.py set <issue> --status wont-do
      --close`. If not clear-cut, `python3 .pilot/pilot.py flag <issue> --comment "<why;
      what's needed>"` with the reasoning instead (`status:in-spec` stays) — don't close it. Never for a `type:bug` ticket past creation —
@@ -239,27 +190,14 @@ summoned persona's call.
    - Needs-human (a `level:task`'s diagnosis doesn't hold, or the dialogue can't resolve
      a genuine disagreement, `.pilot/pilot-link-agent-dialogue.md`): `python3
      .pilot/pilot.py flag <issue> --comment "<why; what's needed>"`, `status:in-spec` stays.
-   - Prerequisite tech ticket(s) flagged (alongside whichever of the above
-     applies): write each the same way `.pilot/pilot-task-formalize-tech-need.md`
-     describes for a standalone need — its own `level:story`, standalone, never grouped
-     under an Epic — but **never** step 1a's live drafting loop or its "continue directly
-     to step 3" behavior: no human is here to co-draft this one, and this run stays
-     focused on the ticket it already claimed. Create it directly at `status:backlog` for
-     a later, separate `/pilot-spec` run — **never** a sub-issue of
-     the ticket being worked. Add a "Blocks #M" comment on each new ticket, and a separate
-     line in this ticket's body naming it — "Depends on #N" if judged a hard blocker (the
-     exact phrase `.pilot/pilot-process.md` §4 "Blocked-by dependencies" mechanically
-     gates future phases on), else a plain non-gating reference. Several prerequisites
-     means several separate lines, one `#N` each — never combined.
-   - Prerequisite bug ticket(s) flagged (alongside whichever of the above applies):
-     same idea — write each per `.pilot/pilot-task-formalize-bug-report.md`'s content
-     steps, but skip its live-human classification loop (no one's here to confirm it live)
-     and create it directly at `status:backlog` —
-     `type:bug`, `level:task` — never a sub-issue — same linking rules,
-     always a hard blocker here.
-   - Either prerequisite case above, when step 1 found a parent Epic for the ticket
-     being worked: also `mcp__github__add_issue_comment` on that Epic naming the
-     blocking relationship — skip this when the worked ticket has no parent Epic.
+   - Prerequisite tech ticket(s) flagged (alongside any of the above): write each as `.pilot/pilot-task-formalize-tech-need.md` describes for a standalone need (its own
+     `level:story`, never under an Epic) but **never** step 1a's live drafting loop or its "continue to step 3": no human is here to co-draft it and this run stays on the ticket it
+     claimed. Create it directly at `status:backlog` for a later `/pilot-spec` run, **never** as a sub-issue of the ticket being worked. Add a "Blocks #M" comment on it and a line in
+     this ticket's body naming it: "Depends on #N" if a hard blocker (`.pilot/pilot-process.md` §4 "Blocked-by dependencies"), else a plain non-gating reference; several prerequisites,
+     several lines, one `#N` each.
+   - Prerequisite bug ticket(s) flagged: the same, per `.pilot/pilot-task-formalize-bug-report.md`'s content steps without its live classification loop; create it at `status:backlog`,
+     `type:bug` + `level:task`, never a sub-issue, always a hard blocker here.
+   - For either prerequisite, when step 1 found a parent Epic for the ticket being worked, also comment on that Epic (`mcp__github__add_issue_comment`) naming the blocking relationship.
 5b. **Wiki** (only when the `wiki` module is enabled (`.pilot/pilot-process.md` §8), and for a `type:feature` story that was split or closed as won't-do): per `.pilot/pilot-link-wiki.md`. Won't-do → its
    `proposed` entries (`python3 .pilot/pilot.py wiki index --ticket <story>`) are removed (`wiki remove <id>`).
    Split → call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-entries.md` (target status

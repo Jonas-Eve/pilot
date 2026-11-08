@@ -1,38 +1,22 @@
 ---
 name: pilot-review
-description: "Phase 4 of PILOT (see .pilot/pilot-process.md): claims a status:review-ready PR (assignee + status:in-review, .pilot/pilot-process.md §4 'Claim Protocol'), then runs the review agents (PM+tech lead by default for type:feature/type:e2e, tech lead alone for type:tech/type:bug — architect optional in either set, added via --with architect) in parallel, and submits a GitHub PR review (Approve/Request changes/Comment, matching the verdict) plus the matching label — status:approved; a pure code-level verdict moves straight to status:changes-requested with no needs-human, so /pilot-dev can reclaim it immediately; a verdict blocking on any judgment call (alone or alongside code-level points) adds needs-human too (status:in-review stays for a pure judgment call, status:changes-requested for a mixed one), gating /pilot-dev's reclaim on a human clearing it. Defaults to pair mode: an all-approve or pure-code-level verdict gets a live human's last look before it's submitted; a verdict carrying any judgment call always submits first (the block must reach GitHub before any resolution, even a live one), then a live human can resolve it right there, submitting one corrected follow-up review. --auto skips every pause, applying each verdict straight through (required for a scheduled cron Routine). --merge, combinable with either mode, merges the PR itself once the final verdict is all-approve — omitted, a human always merges by hand, same as before. Also resumes a ticket once a prior needs-human flag is cleared, recovers a claim orphaned by a crashed run via --resume <issue>, and with no argument sweeps every ready/resumable PR (e.g. --auto from a scheduled cron Routine), skipping any on-hold. An optional --multi <N> runs N instances of each already-selected reviewer role independently on the one claimed PR instead of one — reviewer roles never converse even under --multi, this stays the older skill-mediated mechanism (.pilot/pilot-link-multi-consensus.md) — reconciling each role's own verdict before the usual cross-role aggregation, escalating to needs-human on a genuine, unresolved same-point disagreement. On a reclaimed PR (one that already carries a submitted review), every selected reviewer is automatically also shown that prior review's points, so it confirms what's now fixed instead of starting blind — this is separate from and always happens regardless of --only below. An optional --only <pm|architect|techlead>[,...], valid only with an explicit PR/issue number (never a sweep) and never combined with --auto (it always keeps the pair-mode pre-submission pause as a check against picking the wrong role), replaces step 3's default reviewer set with exactly and only the given role(s) — never merged with the default, so keeping a default role alongside an addition means listing it too (e.g. techlead,pm,architect to add the architect on a type:feature PR without dropping pm). architect is always a legal name in the list, on any type:, since it's never part of either default and adding it never counts as narrowing. Any other name must already be in the ticket's own type-based default; narrowing that default (dropping a role it would have included) additionally requires a review already submitted on this PR — typically a reclaim, where the dropped role's prior approval still holds so only the flagged one(s) need to re-run. Refused if a non-architect name isn't part of the ticket's own type-based default, or if narrowing is asked for before any review has been submitted on the PR yet. Use once /pilot-dev has opened a PR ready for review."
+description: "Phase 4 of PILOT: claims a status:review-ready PR and runs the reviewers in parallel (PM and tech lead for type:feature/type:e2e, tech lead alone for type:tech/type:bug, the architect optional), then submits one GitHub PR review (Approve, Request changes or Comment) and the matching label: status:approved, or status:changes-requested (a pure code-level verdict never sets needs-human, so it is reclaimable at once; a judgment call adds it). Pair by default (a live human gets a last look and can resolve a needs-human block live), --auto for a Routine; --merge merges an all-approve PR; --with architect, --only <roles>, --multi, --resume; bare, it sweeps ready PRs. Use for a status:review-ready PR."
 argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto] [--merge] [--with architect] [--multi [N]] | <issue or PR number> --only <pm|architect|techlead>[,...] [--merge] | <issue number> --resume [--merge]"
 ---
 
 # PILOT — Phase 4: Review
 
-Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
-protocol (§4) — and `.pilot/pilot-link-review-consensus.md` for the shared `change`/`decision`
-tags contract; this skill covers only phase 4's mechanics, including how it picks the
-reviewer set (step 3). `--with architect` (the only summonable persona here, `.pilot/pilot-link-roster.md`
-"Roster") adds the architect to that set, valid in a sweep too; `--only` (step 3) instead fixes the exact set
-(replacing or narrowing it); nothing can be summoned mid-review.
+Read `.pilot/pilot-process.md` first (labels, states, the claim protocol §4) and `.pilot/pilot-link-review-consensus.md` (the `change`/`decision` tags contract); this
+skill covers only phase 4's mechanics, including the reviewer set (step 3). `--with architect` adds the architect to that set, in a sweep too (the only persona
+summonable here, `.pilot/pilot-link-roster.md` "Roster"); `--only` (step 3) fixes the exact set instead; nothing can be summoned mid-review.
 
-Mode: pair by default. Every outcome is checkpointed as a pending GitHub PR review the
-moment it's decided (step 7), the same durable-immediately discipline every other
-pair-capable phase applies to its own ticket writes. For an all-approve or a pure-`change`
-outcome (no `decision` point at all — nothing here needs a human, so no `needs-human`
-either), step 8 is then a pre-submission checkpoint; for an outcome carrying `needs-human`
-(decision-only, or mixed `change`+`decision`), that outcome always submits immediately
-(step 9) and pair's value comes after, in step 10's live resolution. `--auto` skips step
-8's pause and step 10's live engagement, applying every outcome straight through (required
-for a scheduled Routine, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `--merge` is a
-separate, orthogonal flag (step 12) usable with either mode — without it, this skill never
-merges. `--multi <N>` runs N instances of each role already selected in step 3 (PM
-and/or architect and/or tech lead, depending on `type:`) instead of one — composing with,
-not replacing, this skill's existing per-role parallelism: (2, 3, or a `--only`-narrowed
-count) roles × N instances simultaneous `Agent` calls, reconciled per role before step 6's
-cross-role aggregation.
-Invalid combined with `--resume`. See `.pilot/pilot-link-multi-consensus.md`. `--only
-<list>` (step 3) is a separate, orthogonal override valid only with an explicit PR/issue
-number, never a sweep — combinable with `--multi` or `--merge`, but never `--auto`: it's
-inherently a human's own call on which role to drop, so it always keeps step 8's
-pre-submission pause as the last check against picking the wrong one.
+Mode: pair by default (`.pilot/pilot-process.md` §4 "Interaction modes"). Every outcome is checkpointed as a pending GitHub PR review the moment it is decided
+(step 7). An all-approve or pure-`change` outcome (no `decision` point, so no `needs-human`) gets a pre-submission pause (step 8); an outcome carrying
+`needs-human` always submits at once (step 9) and pair's value comes after, in the live resolution of step 10. `--auto` skips both pauses (required for a scheduled
+Routine, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `--merge` (step 12) works with either mode; without it this skill never merges. `--multi <N>`
+runs N instances of each role selected in step 3 (roles × N simultaneous `Agent` calls), reconciled per role before step 6's aggregation
+(`.pilot/pilot-link-multi-consensus.md`); invalid with `--resume`. `--only <list>` is valid only with an explicit PR/issue number, never a sweep and never with
+`--auto`: dropping a role is a human's call, so step 8's pause always stays as the last check.
 
 ## Steps
 
@@ -42,7 +26,7 @@ pre-submission pause as the last check against picking the wrong one.
    `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:review-ready`,
    resumable `status:in-review` + `can-resume`; `needs-human`, `on-hold` and open "Depends on
    #N" excluded; priority, then "Blocks #M", then oldest; `status:changes-requested` tickets
-   are never in it — `/pilot-dev` reclaims those, §4). `pick: null` → report nothing to do;
+   are never in it: a reclaim is another phase's pool, §4). `pick: null` → report nothing to do;
    otherwise resolve `pick.number` the same way. Act on the returned `action`:
    - `manual` (`reason: pr-number`: a PR number was given) → find the ticket it closes
      (`mcp__github__pull_request_read`, its `Closes #N`) and resolve that ticket here instead.
@@ -74,54 +58,23 @@ pre-submission pause as the last check against picking the wrong one.
    return to step 1 for a different candidate (bare pool only — report nothing to do if a
    specific ticket was requested). Any other refusal → report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
-3. Read the ticket's linked issue and **its own** `type:` label (never a parent's,
-   `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited") to pick the **default**
-   reviewer set — the architect is never part of either default, added only via
-   `--with architect` or `--only` below:
+3. Read the ticket's linked issue and **its own** `type:` label (never a parent's, `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited") to pick the **default**
+   reviewer set; the architect is never part of either default:
    - `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`
    - `type:tech` or `type:bug` → `pilot-techlead` alone (no PM)
-   - Independent of `--only`, check whether this PR already carries at least one
-     submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true
-     whenever this round follows a reclaim fix (`status:changes-requested` →
-     `status:review-ready`, `.pilot/pilot-link-review-consensus.md` "Reclaiming a
-     `status:changes-requested` ticket"), never true for a PR's first review round. None
-     found → nothing further to fetch here. Found → fetch the latest submitted review's
-     full body (every point, change and decision alike, marked which is which) to pass to
-     every reviewer this round in step 5 — see there and
-     `.pilot/pilot-link-review-consensus.md` for how it's used. This check also feeds
-     `--only` below, when given.
-   - Given `--with architect` → the default set plus the architect (never narrows, so no
-     prior-review check), valid on any `type:`, in a sweep too; never combined with `--only` (that one already
-     fixes the exact set).
-   - Given `--only <list>` (only valid with an explicit PR/issue number, never a sweep)
-     → `<list>` is always the **complete, exact** reviewer set for this round — never
-     merged with the type-based default, so keeping a default role alongside an addition
-     means listing it too (`--only architect` alone means *only* the architect reviews this
-     round; to keep the defaults and add the architect, use `--with architect` instead). Validate each name: `architect` is always legal,
-     on any `type:`, regardless of prior-review state — the human's own call that this
-     PR's architecture warrants a dedicated look. Any other name (`pm`, `techlead`) must
-     already be in the ticket's own default set above (never `pm` on
-     `type:tech`/`type:bug` — invalid combination, refuse and report). Then check whether
-     `<list>` actually **narrows** the default — drops a role the default would have
-     included (adding `architect` on top of the full default is never narrowing, whatever
-     else `<list>` contains) — only narrowing needs the prior-review check above to have
-     found one: none found → refuse and report, there's no prior round for the dropped
-     role's approval to still be holding, so this ticket needs the full default set at
-     least once first. Once every name validates, use `<list>` exactly, instead of the
-     type-based default.
+   - Whatever the flags, check whether the PR already carries a submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true after a reclaim fix
+     (`.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket"), never for a first round. Found → fetch the latest submitted review's full body
+     (every point, marked `change` or `decision`) to pass to every reviewer in step 5. This also feeds `--only`.
+   - `--with architect` → the default set plus the architect: never narrows (no prior-review check), valid on any `type:`, in a sweep too, never with `--only`.
+   - `--only <list>` (explicit number only) → `<list>` is the **complete, exact** set, never merged with the default (`--only architect` means only the architect; to add the
+     architect to the defaults use `--with architect`). `architect` is always legal on any `type:`. Any other name must already be in the ticket's own default (never `pm` on
+     `type:tech`/`type:bug` — refuse). If `<list>` **narrows** the default (drops a role it would include; adding `architect` never counts), it needs a prior submitted review:
+     none → refuse and report, the full default must run at least once first.
 
-   Absent `--only`, together the default set covers every dimension phase 4 checks for
-   that `type:`: PM — product fit / e2e-flow validation; tech lead — spec conformance and
-   code quality. The architect's own architecture/security conformance check is covered
-   by construction instead — it already cross-examined the split and wrote/reviewed the
-   spec in dialogue with the tech lead at Spec time (`.pilot/pilot-link-agent-dialogue.md` "Agent dialogue") — so its phase-4 pass is worth adding only when this PR's own diff raises a
-   fresh architecture/security question the tech lead's own conformance check doesn't
-   settle, not by default on every PR. If a future edit changes what any agent's file
-   checks, re-verify the default set still adds up to full coverage for the case where
-   nobody thinks to add the architect. All
-   selected reviewers run **in parallel, fully independent of each other** — none sees
-   another's verdict — in both pair and `--auto`; nothing later in the run reopens that
-   isolation, not even the one pair checkpoint.
+   Together the default set covers every dimension: PM — product fit / e2e-flow validation; tech lead — spec conformance and code quality. The architect already
+   cross-examined the split and the spec at Spec time, so its phase-4 pass is worth adding only when the diff raises a fresh architecture/security question the tech lead's
+   own check does not settle. All selected reviewers run **in parallel, fully independent** — none sees another's verdict — in pair and `--auto`; nothing later reopens that
+   isolation.
 4. Once this project has a CI workflow covering the affected area, check it's green on the
    PR's head commit before proceeding — red/pending CI is an automatic `change`-tagged
    block (step 6). Until then, this is a no-op and the tech lead's own re-run in step 5 is
@@ -175,72 +128,38 @@ pre-submission pause as the last check against picking the wrong one.
      resumable half of step 1's pool once cleared, unless step 10 resolves it live first).
    - At least one blocking point tagged `change` (a step-4 CI/validation failure always
      counts) and at least one tagged `decision` → every point (marked which is which),
-     `needs-human` added, move to `status:changes-requested` (`/pilot-dev` reclaims once
+     `needs-human` added, move to `status:changes-requested` (reclaimable once
      cleared — the `decision` point(s) are what it's waiting on).
    - At least one blocking point tagged `change`, none tagged `decision` → every point,
      move to `status:changes-requested`, **no** `needs-human` — nothing here needs a
-     human, so `/pilot-dev` may reclaim it immediately.
+     human, so it is reclaimable at once.
    - All approved → move to `status:approved`.
 7. **Checkpoint it**: create a pending GitHub PR review with the outcome's full body
    already written, no `event` yet (`mcp__github__pull_request_review_write`, method
    `create`, `commitID` pinned to the PR's current head) — durable immediately, so an
    orphaned run recovers it (step 1) instead of redoing steps 3-6.
-8. **Pair (default) vs `--auto`** — never for an outcome that carries `needs-human`
-   (decision-only, or mixed `change`+`decision`): `.pilot/pilot-process.md` §3's
-   `needs-human` rule requires the block to reach GitHub before any resolution, even a live
-   one, so either of those always proceeds straight to step 9, same as `--auto`. For the
-   all-approve outcome or a pure-`change` outcome (no `decision` point at all), pair mode
-   pauses here — nothing for a human to decide (an approval or a code-level fix isn't a
-   judgment call), but still worth a last look before it goes to GitHub: show the outcome
-   from step 6, wait for confirmation, then proceed to step 9. `--auto` skips this pause and
-   proceeds immediately either way.
-9. Submit step 7's pending review (`mcp__github__pull_request_review_write`, method
-   `submit_pending`) plus the matching label — the outcome's `event`
-   (`.pilot/pilot-link-review-consensus.md`):
-   - All approved → `event: APPROVE`; body names exactly which role(s) approved this
-     round (every role in step 3's set — all of them, unless `--only` narrowed it, in
-     which case say so explicitly rather than implying full coverage) and, per step 12,
-     whether this run also merges or a human still needs to; `status:approved`.
-   - At least one blocking point tagged `change`, none tagged `decision` → `event:
-     REQUEST_CHANGES`; body lists every point; **no** `needs-human`; `status:changes-requested`
-     — `/pilot-dev` may reclaim it right away, no human step needed.
-   - At least one point of each tag → `event: REQUEST_CHANGES`; body lists every point
-     (marked which is which); `needs-human` added; `status:changes-requested` — `/pilot-dev`
-     reclaims once the `decision` point(s) are cleared.
-   - Blocking points all `decision` → `event: COMMENT`; body lists every point grouped by
-     reviewer; `needs-human` added; `status:in-review` stays.
+8. **Pair (default) vs `--auto`** — never for an outcome that carries `needs-human` (`.pilot/pilot-process.md` §3: the block must reach GitHub before any resolution, even a live
+   one): it goes straight to step 9. For the all-approve or a pure-`change` outcome pair pauses here for a last look — show the outcome from step 6, wait for confirmation,
+   then step 9. `--auto` never pauses.
+9. Submit step 7's pending review (`mcp__github__pull_request_review_write`, method `submit_pending`) plus the matching label:
+   - All approved → `event: APPROVE`; the body names which role(s) approved this round (all of step 3's set — say so explicitly if `--only` narrowed it) and, per step 12,
+     whether this run merges or a human still must; `status:approved`.
+   - `change` points, no `decision` → `event: REQUEST_CHANGES`; every point; **no** `needs-human`; `status:changes-requested`.
+   - Both tags → `event: REQUEST_CHANGES`; every point, marked; `needs-human` added; `status:changes-requested`.
+   - Only `decision` points → `event: COMMENT`; every point grouped by reviewer; `needs-human` added; `status:in-review` stays.
 
-   Apply each label with `python3 .pilot/pilot.py set <issue> --status approved --unassign` or
-   `--status changes-requested --unassign` (the verdict ends this run's claim, like any
-   other phase's hand-off), adding `--add needs-human` wherever the bullet says
-   `needs-human` (the decision-only bullet keeps `status:in-review` and its assignee, the
-   claim still being held: `--add needs-human` alone).
+   Apply the label with `python3 .pilot/pilot.py set <issue> --status approved --unassign` or `--status changes-requested --unassign` (the verdict ends this run's claim),
+   adding `--add needs-human` where the bullet says so (the decision-only bullet keeps `status:in-review` and the assignee: `--add needs-human` alone).
 
-   If GitHub rejects an `APPROVE`/`REQUEST_CHANGES` submission above because this run's
-   connected identity is the PR's own author, retry `submit_pending` on that same pending
-   review (never a second `create`) with `event: COMMENT` instead — never `needs-human` on
-   its own — and still apply that bullet's label/`status:` transition unchanged.
-10. **Live resolution of a submitted `needs-human` block** (pair mode only, right after
-    step 9 submits it; applies to both the decision-only and the mixed `change`+`decision`
-    outcome — never the pure-`change` outcome, which never carries `needs-human` to
-    resolve): engage the human live the same way any other phase resolves a live
-    `needs-human` block (`.pilot/pilot-process.md` §3 "A human is live in the same session").
-    If they answer right there and it changes the outcome, determine the corrected outcome
-    (approved, or the remaining `change`-tagged points instead) and submit **one more**
-    review — a fresh `create` with `event` set this time, no separate pending step needed
-    for a decision made in the same breath — reflecting it, same event mapping as step 9,
-    plus the matching label. If GitHub rejects that submission for the same reason as step
-    9, retry with another fresh `create` (`event: COMMENT`) instead — no pending review to
-    resubmit against here, so a fresh `create` is the retry itself — still applying the
-    corrected label unchanged. This keeps GitHub's own review status honest, not just the
-    ticket's label; never fold it into step 9's review, that one already went out. If their
-    answer doesn't actually clear the block, or `--auto` was given, or nobody answers on the
-    spot: leave step 9's review and `needs-human` standing — a genuine async wait like any
-    other unresolved `needs-human`, resolved by a later run of this skill.
-11. Never submit more than two reviews per PR — step 9's, plus step 10's
-    live-resolution correction when it applies — and never one review per reviewer, or,
-    with `--multi`, per ensemble instance: step 5a already reconciled each role down to
-    one point-list before step 6 ever runs.
+   If GitHub rejects an `APPROVE`/`REQUEST_CHANGES` because this run's identity is the PR's own author, retry `submit_pending` on that same pending review (never a second
+   `create`) with `event: COMMENT`, still applying that bullet's label and `status:`.
+10. **Live resolution of a submitted `needs-human` block** (pair only, right after step 9; the decision-only and the mixed outcomes, never the pure-`change` one): engage the
+    human as `.pilot/pilot-process.md` §3 "A human is live in the same session" says. If their answer changes the outcome (approved, or only the remaining `change` points),
+    submit **one more** review — a fresh `create` with `event` set, same mapping as step 9, plus the matching label; if GitHub rejects it for the same reason, a fresh `create`
+    with `event: COMMENT` is the retry. Never fold it into step 9's review. If the answer does not clear the block, or `--auto`, or nobody answers: leave step 9's review and
+    `needs-human` standing for a later run.
+11. Never more than two reviews per PR (step 9's, plus step 10's correction), never one per reviewer or per `--multi` instance: step 5a reconciles each role to one point-list
+    before step 6.
 12. **Merge, only with `--merge`:** if the final outcome (step 9, or step 10's correction) is
     `status:approved` and `--merge` was passed, merge the PR now
     (`mcp__github__merge_pull_request`, the repository's normal merge method). Without
