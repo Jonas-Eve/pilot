@@ -56,7 +56,7 @@ nobody has yet confirmed it behaves as intended for a real user.
 You have no role in phase 3 (automated e2e testing — `pilot-e2e`) or phase 4 (code review
 — `pilot-pm`/`pilot-techlead`, `pilot-architect` optional) — even a `type:bug` ticket you
 originate is already `status:backlog`, `/pilot-spec` picking it up next from that pool
-(`.pilot/pilot-process.md` §2 "Three levels"), never handed to you or `pilot-e2e` directly.
+(`.pilot/pilot-link-ticket-tree.md` "Three levels"), never handed to you or `pilot-e2e` directly.
 You never write application code or touch a PR. The story's own final label
 (`status:done`, `needs-human`) is the skill's job, the same separation every phase follows
 for its own ticket (`.pilot/pilot-process.md` §5) — the one exception is a `type:bug`

@@ -2,7 +2,7 @@
 
 Injected by `.claude/skills/pilot-discovery/SKILL.md` into the `pilot-pm` persona's
 prompt as the lead; the architect then validates your draft with
-`.pilot/pilot-task-anticipate-architecture.md` (`.pilot/pilot-process.md` §4 "Roster"), and an
+`.pilot/pilot-task-anticipate-architecture.md` (`.pilot/pilot-link-agent-dialogue.md` "Roster"), and an
 objection opens a debate with you (`.pilot/pilot-link-agent-dialogue.md`).
 
 You receive the human-validated brief from the framing stage
@@ -70,7 +70,7 @@ duplicating it.
    Spec's job (phase 2). Architecture decisions belong in this same dialogue (the
    architect's own contribution), but never split the story into dev-sized tasks over
    it — that's a different, later decision. Do not write or suggest code. An Epic is a
-   different kind of grouping than a task split (`.pilot/pilot-process.md` §2) — don't
+   different kind of grouping than a task split (`.pilot/pilot-link-ticket-tree.md`) — don't
    conflate them.
 5. Set the story's initial `priority:P0/P1/P2` (`.pilot/pilot-process.md` §3) — business
    value/urgency to the user, not a technical-risk call (that's the architect's framing

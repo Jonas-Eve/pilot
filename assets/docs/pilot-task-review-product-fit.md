@@ -6,7 +6,7 @@ alongside `.pilot/pilot-link-review-consensus.md` for the shared verdict format 
 `type:tech`, even under a `type:feature` story's split — its own `type:` decides, never
 inherited).
 
-Which check you run depends on the task's own `type:` (`.pilot/pilot-process.md` §2 — never
+Which check you run depends on the task's own `type:` (`.pilot/pilot-link-ticket-tree.md` — never
 inherited, so a `type:tech` task under a `type:feature` story's split is never yours to
 review, even though its siblings are):
 

@@ -9,8 +9,8 @@ argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if om
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
 protocol (§4) — and `.pilot/pilot-link-review-consensus.md` for the shared `change`/`decision`
 tags contract; this skill covers only phase 4's mechanics, including how it picks the
-reviewer set (step 3). `--with architect` (the only summonable persona here, `.pilot/pilot-process.md`
-§4 "Roster") adds the architect to that set, valid in a sweep too; `--only` (step 3) instead fixes the exact set
+reviewer set (step 3). `--with architect` (the only summonable persona here, `.pilot/pilot-link-agent-dialogue.md`
+"Roster") adds the architect to that set, valid in a sweep too; `--only` (step 3) instead fixes the exact set
 (replacing or narrowing it); nothing can be summoned mid-review.
 
 Mode: pair by default. Every outcome is checkpointed as a pending GitHub PR review the
@@ -21,7 +21,7 @@ either), step 8 is then a pre-submission checkpoint; for an outcome carrying `ne
 (decision-only, or mixed `change`+`decision`), that outcome always submits immediately
 (step 9) and pair's value comes after, in step 10's live resolution. `--auto` skips step
 8's pause and step 10's live engagement, applying every outcome straight through (required
-for a scheduled Routine, `.pilot/pilot-process.md` §4 "Scheduled sweeps"). `--merge` is a
+for a scheduled Routine, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `--merge` is a
 separate, orthogonal flag (step 12) usable with either mode — without it, this skill never
 merges. `--multi <N>` runs N instances of each role already selected in step 3 (PM
 and/or architect and/or tech lead, depending on `type:`) instead of one — composing with,
@@ -75,7 +75,7 @@ pre-submission pause as the last check against picking the wrong one.
    specific ticket was requested). Any other refusal → report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's,
-   `.pilot/pilot-process.md` §2 "`type:` is never inherited") to pick the **default**
+   `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited") to pick the **default**
    reviewer set — the architect is never part of either default, added only via
    `--with architect` or `--only` below:
    - `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`
@@ -83,7 +83,7 @@ pre-submission pause as the last check against picking the wrong one.
    - Independent of `--only`, check whether this PR already carries at least one
      submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true
      whenever this round follows a reclaim fix (`status:changes-requested` →
-     `status:review-ready`, `.pilot/pilot-process.md` §4 "Reclaiming a
+     `status:review-ready`, `.pilot/pilot-link-review-consensus.md` "Reclaiming a
      `status:changes-requested` ticket"), never true for a PR's first review round. None
      found → nothing further to fetch here. Found → fetch the latest submitted review's
      full body (every point, change and decision alike, marked which is which) to pass to
@@ -114,8 +114,7 @@ pre-submission pause as the last check against picking the wrong one.
    that `type:`: PM — product fit / e2e-flow validation; tech lead — spec conformance and
    code quality. The architect's own architecture/security conformance check is covered
    by construction instead — it already cross-examined the split and wrote/reviewed the
-   spec in dialogue with the tech lead at Spec time (`.pilot/pilot-process.md` §4 "Agent
-   dialogue") — so its phase-4 pass is worth adding only when this PR's own diff raises a
+   spec in dialogue with the tech lead at Spec time (`.pilot/pilot-link-agent-dialogue.md` "Agent dialogue") — so its phase-4 pass is worth adding only when this PR's own diff raises a
    fresh architecture/security question the tech lead's own conformance check doesn't
    settle, not by default on every PR. If a future edit changes what any agent's file
    checks, re-verify the default set still adds up to full coverage for the case where
@@ -153,7 +152,7 @@ pre-submission pause as the last check against picking the wrong one.
    a `decision` point, or "no reply — treat as approved as proposed" if none
    (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket") — and the dev's own
    reclaim summary comment on the ticket's *issue* (not the PR,
-   `.pilot/pilot-process.md` §4 "Reclaiming a `status:changes-requested` ticket").
+   `.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket").
    `.pilot/pilot-link-review-consensus.md` has how each reviewer is expected to use this
    instead of starting blind.
 5a. **Per-role reconciliation** (only when `--multi` ran more than one instance of a

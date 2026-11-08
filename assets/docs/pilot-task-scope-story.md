@@ -17,15 +17,15 @@ say so — don't guess and move on.
 You receive an existing `type:feature` or `type:tech` `level:story` (its current body —
 already scoped once before, if this is a re-scope) — never `type:bug`: a bug is always
 `level:task` directly and never split, so it's spec'd on its own by the tech lead alone,
-without this dialogue (`.pilot/pilot-process.md` §2 "Three levels"). You may also be given
+without this dialogue (`.pilot/pilot-link-ticket-tree.md` "Three levels"). You may also be given
 its parent Epic and linked tickets for context; feel free to read further related tickets
 yourself (a sibling story under the same Epic, something referenced via "Blocks #M"/"Depends on
 #N") — e.g. to avoid proposing a prerequisite a sibling ticket already covers.
 
 **If this is a re-scope of a story whose split already finished once** (the skill
 claimed it from `status:qa`/`status:in-qa` into `status:in-spec` before calling you —
-the one deliberate backward transition in the state machine, `.pilot/pilot-process.md`
-§2 "Re-scoping a `type:feature` story after its split is done") — you're also given
+the one deliberate backward transition in the state machine, `.pilot/pilot-link-ticket-tree.md`
+"Re-scoping a `type:feature` story after its split is done") — you're also given
 which tasks from the earlier round(s) are already `status:done`, including the
 original e2e task(s). Steps 4/4a below still apply, scoped to *this round only*:
 propose new tasks for the new work, plus exactly one new `type:e2e` task extending the
@@ -46,8 +46,7 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    restructuring, another ticket/Epic not yet done) — not a decision needing someone's
    judgment — that's `on-hold`, not `needs-human` (`.pilot/pilot-process.md` §3
    "`on-hold`").
-4. Decide the split shape — this branches by `type:` (`.pilot/pilot-process.md` §2
-   "Three levels"; `.pilot/pilot-link-e2e-tasks.md`):
+4. Decide the split shape — this branches by `type:` (`.pilot/pilot-link-ticket-tree.md` "Three levels"; `.pilot/pilot-link-e2e-tasks.md`):
    - **`type:tech`**: splitting is still your judgment call — fine to leave it as one
      ticket through phases 3-4, in which case reconfirm or revise the `priority:` set when
      the story was created (Discovery, if grouped with a feature; this same phase's own
@@ -88,7 +87,7 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
      story, that's its own future Spec pass's split judgment call to make, not something
      to solve by creating several stories here) — **never** as a
      sub-issue of
-     the ticket you're scoping (`.pilot/pilot-process.md` §2 "Prerequisite tech/bug
+     the ticket you're scoping (`.pilot/pilot-link-ticket-tree.md` "Prerequisite tech/bug
      tickets"): that would make it `level:task` and wrongly tie it to this ticket's
      split-tracking lifecycle instead of its own Spec/Dev/Review phases. Land it at
      `status:backlog` for a later `/pilot-spec` run — never the live drafting loop that
@@ -105,12 +104,11 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    - **Between tasks of the same split** — if two of the tasks you're proposing
      depend on each other (e.g. a front-end one consuming an API a back-end one
      creates), record it the same way ("Depends on #N" on the dependent one,
-     `.pilot/pilot-process.md` §2 "Dependencies between tasks of the same split").
+     `.pilot/pilot-link-ticket-tree.md` "Dependencies between tasks of the same split").
 6. Label every task `level:task` (never on the story itself once it's `status:split` —
    the story keeps its own `level:story`, but loses its own `priority:` label here,
    superseded by its tasks' own, `.pilot/pilot-process.md` §3) and its own `type:` per
-   steps 4/4a above — never copied from the story, `.pilot/pilot-process.md` §2 "`type:` is
-   never inherited". Set a `priority:P0/P1/P2` on each: for a `type:tech` story's tasks,
+   steps 4/4a above — never copied from the story, `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited". Set a `priority:P0/P1/P2` on each: for a `type:tech` story's tasks,
    or a `type:tech` enabler task inside a `type:feature` split, use the technical framing
    (`.pilot/pilot-process.md` §3 — P0 closes a real security/correctness/safety-net gap, P1
    solid value but not urgent, P2 nice-to-have or conditional); for a `type:feature` dev

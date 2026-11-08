@@ -8,10 +8,10 @@ argument-hint: "[review] [dev] [spec] [--merge] [--with <persona>[,...]] [--mult
 
 Read `.pilot/pilot-process.md` first if you haven't — this skill adds nothing to the state
 machine, claim protocol, or labels described there. It only sequences three already-existing
-bare/`--auto` sweeps (`.pilot/pilot-process.md` §4 "Scheduled sweeps"), each of which already
+bare/`--auto` sweeps (`.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"), each of which already
 knows how to build and process its own candidate pool — or, given a single ticket instead of
 a pool, already knows how to resolve that one explicit ticket, including cleanly reporting
-nothing to do when it isn't currently in that phase's own territory (§4 "Claim Protocol",
+nothing to do when it isn't currently in that phase's own territory (`.pilot/pilot-process.md` §4 "Claim Protocol",
 step 2: "stop... or report nothing to do, if a specific ticket number was requested
 explicitly"). Never re-implement any of that resolution logic here — this command doesn't
 read a ticket's `status:` label, doesn't know the label taxonomy, and doesn't decide which
@@ -66,7 +66,7 @@ below, and only takes effect when `review` is actually tried (in scope for a res
 subset, or reached before something else claims the ticket in dispatch mode).
 
 An optional trailing `--with <persona>[,...]` forwards verbatim to whichever phase claims a ticket
-(`.pilot/pilot-process.md` §4 "Roster"; each phase refuses a name outside its own list). An optional trailing `--multi <N>` combines with every mode above (sweep, restricted
+(`.pilot/pilot-link-agent-dialogue.md` "Roster"; each phase refuses a name outside its own list). An optional trailing `--multi <N>` combines with every mode above (sweep, restricted
 sweep, or ticket-dispatch) and with `--again`/`--next` alike — unlike `--merge`, it forwards
 unconditionally to whichever phase actually runs (every phase this command dispatches
 already supports it — the converging-dialogue mechanism for `/pilot-spec`/`/pilot-dev`,
@@ -208,3 +208,18 @@ number, name the ticket the first iteration pinned before listing what happened 
 either way, close with how many phase-advances it went through and which of the four
 stopping conditions ended it (nothing left to do, `needs-human` flagged, reported
 orphaned, or closed).
+
+## Scheduled sweeps
+
+Each phase skill is meant to also run **bare, on a timer** — a Routine whose prompt is
+nothing but the literal command. For `/pilot-spec`, `/pilot-dev`, and
+`/pilot-review` — all three default to pair mode ("Interaction modes" below) — that literal
+command must include `--auto` (still no ticket number computed by the routine itself),
+since pair requires a human live in the session and a Routine has none. `/pilot-discovery` and
+`/pilot-qa` are pair-only with no `--auto` and are therefore never driven by a Routine at
+all. Beyond that flag, this works without any special-casing because "picking the next
+ticket when none is specified" (above) already covers both fresh and resumed work
+identically. Three independent Routines — one each for `/pilot-spec
+--auto`, `/pilot-dev --auto`, and `/pilot-review --auto` (add `--merge` too if the Routine
+should also merge once every reviewer approves, `.pilot/pilot-process.md` §3 "`status:approved`") — each on its own
+schedule, so a slow or failing phase never delays the others.

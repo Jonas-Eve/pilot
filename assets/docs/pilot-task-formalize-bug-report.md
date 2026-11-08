@@ -10,7 +10,7 @@ You receive a raw bug report in free text — a human's account, or a technical 
 (failing assertion, error log, stack trace) if it came from another phase's own
 discovery (`.pilot/pilot-link-bug-tickets.md`) rather than through `/pilot-spec` directly.
 Turn it into one well-formed `type:bug` issue ready to build: a bug is dev-sized by
-definition and never splits (`.pilot/pilot-process.md` §2 "Three levels") — no splitting
+definition and never splits (`.pilot/pilot-link-ticket-tree.md` "Three levels") — no splitting
 decision to defer, though its spec is still a separate, later step (this same skill
 invocation, if a human ran it directly and wants to continue; a future one, if this
 ticket is left in the pool instead).
@@ -22,7 +22,7 @@ ticket is left in the pool instead).
    defect at all (already fixed, not reproducible, an exact duplicate of an open bug
    ticket, or working as intended), say so and create nothing — a bug never carries
    `status:wont-do`, so there's no later checkpoint to catch this
-   (`.pilot/pilot-process.md` §2 "Three levels"); the same "out of scope, create nothing"
+   (`.pilot/pilot-link-ticket-tree.md` "Three levels"); the same "out of scope, create nothing"
    outcome `/pilot-discovery` already handles for any raw idea (`.pilot/pilot-process.md`
    §4 "Interaction modes").
 2. Pin down the failure as concretely as you can from what's given (exact broken

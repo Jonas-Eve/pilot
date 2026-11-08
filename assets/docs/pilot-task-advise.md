@@ -1,9 +1,8 @@
 # PILOT task — Advise in a discussion you were summoned into
 
 Injected by any phase skill's own `SKILL.md` into the prompt of whichever persona the human
-summoned (or added with `--with`) into the discussion (`.pilot/pilot-process.md` §4
-"Roster"). Applies to `pilot-pm`, `pilot-architect`, `pilot-techlead` and `pilot-designer` — the only
-personas summonable (`.pilot/pilot-process.md` §4 "Roster") — from the viewpoint of each one's identity.
+summoned (or added with `--with`) into the discussion (`.pilot/pilot-link-agent-dialogue.md` "Roster"). Applies to `pilot-pm`, `pilot-architect`, `pilot-techlead` and `pilot-designer` — the only
+personas summonable (`.pilot/pilot-link-agent-dialogue.md` "Roster") — from the viewpoint of each one's identity.
 
 You receive the ticket's latest checkpoint, the question or point that led to your
 summons, and from then on only the messages posted since your last turn — never the whole

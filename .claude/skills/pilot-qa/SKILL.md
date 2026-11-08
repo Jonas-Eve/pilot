@@ -8,9 +8,8 @@ disable-model-invocation: true
 # PILOT — Phase 5: Human QA
 
 Read `.pilot/pilot-process.md` before running this if you haven't already — it's the source
-of truth for labels, states, and the claim protocol, and §7 specifically covers this phase;
-this skill only covers the mechanics of running it. The roster (`.pilot/pilot-process.md` §4
-"Roster"): `pilot-qa` leads, no validator (the human is), the designer is summonable. Summons and
+of truth for labels, states, and the claim protocol, and the "Phase 5 — Human QA" section below covers this phase;
+this skill only covers the mechanics of running it. The roster (`.pilot/pilot-link-agent-dialogue.md` "Roster"): `pilot-qa` leads, no validator (the human is), the designer is summonable. Summons and
 dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` is passed into its call.
 
 ## Steps
@@ -35,8 +34,8 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
      with `--resume`, or add `can-resume` themselves.
    - `stop` → report `reason` and stop: `depends-on-open` (name the `depends_on` ticket),
      `flagged` (unresolved `needs-human`/`on-hold`), `wrong-status` (not `status:qa` —
-     `status:split`, `status:done`, a type that never reaches it, `.pilot/pilot-process.md`
-     §7 "When it fires"), `assigned`, `closed`, `not-found`.
+     `status:split`, `status:done`, a type that never reaches it, `.claude/skills/pilot-qa/SKILL.md`
+     "When it fires"), `assigned`, `closed`, `not-found`.
    Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
    `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
 2. **Claim** it: `python3 .pilot/pilot.py claim qa <issue> --mode <mode>` (the mode named in
@@ -75,7 +74,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
      raise it via Discovery themselves.
    - **One or more real-bug failures**: nothing further to set — the agent already
      originated the `type:bug` ticket(s), directly as `level:task`/`status:backlog`
-     (never split, `.pilot/pilot-process.md` §2 "Three levels"), commented naming
+     (never split, `.pilot/pilot-link-ticket-tree.md` "Three levels"), commented naming
      them, cleared the assignee, and moved the story back to `status:qa` itself, the same
      pattern `pilot-dev`/`pilot-e2e` use for a bug found mid-implementation
      (`.pilot/pilot-link-bug-tickets.md`). Takes priority over a same-pass "not actually a
@@ -98,4 +97,34 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    next runs, never handed off to phase 3 directly from here.
 
 Do not run this against a `type:tech`/`type:bug` ticket, or against a task itself —
-neither ever reaches `status:qa` (`.pilot/pilot-process.md` §7 "When it fires").
+neither ever reaches `status:qa` (`.claude/skills/pilot-qa/SKILL.md` "When it fires").
+
+## Phase 5 — Human QA (`type:feature` only)
+
+Every other phase in this document is agent-driven, code-level work. Phase 5 is neither:
+it's a human physically exercising the shipped, integrated feature and saying whether it
+actually behaves as intended — the one check in PILOT no agent can perform on its own,
+because it requires a real environment and a real person's judgment on the experience, not
+just the diff. `type:tech`/`type:bug` tickets never reach this phase: a `type:tech` split
+cascades straight to `status:done` once all its tasks are done (`.pilot/pilot-process.md` §3 "Cascading
+completion"); a `type:bug` ticket — always a standalone `level:task`, never split (`.pilot/pilot-link-ticket-tree.md` "Three levels") — reaches `status:done` directly once its own PR merges.
+
+## When it fires
+
+Set by `.pilot/pilot-process.md` §3 "Cascading completion": once a `type:feature` story's e2e task (and therefore
+every dev sibling it depends on, per `.pilot/pilot-link-e2e-tasks.md`) reaches `status:done`,
+the story itself lands on `status:qa` instead of `status:done` — unclaimed, unassigned,
+the pool `/pilot-qa` picks from.
+
+## Running it
+
+`/pilot-qa` is **pair-only** (`.pilot/pilot-process.md` §4 "Interaction modes"). It claims the story (`.pilot/pilot-process.md` §4 "Claim
+Protocol": `status:qa` → `status:in-qa`), builds a manual test plan, and walks the human
+through it case by case. A failure is classified and handled exactly as
+`.pilot/pilot-link-bug-tickets.md` describes — a genuine defect gets its own
+`type:bug` ticket (via the same single mechanism every other phase uses) and unclaims the
+story back to `status:qa`; a non-bug failure is reported
+for the human to raise via Discovery themselves; anything unclassifiable is a live
+`needs-human` block (`.pilot/pilot-process.md` §3 "A human is live in the same session"). Confirmed, or every
+failure resolved to "not actually a bug" → `status:done`, the one direct exception `.pilot/pilot-process.md` §3
+"`status:done`" already notes. `pilot-qa/SKILL.md` covers the rest of the mechanics.

@@ -68,10 +68,22 @@ live (except `--accept` and `--reject`, which are one mechanical step).
 6. **Validate.** When the human says the work is done, call `Agent` for `pilot-pm` with
    `.pilot/pilot-task-check-proto.md`, the recorded brief and the mockup only — not the discussion. An
    objection brings the PM into the debate with the designer and the human, then back on the revised mockup
-   alone (`.pilot/pilot-process.md` §4 "Roster").
+   alone (`.pilot/pilot-link-agent-dialogue.md` "Roster").
 7. **Finalize** once the human approves: `python3 .pilot/pilot.py set <n> --status poc-review --unassign`.
    Say how to decide: accept (`/pilot-proto <n> --accept`) or reject (`/pilot-proto <n> --reject`), also from
    the dashboard.
 8. **Dashboard** (best-effort, `.pilot/pilot-link-dashboard.md`): push the `event`/`activity` that `pilot.py
    claim|set|proto` return. Skipped silently when `dashboardUrl` is absent.
 9. Report the ticket number, its state and where to see it.
+
+## `status:poc-*` — a prototype's own lifecycle, outside the pipeline
+- `status:poc-draft` — being built with a human; assigned while a session works on it
+  (resumable like any other claim: `can-resume`, `/pilot-proto --resume <n>`).
+- `status:poc-review` — published, unassigned, waiting for a human: accept it
+  (`/pilot-proto <n> --accept`) or reject it (`--reject`).
+- `status:poc-validated` — accepted. Only now may `/pilot-discovery --from-proto <n>` start from
+  it; the prototype ticket is closed, label kept, once that Discovery's stories are approved.
+- `status:poc-rejected` — rejected; the reason is a comment on the ticket, which is closed.
+
+These are the only labels `/pilot-proto` changes; `pilot.py proto <n> accept|reject|from-proto`
+applies the transitions and refuses any other.

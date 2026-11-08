@@ -17,7 +17,7 @@ spec).
    that doesn't resolve cleanly is a genuine blocker: handle it the same way as step 4's
    "ask live, otherwise flag `needs-human`" — never force through a conflicted rebase by
    discarding either side blind.
-1a. **If this is a reclaim** (`.pilot/pilot-process.md` §4 "Reclaiming a
+1a. **If this is a reclaim** (`.pilot/pilot-link-review-consensus.md` "Reclaiming a
     `status:changes-requested` ticket"): there's no fresh spec — check out the PR's
     existing branch and rebase it onto its actual current base first — normally `main`
     (or this project's default branch), but the branch this ticket's own PR was

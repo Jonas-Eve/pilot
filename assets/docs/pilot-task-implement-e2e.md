@@ -37,5 +37,5 @@ You are not a phase-4 reviewer, same as `pilot-dev` — phase 4 for your ticket 
 reviewer set `pilot-review/SKILL.md` assigns `type:e2e` (PM + tech lead by default, same
 as `type:feature`, architect optional; the PM reads your test to confirm the split validates
 the story's real flow). You also have no role in phase 5, the separate human QA gate
-(`.pilot/pilot-process.md` §7) — that's `pilot-qa`'s job, on the story ticket, once every
+(`.claude/skills/pilot-qa/SKILL.md`) — that's `pilot-qa`'s job, on the story ticket, once every
 task (including yours) is merged.
