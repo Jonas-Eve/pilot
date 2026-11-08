@@ -763,7 +763,7 @@ class Wiki:
 
     def derive(self, entry, gh, cache):
         """The in-flight overlay of one entry, from its tickets: the most advanced of in-dev < in-review <
-        in-qa among its open tickets, or `verified` for an implemented entry whose feature story is done."""
+        in-qa among its open tickets, or `verified` for a stamped implemented entry whose feature story is done."""
         seen, rank, verified = [], 0, False
         for number in entry["tickets"]:
             if number not in cache:
@@ -783,7 +783,7 @@ class Wiki:
             elif {"type:feature", "level:story", "status:done"} <= ticket["labels"]:
                 verified = True
         overlay = ("", "in-dev", "in-review", "in-qa")[rank]
-        if not overlay and verified and entry["status"] == "implemented":
+        if not overlay and verified and entry["status"] == "implemented" and entry["verifiedAt"]:
             overlay = "verified"
         shown = entry["status"] + (f" · {overlay}" if overlay else "")
         return {"id": entry["id"], "status": entry["status"], "derived": overlay, "display": shown,

@@ -850,6 +850,13 @@ class WikiTests(unittest.TestCase):
         task = issue(3, ["type:feature", "level:task", "status:done"], state="closed")
         self.assertEqual(self.derived("search-sort", task)["derived"], "")
 
+    def test_verified_also_needs_a_lint_stamp(self):
+        done = issue(12, ["type:feature", "level:story", "status:done"], state="closed")
+        self.wiki.set("search-filter", status="implemented")
+        self.assertEqual(self.derived("search-filter", done, issue(15, state="closed"))["derived"], "")
+        self.wiki.set("search-filter", stamp="abc123")
+        self.assertEqual(self.derived("search-filter", done, issue(15, state="closed"))["derived"], "verified")
+
     def test_a_missing_ticket_is_reported_not_fatal(self):
         out = self.derived("search-sort")
         self.assertEqual(out["tickets"], [{"number": 3, "missing": True}])

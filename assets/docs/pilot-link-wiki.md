@@ -25,7 +25,7 @@ Create entries with `python3 .pilot/pilot.py wiki add` and change that line only
 
 **Statuses a file holds:** `proposed` (validated in Discovery), `specified` (validated in
 Spec), `implemented` (merged in code), `deprecated`. `in-dev`, `in-review`, `in-qa` and
-`verified` are derived from the tickets' labels (`wiki status`/`wiki show`), never written.
+`verified` are derived (`wiki status`/`wiki show`), never written: the first three from the tickets' labels, `verified` for an `implemented` entry that carries a lint stamp and whose feature story is done.
 `verifiedAt` + `verifiedCommit` are written only by a lint that found the entry conforming
 (`wiki set --stamp <commit>`), or by an init that found tickets and code in agreement.
 
