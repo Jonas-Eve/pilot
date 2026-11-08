@@ -1241,6 +1241,24 @@ class ArchitectureTests(unittest.TestCase):
                 self.add(bad, "accepted")
             self.assertEqual(ctx.exception.payload["reason"], "bad-path")
 
+    def test_active_index_drops_history_and_stays_short(self):
+        self.add("adr/0001-a.md", "accepted")
+        self.add("adr/0002-b.md", "proposed")
+        self.arch.supersede("0002-b", "0001-a")
+        self.add("guidelines/layering.md", "accepted", description="Domain never imports adapters.")
+        self.add("guidelines/old.md", "deprecated")
+        rows = self.arch.index(active=True)["entries"]
+        self.assertEqual(sorted(r["id"] for r in rows), ["0002-b", "layering"])
+        self.assertTrue(all(set(r) == {"id", "path", "description", "status"} for r in rows))
+        self.assertEqual(len(self.arch.index()["entries"]), 4)
+
+    def test_active_index_grows_one_row_per_entry_without_bodies(self):
+        for n in range(30):
+            self.arch.add("guidelines/rule-%02d.md" % n, "T", "One rule.", "accepted", [], "B" * 2000)
+        out = json.dumps(self.arch.index(active=True))
+        self.assertNotIn("BBBB", out)
+        self.assertLess(len(out), 30 * 200)
+
     def test_cli_needs_no_github(self):
         args = pilot.build_parser().parse_args(["arch", "lint"])
         self.assertFalse(pilot.needs_github(args))

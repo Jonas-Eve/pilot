@@ -72,7 +72,9 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    points to fix, plus any `decision`-tagged points and their resolution, instead of a
    fresh spec — only more commits on the existing PR. When the `wiki` module is enabled (`.pilot/pilot-process.md` §8), also pass
    `.pilot/pilot-link-wiki.md` in full and the ticket's entries (`python3 .pilot/pilot.py wiki index --ticket
-   <issue>`, each with `wiki show <id>`).
+   <issue>`, each with `wiki show <id>`). When the `architecture` module is enabled, also pass `.pilot/pilot-link-architecture.md`
+   in full and the output of `python3 .pilot/pilot.py arch index --active` — the index only, never the entries: the dev opens
+   what bears on the ticket (`arch show <id>`) and follows its guidelines.
    - **Without `--multi`** (or on a reclaim, where `--multi` has no effect either way):
      **unless `--auto` was given** (`.pilot/pilot-process.md` §4 "Interaction modes" — pair
      is the default; a fresh claim or paused-pair resume only, never combined with a

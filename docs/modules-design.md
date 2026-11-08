@@ -101,7 +101,7 @@ Each step is backward compatible; the last one is the break.
 2. **Done.** The registry with `requires`, `module list` as above, the dependency checks.
 3. **Done.** `dashboard`, `design`, `proto` under the switch: their skills' first-use flow, the dashboard tabs
    following the modules, `/pilot-init --modules`, the `/pilot-update` migration, `/pilot-help` status.
-4. **Under way.** The `architecture` module, built beside the old skill (`arch` command and the `/pilot-architecture` skill done): layout, ADR, guidelines in the dev and review
+4. **Under way.** The `architecture` module, built beside the old skill (`arch` command, `/pilot-architecture` skill and the phases reading the index done; dashboard tab left): layout, ADR, guidelines in the dev and review
    prompts, `--bootstrap` from an existing `apps/`, `--scaffold`, the dashboard tab.
 5. **v3**: `pilot-init-archi` removed, `archInitialized` and the `PILOT:ARCHITECTURE`/`PILOT:COMMANDS`
    blocks replaced by the module's pointer, `/pilot-update` migrating each project (§4).

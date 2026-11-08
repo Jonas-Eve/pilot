@@ -127,6 +127,9 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    don't silently ignore it either way. A `type:tech` story reaching Spec via its own
    no-ticket entry (`.pilot/pilot-task-formalize-tech-need.md`) carries no such section —
    there was no Discovery pass — so this is the first time its architecture gets decided.
+   When the prompt carries the architecture index, check each decision against the guidelines and ADR that bear
+   on it, and mark `ADR` on a decision that outlives this ticket and that someone could be tempted to reverse; one that
+   contradicts an accepted ADR or guideline is a human's call, say so instead of deciding it.
    These decisions are what the tech lead's own spec
    (this same dialogue) builds against, and what you check conformance against in Review
    if added (`.pilot/pilot-task-review-architecture.md`).

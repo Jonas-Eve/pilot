@@ -145,7 +145,9 @@ pre-submission pause as the last check against picking the wrong one.
    its own spec (it re-runs validation on the PR branch itself). When the `wiki` module is enabled (`.pilot/pilot-process.md` §8), also pass every reviewer `.pilot/pilot-link-wiki.md` in full, the entries of the ticket under
    review — and, for a `type:e2e` task, of its parent story —
    (`python3 .pilot/pilot.py wiki index --ticket <n>`, each with `wiki show <id>`) and the PR's changes
-   under `wiki/` (`mcp__github__pull_request_read` `get_files`). When step 3 found a prior
+   under `wiki/` (`mcp__github__pull_request_read` `get_files`). When the `architecture` module is enabled, also pass every reviewer
+   `.pilot/pilot-link-architecture.md` in full, the output of `python3 .pilot/pilot.py arch index --active` (the index only) and the
+   PR's changes under `architecture/`. When step 3 found a prior
    submitted review on this PR — whether reached via step 1's needs-human-resume branch or
    an ordinary reclaim after a pure-`change` fix — also pass its full body (every point,
    change and decision alike, marked which is which) to every reviewer this round, plus,
