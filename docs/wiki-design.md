@@ -144,11 +144,14 @@ its entry stays unstamped.
 
 ## 7. `pilot.py wiki`
 
-Deterministic, like the rest of the script: `index`, `show <id>` (entry + derived overlay),
-`status` (overlay for given tickets), `lint` (mechanical checks above), `set-status <id>
-<status>` (the only writer of the entry line, so agents never hand-edit it). Judgment
-(wording, comparing to code, arbitrating drift) never lives in it. Offline tests in
-`scripts/test_pilot.py`.
+Deterministic, like the rest of the script. Offline (no GitHub call): `index [--ticket N]`
+(entries, statuses, stamps; `--ticket` answers "which entries does my ticket list?"), `add`
+(append an entry with its meta line), `set` (the only writer of the meta line afterwards:
+status, tickets, `--stamp COMMIT`), so agents never hand-edit that line. With GitHub: `show
+<id>` (entry text plus derived overlay), `status [id...]` (derived overlay from the entries'
+tickets), `lint` (the mechanical checks of §6; exit 1 on findings). Derived statuses are
+never accepted by `add`/`set`. Judgment (wording, comparing to code, arbitrating drift) never
+lives in it. Offline tests in `scripts/test_pilot.py` (`WikiTests`).
 
 ## 8. State combinations checked
 
@@ -169,7 +172,7 @@ The wiki is mandatory; the release is **3.0.0** (major: a project's phases now a
 wiki). It is built over several short PRs, each backward compatible and bumping the minor
 version while nothing requires the wiki yet, so `main` is never half-migrated:
 
-1. `pilot.py wiki` (parse, index, show, status, lint, set-status) and its tests.
+1. `pilot.py wiki` (index, show, status, lint, add, set) and its tests — done, 2.10.0.
 2. `/pilot-wiki` (query, `--lint`, `--init`) and the link/task docs.
 3. Discovery and Spec wiki PRs, Dev flips to `implemented`.
 4. Review and QA criteria, the dashboard "Wiki" tab.
