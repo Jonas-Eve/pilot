@@ -261,7 +261,7 @@ summoned persona's call.
      being worked: also `mcp__github__add_issue_comment` on that Epic naming the
      blocking relationship — skip this when the worked ticket has no parent Epic.
 5b. **Wiki** (only when the `wiki` module is enabled (`.pilot/pilot-process.md` §8), and for a `type:feature` story that was split or closed as won't-do): per `.pilot/pilot-link-wiki.md`. Won't-do → its
-   `proposed` entries (`python3 .pilot/pilot.py wiki index --ticket <story>`) are removed from their files.
+   `proposed` entries (`python3 .pilot/pilot.py wiki index --ticket <story>`) are removed (`wiki remove <id>`).
    Split → call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-entries.md` (target status
    `specified`), `.pilot/pilot-link-wiki.md`, the story, its tasks and the existing entries of the domains it
    touches. Apply on branch `wiki/spec-<story>` the way `pilot-discovery/SKILL.md` step 7b does, with

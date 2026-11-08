@@ -31,25 +31,45 @@ truth, for agents and humans, as markdown files in the consuming project's repo.
 - Root: `wiki/` in the **project** repo. Project-owned: `/pilot-update` never touches it.
   With the module on, its absence is what `doctor` reports (§6).
 - Functional only, organized by **functional domain**: one folder per product area
-  (`search/`, `export/`…), one markdown file per topic. Domains come from
-  the project's epics. Architecture decisions are out of scope here: they will be handled
-  by a reworked `/pilot-init-archi`.
-- No committed index: `pilot.py wiki index` prints it on demand (titles, entry ids,
-  statuses). A committed index is a merge-conflict magnet.
+  (`search/`, `export/`…), one markdown file per entry. Domains come from the project's epics.
+  Architecture decisions are out of scope here: they will be handled by a reworked
+  `/pilot-init-archi`.
+- The bundle follows **OKF** (Open Knowledge Format, Google Cloud): one concept per file, a YAML
+  frontmatter whose only required key is `type`, `index.md` and `log.md` reserved. PILOT's own keys live
+  under `pilot:`; `log.md` is not used (git is the history).
+- An `index.md` per folder lists its entries with their one-sentence `description`, so an agent
+  opens only what it needs. `pilot.py` writes them (`wiki reindex`, run by every `add`/`set`/`remove`)
+  and `wiki lint` flags a stale one; the root one carries `okf_version`. A conflict on an index
+  between two PRs is resolved by regenerating it.
 
 ### Entry format
 
-One entry = one `##` heading with a stable id, followed by a machine-readable line:
+One entry = one file `wiki/<domain>/<id>.md`, the file name being the id:
 
 ```markdown
-## Filter results by wheelchair accessibility {#search-accessibility-filter}
-<!-- wiki: status=specified tickets=#12,#15 verifiedAt= verifiedCommit= -->
+---
+type: Behavior
+title: Filter results by wheelchair accessibility
+description: The user can filter search results to places with step-free access.
+status: draft
+verified:
+  by: process:pilot-wiki
+  at: 2026-11-08T12:36:44Z
+pilot:
+  status: specified
+  tickets: [12, 15]
+  verifiedCommit: abc123
+---
 
 The user can filter search results to places with step-free access. …
 ```
 
-`pilot.py wiki` parses only that comment line; prose is free-form. An entry belongs to the
-tickets it lists — that list is what makes ownership and conflicts decidable.
+`status` (OKF: `draft`, `stable`, `deprecated`) is derived by the script from `pilot.status`
+(`proposed` and `specified` → `draft`, `implemented` → `stable`); `verified` is OKF's own provenance key,
+written only by a lint or an init, with the commit in `pilot.verifiedCommit`. Other keys are kept as
+they are. `pilot.py wiki` reads the YAML subset it writes (scalars, `[a, b]`, one nested block); a
+frontmatter outside it is reported by `lint` and never rewritten. An entry belongs to the tickets it
+lists: that list is what makes ownership and conflicts decidable.
 
 ## 4. Statuses
 
@@ -147,14 +167,16 @@ arbitrate" in the PR and their entries stay unstamped; nothing is decided.
 
 ## 7. `pilot.py wiki`
 
-Deterministic, like the rest of the script. Offline (no GitHub call): `index [--ticket N]`
-(entries, statuses, stamps; `--ticket` answers "which entries does my ticket list?"), `add`
-(append an entry with its meta line), `set` (the only writer of the meta line afterwards:
-status, tickets, `--stamp COMMIT`), so agents never hand-edit that line. With GitHub: `show
-<id>` (entry text plus derived overlay), `status [id...]` (derived overlay from the entries'
-tickets), `lint` (the mechanical checks of §6; exit 1 on findings). Derived statuses are
-never accepted by `add`/`set`. Judgment (wording, comparing to code, arbitrating drift) never
-lives in it. Offline tests in `scripts/test_pilot.py` (`WikiTests`).
+Deterministic, like the rest of the script. Offline (no GitHub call): `index [--ticket N]` (entries,
+descriptions, statuses, stamps; `--ticket` answers "which entries does my ticket list?"), `add <domain>/<id>.md`
+(create an entry), `set` (the only writer of the frontmatter afterwards: status, tickets, title, description,
+`--stamp COMMIT`, `--clear-stamp`), `remove` (a `proposed` entry only), `reindex` (the folder `index.md`
+files), and `migrate` (a wiki in the earlier multi-entry page format → one OKF file per entry), so agents
+never hand-edit a frontmatter or an index. With GitHub: `show <id>` (entry text plus derived overlay),
+`status [id...]` (derived overlay from the entries' tickets), `lint` (the mechanical checks of §6, plus a
+stale index; exit 1 on findings) and `snapshot` (the dashboard's document). Derived statuses are never
+accepted by `add`/`set`. Judgment (wording, comparing to code, arbitrating drift) never lives in it.
+Offline tests in `scripts/test_pilot.py` (`WikiTests`).
 
 ## 8. State combinations checked
 

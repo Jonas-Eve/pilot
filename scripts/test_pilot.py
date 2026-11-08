@@ -797,39 +797,75 @@ class MiscTests(unittest.TestCase):
 
 
 class WikiTests(unittest.TestCase):
-    SEARCH = (
-        "# Search\n\nIntro prose.\n\n"
-        "## Filter by accessibility {#search-filter}\n"
-        "<!-- wiki: status=specified tickets=#12,#15 verifiedAt= verifiedCommit= -->\n\n"
-        "The user can filter results.\n\n"
-        "## A plain section\n\nNot an entry.\n\n"
-        "## Sort results {#search-sort}\n"
-        "<!-- wiki: status=implemented tickets=#3 verifiedAt=2026-01-01T00:00:00Z verifiedCommit=abc123 -->\n"
-    )
-
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.root = pathlib.Path(self._tmp.name) / "wiki"
         self.root.mkdir()
-        (self.root / "features").mkdir()
-        self.page("features/search.md", self.SEARCH)
+        self.entry("search/search-filter.md", "specified", [12, 15], "Filter by accessibility",
+                   "The user can filter results.", body="The user can filter results.")
+        self.entry("search/search-sort.md", "implemented", [3], "Sort results", "Nearest place first.",
+                   stamp=("2026-01-01T00:00:00Z", "abc123"))
         self.wiki = pilot.Wiki(str(self.root))
+        self.wiki.reindex()
 
-    def page(self, name, text):
-        path = self.root / name
+    def raw(self, rel, text):
+        path = self.root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
+
+    def entry(self, rel, status, tickets=(), title=None, description="A rule.", body="", stamp=None, okf=None, extra=""):
+        okf = okf or pilot.WIKI_OKF_STATUS.get(status, "draft")
+        lines = ["---", "type: Behavior", f"title: {title or rel}", f"description: {description}", f"status: {okf}"]
+        if extra:
+            lines.append(extra)
+        if stamp:
+            lines += ["verified:", "  by: process:pilot-wiki", f"  at: {stamp[0]}"]
+        lines += ["pilot:", f"  status: {status}", "  tickets: [" + ", ".join(map(str, tickets)) + "]"]
+        if stamp:
+            lines.append(f"  verifiedCommit: {stamp[1]}")
+        self.raw(rel, "\n".join(lines) + "\n---\n" + (("\n" + body + "\n") if body else ""))
+
+    def text(self, rel):
+        return (self.root / rel).read_text()
 
     def codes(self, report):
         return sorted(f["code"] for f in report["findings"])
 
-    def test_index_lists_entries_and_ignores_plain_sections(self):
+    def lint(self, *issues):
+        return self.wiki.lint(FakeGh(list(issues) or [issue(12), issue(15), issue(3)]))
+
+    # ---- the YAML subset ---------------------------------------------------------------
+    def test_frontmatter_subset_parses_scalars_lists_and_one_nested_block(self):
+        got = pilot.parse_frontmatter('type: Behavior\n# a comment\ntitle: "A: quoted"\ntags: [a, "b, c", 3]\nok: true\nnone:\n'
+                                      'pilot:\n  status: specified\n  tickets: [12, 15]\n'.replace("\\n", "\n"))
+        self.assertEqual(got, {"type": "Behavior", "title": "A: quoted", "tags": ["a", "b, c", 3], "ok": True, "none": None,
+                               "pilot": {"status": "specified", "tickets": [12, 15]}})
+
+    def test_frontmatter_outside_the_subset_is_refused_not_misread(self):
+        for block in ("verified:\n  - by: x\n    at: y", "verified: {by: x}", "a: 1\na: 2", "a:\n  b:\n    c: 1\n  d: 2",
+                      "not a mapping", "title: \"unterminated"):
+            with self.assertRaises(ValueError, msg=block):
+                pilot.parse_frontmatter(block)
+
+    def test_dump_and_parse_round_trip_including_awkward_strings(self):
+        data = {"type": "Behavior", "title": "Colon: inside", "description": "- starts with a dash", "n": "12", "t": "true", "e": "",
+                "hash": "a #b", "list": [1, "x y"], "pilot": {"status": "specified", "tickets": []}}
+        self.assertEqual(pilot.parse_frontmatter(pilot.dump_frontmatter(data).rstrip("\n")), data)
+
+    def test_split_frontmatter_keeps_what_follows_the_closing_line(self):
+        self.assertEqual(pilot.split_frontmatter("---\na: 1\n---\n\nBody\n"), ("a: 1", "\nBody\n"))
+        self.assertEqual(pilot.split_frontmatter("no front\n"), (None, "no front\n"))
+        self.assertEqual(pilot.split_frontmatter("---\nunclosed\n"), (None, "---\nunclosed\n"))
+
+    # ---- reading -------------------------------------------------------------------------
+    def test_index_lists_entries_with_their_description_and_status(self):
         out = self.wiki.index()
         self.assertEqual([e["id"] for e in out["entries"]], ["search-filter", "search-sort"])
-        first = out["entries"][0]
-        self.assertEqual((first["page"], first["status"], first["tickets"]), ("features/search.md", "specified", [12, 15]))
-        self.assertEqual(out["entries"][1]["verifiedCommit"], "abc123")
+        first, second = out["entries"]
+        self.assertEqual((first["path"], first["status"], first["tickets"], first["description"]),
+                         ("search/search-filter.md", "specified", [12, 15], "The user can filter results."))
+        self.assertEqual((second["verifiedAt"], second["verifiedCommit"]), ("2026-01-01T00:00:00Z", "abc123"))
         self.assertEqual(out["problems"], 0)
 
     def test_index_filters_by_ticket(self):
@@ -841,53 +877,83 @@ class WikiTests(unittest.TestCase):
             pilot.Wiki(str(self.root / "nope")).index()
         self.assertEqual(caught.exception.payload["reason"], "wiki-absent")
 
-    def test_headings_and_meta_inside_a_code_fence_are_ignored(self):
-        self.page("fence.md", "# F\n\n```\n## Fake {#fake}\n<!-- wiki: status=proposed tickets=#1 -->\n```\n")
-        out = self.wiki.index()
-        self.assertNotIn("fake", [e["id"] for e in out["entries"]])
-        self.assertEqual(out["problems"], 0)
+    def test_index_and_log_files_are_not_concepts(self):
+        self.raw("search/log.md", "# Directory Update Log\n")
+        self.assertEqual([e["id"] for e in self.wiki.index()["entries"]], ["search-filter", "search-sort"])
 
     def test_unreadable_entries_are_reported(self):
-        self.page("bad.md", (
-            "## No meta {#no-meta}\n\ntext\n\n"
-            "## Derived {#derived}\n<!-- wiki: status=in-dev tickets=#1 -->\n\n"
-            "## Tickets {#bad-tickets}\n<!-- wiki: status=proposed tickets=12 -->\n\n"
-            "## Stamp {#stamp}\n<!-- wiki: status=implemented tickets=#1 verifiedAt=2026-01-01T00:00:00Z verifiedCommit= -->\n\n"
-            "## Key {#key}\n<!-- wiki: status=proposed tickets=#1 colour=red -->\n\n"
-            "<!-- wiki: status=proposed tickets=#1 -->\n"))
-        report = self.wiki.lint(FakeGh([issue(n) for n in (1, 3, 12, 15)]))
-        self.assertFalse(report["ok"])
-        for code in ("missing-meta", "bad-status", "bad-tickets", "partial-stamp", "unknown-key", "orphan-meta"):
+        self.raw("bad/no-front.md", "# just prose\n")
+        self.raw("bad/list-of-maps.md", "---\ntype: Behavior\nverified:\n  - by: x\n    at: y\n---\n")
+        self.raw("bad/no-type.md", "---\ntitle: T\npilot:\n  status: proposed\n  tickets: [1]\n---\n")
+        self.entry("bad/derived.md", "in-dev", [1])
+        self.entry("bad/tickets.md", "proposed", [], okf="draft", extra="")
+        self.raw("bad/tickets.md", "---\ntype: Behavior\ndescription: d\nstatus: draft\npilot:\n  status: proposed\n  tickets: [twelve]\n---\n")
+        self.entry("bad/stamp.md", "implemented", [1])
+        self.raw("bad/stamp.md", self.text("bad/stamp.md").replace("pilot:", "verified:\n  by: x\n  at: 2026-01-01T00:00:00Z\npilot:"))
+        self.entry("bad/mismatch.md", "implemented", [1], okf="draft")
+        self.entry("bad/nodesc.md", "proposed", [1], description="")
+        self.raw("bad/nodesc.md", self.text("bad/nodesc.md").replace("description: \n", ""))
+        self.entry("bad/UpperCase.md", "proposed", [1])
+        self.raw("bad/pilot-string.md", "---\ntype: Behavior\npilot: yes\n---\n")
+        report = self.lint(*[issue(n) for n in (1, 3, 12, 15)])
+        for code in ("no-frontmatter", "bad-frontmatter", "missing-type", "bad-status", "bad-tickets", "partial-stamp",
+                     "status-mismatch", "missing-description", "bad-id", "bad-pilot"):
             self.assertIn(code, self.codes(report))
-        derived = next(f for f in report["findings"] if f["code"] == "bad-status")
-        self.assertIn("derived", derived["message"])
+        self.assertIn("derived", next(f for f in report["findings"] if f["code"] == "bad-status")["message"])
 
-    def test_set_rewrites_only_the_meta_line(self):
-        before = (self.root / "features/search.md").read_text()
-        out = self.wiki.set("search-filter", status="implemented", add=[20], remove=[12])
-        self.assertEqual(out["tickets"], [15, 20])
-        after = (self.root / "features/search.md").read_text()
-        diff = [(a, b) for a, b in zip(before.split("\n"), after.split("\n")) if a != b]
-        self.assertEqual(len(diff), 1)
-        self.assertEqual(diff[0][1], "<!-- wiki: status=implemented tickets=#15,#20 verifiedAt= verifiedCommit= -->")
-        self.assertEqual(len(before.split("\n")), len(after.split("\n")))
+    def test_a_concept_pilot_does_not_manage_is_indexed_and_never_checked(self):
+        self.raw("search/glossary.md", "---\ntype: Reference\ntitle: Glossary\ndescription: Words.\n---\n\nText.\n")
+        self.wiki.reindex()
+        self.assertEqual(self.lint()["findings"], [])
+        self.assertIn("[Glossary](glossary.md) - Words.", self.text("search/index.md"))
+        self.assertEqual(self.wiki.snapshot(FakeGh([issue(12), issue(15), issue(3)]))["total"], 2)
+        with self.assertRaises(pilot.Refused) as caught:
+            self.wiki.set("glossary", status="proposed")
+        self.assertEqual(caught.exception.payload["reason"], "not-a-pilot-entry")
 
-    def test_set_stamp_records_time_and_commit(self):
+    # ---- indexes --------------------------------------------------------------------------
+    def test_reindex_writes_one_index_per_folder_and_the_root_carries_the_okf_version(self):
+        self.assertEqual(self.text("index.md"), '---\nokf_version: "0.2"\n---\n# Wiki\n\n* [search](search/) - 2 entries\n')
+        self.assertEqual(self.text("search/index.md"),
+                         "# search\n\n* [Filter by accessibility](search-filter.md) - The user can filter results.\n"
+                         "* [Sort results](search-sort.md) - Nearest place first.\n")
+        self.assertEqual(self.wiki.reindex(), [])
+
+    def test_a_stale_or_missing_index_is_a_lint_finding_that_reindex_fixes(self):
+        (self.root / "search/index.md").write_text("# search\n")
+        (self.root / "index.md").unlink()
+        report = self.lint()
+        self.assertEqual(self.codes(report), ["stale-index", "stale-index"])
+        self.wiki.reindex()
+        self.assertEqual(self.lint()["findings"], [])
+
+    # ---- writing --------------------------------------------------------------------------
+    def test_set_rewrites_only_the_frontmatter_and_keeps_unknown_keys_and_the_body(self):
+        self.entry("search/with-extra.md", "specified", [20], "Extra", "Has extras.", body="Body stays\n\nexactly.", extra="custom: keep me")
+        before = self.text("search/with-extra.md")
+        out = self.wiki.set("with-extra", status="implemented", add=[21], remove=[20])
+        self.assertEqual((out["status"], out["tickets"]), ("implemented", [21]))
+        after = self.text("search/with-extra.md")
+        self.assertEqual(after.split("---\n", 2)[2], before.split("---\n", 2)[2])
+        self.assertIn("custom: keep me", after)
+        self.assertIn("status: stable", after)
+        self.assertEqual(pilot.parse_frontmatter(pilot.split_frontmatter(after)[0])["pilot"]["tickets"], [21])
+
+    def test_set_stamp_records_time_and_commit_and_clear_stamp_forgets_them(self):
         out = self.wiki.set("search-filter", stamp="deadbeef")
         self.assertEqual(out["verifiedCommit"], "deadbeef")
         self.assertRegex(out["verifiedAt"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
-        self.assertEqual(self.wiki.index()["entries"][0]["verifiedCommit"], "deadbeef")
-
-    def test_set_clear_stamp_forgets_the_verification(self):
-        out = self.wiki.set("search-sort", status="specified", clear_stamp=True)
+        self.assertIn("by: process:pilot-wiki", self.text("search/search-filter.md"))
+        out = self.wiki.set("search-filter", status="specified", clear_stamp=True)
         self.assertEqual((out["verifiedAt"], out["verifiedCommit"]), ("", ""))
+        self.assertNotIn("verified", self.text("search/search-filter.md"))
         self.assertEqual(self.wiki.index()["problems"], 0)
 
-    def test_derived_tickets_carry_their_level(self):
-        out = self.derived("search-filter", issue(12, ["level:task", "status:in-dev"]), issue(15, ["level:story", "status:split"]))
-        self.assertEqual([t["level"] for t in out["tickets"]], ["task", "story"])
+    def test_set_updates_title_and_description_and_the_index_follows(self):
+        self.wiki.set("search-filter", title="Filter places", description="New one-liner.")
+        self.assertIn("* [Filter places](search-filter.md) - New one-liner.", self.text("search/index.md"))
 
-    def test_set_refuses_a_derived_status_and_an_unknown_entry(self):
+    def test_set_refuses_a_derived_status_an_unknown_entry_and_an_unreadable_file(self):
         for derived in ("in-dev", "verified"):
             with self.assertRaises(pilot.Refused) as caught:
                 self.wiki.set("search-filter", status=derived)
@@ -895,26 +961,45 @@ class WikiTests(unittest.TestCase):
         with self.assertRaises(pilot.Refused) as caught:
             self.wiki.set("nope", status="proposed")
         self.assertEqual(caught.exception.payload["reason"], "entry-not-found")
+        self.raw("search/broken.md", "---\ntype: Behavior\nverified:\n  - by: x\n    at: y\n---\n")
+        with self.assertRaises(pilot.Refused) as caught:
+            self.wiki.set("broken", status="proposed")
+        self.assertEqual(caught.exception.payload["reason"], "unreadable-frontmatter")
+        self.assertIn("- by: x", self.text("search/broken.md"))
 
-    def test_add_appends_an_entry_and_creates_the_page(self):
-        self.wiki.add("flows/booking.md", "booking-start", "Start a booking", "proposed", [7], "Body text.")
-        text = (self.root / "flows/booking.md").read_text()
-        self.assertTrue(text.startswith("# Booking\n"))
-        entry = next(e for e in self.wiki.index()["entries"] if e["id"] == "booking-start")
-        self.assertEqual((entry["status"], entry["tickets"], entry["page"]), ("proposed", [7], "flows/booking.md"))
-        self.assertIn("Body text.", self.wiki.show("booking-start", FakeGh([issue(7)]))["text"])
+    def test_add_creates_the_file_the_body_and_the_indexes(self):
+        self.wiki.add("flows/booking-start.md", "Start a booking", "A booking starts from a place.", "proposed", [7], "Body text.")
+        self.assertEqual(self.text("flows/booking-start.md"),
+                         "---\ntype: Behavior\ntitle: Start a booking\ndescription: A booking starts from a place.\nstatus: draft\n"
+                         "pilot:\n  status: proposed\n  tickets: [7]\n---\n\nBody text.\n")
+        self.assertIn("[flows](flows/)", self.text("index.md"))
+        self.assertIn("[Start a booking](booking-start.md)", self.text("flows/index.md"))
         self.assertEqual(self.wiki.index()["problems"], 0)
+        self.assertEqual(self.lint(issue(7), issue(12), issue(15), issue(3))["findings"], [])
 
     def test_add_refuses_duplicates_and_bad_input(self):
-        for args, reason in ((("features/search.md", "search-sort", "T", "proposed"), "duplicate-id"),
-                             (("x.md", "Bad Id", "T", "proposed"), "bad-id"),
-                             (("x.md", "ok-id", "T", "in-dev"), "bad-status"),
-                             (("../x.md", "ok-id", "T", "proposed"), "bad-page"),
-                             (("x.txt", "ok-id", "T", "proposed"), "bad-page")):
+        for args, reason in ((("other/search-sort.md", "T", "d", "proposed"), "duplicate-id"),
+                             (("x/Bad_Id.md", "T", "d", "proposed"), "bad-path"),
+                             (("x/ok-id.txt", "T", "d", "proposed"), "bad-path"),
+                             (("../x/ok-id.md", "T", "d", "proposed"), "bad-path"),
+                             (("x/index.md", "T", "d", "proposed"), "bad-path"),
+                             (("x/ok-id.md", "T", "d", "in-dev"), "bad-status"),
+                             (("x/ok-id.md", "", "d", "proposed"), "title-and-description-required"),
+                             (("x/ok-id.md", "T", " ", "proposed"), "title-and-description-required")):
             with self.assertRaises(pilot.Refused) as caught:
                 self.wiki.add(*args)
             self.assertEqual(caught.exception.payload["reason"], reason, args)
 
+    def test_remove_deletes_a_proposed_entry_and_its_empty_folder(self):
+        self.wiki.add("tmp/one.md", "One", "d", "proposed", [7])
+        self.wiki.remove("one")
+        self.assertFalse((self.root / "tmp").exists())
+        self.assertNotIn("tmp", self.text("index.md"))
+        with self.assertRaises(pilot.Refused) as caught:
+            self.wiki.remove("search-sort")
+        self.assertEqual((caught.exception.payload["reason"], caught.exception.payload["status"]), ("not-removable", "implemented"))
+
+    # ---- derived status ---------------------------------------------------------------------
     def derived(self, entry_id, *issues):
         return self.wiki.status(FakeGh(list(issues)), [entry_id])["entries"][0]
 
@@ -926,13 +1011,11 @@ class WikiTests(unittest.TestCase):
         self.assertEqual((out["derived"], out["display"]), ("in-qa", "specified · in-qa"))
         self.assertEqual(self.derived("search-filter", issue(12, ["status:backlog"]), issue(15, ["status:backlog"]))["derived"], "")
 
-    def test_verified_needs_an_implemented_entry_and_a_done_feature_story(self):
+    def test_verified_needs_an_implemented_stamped_entry_and_a_done_feature_story(self):
         done = issue(3, ["type:feature", "level:story", "status:done"], state="closed")
         self.assertEqual(self.derived("search-sort", done)["display"], "implemented · verified")
-        tech = issue(3, ["type:tech", "level:story", "status:done"], state="closed")
-        self.assertEqual(self.derived("search-sort", tech)["derived"], "")
-        task = issue(3, ["type:feature", "level:task", "status:done"], state="closed")
-        self.assertEqual(self.derived("search-sort", task)["derived"], "")
+        for labels in (["type:tech", "level:story", "status:done"], ["type:feature", "level:task", "status:done"]):
+            self.assertEqual(self.derived("search-sort", issue(3, labels, state="closed"))["derived"], "")
 
     def test_verified_also_needs_a_lint_stamp(self):
         done = issue(12, ["type:feature", "level:story", "status:done"], state="closed")
@@ -941,60 +1024,88 @@ class WikiTests(unittest.TestCase):
         self.wiki.set("search-filter", stamp="abc123")
         self.assertEqual(self.derived("search-filter", done, issue(15, state="closed"))["derived"], "verified")
 
+    def test_derived_tickets_carry_their_level_and_a_missing_ticket_is_not_fatal(self):
+        out = self.derived("search-filter", issue(12, ["level:task", "status:in-dev"]), issue(15, ["level:story", "status:split"]))
+        self.assertEqual([t["level"] for t in out["tickets"]], ["task", "story"])
+        self.assertEqual(self.derived("search-sort")["tickets"], [{"number": 3, "missing": True}])
+
+    def test_show_returns_the_text_and_the_overlay(self):
+        out = self.wiki.show("search-filter", FakeGh([issue(12, ["status:in-dev"]), issue(15)]))
+        self.assertEqual((out["text"], out["derived"]["display"]), ("The user can filter results.", "specified · in-dev"))
+
+    # ---- lint -------------------------------------------------------------------------------
+    def test_lint_is_clean_on_a_coherent_wiki(self):
+        report = self.lint(issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]), issue(3, ["status:done"], state="closed"))
+        self.assertEqual(report, {"ok": True, "entries": 2, "findings": []})
+
+    def test_lint_flags_duplicates_orphaned_promises_and_reopened_work(self):
+        self.entry("elsewhere/search-sort.md", "proposed", [])
+        self.wiki.reindex()
+        report = self.lint(issue(12, state="closed"), issue(15, state="closed"), issue(3, ["status:backlog"]))
+        self.assertEqual(self.codes(report), sorted(
+            ["duplicate-id", "duplicate-id", "no-ticket", "orphaned-promise", "implemented-but-reopened"]))
+
+    def test_lint_flags_an_unknown_ticket_and_spares_an_open_pr(self):
+        self.assertEqual(self.codes(self.lint(issue(3, ["status:done"], state="closed"), issue(12, ["status:backlog"]))), ["unknown-ticket"])
+        self.assertEqual(self.lint(issue(12), issue(15), issue(3, ["status:in-review"]))["findings"], [])
+
+    # ---- snapshot -----------------------------------------------------------------------------
     def test_snapshot_carries_entries_derived_status_and_text(self):
-        gh = FakeGh([issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]),
-                     issue(3, ["status:done"], state="closed")])
-        gh.repo = "o/r"
+        gh = FakeGh([issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]), issue(3, ["status:done"], state="closed")])
         doc = self.wiki.snapshot(gh)
         self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "o/r", 2, False))
         first, second = doc["entries"]
-        self.assertEqual((first["id"], first["page"], first["display"], first["tickets"]),
-                         ("search-filter", "features/search.md", "specified · in-dev", [12, 15]))
+        self.assertEqual((first["id"], first["path"], first["display"], first["tickets"], first["description"]),
+                         ("search-filter", "search/search-filter.md", "specified · in-dev", [12, 15], "The user can filter results."))
         self.assertEqual(first["text"], "The user can filter results.")
         self.assertEqual((second["id"], second["verifiedAt"], second["text"]), ("search-sort", "2026-01-01T00:00:00Z", ""))
 
     def test_snapshot_shortens_then_drops_text_to_fit_a_database_document(self):
-        self.page("big.md", "".join("## E%d {#e%d}\n<!-- wiki: status=implemented tickets= -->\n\n%s\n\n" % (i, i, "x" * 1500)
-                                    for i in range(250)))
+        for i in range(250):
+            self.entry(f"big/e{i}.md", "implemented", [], f"E{i}", "d", body="x" * 1500)
         doc = self.wiki.snapshot(FakeGh([issue(12), issue(15), issue(3)]))
         self.assertTrue(doc["truncated"])
         self.assertLessEqual(len(json.dumps(doc, ensure_ascii=False).encode("utf-8")), pilot.WIKI_SNAPSHOT_MAX_BYTES)
         self.assertEqual(doc["total"], 252)
 
-    def test_a_missing_ticket_is_reported_not_fatal(self):
-        out = self.derived("search-sort")
-        self.assertEqual(out["tickets"], [{"number": 3, "missing": True}])
+    # ---- migration from the earlier page format -------------------------------------------------
+    OLD = ("# Search\n\nIntro prose.\n\n## Filter by accessibility {#search-filter}\n"
+           "<!-- wiki: status=specified tickets=#12,#15 verifiedAt= verifiedCommit= -->\n\nThe user can filter results. More text.\n\n"
+           "## A plain section\n\nNot an entry.\n\n## Sort results {#search-sort}\n"
+           "<!-- wiki: status=implemented tickets=#3 verifiedAt=2026-01-01T00:00:00Z verifiedCommit=abc123 -->\n\nNearest first.\n"
+           "\n## Odd {#odd}\n<!-- wiki: status=in-dev tickets=#1 verifiedAt= verifiedCommit= -->\n")
 
-    def test_lint_is_clean_on_a_coherent_wiki(self):
-        gh = FakeGh([issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]),
-                     issue(3, ["status:done"], state="closed")])
-        self.assertEqual(self.wiki.lint(gh), {"ok": True, "entries": 2, "findings": []})
+    def test_migrate_converts_old_pages_into_okf_files(self):
+        legacy = pathlib.Path(self._tmp.name) / "old"
+        (legacy / "search").mkdir(parents=True)
+        (legacy / "search/matching.md").write_text(self.OLD)
+        (legacy / "README.md").write_text("# Wiki\n\nIntro.\n")
+        out = pilot.Wiki(str(legacy)).migrate()
+        self.assertEqual(sorted(out["created"]), ["search/search-filter.md", "search/search-sort.md"])
+        self.assertEqual(sorted(out["removed"]), ["README.md", "search/matching.md"])
+        self.assertEqual(len(out["skipped"]), 1)
+        self.assertIn("odd", out["skipped"][0])
+        text = (legacy / "search/search-sort.md").read_text()
+        fm = pilot.parse_frontmatter(pilot.split_frontmatter(text)[0])
+        self.assertEqual((fm["status"], fm["pilot"], fm["verified"]["at"], fm["description"]),
+                         ("stable", {"status": "implemented", "tickets": [3], "verifiedCommit": "abc123"}, "2026-01-01T00:00:00Z", "Nearest first."))
+        self.assertEqual(pilot.parse_frontmatter(pilot.split_frontmatter((legacy / "search/search-filter.md").read_text())[0])["description"],
+                         "The user can filter results.")
+        self.assertTrue((legacy / "index.md").exists() and (legacy / "search/index.md").exists())
+        self.assertFalse((legacy / "search/matching.md").exists())
+        self.assertEqual(pilot.Wiki(str(legacy)).migrate()["created"], [])
 
-    def test_lint_flags_duplicates_orphaned_promises_and_reopened_work(self):
-        self.page("dup.md", "## Again {#search-sort}\n<!-- wiki: status=proposed tickets= -->\n")
-        gh = FakeGh([issue(12, state="closed"), issue(15, state="closed"), issue(3, ["status:backlog"])])
-        report = self.wiki.lint(gh)
-        self.assertEqual(self.codes(report), sorted(
-            ["duplicate-id", "duplicate-id", "no-ticket", "orphaned-promise", "implemented-but-reopened"]))
-
-    def test_lint_flags_an_unknown_ticket(self):
-        report = self.wiki.lint(FakeGh([issue(3, ["status:done"], state="closed"), issue(12, ["status:backlog"])]))
-        self.assertEqual(self.codes(report), ["unknown-ticket"])
-
-    def test_an_implemented_entry_whose_pr_is_still_open_is_not_reopened(self):
-        gh = FakeGh([issue(12), issue(15), issue(3, ["status:in-review"])])
-        self.assertEqual(self.wiki.lint(gh)["findings"], [])
-
+    # ---- the command line ------------------------------------------------------------------------
     def test_offline_commands_need_no_repository(self):
         parser = pilot.build_parser()
-        for argv, needs in ((["wiki", "index"], False), (["wiki", "add", "a.md", "x", "--title", "T", "--status", "proposed"], False),
-                            (["wiki", "set", "x", "--stamp", "c"], False), (["wiki", "lint"], True),
-                            (["wiki", "show", "x"], True), (["wiki", "status"], True), (["pool", "dev"], True)):
+        for argv, needs in ((["wiki", "index"], False), (["wiki", "reindex"], False), (["wiki", "migrate"], False),
+                            (["wiki", "remove", "x"], False), (["wiki", "add", "a/b.md", "--title", "T", "--description", "d", "--status", "proposed"], False),
+                            (["wiki", "set", "x", "--stamp", "c"], False), (["wiki", "lint"], True), (["wiki", "show", "x"], True),
+                            (["wiki", "status"], True), (["wiki", "snapshot"], True), (["pool", "dev"], True)):
             self.assertEqual(pilot.needs_github(parser.parse_args(argv)), needs, argv)
 
     def test_repo_flag_is_accepted_after_a_wiki_subcommand(self):
-        args = pilot.build_parser().parse_args(["wiki", "lint", "--repo", "o/r"])
-        self.assertEqual(args.repo, "o/r")
+        self.assertEqual(pilot.build_parser().parse_args(["wiki", "lint", "--repo", "o/r"]).repo, "o/r")
 
     def test_main_runs_index_without_a_repo_and_an_absent_wiki_exits_1(self):
         def call(*argv):
@@ -1056,7 +1167,7 @@ class DemoSnapshotTests(unittest.TestCase):
         doc = self.demo.wiki_document()
         self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "Jonas-Eve/pilot", len(doc["entries"]), False))
         self.assertLessEqual(len(json.dumps(doc, ensure_ascii=False).encode()), pilot.WIKI_SNAPSHOT_MAX_BYTES)
-        keys = {"id", "title", "page", "status", "derived", "display", "tickets", "verifiedAt", "text"}
+        keys = {"id", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "text"}
         for row in doc["entries"]:
             self.assertEqual(set(row), keys)
             self.assertIn(row["status"], pilot.WIKI_STATUSES)
