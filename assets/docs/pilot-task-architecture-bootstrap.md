@@ -3,6 +3,8 @@
 Injected by `.claude/skills/pilot-architecture/SKILL.md` (`--bootstrap`) into the `pilot-architect` persona's
 prompt, together with `.pilot/pilot-link-architecture.md`.
 
+Write every title, description and body in the language the prompt names (English when it names none).
+
 You receive the project's inventory (its apps; an outline of `docs/**` and of each app's `README.md`, `CLAUDE.md` and `docs/**`; the state of the
 `PILOT:ARCHITECTURE`/`PILOT:COMMANDS` blocks of `CLAUDE.md` and `README.md`) and the current commit. Classify each document from its outline, then open only
 those that are architecture or decision, and read the code where cheap to confirm what a document claims:

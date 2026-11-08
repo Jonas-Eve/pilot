@@ -146,7 +146,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    missing: Discovery never stops for the dashboard.
 7b. **Wiki** (only when the `wiki` module is enabled (`.pilot/pilot-process.md` §8); else skip): per `.pilot/pilot-link-wiki.md`, for
    each finalized `type:feature` story call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-entries.md`
-   (target status `proposed`), `.pilot/pilot-link-knowledge.md`, `.pilot/pilot-link-wiki.md`, the story as finalized and the
+   (target status `proposed`), the project's language (`pilot.py module list`), `.pilot/pilot-link-knowledge.md`, `.pilot/pilot-link-wiki.md`, the story as finalized and the
    domains it touches (the PM reads their existing entries itself). Put each
    `conflicts` question to the human and settle it first. Then apply on branch `wiki/discovery-<first story n>`:
    `add` → `python3 .pilot/pilot.py wiki add <domain>/<id>.md --title … --description … --status proposed --ticket

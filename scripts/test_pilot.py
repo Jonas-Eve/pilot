@@ -1609,6 +1609,58 @@ class ProcessReferencesTests(unittest.TestCase):
         self.assertLess(size, 28_000, "pilot-process.md is loaded by every phase; move what only some read into a link doc or a skill")
 
 
+class LanguageTests(unittest.TestCase):
+    EN = "The traveler can filter the results to the places that are step-free, and the list is sorted by distance when it is shown."
+    FR = "Le voyageur peut filtrer les résultats sur les lieux de plain-pied, et la liste est triée par distance quand elle est affichée."
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+
+    def bundle(self, language):
+        root = pathlib.Path(self._tmp.name) / ("wiki-" + str(language))
+        bundle = pilot.Wiki(str(root), language=language)
+        bundle.reindex()
+        bundle.add("search/filter.md", "Filter", "One rule.", "proposed", [1], self.FR)
+        bundle.add("search/sort.md", "Sort", "Another rule.", "proposed", [2], self.EN)
+        return bundle
+
+    def codes(self, bundle):
+        return sorted((f["entry"], f["code"]) for f in bundle.lint(FakeGh([issue(1), issue(2)]))["findings"] if f["code"] == "other-language")
+
+    def test_english_when_the_state_names_no_language(self):
+        base = pathlib.Path(self._tmp.name)
+        self.assertEqual(pilot.read_language(str(base / "absent.json")), "en")
+        (base / "s.json").write_text(json.dumps({"language": " FR "}))
+        self.assertEqual(pilot.read_language(str(base / "s.json")), "fr")
+        (base / "e.json").write_text(json.dumps({"projectName": "x"}))
+        self.assertEqual(pilot.read_language(str(base / "e.json")), "en")
+
+    def test_detection_needs_a_clear_signal(self):
+        self.assertEqual(pilot.detect_language(self.EN), "en")
+        self.assertEqual(pilot.detect_language(self.FR), "fr")
+        self.assertIsNone(pilot.detect_language("Search by name"))
+        self.assertIsNone(pilot.detect_language("Das ist ein deutscher Satz ohne Hinweis darauf."))
+
+    def test_lint_warns_about_the_other_language_without_failing(self):
+        english = self.bundle("en")
+        self.assertEqual(self.codes(english), [("filter", "other-language")])
+        self.assertTrue(english.lint(FakeGh([issue(1), issue(2)]))["ok"])
+        self.assertEqual(self.codes(self.bundle("fr")), [("sort", "other-language")])
+
+    def test_another_language_is_not_judged(self):
+        self.assertEqual(self.codes(self.bundle("de")), [])
+
+    def test_module_list_says_the_language(self):
+        self.assertEqual(pilot.run_module(pilot.build_parser().parse_args(["module", "list"]))["language"], pilot.read_language())
+
+
+    def test_reading_doc_tells_search_terms_to_follow_the_project_language(self):
+        doc = (pathlib.Path(__file__).resolve().parent.parent / "assets/docs/pilot-link-knowledge.md").read_text(encoding="utf-8")
+        self.assertIn("write its terms in the project's language", doc)
+        self.assertIn("fall back to `index --depth 1`", doc)
+
+
 class VersionBumpTests(unittest.TestCase):
     """A change to what projects copy must raise VERSION (CLAUDE.md §4). Compares with origin/main;
     skipped where that ref or git is not available."""
