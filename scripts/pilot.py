@@ -10,7 +10,7 @@
   pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
   pilot.py doctor  [--verbose]                 # preflight: can the commands above work here?
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
-  pilot.py wiki    index|show|status|lint|add|set  # the project's wiki (wiki/): entries, derived statuses, checks
+  pilot.py wiki    index|show|status|lint|snapshot|add|set  # the project's wiki (wiki/): entries, derived statuses, checks, dashboard document
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
@@ -75,6 +75,7 @@ PROTO_FORBIDDEN = (
 )
 REMOTE_RE = re.compile(r"(?:github\.com[:/]|/git/)([\w.-]+)/([\w.-]+?)(?:\.git)?/?$")
 WIKI_DIR = "wiki"
+WIKI_SNAPSHOT_MAX_BYTES = 240_000  # a database document holds at most 256 KiB
 WIKI_STATUSES = ("proposed", "specified", "implemented", "deprecated")  # the only ones a file holds
 WIKI_KEYS = ("status", "tickets", "verifiedAt", "verifiedCommit")
 WIKI_HEAD_RE = re.compile(r"^##\s+(.+?)\s*\{#([a-z0-9][a-z0-9-]*)\}\s*$")
@@ -842,6 +843,27 @@ class Wiki:
                                          "message": f"#{number} is back at {status_of(t['labels'])}"})
         return {"ok": not findings, "entries": len(entries), "findings": findings}
 
+    def snapshot(self, gh):
+        """Every entry as the dashboard's wiki document: file fields, derived status and the entry's text
+        (shortened, then dropped, to keep the document under a database document's size)."""
+        entries, _ = self.parse()
+        cache, rows = {}, []
+        for e in sorted(entries, key=lambda x: (x["page"], x["line"])):
+            d = self.derive(e, gh, cache)
+            start = e["meta_at"] + 1 if e["meta_at"] is not None else e["head"] + 1
+            rows.append({"id": e["id"], "title": e["title"], "page": e["page"], "status": e["status"],
+                         "derived": d["derived"], "display": d["display"], "tickets": e["tickets"],
+                         "verifiedAt": e["verifiedAt"], "text": "\n".join(e["lines"][start:e["end"]]).strip()})
+        doc = {"kind": "wiki", "repo": gh.repo, "at": now_iso(), "total": len(rows), "truncated": False, "entries": rows}
+        full = [r["text"] for r in rows]
+        for cap in (1500, 400, 0):
+            for r, text in zip(rows, full):
+                r["text"] = text[:cap]
+            doc["truncated"] = any(len(t) > cap for t in full)
+            if len(json.dumps(doc, ensure_ascii=False).encode("utf-8")) <= WIKI_SNAPSHOT_MAX_BYTES:
+                break
+        return doc
+
     def _write(self, entry, replacement):
         lines = entry["lines"]
         lines[entry["meta_at"]] = replacement
@@ -978,6 +1000,8 @@ def build_parser():
     w = ws.add_parser("status", parents=[common], help="the derived (in-flight) status of entries, from their tickets")
     w.add_argument("ids", nargs="*")
     ws.add_parser("lint", parents=[common], help="mechanical checks, no judgment")
+    w = ws.add_parser("snapshot", parents=[common], help="every entry as the dashboard's wiki document")
+    w.add_argument("--out", help="write the document to this file and print only a summary")
     w = ws.add_parser("add", help="append an entry (heading + meta line + body) to a page")
     w.add_argument("page", help="path under the wiki directory, e.g. features/search.md")
     w.add_argument("id")
@@ -1009,13 +1033,20 @@ def run_wiki(args, gh):
         return wiki.status(gh, args.ids)
     if args.wiki_cmd == "lint":
         return wiki.lint(gh)
+    if args.wiki_cmd == "snapshot":
+        doc = wiki.snapshot(gh)
+        if not args.out:
+            return doc
+        with open(args.out, "w", encoding="utf-8") as handle:
+            json.dump(doc, handle, ensure_ascii=False, separators=(",", ":"))
+        return {"ok": True, "file": args.out, "total": doc["total"], "truncated": doc["truncated"]}
     if args.wiki_cmd == "add":
         return wiki.add(args.page, args.id, args.title, args.status, args.ticket, args.body)
     return wiki.set(args.id, args.status, args.add_ticket, args.remove_ticket, args.stamp, args.clear_stamp)
 
 
 def needs_github(args):
-    return args.cmd != "wiki" or args.wiki_cmd in ("show", "status", "lint")
+    return args.cmd != "wiki" or args.wiki_cmd in ("show", "status", "lint", "snapshot")
 
 
 def run(args, gh):

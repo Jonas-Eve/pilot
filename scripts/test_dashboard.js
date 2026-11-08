@@ -28,11 +28,12 @@ const ticket = (n, labels, extra = {}) => ({ n, t: `Ticket ${n}`, l: labels, u: 
 const STUB = (opts) => `
 (() => {
   const OPTS = ${JSON.stringify(opts)};
-  const data = { snapshots: {}, events: {}, activity: {}, design: {}, protos: {}, protoHtml: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [], protos: [], protoHtml: [] };
+  const data = { snapshots: {}, events: {}, activity: {}, design: {}, wiki: {}, protos: {}, protoHtml: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [], wiki: [], protos: [], protoHtml: [] };
   (OPTS.preload || []).forEach(d => { data.snapshots[d.repo.replace('/', '__')] = d; });
   (OPTS.events || []).forEach((d, k) => { data.events['e' + k] = d; });
   (OPTS.activity || []).forEach((d, k) => { data.activity['a' + k] = d; });
   (OPTS.design || []).forEach((d, k) => { data.design['d' + k] = d; });
+  (OPTS.wiki || []).forEach((d, k) => { data.wiki['w' + k] = d; });
   (OPTS.protos || []).forEach((d) => { data.protos['p' + d.n] = d; });
   (OPTS.protoHtml || []).forEach((d) => { data.protoHtml[d.n + '-' + d.k] = d; });
   const snap = (c) => ({ docs: Object.entries(data[c]).map(([id, d]) => ({ id, data: () => d, exists: true })) });
@@ -950,6 +951,50 @@ const STUB = (opts) => `
   await page.click('#tabs >> text=Ma file'); await page.waitForTimeout(150);
   check('reference page: clicking another tab leaves it, no back button needed',
         (await page.evaluate(() => location.hash)) === '#file' && !(await page.$eval('#idea', (e) => e.hidden)) && /Ma file/.test(await text(page, '#view')) && (await page.$$('#subtabs a')).length === 0);
+
+  // ---- wiki tab: the project's wiki document (built by `pilot.py wiki snapshot`), read-only ----
+  const WIKI = { kind: 'wiki', repo: REPO, at: iso(20), total: 4, truncated: false, entries: [
+    { id: 'search-by-name', title: 'Search places by name', page: 'search/matching.md', status: 'implemented', derived: 'verified', display: 'implemented · verified', tickets: [1], verifiedAt: iso(30), text: 'A traveler searches places <img src=x onerror="window.__pwn=1"> by part of their name.' },
+    { id: 'sort-by-distance', title: 'Results are sorted by distance', page: 'search/sorting.md', status: 'implemented', derived: '', display: 'implemented', tickets: [3], verifiedAt: '', text: 'Nearest place first.' },
+    { id: 'default-text-output', title: 'Default output', page: 'output/formats.md', status: 'specified', derived: 'in-review', display: 'specified · in-review', tickets: [12, 14], verifiedAt: '', text: 'One line per place.' },
+    { id: 'old-rule', title: 'Old rule', page: 'glossaire.md', status: 'deprecated', derived: '', display: 'deprecated', tickets: [], verifiedAt: '', text: '' }] };
+  { let page = await open({ preload: [BASE] });
+  await page.goto(FILE + '#wiki'); await page.waitForTimeout(350);
+  check('wiki tab: empty state names the commands, no ticket banner', /Aucun wiki publié/.test(await text(page, '#view')) && /pilot-wiki --init/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Wiki');
+  await page.evaluate((d) => window.__push('wiki', 'w0', d), WIKI); await page.waitForTimeout(200);
+  const wv = await text(page, '#view');
+  check('wiki tab: the tab counts the entries, the page shows them grouped by page', (await page.$$eval('#tabs a', (a) => a.map((x) => x.textContent))).includes('Wiki (4)') && /search\/matching\.md/.test(wv) && /Search places by name/.test(wv) && /output\/formats\.md/.test(wv), wv);
+  check('wiki sub-tabs: Tous, then one per functional domain with its count',
+        JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))) === JSON.stringify(['Tous (4)', 'général (1)', 'output (1)', 'search (2)']), JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))));
+  check('wiki summary: one chip per status', /2 implémenté/.test(wv) && /1 spécifié/.test(wv) && /1 déprécié/.test(wv), wv);
+  check('wiki entry chips: stamp, never verified, in-flight status, ticket link',
+        /vérifié il y a|vérifié /.test(wv) && /non vérifié/.test(wv) && /en review/.test(wv) && (await page.$eval('#view a[href$="/issues/12"]', (a) => a.getAttribute('href'))) === 'https://github.com/' + REPO + '/issues/12');
+  check('wiki: HTML in an entry stays text', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && (await page.$eval('#view details', (d) => d.textContent)).includes('<img src=x'));
+  await page.click('#subtabs >> text=search'); await page.waitForTimeout(150);
+  const wf = await text(page, '#view');
+  check('wiki sub-tab: shows only that domain, the address follows', /Search places by name/.test(wf) && /sorted by distance/.test(wf) && !/Default output/.test(wf) && (await page.evaluate(() => location.hash)) === '#wiki/search', wf);
+  await page.evaluate((d) => window.__push('wiki', 'w1', Object.assign({}, d, { repo: 'o/other', entries: [{ id: 'x', title: 'Autre projet', page: 'x/y.md', status: 'proposed', tickets: [], text: '' }] })), WIKI); await page.waitForTimeout(150);
+  check('wiki: another repo\'s document is not shown', !/Autre projet/.test(await text(page, '#view')));
+  check('wiki tab: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+  page = await open({ preload: [BASE], wiki: [WIKI] });
+  await page.goto(FILE + '#wiki/output'); await page.waitForTimeout(400);
+  check('wiki: #wiki/<domain> opens that domain, a preloaded document is shown',
+        /Default output/.test(await text(page, '#view')) && !/Search places by name/.test(await text(page, '#view')) && (await page.$eval('#subtabs a[aria-current=page]', (a) => a.textContent)).startsWith('output'));
+  await page.evaluate(() => { location.hash = 'wiki/zzz'; }); await page.waitForTimeout(200);
+  check('wiki: an unknown domain falls back to Tous', /Search places by name/.test(await text(page, '#view')) && /Default output/.test(await text(page, '#view')) && (await page.$eval('#subtabs a[aria-current=page]', (a) => a.textContent)).startsWith('Tous'));
+  const wwide = [];
+  for (const scheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const r of ['wiki', 'wiki/search', 'wiki/output']) {
+      await page.evaluate((x) => { location.hash = x; }, r); await page.waitForTimeout(150);
+      const w = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (w > 0) wwide.push(scheme + ' #' + r + ' (+' + w + 'px)');
+    }
+  }
+  check('wiki tab fits a 400px phone, light and dark', wwide.length === 0 && page.errors.length === 0, wwide.join(', ') + ' ' + page.errors.join(' | '));
+  await page.close();
+  }
 
   // every tab and sub-tab fits a phone, in both themes, with no script error
   const ROUTES = ['file', 'ensemble', 'ensemble/discovery', 'ensemble/spec', 'ensemble/dev', 'ensemble/review', 'ensemble/qa',
