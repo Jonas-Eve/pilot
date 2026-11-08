@@ -35,7 +35,7 @@ is an enabler, not a delivered piece of product behavior.
 **Once the e2e task reaches `status:done`, the whole split is structurally finished**
 (every dev sibling necessarily already is, per the dependency above) — this is what
 triggers `.claude/skills/pilot-qa/SKILL.md` "Phase 5 — Human QA" instead of the ordinary cascade
-straight to `status:done` (`.pilot/pilot-process.md` §3 "Cascading completion").
+straight to `status:done` (`.pilot/pilot-link-cascade.md` "Cascading completion").
 
 Spec (architect+tech lead) writes the e2e task's spec as the test plan itself: which flow,
 which existing test tooling/framework this project already uses for e2e, and what its

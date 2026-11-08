@@ -1508,7 +1508,7 @@ class ProcessReferencesTests(unittest.TestCase):
 
     def test_the_generic_file_stays_small(self):
         size = (self.ROOT / "assets/docs/pilot-process.md").stat().st_size
-        self.assertLess(size, 50_000, "pilot-process.md is loaded by every phase; move what only some read into a link doc or a skill")
+        self.assertLess(size, 28_000, "pilot-process.md is loaded by every phase; move what only some read into a link doc or a skill")
 
 
 class VersionBumpTests(unittest.TestCase):

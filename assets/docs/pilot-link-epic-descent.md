@@ -5,7 +5,7 @@ Injected whole by `.claude/skills/pilot-spec/SKILL.md`,
 checks this before applying its own status-based bullets to a freshly-given ticket
 number. Not Discovery (no such ticket to resolve, it starts from a raw idea or
 `--resume`) or phase 5/QA (`status:qa`/`status:in-qa` stories never have open sub-issues,
-`.pilot/pilot-process.md` §3 "Cascading completion"). `/pilot-auto` needs no awareness
+`.pilot/pilot-link-cascade.md` "Cascading completion"). `/pilot-auto` needs no awareness
 of this at all — giving it an Epic or a split story's number still just means "try the
 fixed order against that one ticket" (`pilot-auto/SKILL.md`); it's each of the three
 phases above that resolves what "that one ticket" actually is, the same delegation

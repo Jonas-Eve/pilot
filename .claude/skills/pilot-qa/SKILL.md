@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Read `.pilot/pilot-process.md` before running this if you haven't already — it's the source
 of truth for labels, states, and the claim protocol, and the "Phase 5 — Human QA" section below covers this phase;
-this skill only covers the mechanics of running it. The roster (`.pilot/pilot-link-agent-dialogue.md` "Roster"): `pilot-qa` leads, no validator (the human is), the designer is summonable. Summons and
+this skill only covers the mechanics of running it. `.pilot/pilot-link-ticket-tree.md` (the levels) and `.pilot/pilot-link-cascade.md` (what sets `status:qa` and `status:done`) complete it. The roster (`.pilot/pilot-link-agent-dialogue.md` "Roster"): `pilot-qa` leads, no validator (the human is), the designer is summonable. Summons and
 dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` is passed into its call.
 
 ## Steps
@@ -106,12 +106,11 @@ it's a human physically exercising the shipped, integrated feature and saying wh
 actually behaves as intended — the one check in PILOT no agent can perform on its own,
 because it requires a real environment and a real person's judgment on the experience, not
 just the diff. `type:tech`/`type:bug` tickets never reach this phase: a `type:tech` split
-cascades straight to `status:done` once all its tasks are done (`.pilot/pilot-process.md` §3 "Cascading
-completion"); a `type:bug` ticket — always a standalone `level:task`, never split (`.pilot/pilot-link-ticket-tree.md` "Three levels") — reaches `status:done` directly once its own PR merges.
+cascades straight to `status:done` once all its tasks are done (`.pilot/pilot-link-cascade.md` "Cascading completion"); a `type:bug` ticket — always a standalone `level:task`, never split (`.pilot/pilot-link-ticket-tree.md` "Three levels") — reaches `status:done` directly once its own PR merges.
 
 ## When it fires
 
-Set by `.pilot/pilot-process.md` §3 "Cascading completion": once a `type:feature` story's e2e task (and therefore
+Set by `.pilot/pilot-link-cascade.md` "Cascading completion": once a `type:feature` story's e2e task (and therefore
 every dev sibling it depends on, per `.pilot/pilot-link-e2e-tasks.md`) reaches `status:done`,
 the story itself lands on `status:qa` instead of `status:done` — unclaimed, unassigned,
 the pool `/pilot-qa` picks from.

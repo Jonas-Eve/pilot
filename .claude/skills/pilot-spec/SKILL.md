@@ -8,7 +8,7 @@ argument-hint: "<issue number, optional — picks the next fresh/resumable statu
 
 Read `.pilot/pilot-process.md` first — it's the source of
 truth for labels, states, and the claim protocol; this skill covers only the
-mechanics of running this phase. Read `.pilot/pilot-link-agent-dialogue.md` too — it
+mechanics of running this phase. Read `.pilot/pilot-link-ticket-tree.md` (ticket types and levels, prerequisite tickets, dependencies between tasks, re-scoping) and `.pilot/pilot-link-agent-dialogue.md` too — it
 covers the architect/tech lead turn-taking mechanic this skill relies on throughout, and
 what `--multi` means here. The roster (`.pilot/pilot-link-agent-dialogue.md` "Roster") for this
 phase: the architect and tech lead lead together (the tech lead alone for an existing `type:bug` ticket), the PM
