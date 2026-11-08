@@ -128,7 +128,7 @@ from a previous run — the whole point is picking up upstream changes.
 
 5c. **Check the modules.** `python3 .pilot/pilot.py module list`. A `state.json` with no `modules` field predates them:
    record in step 6 what the project already uses, so nothing it relies on disappears — `dashboard` on when it has a
-   `dashboardUrl`, and `design` and `proto` on with it (they only worked with it), `wiki` off. Say which modules exist
+   `dashboardUrl`, and `design` and `proto` on with it (they only worked with it), `wiki` off. A `state.json` with no `language` means English: leave it, and mention `language` (the text of wiki and architecture entries) if the project writes them in another language. Say which modules exist
    (`.pilot/pilot-process.md` §8) and that each is turned on by its own skill (`/pilot-wiki`, `/pilot-architecture`, `/pilot-dashboard`,
    `/pilot-design`, `/pilot-proto`); never enable anything else here, and never create or change anything under
    `wiki/` or `architecture/`. With the `wiki` module on but `wiki/` missing, say that `doctor` fails until `/pilot-wiki` repairs it; with

@@ -4,6 +4,8 @@ Injected by `.claude/skills/pilot-discovery/SKILL.md` (target status `proposed`)
 `.claude/skills/pilot-spec/SKILL.md` (target status `specified`) into the `pilot-pm` persona's
 prompt, together with `.pilot/pilot-link-wiki.md`, when the project's `wiki` module is enabled.
 
+Write every title, description and body in the language the prompt names (English when it names none), whatever language the story is in.
+
 You receive the story as finalized (title, body, acceptance criteria; for Spec also its tasks),
 the entries that already exist in the domains it touches (id, title, path, status, text), the
 target status, and the project's functional domains (the folders of `wiki/`).

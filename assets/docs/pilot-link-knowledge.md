@@ -25,6 +25,11 @@ particular and stop as soon as you have what the task needs:
 `proposed` or `specified` entry is a promise, not behavior; a `deprecated` or `superseded` one is history, read only
 to follow `supersededBy`. When the bundle and the code disagree, the bundle is right and a human arbitrates.
 
+**Language.** The text of an entry (title, description, prose) is in the project's language: `language` in `.pilot/state.json`, English when absent (`python3
+.pilot/pilot.py module list` prints it). Translate what you write rather than mixing; keys, statuses, ids, file and folder names stay English whatever the language. `lint` warns about an
+entry clearly written in English or French when the project's language is the other one. `search` matches words, not meaning:
+write its terms in the project's language whatever language the task is in, and when it returns nothing fall back to `index --depth 1`.
+
 **Shapes you can rely on.** `index` and `search` rows carry `id`, `path`, `description`, `status` (`search` also
 `score` and `snippet`); `index --depth 1` returns `folders` (`path`, `description`, `entries`) and `entries`; `show`
 returns the entry's fields, its `text`, `links`, `backlinks` and `external`. Fields may be added, never removed.

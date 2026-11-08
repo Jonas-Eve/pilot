@@ -1,7 +1,7 @@
 ---
 name: pilot-init
 description: "One-time bootstrap for a new project adopting PILOT: asks for the project name and a short functional vision, copies PILOT's skills/agents and canonical docs into the project from github.com/Jonas-Eve/pilot, generates the project's own CLAUDE.md, README.md, and PROJECT-FUNCTIONAL-SCOPE.md from templates, scaffolds a default `.github/pull_request_template.md` if none exists, and provisions the GitHub labels the state machine depends on, and turns on the optional wiki module when asked (--wiki / --no-wiki, else it asks). Refuses to run twice — if already initialized, stops with an explicit message instead of touching anything. Use when a human wants to start using PILOT in a project that hasn't run it before. Not for describing the monorepo's apps/technologies — that's /pilot-init-archi, which requires this to have run first."
-argument-hint: "[project name] [functional vision] [--modules wiki,architecture,dashboard,design,proto | --no-modules]"
+argument-hint: "[project name] [functional vision] [--modules wiki,architecture,dashboard,design,proto | --no-modules] [--language en|fr|…]"
 disable-model-invocation: true
 ---
 
@@ -29,6 +29,7 @@ This skill's idempotency is tracked in `.pilot/state.json` at the project root:
   "pilotInitializedAt": "<ISO8601>",
   "pilotVersion": "<MAJOR.MINOR.PATCH, from $PILOT_SRC/VERSION>",
   "projectName": "<name>",
+  "language": "en",
   "modules": {"wiki": <bool>, "architecture": <bool>, "dashboard": <bool>, "design": <bool>, "proto": <bool>},
   "lastProcessDocSyncAt": "<ISO8601>",
   "lastLabelsSyncAt": "<ISO8601>",
@@ -65,7 +66,8 @@ see `.claude/skills/pilot-update/SKILL.md`.
    `dashboard` (the team page), `design` and `proto` (the design system and prototypes, which need `dashboard`).
    `--modules <list>` or `--no-modules` if given, otherwise ask the human which to enable (recommending `wiki` and
    `dashboard` for a project with a product to describe); a module whose prerequisite is missing brings it along.
-   Every module can be turned on later, by its own skill.
+   Every module can be turned on later, by its own skill. Also the **language** of the wiki and architecture text (`--language <code>`, e.g. `fr`; English by default, written to `language`);
+   the framework itself stays English.
 
 3. **Check for pre-existing root docs.** If `CLAUDE.md`, `README.md`, or
    `PROJECT-FUNCTIONAL-SCOPE.md` already exist at the project root (retrofitting PILOT

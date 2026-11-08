@@ -35,7 +35,7 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 1. Check the decision meets the bar (`.pilot/pilot-link-architecture.md`: it outlives a ticket and someone could
    be tempted to reverse it); otherwise say it belongs in a guideline or a ticket and stop.
 2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-adr.md`,
-   `.pilot/pilot-link-architecture.md`, the decision, `.pilot/pilot-link-knowledge.md` (the architect reads the entries that bear on it itself) and the
+   `.pilot/pilot-link-architecture.md`, the decision, `.pilot/pilot-link-knowledge.md` (the architect reads the entries that bear on it itself), the project's language (`pilot.py module list`) and the
    relevant code — nothing else from this conversation. Validate the returned JSON; fix or call again.
 3. Show the draft to the human, who edits and validates it (pair); `--auto` is not offered: a decision is a
    human's.
@@ -49,7 +49,7 @@ For a project that already has apps and documents.
 1. Inventory: `python3 .pilot/pilot.py arch inventory` — the apps, an outline (path, size, title, first line) of `docs/**` and of each app's
    `README.md`, `CLAUDE.md` and `docs/**`, and the state of the `PILOT:ARCHITECTURE`/`PILOT:COMMANDS` blocks of `CLAUDE.md` and `README.md`
    (`placeholder`, `pointer`, `filled` with the project's own content, `absent`). Nothing to gather → say so and propose `--scaffold`.
-2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-bootstrap.md`, `.pilot/pilot-link-architecture.md`, the inventory and
+2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-bootstrap.md`, `.pilot/pilot-link-architecture.md`, the project's language (`pilot.py module list`), the inventory and
    `git rev-parse HEAD`; it opens only the documents it classifies as architecture or decision. Validate the returned JSON (paths `overview.md`,
    `guidelines/<id>.md` or the same under `apps/<app>/`, ids in `[a-z0-9-]+`, a one-sentence `description` and a `source` each); fix or call again.
 3. The human confirms or edits each guideline; write them with `arch add … --status accepted`. A `decision` document becomes an ADR only once the human gives

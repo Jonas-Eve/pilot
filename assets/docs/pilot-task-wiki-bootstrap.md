@@ -3,6 +3,8 @@
 Injected by `.claude/skills/pilot-wiki/SKILL.md` (`--bootstrap`) into the `pilot-techlead` persona's
 prompt, once per domain, together with `.pilot/pilot-link-wiki.md`.
 
+Write every title, description and body in the language the prompt names (English when it names none).
+
 You receive a domain (a functional area of the product, a folder of `wiki/`, e.g. `search/`), the closed tickets and accepted
 prototypes that belong to it (title, body, comments) and where its code lives. Cross two
 independent sources for every behavior of the domain: **intent** (the tickets and prototypes) and

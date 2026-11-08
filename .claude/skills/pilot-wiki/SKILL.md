@@ -56,7 +56,7 @@ When the project has closed tickets or code to document, offer `--bootstrap` rig
    `status:poc-validated` that belong to it (`gh issue list`/`gh issue view`, with comments), and
    where its code lives. Nothing to gather → skip the domain, say so.
 3. Call `Agent` for `pilot-techlead` with `.pilot/pilot-task-wiki-bootstrap.md`,
-   `.pilot/pilot-link-wiki.md`, that material and `git rev-parse HEAD`. Validate the returned JSON
+   `.pilot/pilot-link-wiki.md`, the project's language (`pilot.py module list`), that material and `git rev-parse HEAD`. Validate the returned JSON
    (paths `<domain>/<id>.md` with the id in `[a-z0-9-]+` and no id already in the wiki, a one-sentence
    `description` each); fix or call again.
 4. Write per triage:

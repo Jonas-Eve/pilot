@@ -201,14 +201,14 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
 5b. **Wiki** (only when the `wiki` module is enabled (`.pilot/pilot-process.md` §8), and for a `type:feature` story that was split or closed as won't-do): per `.pilot/pilot-link-wiki.md`. Won't-do → its
    `proposed` entries (`python3 .pilot/pilot.py wiki index --ticket <story>`) are removed (`wiki remove <id>`).
    Split → call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-entries.md` (target status
-   `specified`), `.pilot/pilot-link-knowledge.md`, `.pilot/pilot-link-wiki.md`, the story, its tasks and the domains it touches. Apply on branch `wiki/spec-<story>` the way `pilot-discovery/SKILL.md` step 7b does, with
+   `specified`), the project's language (`pilot.py module list`), `.pilot/pilot-link-knowledge.md`, `.pilot/pilot-link-wiki.md`, the story, its tasks and the domains it touches. Apply on branch `wiki/spec-<story>` the way `pilot-discovery/SKILL.md` step 7b does, with
    `--status specified`, and list on every entry the story plus its `type:feature`/`type:tech` tasks
    (`wiki set <id> --add-ticket <n>`) — never the `type:e2e` task. A `conflicts` question: pair → put it to
    the human; `--auto` → `python3 .pilot/pilot.py flag <story> --comment "<question>"` and write nothing for
    that entry. Commit, push, open one PR, never merge it.
 5c. **Architecture decisions** (only when the `architecture` module is enabled, and when the architect's **Architecture decisions** marked one `ADR`
    — it outlives the ticket and someone could be tempted to reverse it, `.pilot/pilot-link-architecture.md`): per decision, run
-   `/pilot-architecture --adr` step 2-4 on it listing the story with `arch add --ticket`, on branch `architecture/spec-<story>`; pair →
+   `/pilot-architecture --adr` step 2-4 on it (in the project's language) listing the story with `arch add --ticket`, on branch `architecture/spec-<story>`; pair →
    the human validates the draft, `--auto` → add it `proposed` and say so in the PR. Commit, push, open one PR, never merge it.
 6. Report the outcome (ticket(s) split/spec'd, dependencies recorded, prerequisite
    ticket(s) spun out, or closed as won't-do) back to the human, and the wiki PR if step 5b opened one, and the architecture PR if step 5c did.

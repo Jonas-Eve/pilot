@@ -184,6 +184,36 @@ def read_modules(path=STATE_PATH):
     return {k: bool(v) for k, v in modules.items()} if isinstance(modules, dict) else {}
 
 
+DEFAULT_LANGUAGE = "en"
+# a few of the commonest function words per language: enough to tell which of the two a paragraph is written in
+LANG_WORDS = {
+    "en": frozenset("the of and to in is are for with that this on be as by it from at or an not can when each".split()),
+    "fr": frozenset("le la les des du de et en est un une pour avec que qui dans sur par au aux ce cette ne pas ou chaque quand".split()),
+}
+
+
+def read_language(path=STATE_PATH):
+    """The language of the project's wiki and architecture text, from `.pilot/state.json` (`language`, an ISO code such as
+    "fr"); English when the file or the field is absent."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return DEFAULT_LANGUAGE
+    value = data.get("language") if isinstance(data, dict) else None
+    return value.strip().lower() if isinstance(value, str) and value.strip() else DEFAULT_LANGUAGE
+
+
+def detect_language(text):
+    """`en` or `fr` when the text clearly is one of them, else None (too short, mixed, or another language)."""
+    words = re.findall(r"[a-zà-ÿ]+", text.lower())
+    scores = {lang: sum(1 for w in words if w in vocab) for lang, vocab in LANG_WORDS.items()}
+    best, other = sorted(scores, key=scores.get, reverse=True)
+    if scores[best] >= 4 and scores[best] > 2 * scores[other]:
+        return best
+    return None
+
+
 def module_registry(modules):
     """Every known module with whether it is on, what it needs, its skills, its first-use command and its bootstrap."""
     return {name: {"enabled": bool(modules.get(name)), "requires": meta["requires"], "skills": meta["skills"],
@@ -991,8 +1021,9 @@ class Bundle:
     DERIVED_NAMES = ("in-dev", "in-review", "in-qa", "verified")  # in-flight names a file never holds
     REMOVABLE = "proposed"  # the one status whose entry may be deleted
 
-    def __init__(self, root=None):
+    def __init__(self, root=None, language=None):
         self.root = root or self.DIR
+        self._language = language
 
     # ---- reading --------------------------------------------------------------------------
     def _concept_files(self):
@@ -1264,6 +1295,24 @@ class Bundle:
             lines.append("description: " + json.dumps(description, ensure_ascii=False))
         return "---\n" + "\n".join(lines) + "\n---" if lines else ""
 
+    @property
+    def language(self):
+        if self._language is None:
+            self._language = read_language()
+        return self._language
+
+    def _language_findings(self, entries):
+        """Warnings: an entry clearly written in English or French when the project's language is the other one."""
+        if self.language not in LANG_WORDS:
+            return []
+        out = []
+        for e in entries:
+            found = detect_language(e["description"] + " " + e["text"])
+            if found and found != self.language:
+                out.append({"entry": e["id"], "path": e["path"], "level": "warn", "code": "other-language",
+                            "message": f"written in {found}, the project's language is {self.language} (`language` in .pilot/state.json)"})
+        return out
+
     def _size_findings(self, entries):
         """Warnings, never errors: a description longer than an index line, a concept too long to be one concept."""
         out = []
@@ -1420,7 +1469,7 @@ class Bundle:
             if current != text:
                 findings.append({"path": self._rel(path), "code": "stale-index",
                                  "message": "run `python3 .pilot/pilot.py wiki reindex`"})
-        return self._report(entries, findings + self._size_findings(entries))
+        return self._report(entries, findings + self._size_findings(entries) + self._language_findings(entries))
 
     def snapshot(self, gh):
         """Every managed entry as the dashboard's wiki document: frontmatter fields, derived status and the
@@ -1785,7 +1834,7 @@ class Architecture(Bundle):
                     current = handle.read()
             if current != text:
                 findings.append({"path": self._rel(path), "code": "stale-index", "message": "run `python3 .pilot/pilot.py arch reindex`"})
-        return self._report(entries, findings + self._size_findings(entries))
+        return self._report(entries, findings + self._size_findings(entries) + self._language_findings(entries))
 
     def migrate(self):
         raise Refused({"ok": False, "reason": "not-applicable", "hint": "the architecture bundle has no earlier format"})
@@ -2023,7 +2072,7 @@ def needs_github(args):
 
 def run_module(args):
     if args.action == "list":
-        return {"ok": True, "modules": module_registry(read_modules())}
+        return {"ok": True, "modules": module_registry(read_modules()), "language": read_language()}
     if not args.name:
         raise Refused({"ok": False, "reason": "module-name-required", "expected": list(MODULES)})
     return set_module(args.name, args.action == "enable", with_requires=args.with_requires)
