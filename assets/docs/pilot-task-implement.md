@@ -105,6 +105,11 @@ spec).
    `.pilot/pilot-process.md` §4). Never merge — that's phase 4's call, never dev's: a
    human merges by hand, unless `/pilot-review` itself was run with `--merge`
    (`.pilot/pilot-process.md` §3 "`status:approved`").
+6a. **Wiki** (only when the prompt carries entries): they state what the product must do. Implement
+   what they say; an entry that contradicts the spec or cannot be followed is not yours to edit — stop
+   with `needs-human`. In the same PR, an entry this change completes — every other ticket it lists
+   with `level` `task` is closed (`python3 .pilot/pilot.py wiki status <id>`) — moves to
+   `implemented`: `wiki set <id> --status implemented`. Any other entry stays as it is.
 7. Update any docs or service-level README/CLAUDE.md (or equivalent) the change
    affects, per this project's own documentation-maintenance convention, if it has
    one.

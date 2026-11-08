@@ -143,7 +143,17 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    `created` ones of step 4, and `--action closed` for a draft closed as `wont-do`. Skipped
    silently when `dashboardUrl` is absent from `.pilot/state.json`, or `.pilot/pilot.py` is
    missing: Discovery never stops for the dashboard.
-8. Report the issue number(s)/URL(s) back to the human.
+7b. **Wiki** (only when `wiki/` exists at the project root; else skip): per `.pilot/pilot-link-wiki.md`, for
+   each finalized `type:feature` story call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-entries.md`
+   (target status `proposed`), `.pilot/pilot-link-wiki.md`, the story as finalized and the existing entries
+   of the domains it touches (`python3 .pilot/pilot.py wiki index`, then `wiki show <id>`). Put each
+   `conflicts` question to the human and settle it first. Then apply on branch `wiki/discovery-<first story n>`:
+   `add` → `python3 .pilot/pilot.py wiki add <page> <id> --title … --status proposed --ticket <story> --body …`;
+   `update` → edit that entry's prose in its file, then `wiki set <id> --status proposed --add-ticket <story>
+   --clear-stamp`; `deprecate` → `wiki set <id> --status deprecated --add-ticket <story>`. Check with
+   `wiki lint`, commit (`docs(wiki): …`), push, open one PR (`mcp__github__create_pull_request`) listing the
+   entries and their status, and give the human its link to merge — never merge it here.
+8. Report the issue number(s)/URL(s) back to the human, and the wiki PR if step 7b opened one.
 
 Do not decide whether a story needs splitting into tasks, record a dependency, or write a
 spec as part of this skill — that's `/pilot-spec`'s job, run separately once per story.

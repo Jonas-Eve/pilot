@@ -260,5 +260,15 @@ summoned persona's call.
    - Either prerequisite case above, when step 1 found a parent Epic for the ticket
      being worked: also `mcp__github__add_issue_comment` on that Epic naming the
      blocking relationship — skip this when the worked ticket has no parent Epic.
+5b. **Wiki** (only when `wiki/` exists at the project root and the ticket is a `type:feature` story that
+   was split or closed as won't-do; else skip): per `.pilot/pilot-link-wiki.md`. Won't-do → its
+   `proposed` entries (`python3 .pilot/pilot.py wiki index --ticket <story>`) are removed from their files.
+   Split → call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-entries.md` (target status
+   `specified`), `.pilot/pilot-link-wiki.md`, the story, its tasks and the existing entries of the domains it
+   touches. Apply on branch `wiki/spec-<story>` the way `pilot-discovery/SKILL.md` step 7b does, with
+   `--status specified`, and list on every entry the story plus its `type:feature`/`type:tech` tasks
+   (`wiki set <id> --add-ticket <n>`) — never the `type:e2e` task. A `conflicts` question: pair → put it to
+   the human; `--auto` → `python3 .pilot/pilot.py flag <story> --comment "<question>"` and write nothing for
+   that entry. Commit, push, open one PR, never merge it.
 6. Report the outcome (ticket(s) split/spec'd, dependencies recorded, prerequisite
-   ticket(s) spun out, or closed as won't-do) back to the human.
+   ticket(s) spun out, or closed as won't-do) back to the human, and the wiki PR if step 5b opened one.

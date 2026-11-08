@@ -774,7 +774,8 @@ class Wiki:
                 continue
             ticket = normalize(raw)
             status = status_of(ticket["labels"])
-            seen.append({"number": number, "state": ticket["state"], "status": status})
+            level = next((l[6:] for l in sorted(ticket["labels"]) if l.startswith("level:")), "")
+            seen.append({"number": number, "state": ticket["state"], "status": status, "level": level})
             if ticket["state"] == "open":
                 for level, group in ((1, WIKI_IN_DEV), (2, WIKI_IN_REVIEW), (3, WIKI_IN_QA)):
                     if status in group:
@@ -849,8 +850,9 @@ class Wiki:
             handle.write("\n".join(lines))
         os.replace(tmp, entry["path"])
 
-    def set(self, entry_id, status=None, add=(), remove=(), stamp=None):
-        """The only writer of an entry's meta line. `stamp` is the commit lint verified the entry against."""
+    def set(self, entry_id, status=None, add=(), remove=(), stamp=None, clear_stamp=False):
+        """The only writer of an entry's meta line. `stamp` is the commit lint verified the entry against;
+        `clear_stamp` forgets a stamp when the entry's text changed (nothing verified the new text)."""
         entry = self._find(entry_id)
         if entry["meta_at"] is None:
             raise Refused({"ok": False, "reason": "no-meta-line", "id": entry_id})
@@ -860,6 +862,8 @@ class Wiki:
         tickets = [n for n in entry["tickets"] if n not in set(remove)]
         tickets += [n for n in add if n not in tickets]
         at, commit = entry["verifiedAt"], entry["verifiedCommit"]
+        if clear_stamp:
+            at, commit = "", ""
         if stamp:
             at, commit = now_iso(), stamp
         line = self._line(status or entry["status"], tickets, at, commit)
@@ -987,6 +991,7 @@ def build_parser():
     w.add_argument("--add-ticket", type=int, action="append", default=[])
     w.add_argument("--remove-ticket", type=int, action="append", default=[])
     w.add_argument("--stamp", metavar="COMMIT", help="verifiedAt = now, verifiedCommit = COMMIT")
+    w.add_argument("--clear-stamp", action="store_true", help="forget the stamp (the entry's text changed)")
     for name in ("flag", "unflag"):
         p = sub.add_parser(name)
         p.add_argument("issue", type=int)
@@ -1006,7 +1011,7 @@ def run_wiki(args, gh):
         return wiki.lint(gh)
     if args.wiki_cmd == "add":
         return wiki.add(args.page, args.id, args.title, args.status, args.ticket, args.body)
-    return wiki.set(args.id, args.status, args.add_ticket, args.remove_ticket, args.stamp)
+    return wiki.set(args.id, args.status, args.add_ticket, args.remove_ticket, args.stamp, args.clear_stamp)
 
 
 def needs_github(args):
