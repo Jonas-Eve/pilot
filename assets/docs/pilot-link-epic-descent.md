@@ -20,7 +20,7 @@ and still claimed by those two directly, same as always) — so those two trigge
 a `status:split` story too — but `/pilot-spec` is the one phase that keeps a
 legitimate, documented direct path to a still-open `status:split` story: re-scoping it
 in place, adding more tasks to the existing split
-(`.pilot/pilot-link-ticket-tree.md` "Re-scoping a `type:feature` story after its split is
+(`.pilot/pilot-link-split-tickets.md` "Re-scoping a `type:feature` story after its split is
 done", "`status:split`, original e2e task not yet done"). This mechanism must never
 intercept that case, so `/pilot-spec` only triggers it for a `level:epic` — never for a
 `status:split` story, which it resolves through its own ordinary bullets untouched.

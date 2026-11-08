@@ -24,7 +24,7 @@ yourself (a sibling story under the same Epic, something referenced via "Blocks 
 
 **If this is a re-scope of a story whose split already finished once** (the skill
 claimed it from `status:qa`/`status:in-qa` into `status:in-spec` before calling you —
-the one deliberate backward transition in the state machine, `.pilot/pilot-link-ticket-tree.md`
+the one deliberate backward transition in the state machine, `.pilot/pilot-link-split-tickets.md`
 "Re-scoping a `type:feature` story after its split is done") — you're also given
 which tasks from the earlier round(s) are already `status:done`, including the
 original e2e task(s). Steps 4/4a below still apply, scoped to *this round only*:
@@ -87,7 +87,7 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
      story, that's its own future Spec pass's split judgment call to make, not something
      to solve by creating several stories here) — **never** as a
      sub-issue of
-     the ticket you're scoping (`.pilot/pilot-link-ticket-tree.md` "Prerequisite tech/bug
+     the ticket you're scoping (`.pilot/pilot-link-split-tickets.md` "Prerequisite tech/bug
      tickets"): that would make it `level:task` and wrongly tie it to this ticket's
      split-tracking lifecycle instead of its own Spec/Dev/Review phases. Land it at
      `status:backlog` for a later `/pilot-spec` run — never the live drafting loop that
@@ -104,7 +104,7 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    - **Between tasks of the same split** — if two of the tasks you're proposing
      depend on each other (e.g. a front-end one consuming an API a back-end one
      creates), record it the same way ("Depends on #N" on the dependent one,
-     `.pilot/pilot-link-ticket-tree.md` "Dependencies between tasks of the same split").
+     `.pilot/pilot-link-split-tickets.md` "Dependencies between tasks of the same split").
 6. Label every task `level:task` (never on the story itself once it's `status:split` —
    the story keeps its own `level:story`, but loses its own `priority:` label here,
    superseded by its tasks' own, `.pilot/pilot-process.md` §3) and its own `type:` per

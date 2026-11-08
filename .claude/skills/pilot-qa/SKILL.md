@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Read `.pilot/pilot-process.md` before running this if you haven't already — it's the source
 of truth for labels, states, and the claim protocol, and the "Phase 5 — Human QA" section below covers this phase;
-this skill only covers the mechanics of running it. `.pilot/pilot-link-ticket-tree.md` (the levels) and `.pilot/pilot-link-cascade.md` (what sets `status:qa` and `status:done`) complete it. The roster (`.pilot/pilot-link-agent-dialogue.md` "Roster"): `pilot-qa` leads, no validator (the human is), the designer is summonable. Summons and
+this skill only covers the mechanics of running it. `.pilot/pilot-link-ticket-tree.md` (the levels) and `.pilot/pilot-link-cascade.md` (what sets `status:qa` and `status:done`) complete it. The roster (`.pilot/pilot-link-roster.md` "Roster"): `pilot-qa` leads, no validator (the human is), the designer is summonable. Summons and
 dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` is passed into its call.
 
 ## Steps

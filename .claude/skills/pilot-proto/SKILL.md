@@ -68,7 +68,7 @@ live (except `--accept` and `--reject`, which are one mechanical step).
 6. **Validate.** When the human says the work is done, call `Agent` for `pilot-pm` with
    `.pilot/pilot-task-check-proto.md`, the recorded brief and the mockup only — not the discussion. An
    objection brings the PM into the debate with the designer and the human, then back on the revised mockup
-   alone (`.pilot/pilot-link-agent-dialogue.md` "Roster").
+   alone (`.pilot/pilot-link-roster.md` "Roster").
 7. **Finalize** once the human approves: `python3 .pilot/pilot.py set <n> --status poc-review --unassign`.
    Say how to decide: accept (`/pilot-proto <n> --accept`) or reject (`/pilot-proto <n> --reject`), also from
    the dashboard.

@@ -166,7 +166,7 @@ comment on a still-open #M, then oldest.
 
 ### Blocked-by dependencies (mechanical gate, distinct from `on-hold`)
 
-A ticket's body may carry "Depends on #N" references, written by the architect for a prerequisite (`.pilot/pilot-link-ticket-tree.md` "Prerequisite tech/bug tickets") and by
+A ticket's body may carry "Depends on #N" references, written by the architect for a prerequisite (`.pilot/pilot-link-split-tickets.md` "Prerequisite tech/bug tickets") and by
 `pilot-dev`/`pilot-e2e`/`pilot-qa` for a bug found inline; anything that writes the phrase gets the gate. **One dependency per line, always**, one issue number each, never several on a
 line: the check is a per-line literal match.
 
@@ -214,7 +214,7 @@ stands and fix anything incoherent, since a decision from an early round may no 
 Review, not an addition. Review has no incremental assembly: each reviewer re-checks its own points once before returning (`.pilot/pilot-link-review-consensus.md`).
 
 **`--auto`** has the agent(s) decide everything and the skill apply the result in one pass, no checkpoint. `--auto`, `--resume` and pair are mutually exclusive — pick one per run. `--with
-<persona>[,...]` (`.pilot/pilot-link-agent-dialogue.md` "Roster") is orthogonal to all of them; `--merge` (Review only, "`status:approved`") only controls whether an all-approve outcome also merges the
+<persona>[,...]` (`.pilot/pilot-link-roster.md` "Roster") is orthogonal to all of them; `--merge` (Review only, "`status:approved`") only controls whether an all-approve outcome also merges the
 PR, with either mode; `--multi <N>` (Discovery, Spec, Dev, Review; `.pilot/pilot-link-agent-dialogue.md`, `.pilot/pilot-link-multi-consensus.md`) runs an ensemble on the one claimed ticket, with either
 mode, and is invalid only with `--resume`.
 

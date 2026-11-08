@@ -49,7 +49,7 @@ behavior.
 
 This applies to `status:split` stories only — a story's tasks are a fixed set for
 whichever round is currently in flight (the original split, or a later re-scope round,
-`.pilot/pilot-link-ticket-tree.md` "Re-scoping a `type:feature` story after its split is done"), so completeness at
+`.pilot/pilot-link-split-tickets.md` "Re-scoping a `type:feature` story after its split is done"), so completeness at
 any given moment is provable from a live read of its current sub-issues — never a cached
 list. An Epic's own story set can grow while it stays open — new stories are added under
 it at any point — but once every one of them is closed (`status:done` or `status:wont-do`),

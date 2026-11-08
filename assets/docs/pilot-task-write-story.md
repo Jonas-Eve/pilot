@@ -2,7 +2,7 @@
 
 Injected by `.claude/skills/pilot-discovery/SKILL.md` into the `pilot-pm` persona's
 prompt as the lead; the architect then validates your draft with
-`.pilot/pilot-task-anticipate-architecture.md` (`.pilot/pilot-link-agent-dialogue.md` "Roster"), and an
+`.pilot/pilot-task-anticipate-architecture.md` (`.pilot/pilot-link-roster.md` "Roster"), and an
 objection opens a debate with you (`.pilot/pilot-link-agent-dialogue.md`).
 
 You receive the human-validated brief from the framing stage

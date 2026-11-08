@@ -1309,6 +1309,7 @@ class Bundle:
     def reindex(self, entries=None):
         """Write the index.md of every folder (and the root's, which carries `okf_version`); returns the files
         that changed. An index.md in a folder that no longer holds an entry is removed."""
+        os.makedirs(self.root, exist_ok=True)  # turning a module on creates its folder: reindex is how
         entries = self.parse() if entries is None else entries
         wanted, changed = self._generated_indexes(entries), []
         for d, text in wanted.items():

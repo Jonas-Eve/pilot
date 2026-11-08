@@ -1,7 +1,7 @@
 # PILOT task — Check a prototype against its brief
 
 Injected by `.claude/skills/pilot-proto/SKILL.md` into the `pilot-pm` persona's prompt as the
-validator (`.pilot/pilot-link-agent-dialogue.md` "Roster"). You receive the recorded brief (the ticket's
+validator (`.pilot/pilot-link-roster.md` "Roster"). You receive the recorded brief (the ticket's
 own body) and the mockup's HTML — not the discussion that produced it. Read the mockup as the
 human will: by what it shows and does.
 
