@@ -12,6 +12,7 @@
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
+  pilot.py arch    index|reindex|show|lint|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
@@ -902,22 +903,32 @@ def dump_frontmatter(data):
     return "\n".join(out) + "\n"
 
 
-class Wiki:
-    """The project's wiki, an OKF bundle: `wiki/<domain>/<id>.md`, one entry per file, a YAML frontmatter
+class Bundle:
+    """The engine of an OKF bundle that PILOT writes (the wiki, the architecture): one entry per file, a YAML frontmatter
     (`type`, `title`, `description`, `status`, `verified`, and PILOT's own `pilot:` block with the finer
     status, the tickets and the verified commit), a prose body, and an `index.md` per folder this class keeps
     up to date. This class is the only writer of the frontmatter. The statuses a file holds are
-    WIKI_STATUSES; the in-flight ones (in-dev, in-review, in-qa, verified) are derived from ticket labels,
-    never written."""
+    STATUSES; a subclass may derive more (the wiki's in-flight ones, from ticket labels), never written."""
 
-    def __init__(self, root=WIKI_DIR):
-        self.root = root
+    DIR = WIKI_DIR
+    TITLE = "Wiki"
+    ABSENT = "wiki-absent"
+    ABSENT_HINT = "run /pilot-wiki (it turns the wiki module on and creates wiki/)"
+    PATH_HINT = "<domain>/<id>.md, the id in lowercase letters, digits and dashes"
+    STATUSES = WIKI_STATUSES
+    OKF_STATUS = WIKI_OKF_STATUS
+    DEFAULT_TYPE = WIKI_DEFAULT_TYPE
+    DERIVED_NAMES = ("in-dev", "in-review", "in-qa", "verified")  # in-flight names a file never holds
+    REMOVABLE = "proposed"  # the one status whose entry may be deleted
+
+    def __init__(self, root=None):
+        self.root = root or self.DIR
 
     # ---- reading --------------------------------------------------------------------------
     def _concept_files(self):
         if not os.path.isdir(self.root):
-            raise Refused({"ok": False, "reason": "wiki-absent", "dir": self.root,
-                           "hint": "run /pilot-wiki (it turns the wiki module on and creates wiki/)"})
+            raise Refused({"ok": False, "reason": self.ABSENT, "dir": self.root,
+                           "hint": self.ABSENT_HINT})
         found = []
         for base, _dirs, names in os.walk(self.root):
             found.extend(os.path.join(base, n) for n in names if n.endswith(".md") and n not in WIKI_RESERVED)
@@ -954,8 +965,7 @@ class Wiki:
             self._read_fields(entry, fm)
         return entries
 
-    @staticmethod
-    def _read_fields(entry, fm):
+    def _read_fields(self, entry, fm):
         add = entry["problems"].append
         if not fm.get("type"):
             add(("missing-type", "`type` is the one required frontmatter key"))
@@ -974,13 +984,13 @@ class Wiki:
         status = pilot.get("status")
         if not status:
             add(("missing-status", "no `pilot.status`"))
-        elif status not in WIKI_STATUSES:
-            add(("bad-status", f"status {status!r} is not one of {', '.join(WIKI_STATUSES)}"
-                 + (" (derived, never written)" if status in ("in-dev", "in-review", "in-qa", "verified") else "")))
+        elif status not in self.STATUSES:
+            add(("bad-status", f"status {status!r} is not one of {', '.join(self.STATUSES)}"
+                 + (" (derived, never written)" if status in self.DERIVED_NAMES else "")))
         else:
             entry["status"] = status
-            if (fm.get("status") or "stable") != WIKI_OKF_STATUS[status]:  # OKF: no `status` means stable
-                add(("status-mismatch", f"`status` is {fm.get('status') or 'absent (stable)'!r}, {WIKI_OKF_STATUS[status]!r} expected for {status}"))
+            if (fm.get("status") or "stable") != self.OKF_STATUS[status]:  # OKF: no `status` means stable
+                add(("status-mismatch", f"`status` is {fm.get('status') or 'absent (stable)'!r}, {self.OKF_STATUS[status]!r} expected for {status}"))
         tickets = pilot.get("tickets") or []
         if not isinstance(tickets, list) or not all(isinstance(n, int) and not isinstance(n, bool) and n > 0 for n in tickets):
             add(("bad-tickets", "`pilot.tickets` is a list of ticket numbers, e.g. [12, 15]"))
@@ -1027,7 +1037,7 @@ class Wiki:
                 d = posixpath.dirname(d)
         out = {}
         for d in sorted(dirs):
-            lines = ["# " + (posixpath.basename(d) or "Wiki"), ""]
+            lines = ["# " + (posixpath.basename(d) or self.TITLE), ""]
             for sub in sorted(x for x in dirs if x and posixpath.dirname(x) == d):
                 n = sum(1 for e in entries if e["path"].startswith(sub + "/"))
                 lines.append(f"* [{posixpath.basename(sub)}]({posixpath.basename(sub)}/) - {n} entr{'y' if n == 1 else 'ies'}")
@@ -1189,14 +1199,14 @@ class Wiki:
         """The only writer of an entry's frontmatter (unknown keys are kept as they are). `stamp` is the commit
         a lint verified the entry against; `clear_stamp` forgets it when the entry's text changed."""
         entry = self._editable(entry_id)
-        if status is not None and status not in WIKI_STATUSES:
-            raise Refused({"ok": False, "reason": "bad-status", "expected": list(WIKI_STATUSES),
-                           "hint": "in-dev, in-review, in-qa and verified are derived, never written"})
+        if status is not None and status not in self.STATUSES:
+            raise Refused({"ok": False, "reason": "bad-status", "expected": list(self.STATUSES),
+                           **({"hint": ", ".join(self.DERIVED_NAMES) + " are derived, never written"} if self.DERIVED_NAMES else {})})
         fm = entry["fm"]
         pilot = dict(fm["pilot"])
         if status:
             pilot["status"] = status
-            fm["status"] = WIKI_OKF_STATUS[status]
+            fm["status"] = self.OKF_STATUS[status]
         tickets = [n for n in entry["tickets"] if n not in set(remove)]
         tickets += [n for n in add if n not in tickets]
         pilot["tickets"] = tickets
@@ -1217,16 +1227,21 @@ class Wiki:
         return {"ok": True, "id": entry_id, "status": after["status"], "tickets": after["tickets"],
                 "verifiedAt": after["verifiedAt"], "verifiedCommit": after["verifiedCommit"]}
 
-    def add(self, path, title, description, status, tickets=(), body="", typ=WIKI_DEFAULT_TYPE):
+    def _path_ok(self, rel):
+        return True
+
+    def add(self, path, title, description, status, tickets=(), body="", typ=None):
         """Create an entry: `<domain>/<id>.md` under the wiki root, then refresh the indexes."""
         rel = path.replace(os.sep, "/")
         stem = posixpath.splitext(posixpath.basename(rel))[0]
         if (not rel.endswith(".md") or rel.startswith("/") or ".." in rel.split("/")
                 or posixpath.basename(rel) in WIKI_RESERVED or not WIKI_ID_RE.match(stem)):
             raise Refused({"ok": False, "reason": "bad-path", "path": path,
-                           "hint": "<domain>/<id>.md, the id in lowercase letters, digits and dashes"})
-        if status not in WIKI_STATUSES:
-            raise Refused({"ok": False, "reason": "bad-status", "expected": list(WIKI_STATUSES)})
+                           "hint": self.PATH_HINT})
+        if not self._path_ok(rel):
+            raise Refused({"ok": False, "reason": "bad-path", "path": path, "hint": self.PATH_HINT})
+        if status not in self.STATUSES:
+            raise Refused({"ok": False, "reason": "bad-status", "expected": list(self.STATUSES)})
         if not title.strip() or not description.strip():
             raise Refused({"ok": False, "reason": "title-and-description-required"})
         os.makedirs(self.root, exist_ok=True)
@@ -1235,18 +1250,21 @@ class Wiki:
             raise Refused({"ok": False, "reason": "duplicate-id", "id": stem})
         target = os.path.join(self.root, *rel.split("/"))
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        fm = {"type": typ, "title": title.strip(), "description": description.strip(), "status": WIKI_OKF_STATUS[status],
+        fm = {"type": typ or self._type_of(rel), "title": title.strip(), "description": description.strip(), "status": self.OKF_STATUS[status],
               "pilot": {"status": status, "tickets": list(tickets)}}
         self._write(target, fm, ("\n" + body.strip() + "\n") if body.strip() else "")
         self.reindex()
         return {"ok": True, "id": stem, "path": rel, "status": status}
 
+    def _type_of(self, rel):
+        return self.DEFAULT_TYPE
+
     def remove(self, entry_id):
         """Delete a `proposed` entry (a won't-do story's promise); anything else is deprecated, not removed."""
         entry = self._editable(entry_id)
-        if entry["status"] != "proposed":
+        if entry["status"] != self.REMOVABLE:
             raise Refused({"ok": False, "reason": "not-removable", "id": entry_id, "status": entry["status"],
-                           "hint": "only a proposed entry is removed; deprecate the others"})
+                           "hint": f"only a {self.REMOVABLE} entry is removed; deprecate the others"})
         os.remove(entry["abs"])
         self.reindex()
         return {"ok": True, "id": entry_id, "removed": entry["path"]}
@@ -1289,7 +1307,7 @@ class Wiki:
                     body = "\n".join(lines[n + 2:cut]).strip()
                     first = re.split(r"(?<=[.!?])\s", body.replace("\n", " "), maxsplit=1)[0].strip() if body else ""
                     status = meta.get("status", "")
-                    if status not in WIKI_STATUSES:
+                    if status not in self.STATUSES:
                         skipped.append(f"{self._rel(path)}#{eid} (status {status!r})")
                         continue
                     target = os.path.join(self.root, *rel_dir.split("/"), eid + ".md")
@@ -1298,8 +1316,8 @@ class Wiki:
                         continue
                     tickets = [int(t) for t in re.findall(r"#(\d+)", meta.get("tickets", ""))]
                     pilot = {"status": status, "tickets": tickets}
-                    fm = {"type": WIKI_DEFAULT_TYPE, "title": title, "description": (first or title)[:300],
-                          "status": WIKI_OKF_STATUS[status]}
+                    fm = {"type": self.DEFAULT_TYPE, "title": title, "description": (first or title)[:300],
+                          "status": self.OKF_STATUS[status]}
                     if meta.get("verifiedAt") and meta.get("verifiedCommit"):
                         fm["verified"] = {"by": WIKI_VERIFIER, "at": meta["verifiedAt"]}
                         pilot["verifiedCommit"] = meta["verifiedCommit"]
@@ -1311,6 +1329,99 @@ class Wiki:
                 removed.append(self._rel(path))
         changed = self.reindex()
         return {"ok": True, "created": created, "removed": removed, "skipped": skipped, "indexes": changed}
+
+
+class Wiki(Bundle):
+    """The functional wiki: statuses proposed / specified / implemented / deprecated, derived from tickets."""
+
+
+ARCH_DIR = "architecture"
+ARCH_STATUSES = ("proposed", "accepted", "deprecated", "superseded")
+ARCH_OKF_STATUS = {"proposed": "draft", "accepted": "stable", "deprecated": "deprecated", "superseded": "deprecated"}
+
+
+class Architecture(Bundle):
+    """The architecture module's bundle: `architecture/overview.md`, `guidelines/<id>.md` and `adr/<NNNN-title>.md`.
+    Same OKF files, same frontmatter writer, same indexes as the wiki; its own statuses (an ADR is accepted, then
+    deprecated or superseded by a later one, and never edited in between), no ticket-driven checks."""
+    TITLE = "Architecture"
+    ABSENT = "architecture-absent"
+    ABSENT_HINT = "run /pilot-architecture (it turns the architecture module on and creates architecture/)"
+    PATH_HINT = "overview.md, guidelines/<id>.md or adr/<NNNN-title>.md"
+
+    def _path_ok(self, rel):
+        return rel == "overview.md" or (rel.count("/") == 1 and rel.split("/")[0] in ("guidelines", "adr"))
+    DIR = ARCH_DIR
+    STATUSES = ARCH_STATUSES
+    OKF_STATUS = ARCH_OKF_STATUS
+    DEFAULT_TYPE = "Guideline"
+    DERIVED_NAMES = ()
+
+    def _type_of(self, rel):
+        return "ADR" if rel.startswith("adr/") else "Architecture" if rel == "overview.md" else self.DEFAULT_TYPE
+
+    def show(self, entry_id, gh=None):
+        entry = self._find(entry_id)
+        pilot = (entry["fm"] or {}).get("pilot") or {}
+        return {"ok": True, **self._view(entry), "type": entry["type"], "text": entry["text"],
+                "supersedes": pilot.get("supersedes") or "", "supersededBy": pilot.get("supersededBy") or ""}
+
+    def supersede(self, new_id, old_id):
+        """A new ADR replaces an accepted one: the old becomes `superseded` (and links forward), the new links back."""
+        if new_id == old_id:
+            raise Refused({"ok": False, "reason": "same-entry", "id": new_id})
+        new, old = self._editable(new_id), self._editable(old_id)
+        if old["status"] != "accepted":
+            raise Refused({"ok": False, "reason": "not-accepted", "id": old_id, "status": old["status"],
+                           "hint": "only an accepted entry is superseded"})
+        if new["status"] not in ("proposed", "accepted"):
+            raise Refused({"ok": False, "reason": "cannot-supersede-with", "id": new_id, "status": new["status"]})
+        old_fm, new_fm = old["fm"], new["fm"]
+        old_fm["status"] = self.OKF_STATUS["superseded"]
+        old_fm["pilot"] = {**old_fm["pilot"], "status": "superseded", "supersededBy": new_id}
+        new_fm["pilot"] = {**new_fm["pilot"], "supersedes": old_id}
+        self._write(old["abs"], old_fm, old["rest"])
+        self._write(new["abs"], new_fm, new["rest"])
+        self.reindex()
+        return {"ok": True, "id": new_id, "supersedes": old_id}
+
+    def lint(self, gh=None):
+        """The mechanical checks (no judgment, no GitHub): an unreadable entry, a duplicate id, a stale index.md, and
+        supersession that does not hold together (a superseded entry with no successor, a link to nothing)."""
+        entries = self.parse()
+        findings, seen = [], {}
+        for e in entries:
+            seen.setdefault(e["id"], []).append(e)
+        by_id = {e["id"]: e for e in entries if e["managed"]}
+        for e in entries:
+            where = {"entry": e["id"], "path": e["path"]}
+            findings += [{**where, "code": c, "message": m} for c, m in e["problems"]]
+            if len(seen[e["id"]]) > 1:
+                findings.append({**where, "code": "duplicate-id", "message": "this id is used by %d files" % len(seen[e["id"]])})
+            if not e["managed"]:
+                continue
+            pilot = e["fm"]["pilot"]
+            by, sup = pilot.get("supersededBy") or "", pilot.get("supersedes") or ""
+            if e["status"] == "superseded" and not by:
+                findings.append({**where, "code": "missing-supersededBy", "message": "a superseded entry names the one that replaces it"})
+            if by and (by not in by_id or by_id[by]["fm"]["pilot"].get("supersedes") != e["id"]):
+                findings.append({**where, "code": "supersession-mismatch", "message": f"{by} does not say it supersedes this entry"})
+            if by and e["status"] != "superseded":
+                findings.append({**where, "code": "supersession-mismatch", "message": "supersededBy is set but the status is not superseded"})
+            if sup and (sup not in by_id or by_id[sup]["status"] != "superseded" or by_id[sup]["fm"]["pilot"].get("supersededBy") != e["id"]):
+                findings.append({**where, "code": "supersession-mismatch", "message": f"{sup} is not a superseded entry pointing back here"})
+        for d, text in self._generated_indexes(entries).items():
+            path = os.path.join(self.root, d, "index.md")
+            current = None
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as handle:
+                    current = handle.read()
+            if current != text:
+                findings.append({"path": self._rel(path), "code": "stale-index", "message": "run `python3 .pilot/pilot.py arch reindex`"})
+        return {"ok": not findings, "entries": len(entries), "findings": findings}
+
+    def migrate(self):
+        raise Refused({"ok": False, "reason": "not-applicable", "hint": "the architecture bundle has no earlier format"})
 
 
 def repo_from_remote(url):
@@ -1387,7 +1498,7 @@ def build_parser():
     p.add_argument("--with-requires", action="store_true", help="enable: turn the modules it needs on too")
     p = sub.add_parser("wiki")
     p.add_argument("--dir", default=WIKI_DIR, help="the wiki directory (default: wiki)")
-    ws = p.add_subparsers(dest="wiki_cmd", required=True)
+    ws = p.add_subparsers(dest="bundle_cmd", required=True)
     w = ws.add_parser("index", help="every entry: id, path, description, status, tickets, stamp (no GitHub call)")
     w.add_argument("--ticket", type=int, help="only the entries that list this ticket")
     ws.add_parser("reindex", help="write the index.md of every folder (OKF progressive disclosure)")
@@ -1418,6 +1529,36 @@ def build_parser():
     w = ws.add_parser("remove", help="delete a proposed entry")
     w.add_argument("id")
     ws.add_parser("migrate", help="convert a wiki from the earlier multi-entry page format to OKF files")
+    p = sub.add_parser("arch")
+    p.add_argument("--dir", default=ARCH_DIR, help="the architecture directory (default: architecture)")
+    ws = p.add_subparsers(dest="bundle_cmd", required=True)
+    ws.add_parser("index", help="every entry: id, path, description, status (no GitHub call)").add_argument("--ticket", type=int, help=argparse.SUPPRESS)
+    ws.add_parser("reindex", help="write the index.md of every folder")
+    w = ws.add_parser("show", help="one entry's text; an ADR also its supersession")
+    w.add_argument("id")
+    ws.add_parser("lint", help="mechanical checks, no judgment")
+    w = ws.add_parser("add", help="create an entry file (overview.md, guidelines/<id>.md or adr/<NNNN-title>.md)")
+    w.add_argument("path")
+    w.add_argument("--title", required=True)
+    w.add_argument("--description", required=True, help="one sentence, shown in the index")
+    w.add_argument("--status", required=True, choices=list(ARCH_STATUSES))
+    w.add_argument("--type", default=None)
+    w.add_argument("--ticket", type=int, action="append", default=[])
+    w.add_argument("--body", default="")
+    w = ws.add_parser("set", help="rewrite an entry's frontmatter (the only writer of it)")
+    w.add_argument("id")
+    w.add_argument("--status", choices=list(ARCH_STATUSES))
+    w.add_argument("--title")
+    w.add_argument("--description")
+    w.add_argument("--add-ticket", type=int, action="append", default=[])
+    w.add_argument("--remove-ticket", type=int, action="append", default=[])
+    w.add_argument("--stamp", metavar="COMMIT", help="verified = now, pilot.verifiedCommit = COMMIT")
+    w.add_argument("--clear-stamp", action="store_true")
+    w = ws.add_parser("remove", help="delete a proposed entry")
+    w.add_argument("id")
+    w = ws.add_parser("supersede", help="an accepted ADR is replaced by a new one")
+    w.add_argument("new")
+    w.add_argument("old")
     for name in ("flag", "unflag"):
         p = sub.add_parser(name)
         p.add_argument("issue", type=int)
@@ -1425,31 +1566,33 @@ def build_parser():
     return parser
 
 
-def run_wiki(args, gh):
-    wiki = Wiki(args.dir)
-    if args.wiki_cmd == "index":
+def run_bundle(args, gh):
+    wiki = (Wiki if args.cmd == "wiki" else Architecture)(args.dir)
+    if args.bundle_cmd == "index":
         return wiki.index(args.ticket)
-    if args.wiki_cmd == "show":
+    if args.bundle_cmd == "show":
         return wiki.show(args.id, gh)
-    if args.wiki_cmd == "status":
+    if args.bundle_cmd == "status":
         return wiki.status(gh, args.ids)
-    if args.wiki_cmd == "lint":
+    if args.bundle_cmd == "lint":
         return wiki.lint(gh)
-    if args.wiki_cmd == "snapshot":
+    if args.bundle_cmd == "snapshot":
         doc = wiki.snapshot(gh)
         if not args.out:
             return doc
         with open(args.out, "w", encoding="utf-8") as handle:
             json.dump(doc, handle, ensure_ascii=False, separators=(",", ":"))
         return {"ok": True, "file": args.out, "total": doc["total"], "truncated": doc["truncated"]}
-    if args.wiki_cmd == "add":
+    if args.bundle_cmd == "add":
         return wiki.add(args.path, args.title, args.description, args.status, args.ticket, args.body, args.type)
-    if args.wiki_cmd == "reindex":
+    if args.bundle_cmd == "reindex":
         return {"ok": True, "changed": wiki.reindex()}
-    if args.wiki_cmd == "remove":
+    if args.bundle_cmd == "remove":
         return wiki.remove(args.id)
-    if args.wiki_cmd == "migrate":
+    if args.bundle_cmd == "migrate":
         return wiki.migrate()
+    if args.bundle_cmd == "supersede":
+        return wiki.supersede(args.new, args.old)
     return wiki.set(args.id, args.status, args.add_ticket, args.remove_ticket, args.stamp, args.clear_stamp,
                     args.title, args.description)
 
@@ -1457,7 +1600,9 @@ def run_wiki(args, gh):
 def needs_github(args):
     if args.cmd == "module":
         return False
-    return args.cmd != "wiki" or args.wiki_cmd in ("show", "status", "lint", "snapshot")
+    if args.cmd == "arch":
+        return False
+    return args.cmd != "wiki" or args.bundle_cmd in ("show", "status", "lint", "snapshot")
 
 
 def run_module(args):
@@ -1471,8 +1616,8 @@ def run_module(args):
 def run(args, gh):
     if args.cmd == "module":
         return run_module(args)
-    if args.cmd == "wiki":
-        return run_wiki(args, gh)
+    if args.cmd in ("wiki", "arch"):
+        return run_bundle(args, gh)
     machine = Machine(gh)
     if args.cmd == "pool":
         return {"phase": args.phase, **machine.pool(args.phase, args.limit)}
@@ -1518,7 +1663,7 @@ def main(argv=None):
         print(json.dumps({"error": str(err) or "gh CLI not found"}))
         return 2
     print(json.dumps({"repo": repo, **result} if repo else result, ensure_ascii=False))
-    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki") else 0
+    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki", "arch") else 0
 
 
 if __name__ == "__main__":
