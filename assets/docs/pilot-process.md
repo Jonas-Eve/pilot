@@ -1102,8 +1102,9 @@ failure resolved to "not actually a bug" → `status:done`, the one direct excep
 ## 8. Optional modules: the wiki
 
 A project turns an optional module on in `.pilot/state.json` (`"modules": {"wiki": true}`; `python3
-.pilot/pilot.py module list|enable|disable`). A module that is off, or absent from the file, changes nothing:
-every step below that names it is skipped.
+.pilot/pilot.py module list|enable|disable`; a module may require another: `enable` refuses until it is on,
+`--with-requires` turns both on). A module that is off, or absent from the file, changes nothing: every step
+below that names it is skipped.
 
 **`wiki`.** `wiki/` at the project root is the source of truth for what the product does and what is
 promised, and every phase works with it: Discovery and Spec write the entries of a story (`proposed`, then

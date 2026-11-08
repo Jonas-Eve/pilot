@@ -665,6 +665,46 @@ class DoctorTests(unittest.TestCase):
         pilot.set_module("wiki", False, str(state))
         self.assertEqual(pilot.read_modules(str(state)), {"wiki": False})
 
+    def modules_state(self, modules=None):
+        state = pathlib.Path(self._tmp.name) / "state.json"
+        state.write_text(json.dumps({"projectName": "p", "modules": modules or {}}))
+        return state
+
+    def test_a_module_needing_another_is_refused_until_it_is_on(self):
+        state = self.modules_state()
+        with self.assertRaises(pilot.Refused) as caught:
+            pilot.set_module("design", True, str(state))
+        self.assertEqual((caught.exception.payload["reason"], caught.exception.payload["missing"]), ("requires", ["dashboard"]))
+        self.assertEqual(pilot.read_modules(str(state)), {})
+        pilot.set_module("dashboard", True, str(state))
+        self.assertEqual(pilot.set_module("design", True, str(state))["modules"], {"dashboard": True, "design": True})
+
+    def test_with_requires_turns_the_prerequisites_on_too(self):
+        state = self.modules_state()
+        out = pilot.set_module("proto", True, str(state), with_requires=True)
+        self.assertEqual(out["modules"], {"dashboard": True, "proto": True})
+
+    def test_a_module_another_one_needs_cannot_be_turned_off(self):
+        state = self.modules_state({"dashboard": True, "design": True})
+        with self.assertRaises(pilot.Refused) as caught:
+            pilot.set_module("dashboard", False, str(state))
+        self.assertEqual((caught.exception.payload["reason"], caught.exception.payload["by"]), ("required-by", ["design"]))
+        pilot.set_module("design", False, str(state))
+        self.assertEqual(pilot.set_module("dashboard", False, str(state))["modules"], {"dashboard": False, "design": False})
+
+    def test_the_registry_lists_every_module_with_its_state(self):
+        reg = pilot.module_registry({"dashboard": True})
+        self.assertEqual(sorted(reg), ["dashboard", "design", "proto", "wiki"])
+        self.assertEqual((reg["dashboard"]["enabled"], reg["design"]["enabled"], reg["design"]["requires"], reg["wiki"]["init"]),
+                         (True, False, ["dashboard"], "/pilot-wiki --init"))
+        self.assertTrue(all(set(m) == {"enabled", "requires", "skills", "init"} for m in reg.values()))
+
+    def test_every_module_requires_only_known_modules_and_names_a_pilot_skill(self):
+        for name, meta in pilot.MODULES.items():
+            self.assertTrue(set(meta["requires"]) <= set(pilot.MODULES), name)
+            self.assertTrue(all(s.startswith("pilot-") for s in meta["skills"]), name)
+            self.assertTrue(meta["init"].startswith("/pilot-"), name)
+
     def test_set_module_refuses_an_unknown_module_and_a_missing_state(self):
         with self.assertRaises(pilot.Refused) as caught:
             pilot.set_module("nope", True, str(pathlib.Path(self._tmp.name) / "state.json"))
