@@ -256,7 +256,7 @@ it is:
   4. Finalize exactly like any other split (`.pilot/pilot-process.md` §4 "Claim Protocol"): the story lands back on
      `status:split`, now tracking this round's new tasks instead.
   Once this round's new e2e task also reaches `status:done`, the story cascades to
-  `status:qa` again exactly as before (`.pilot/pilot-process.md` §3 "Cascading completion") — the new behavior gets
+  `status:qa` again exactly as before (`.pilot/pilot-link-cascade.md` "Cascading completion") — the new behavior gets
   its own human QA pass in phase 5, same as the original.
 - **`status:split`, original e2e task not yet done** — no special handling needed: the
   story hasn't finished its first round yet, so this is an ordinary re-scope. Add the new

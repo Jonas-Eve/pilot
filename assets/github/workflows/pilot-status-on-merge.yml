@@ -75,7 +75,7 @@ jobs:
               // A task reaching status:done here was itself the target of a merged
               // PR's "Closes #N", so GitHub has already closed it by this point. A
               // status:split parent cascaded to status:done, however, was never
-              // merged directly (pilot-process.md §3 "Cascading completion") — nothing
+              // merged directly (pilot-link-cascade.md "Cascading completion") — nothing
               // else in the pipeline ever closes its issue, so it would otherwise sit
               // open forever despite carrying status:done. Close explicitly, for
               // either case, whenever the target is the terminal status — reusing the

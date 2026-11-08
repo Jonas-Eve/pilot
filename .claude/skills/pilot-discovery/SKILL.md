@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
 source of truth for labels, states, and the claim protocol; this skill only covers the
-mechanics of running Discovery. Read `.pilot/pilot-link-agent-dialogue.md` too — it covers
+mechanics of running Discovery. Read `.pilot/pilot-link-ticket-tree.md` (where each ticket type originates, how epics, stories and tasks are built) and `.pilot/pilot-link-agent-dialogue.md` too — it covers
 the PM/architect turn-taking mechanic this skill relies on whenever the architect objects. The
 roster (`.pilot/pilot-link-agent-dialogue.md` "Roster"): the PM leads, the architect validates, the
 designer is summonable.

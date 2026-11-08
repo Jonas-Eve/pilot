@@ -226,3 +226,21 @@ sequenceDiagram
 
 Each phase skill is invoked on its own (`/pilot-spec 123`, etc.), as its own isolated
 agent call (see §5), one phase at a time.
+
+## The status machine at a glance
+
+```
+draft → backlog → in-spec → dev-ready → in-dev → review-ready →
+  in-review → approved → done
+              ↓         ↓
+              +---- wont-do (before dev starts) ----+
+
+in-spec → split (tracker for tasks, reaches done only by cascade)
+
+split (type:feature only) → qa → in-qa → done (Phase 5 — Human QA — instead of
+cascading straight to done like a type:tech split does)
+
+in-review → changes-requested → in-dev → review-ready → in-review (loop back through dev
+when phase 4 blocks on something that needs an actual code change)
+```
+Each phase's own side of it is `python3 .pilot/pilot.py contract <phase>`; the composition is checked by `pilot.py contract`.
