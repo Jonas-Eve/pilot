@@ -21,7 +21,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    §4 "Picking the next ticket..." (fresh `status:dev-ready`, resumable `can-resume`,
    reclaimable `status:changes-requested`; `needs-human`, `on-hold` and open "Depends on #N"
    excluded; priority, then "Blocks #M", then oldest; a scheduled cron Routine drives this
-   with `--auto` added, §4 "Scheduled sweeps"). `pick: null` → report nothing to do;
+   with `--auto` added, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `pick: null` → report nothing to do;
    otherwise resolve `pick.number` the same way. Act on the returned `action`:
    - `claim-fresh` → step 2 (mode `fresh`).
    - `reclaim` → step 2 (mode `reclaim`): a PR already exists, phase 4 sent it back

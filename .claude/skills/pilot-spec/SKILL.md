@@ -32,7 +32,7 @@ summoned persona's call.
      spec` first — the pool of `.pilot/pilot-process.md` §4 "Picking the next ticket..."
      (fresh `status:backlog`, resumable `status:in-spec` + `can-resume`; `needs-human`,
      `on-hold` and open "Depends on #N" excluded; priority, then "Blocks #M", then oldest;
-     what a scheduled cron Routine drives with `--auto`, §4 "Scheduled sweeps"). `pick: null`
+     what a scheduled cron Routine drives with `--auto`, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `pick: null`
      → report nothing to do; otherwise resolve `pick.number` the same way. Act on the
      returned `action`:
      - `claim-fresh` → an existing, open ticket: a `level:story` (`type:feature`/`type:tech`)

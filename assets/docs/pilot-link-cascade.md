@@ -6,26 +6,18 @@ epic-descent and e2e-tasks link docs.
 
 ## What sets `status:done`
 
-Outside the one place a phase sets it directly (`/pilot-qa`, once a human confirms a story in phase 5), `status:done` is set by the workflow,
-never by a phase skill for an actionable ticket coming out of a merge (a merge is a human action or, for phase 4, an explicit `--merge` run).
-
-story) or completed by cascade (a `status:split` story — §3 "Cascading completion") or,
-for a `type:feature` one, by phase 5 (see below and `.claude/skills/pilot-qa/SKILL.md`). Not set by any phase skill directly
-for an actionable ticket coming out of a merge (merge is always a human action or, for
-phase 4, an explicit `--merge` run, `status:approved` above — either way outside PILOT's
-control at the moment it happens) — set instead by the
-`.github/workflows/pilot-status-on-merge.yml` GitHub Actions workflow, independent of any
-agent session being alive:
+`status:done` closes a ticket that was merged (a task, or an unsplit `type:tech` story), completed by cascade (a `status:split` story, "Cascading completion" below)
+or, for a `type:feature` story, confirmed in phase 5. A phase never sets it for an actionable ticket coming out of a merge — a merge is a human action or, for
+phase 4, an explicit `--merge` run, both outside PILOT's control when it happens. The `.github/workflows/pilot-status-on-merge.yml` GitHub Actions workflow
+sets it, independent of any agent session being alive:
 - Triggered on `pull_request: closed` (gated on `merged == true`): resolves the issue(s)
   the merge closes via `PullRequest.closingIssuesReferences`, sets `status:done` on each,
-  and, for any that's a task, runs the cascading-completion check (§3 "Cascading
-  completion") against its `status:split` parent story, then, if that story itself just
+  and, for any that's a task, runs the cascading-completion check ("Cascading completion" below) against its `status:split` parent story, then, if that story itself just
   closed, against its own parent Epic in turn. This is the only place `status:done` gets
   set on an actionable ticket coming out of a merge.
 - Also triggered on `issues: closed`, for completions that never go through a PR merge at
-  all: `status:wont-do` (above), which Spec sets and closes directly, and any hand-closed
-  issue. This path only runs the cascading-completion check (§3
-  "Cascading completion") — never sets `status:done` itself, since the closing party is
+  all: `status:wont-do`, which Spec sets and closes directly, and any hand-closed
+  issue. This path only runs the cascading-completion check ("Cascading completion" below) — never sets `status:done` itself, since the closing party is
   responsible for the issue's own terminal `status:` label — and only when the issue
   already carries `status:done` or `status:wont-do`. It skips entirely when GitHub's own
   timeline shows the closure came from a merged commit reference, so the same closure is
