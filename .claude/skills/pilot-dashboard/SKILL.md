@@ -45,9 +45,9 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
    `interact`).
 4. **Snapshot** (after a first publish, and for `--refresh`). `python3 .pilot/pilot.py
    snapshot --out <temp file>`, then `ArtifactData` `set` on `snapshots/<owner>__<repo>` with
-   that `file_path` (`get` it first and pass `if_version` if it already exists). When `wiki/` exists at
-   the project root, the same way with `python3 .pilot/pilot.py wiki snapshot --out <temp file>` on
-   `wiki/<owner>__<repo>` — the Wiki tab reads it; a project without a wiki skips this.
+   that `file_path` (`get` it first and pass `if_version` if it already exists). When the `wiki` module is
+   enabled, the same way with `python3 .pilot/pilot.py wiki snapshot --out <temp file>` on
+   `wiki/<owner>__<repo>` — the Wiki tab reads it; a project without the module skips this.
 5. **Prune** (with step 4). `events` documents whose `at` is older than the snapshot's `at`
    are obsolete, and so are `activity` documents whose `lastBeat` is over 24 h old: list the
    collections (read them into the conversation: `out_dir` is refused for documents others may

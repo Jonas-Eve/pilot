@@ -1,7 +1,7 @@
 ---
 name: pilot-init
-description: "One-time bootstrap for a new project adopting PILOT: asks for the project name and a short functional vision, copies PILOT's skills/agents and canonical docs into the project from github.com/Jonas-Eve/pilot, generates the project's own CLAUDE.md, README.md, and PROJECT-FUNCTIONAL-SCOPE.md from templates, scaffolds a default `.github/pull_request_template.md` if none exists, and provisions the GitHub labels the state machine depends on. Refuses to run twice — if already initialized, stops with an explicit message instead of touching anything. Use when a human wants to start using PILOT in a project that hasn't run it before. Not for describing the monorepo's apps/technologies — that's /pilot-init-archi, which requires this to have run first."
-argument-hint: "[project name] [functional vision]"
+description: "One-time bootstrap for a new project adopting PILOT: asks for the project name and a short functional vision, copies PILOT's skills/agents and canonical docs into the project from github.com/Jonas-Eve/pilot, generates the project's own CLAUDE.md, README.md, and PROJECT-FUNCTIONAL-SCOPE.md from templates, scaffolds a default `.github/pull_request_template.md` if none exists, and provisions the GitHub labels the state machine depends on, and turns on the optional wiki module when asked (--wiki / --no-wiki, else it asks). Refuses to run twice — if already initialized, stops with an explicit message instead of touching anything. Use when a human wants to start using PILOT in a project that hasn't run it before. Not for describing the monorepo's apps/technologies — that's /pilot-init-archi, which requires this to have run first."
+argument-hint: "[project name] [functional vision] [--wiki | --no-wiki]"
 disable-model-invocation: true
 ---
 
@@ -31,6 +31,7 @@ This skill's idempotency is tracked in `.pilot/state.json` at the project root:
   "projectName": "<name>",
   "archInitialized": false,
   "archInitializedAt": null,
+  "modules": {"wiki": <true|false, step 2>},
   "lastProcessDocSyncAt": "<ISO8601>",
   "lastLabelsSyncAt": "<ISO8601>",
   "lastIntroSyncAt": "<ISO8601>",
@@ -62,6 +63,9 @@ see `.claude/skills/pilot-update/SKILL.md`.
    (2-5 sentences) — enough to seed `PROJECT-FUNCTIONAL-SCOPE.md`'s "Vision" section and
    the one-line summary atop `CLAUDE.md`/`README.md`, not a full spec (the human fills in
    "In scope"/"Out of scope" themselves later, as the product takes shape).
+   Also decide the optional **wiki module** (`.pilot/pilot-process.md` §8): `--wiki` or `--no-wiki` if given,
+   otherwise ask the human whether to enable it (recommended when there is a product to describe; it can be
+   turned on later with `/pilot-wiki --init`).
 
 3. **Check for pre-existing root docs.** If `CLAUDE.md`, `README.md`, or
    `PROJECT-FUNCTIONAL-SCOPE.md` already exist at the project root (retrofitting PILOT
@@ -140,13 +144,18 @@ see `.claude/skills/pilot-update/SKILL.md`.
    authenticated or the repo can't be resolved, tell the human and give them the exact
    command to run themselves later — don't block the rest of this skill on it.
 
+9b. **Create the wiki** (only when the wiki module is on). If the project has no `wiki/` yet, copy
+    `$PILOT_SRC/assets/templates/wiki-README.md.tmpl` to `wiki/README.md`, creating `wiki/`. From here it is
+    project-owned: `/pilot-update` never touches it. When the project already has closed tickets or code to
+    document, tell the human to run `/pilot-wiki --init` to fill it.
+
 10. **Write the state marker.** Create `.pilot/state.json` per the schema above, with
-    `pilotInitialized: true`, the current timestamp, the project name, `pilotVersion`, and
+    `pilotInitialized: true`, the current timestamp, the project name, `pilotVersion`, `modules`, and
     `lastSkillsSyncAt`/`lastIntroSyncAt`/`lastProcessDocSyncAt`/`lastLabelsSyncAt` set to
     now (or left null for whichever of labels was skipped in step 9).
 
 11. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result. Summarize what
-    was created/updated/skipped, and suggest running
+    was created/updated/skipped (the wiki skeleton included, or the module left off), and suggest running
     `/pilot-init-archi` next to describe the monorepo's apps and generate their scaffolds, and
     offer `/pilot-dashboard` (a private team page: tickets by phase, each role's queue, live
     sessions) — run it only if the human accepts, since it publishes a page.

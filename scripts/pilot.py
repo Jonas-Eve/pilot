@@ -8,7 +8,8 @@
   pilot.py event   <issue>... --action NAME [--phase P]  # those tickets' current state as dashboard events, no write
   pilot.py flag    <issue> --comment TEXT      # needs-human + the mandatory why/what's-needed comment
   pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
-  pilot.py doctor  [--verbose]                 # preflight: can the commands above work here?
+  pilot.py doctor  [--verbose] [--no-wiki]      # preflight: can the commands above work here? (+ wiki/, when that module is on)
+  pilot.py module  list|enable|disable [NAME]  # the optional modules of .pilot/state.json (`wiki`)
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index|show|status|lint|snapshot|add|set  # the project's wiki (wiki/): entries, derived statuses, checks, dashboard document
 
@@ -74,6 +75,8 @@ PROTO_FORBIDDEN = (
     (re.compile(r"<\s*meta[^>]+http-equiv\s*=\s*[\"']?refresh", re.I), "a meta refresh"),
 )
 REMOTE_RE = re.compile(r"(?:github\.com[:/]|/git/)([\w.-]+)/([\w.-]+?)(?:\.git)?/?$")
+STATE_PATH = os.path.join(".pilot", "state.json")
+MODULES = ("wiki",)  # the optional modules a project turns on in .pilot/state.json (`modules`)
 WIKI_DIR = "wiki"
 WIKI_SNAPSHOT_MAX_BYTES = 240_000  # a database document holds at most 256 KiB
 WIKI_STATUSES = ("proposed", "specified", "implemented", "deprecated")  # the only ones a file holds
@@ -91,6 +94,36 @@ WIKI_PRE_DEV = ("status:draft", "status:backlog", "status:in-spec", "status:dev-
 
 class GhError(Exception):
     pass
+
+
+def read_modules(path=STATE_PATH):
+    """The project's optional modules, from `.pilot/state.json`: {"wiki": True, ...}; {} when the file
+    or the field is absent (a project from before modules has none enabled)."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return {}
+    modules = data.get("modules") if isinstance(data, dict) else None
+    return {k: bool(v) for k, v in modules.items()} if isinstance(modules, dict) else {}
+
+
+def set_module(name, enabled, path=STATE_PATH):
+    """Turn a module on or off in `.pilot/state.json`, leaving every other field alone."""
+    if name not in MODULES:
+        raise Refused({"ok": False, "reason": "unknown-module", "expected": list(MODULES)})
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except FileNotFoundError:
+        raise Refused({"ok": False, "reason": "no-state", "hint": "run /pilot-init"})
+    modules = data.get("modules") if isinstance(data.get("modules"), dict) else {}
+    modules[name] = bool(enabled)
+    data["modules"] = modules
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+    return {"ok": True, "modules": {k: bool(v) for k, v in modules.items()}}
 
 
 class GhClient:
@@ -372,7 +405,7 @@ class Machine:
         return {"action": "stop", "reason": "wrong-status", **base}
 
     # ---- preflight -----------------------------------------------------------------------
-    def doctor(self):
+    def doctor(self, wiki_dir=WIKI_DIR, modules=None):
         """Cheap checks that the other commands can work here; changes nothing.
 
         Cannot prove a write will be allowed (a session may restrict writes that the GitHub
@@ -407,6 +440,12 @@ class Machine:
                       + ("…" if len(missing) > 6 else ""))
             except (GhError, ValueError) as err:
                 check("repo-readable", False, str(err))
+        if modules is None:
+            modules = read_modules()
+        if modules.get("wiki"):
+            check("wiki", os.path.isdir(wiki_dir),
+                  f"{wiki_dir}/ found" if os.path.isdir(wiki_dir) else
+                  f"the wiki module is enabled but {wiki_dir}/ is missing: run /pilot-wiki --init")
         failed = [c for c in checks if not c["ok"]]
         return {"ok": not failed, "login": login, "failed": failed, "checks": checks}
 
@@ -990,6 +1029,10 @@ def build_parser():
     p.add_argument("--out", help="write the document to this file and print only a summary")
     p = sub.add_parser("doctor")
     p.add_argument("--verbose", action="store_true", help="list every check, not only failures")
+    p.add_argument("--no-wiki", action="store_true", help="skip the wiki check (/pilot-wiki --init repairing a missing wiki/)")
+    p = sub.add_parser("module")
+    p.add_argument("action", choices=["list", "enable", "disable"])
+    p.add_argument("name", nargs="?", choices=list(MODULES))
     p = sub.add_parser("wiki")
     p.add_argument("--dir", default=WIKI_DIR, help="the wiki directory (default: wiki)")
     ws = p.add_subparsers(dest="wiki_cmd", required=True)
@@ -1046,10 +1089,22 @@ def run_wiki(args, gh):
 
 
 def needs_github(args):
+    if args.cmd == "module":
+        return False
     return args.cmd != "wiki" or args.wiki_cmd in ("show", "status", "lint", "snapshot")
 
 
+def run_module(args):
+    if args.action == "list":
+        return {"ok": True, "modules": read_modules()}
+    if not args.name:
+        raise Refused({"ok": False, "reason": "module-name-required", "expected": list(MODULES)})
+    return set_module(args.name, args.action == "enable")
+
+
 def run(args, gh):
+    if args.cmd == "module":
+        return run_module(args)
     if args.cmd == "wiki":
         return run_wiki(args, gh)
     machine = Machine(gh)
@@ -1076,7 +1131,7 @@ def run(args, gh):
             json.dump(doc, handle, ensure_ascii=False, separators=(",", ":"))
         return {"ok": True, "file": args.out, "total": doc["total"], "truncated": doc["truncated"]}
     if args.cmd == "doctor":
-        report = machine.doctor()
+        report = machine.doctor(WIKI_DIR, {} if args.no_wiki else None)
         if not args.verbose:
             report.pop("checks")
         return report

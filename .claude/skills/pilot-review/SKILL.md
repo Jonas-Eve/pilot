@@ -142,8 +142,7 @@ pre-submission pause as the last check against picking the wrong one.
    what each needs beyond that: the PR diff/description plus, for the PM, the linked
    story's acceptance criteria and any UI/UX description or attached mockup (and its own
    spec, for `type:e2e`); for the architect, its recorded decisions; for the tech lead,
-   its own spec (it re-runs validation on the PR branch itself). When `wiki/` exists at the project
-   root, also pass every reviewer `.pilot/pilot-link-wiki.md` in full, the entries of the ticket under
+   its own spec (it re-runs validation on the PR branch itself). When the `wiki` module is enabled (`.pilot/pilot-process.md` §8), also pass every reviewer `.pilot/pilot-link-wiki.md` in full, the entries of the ticket under
    review — and, for a `type:e2e` task, of its parent story —
    (`python3 .pilot/pilot.py wiki index --ticket <n>`, each with `wiki show <id>`) and the PR's changes
    under `wiki/` (`mcp__github__pull_request_read` `get_files`). When step 3 found a prior

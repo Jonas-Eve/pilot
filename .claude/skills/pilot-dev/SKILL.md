@@ -70,7 +70,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    `mcp__github__pull_request_read` method `get_reviews` (the body holds the points, not a
    plain issue comment, `.pilot/pilot-link-review-consensus.md`) — with its `change`-tagged
    points to fix, plus any `decision`-tagged points and their resolution, instead of a
-   fresh spec — only more commits on the existing PR. When `wiki/` exists at the project root, also pass
+   fresh spec — only more commits on the existing PR. When the `wiki` module is enabled (`.pilot/pilot-process.md` §8), also pass
    `.pilot/pilot-link-wiki.md` in full and the ticket's entries (`python3 .pilot/pilot.py wiki index --ticket
    <issue>`, each with `wiki show <id>`).
    - **Without `--multi`** (or on a reclaim, where `--multi` has no effect either way):
