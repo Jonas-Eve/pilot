@@ -50,7 +50,7 @@ GitHub PR review event — never a plain issue comment for this:
 
 ## Reclaiming a `status:changes-requested` ticket (`/pilot-dev` only)
 
-Unlike "Resuming a `needs-human` ticket" or "Resuming an orphaned claim" above,
+Unlike `.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket" or "Resuming an orphaned claim",
 `status:changes-requested` is set by *phase 4*
 (`.pilot/pilot-link-review-consensus.md`), not by `/pilot-dev` itself — the
 ticket already has an open PR, and phase 4 unassigned it with its verdict.

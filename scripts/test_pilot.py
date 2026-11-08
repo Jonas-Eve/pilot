@@ -1572,8 +1572,9 @@ class ProcessReferencesTests(unittest.TestCase):
         bad = []
         for f in self.family():
             text = re.sub(r"\s+", " ", f.read_text())
-            for m in re.finditer(r"pilot-process\.md`? ?(?:§(\d+))(?: \"([^\"]+)\")?", text):
-                num, title = m.group(1), m.group(2)
+            cites = [(m.group(1), m.group(2)) for m in re.finditer(r"pilot-process\.md`? ?§(\d+)(?: \"([^\"]+)\")?", text)]
+            cites += [(m.group(1), m.group(2)) for m in re.finditer(r"§(\d+) \"([^\"]+)\"", text)]  # a titled citation names process.md even bare
+            for num, title in cites:
                 if num not in numbers:
                     bad.append((f.name, "§" + num))
                 elif title and not any(self.flat(title).rstrip(".").lower() in h.lower() for h in heads):

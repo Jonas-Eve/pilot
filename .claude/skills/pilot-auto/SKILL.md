@@ -213,12 +213,12 @@ orphaned, or closed).
 
 Each phase skill is meant to also run **bare, on a timer** — a Routine whose prompt is
 nothing but the literal command. For `/pilot-spec`, `/pilot-dev`, and
-`/pilot-review` — all three default to pair mode ("Interaction modes" below) — that literal
+`/pilot-review` — all three default to pair mode (`.pilot/pilot-process.md` §4 "Interaction modes") — that literal
 command must include `--auto` (still no ticket number computed by the routine itself),
 since pair requires a human live in the session and a Routine has none. `/pilot-discovery` and
 `/pilot-qa` are pair-only with no `--auto` and are therefore never driven by a Routine at
 all. Beyond that flag, this works without any special-casing because "picking the next
-ticket when none is specified" (above) already covers both fresh and resumed work
+ticket when none is specified" (`.pilot/pilot-process.md` §4) already covers both fresh and resumed work
 identically. Three independent Routines — one each for `/pilot-spec
 --auto`, `/pilot-dev --auto`, and `/pilot-review --auto` (add `--merge` too if the Routine
 should also merge once every reviewer approves, `.pilot/pilot-process.md` §3 "`status:approved`") — each on its own
