@@ -118,7 +118,9 @@ itself.
   (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with its
   mandatory comment), `snapshot` (every open ticket as the dashboard's snapshot document),
   `proto` (accept or reject a prototype, or check it is accepted before a Discovery starts from it), `proto-pack`
-  (check a prototype's mockup and split it into the cockpit's documents) and
+  (check a prototype's mockup and split it into the cockpit's documents), `wiki`
+  (the project's wiki under `wiki/`: `index`, `show`, `status`, `lint`, and `add`/`set`, the only
+  writers of an entry's meta line — design in `docs/wiki-design.md`, not yet used by any skill) and
   `doctor` (preflight each phase skill runs as its step 0, once per session: python, gh auth,
   repo access and push permission, the 32 PILOT labels). Every command prints one JSON
   object; `claim`/`set`/`flag`/`unflag` also return the `event` (and `claim` the `activity`)

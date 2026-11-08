@@ -10,6 +10,7 @@
   pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
   pilot.py doctor  [--verbose]                 # preflight: can the commands above work here?
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
+  pilot.py wiki    index|show|status|lint|add|set  # the project's wiki (wiki/): entries, derived statuses, checks
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
@@ -73,6 +74,18 @@ PROTO_FORBIDDEN = (
     (re.compile(r"<\s*meta[^>]+http-equiv\s*=\s*[\"']?refresh", re.I), "a meta refresh"),
 )
 REMOTE_RE = re.compile(r"(?:github\.com[:/]|/git/)([\w.-]+)/([\w.-]+?)(?:\.git)?/?$")
+WIKI_DIR = "wiki"
+WIKI_STATUSES = ("proposed", "specified", "implemented", "deprecated")  # the only ones a file holds
+WIKI_KEYS = ("status", "tickets", "verifiedAt", "verifiedCommit")
+WIKI_HEAD_RE = re.compile(r"^##\s+(.+?)\s*\{#([a-z0-9][a-z0-9-]*)\}\s*$")
+WIKI_META_RE = re.compile(r"^<!--\s*wiki:\s*(.*?)\s*-->\s*$")
+WIKI_PAIR_RE = re.compile(r"(\w+)=(\S*)")
+WIKI_TICKET_RE = re.compile(r"^#(\d+)$")
+WIKI_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+WIKI_IN_DEV = ("status:in-dev",)
+WIKI_IN_REVIEW = ("status:review-ready", "status:in-review", "status:changes-requested")
+WIKI_IN_QA = ("status:qa", "status:in-qa")
+WIKI_PRE_DEV = ("status:draft", "status:backlog", "status:in-spec", "status:dev-ready")
 
 
 class GhError(Exception):
@@ -639,6 +652,251 @@ class Machine:
         return {"ok": True, "issue": number, "flagged": False, "event": self._event(after, "unflag")}
 
 
+class Wiki:
+    """The project's wiki: markdown files under `wiki/`, each entry a `## Title {#id}` heading followed
+    by one machine-readable line `<!-- wiki: status=... tickets=#1,#2 verifiedAt=... verifiedCommit=... -->`.
+    This class is the only writer of that line. Status names a file may hold are WIKI_STATUSES; the
+    in-flight ones (in-dev, in-review, in-qa, verified) are derived from ticket labels, never written."""
+
+    def __init__(self, root=WIKI_DIR):
+        self.root = root
+
+    def _files(self):
+        if not os.path.isdir(self.root):
+            raise Refused({"ok": False, "reason": "wiki-absent", "dir": self.root,
+                           "hint": "run /pilot-wiki --init"})
+        found = []
+        for base, _dirs, names in os.walk(self.root):
+            found.extend(os.path.join(base, n) for n in names if n.endswith(".md"))
+        return sorted(found)
+
+    def _page(self, path):
+        return os.path.relpath(path, self.root).replace(os.sep, "/")
+
+    @staticmethod
+    def _meta(text):
+        pairs = dict(WIKI_PAIR_RE.findall(text))
+        problems = [("unknown-key", f"unknown key {k!r}") for k in pairs if k not in WIKI_KEYS]
+        tickets, bad = [], []
+        for raw in filter(None, pairs.get("tickets", "").split(",")):
+            match = WIKI_TICKET_RE.match(raw)
+            (tickets if match else bad).append(int(match.group(1)) if match else raw)
+        if bad:
+            problems.append(("bad-tickets", "tickets must read #N,#M (got %s)" % ", ".join(bad)))
+        status = pairs.get("status", "")
+        if not status:
+            problems.append(("missing-status", "no status"))
+        elif status not in WIKI_STATUSES:
+            problems.append(("bad-status", f"status {status!r} is not one of {', '.join(WIKI_STATUSES)}"
+                             + (" (derived, never written)" if status in ("in-dev", "in-review", "in-qa", "verified") else "")))
+        stamp_at, stamp_commit = pairs.get("verifiedAt", ""), pairs.get("verifiedCommit", "")
+        if bool(stamp_at) != bool(stamp_commit):
+            problems.append(("partial-stamp", "verifiedAt and verifiedCommit go together"))
+        return {"status": status, "tickets": tickets, "verifiedAt": stamp_at,
+                "verifiedCommit": stamp_commit, "problems": problems}
+
+    @staticmethod
+    def _line(status, tickets, verified_at="", verified_commit=""):
+        return "<!-- wiki: status=%s tickets=%s verifiedAt=%s verifiedCommit=%s -->" % (
+            status, ",".join(f"#{n}" for n in tickets), verified_at, verified_commit)
+
+    def parse(self):
+        """(entries, problems): every entry of every page, and the meta lines no heading owns."""
+        entries, stray = [], []
+        for path in self._files():
+            with open(path, encoding="utf-8") as handle:
+                lines = handle.read().split("\n")
+            page, fenced, owned, metas, open_entry = self._page(path), False, set(), [], None
+            for number, line in enumerate(lines):
+                if line.lstrip().startswith(("```", "~~~")):
+                    fenced = not fenced
+                    continue
+                if fenced:
+                    continue
+                if WIKI_META_RE.match(line):
+                    metas.append(number)
+                if line.startswith("## "):
+                    if open_entry:
+                        open_entry["end"] = number
+                        open_entry = None
+                    head = WIKI_HEAD_RE.match(line)
+                    if not head:
+                        continue
+                    entry = {"id": head.group(2), "title": head.group(1), "page": page, "path": path,
+                             "line": number + 1, "head": number, "meta_at": None, "end": len(lines)}
+                    follower = lines[number + 1] if number + 1 < len(lines) else ""
+                    found = WIKI_META_RE.match(follower)
+                    if found:
+                        entry["meta_at"] = number + 1
+                        owned.add(number + 1)
+                        entry.update(self._meta(found.group(1)))
+                    else:
+                        entry.update({"status": "", "tickets": [], "verifiedAt": "", "verifiedCommit": "",
+                                      "problems": [("missing-meta", "the line after the heading is not a <!-- wiki: ... --> line")]})
+                    entry["lines"] = lines
+                    entries.append(entry)
+                    open_entry = entry
+            stray += [{"page": page, "line": n + 1} for n in metas if n not in owned]
+        return entries, stray
+
+    @staticmethod
+    def _view(entry):
+        return {"id": entry["id"], "title": entry["title"], "page": entry["page"], "line": entry["line"],
+                "status": entry["status"], "tickets": entry["tickets"],
+                "verifiedAt": entry["verifiedAt"], "verifiedCommit": entry["verifiedCommit"]}
+
+    def _find(self, entry_id):
+        entries, _ = self.parse()
+        found = [e for e in entries if e["id"] == entry_id]
+        if not found:
+            raise Refused({"ok": False, "reason": "entry-not-found", "id": entry_id})
+        if len(found) > 1:
+            raise Refused({"ok": False, "reason": "duplicate-id", "id": entry_id,
+                           "pages": sorted(e["page"] for e in found)})
+        return found[0]
+
+    def index(self, ticket=None):
+        entries, stray = self.parse()
+        shown = [e for e in entries if ticket is None or ticket in e["tickets"]]
+        return {"ok": True, "dir": self.root, "entries": [self._view(e) for e in shown],
+                "problems": sum(len(e["problems"]) for e in entries) + len(stray)}
+
+    def derive(self, entry, gh, cache):
+        """The in-flight overlay of one entry, from its tickets: the most advanced of in-dev < in-review <
+        in-qa among its open tickets, or `verified` for an implemented entry whose feature story is done."""
+        seen, rank, verified = [], 0, False
+        for number in entry["tickets"]:
+            if number not in cache:
+                cache[number] = gh.get_issue(number)
+            raw = cache[number]
+            if raw is None:
+                seen.append({"number": number, "missing": True})
+                continue
+            ticket = normalize(raw)
+            status = status_of(ticket["labels"])
+            seen.append({"number": number, "state": ticket["state"], "status": status})
+            if ticket["state"] == "open":
+                for level, group in ((1, WIKI_IN_DEV), (2, WIKI_IN_REVIEW), (3, WIKI_IN_QA)):
+                    if status in group:
+                        rank = max(rank, level)
+            elif {"type:feature", "level:story", "status:done"} <= ticket["labels"]:
+                verified = True
+        overlay = ("", "in-dev", "in-review", "in-qa")[rank]
+        if not overlay and verified and entry["status"] == "implemented":
+            overlay = "verified"
+        shown = entry["status"] + (f" · {overlay}" if overlay else "")
+        return {"id": entry["id"], "status": entry["status"], "derived": overlay, "display": shown,
+                "tickets": seen}
+
+    def status(self, gh, ids=()):
+        entries, _ = self.parse()
+        wanted = [e for e in entries if not ids or e["id"] in ids]
+        missing = sorted(set(ids) - {e["id"] for e in wanted})
+        if missing:
+            raise Refused({"ok": False, "reason": "entry-not-found", "id": missing[0]})
+        cache = {}
+        return {"ok": True, "entries": [self.derive(e, gh, cache) for e in wanted]}
+
+    def show(self, entry_id, gh):
+        entry = self._find(entry_id)
+        text = "\n".join(entry["lines"][entry["head"]:entry["end"]]).rstrip("\n")
+        return {"ok": True, **self._view(entry), "text": text, "derived": self.derive(entry, gh, {})}
+
+    def lint(self, gh):
+        """The mechanical checks (no judgment): an unreadable entry, a duplicate id, a promise whose
+        tickets are all closed, an implemented entry whose ticket went back before dev."""
+        entries, stray = self.parse()
+        findings = [{"page": s["page"], "line": s["line"], "code": "orphan-meta",
+                     "message": "a <!-- wiki: ... --> line with no entry heading above it"} for s in stray]
+        seen = {}
+        for e in entries:
+            seen.setdefault(e["id"], []).append(e)
+        cache = {}
+        for e in entries:
+            where = {"entry": e["id"], "page": e["page"], "line": e["line"]}
+            findings += [{**where, "code": c, "message": m} for c, m in e["problems"]]
+            if len(seen[e["id"]]) > 1:
+                findings.append({**where, "code": "duplicate-id", "message": "this id is used by %d entries" % len(seen[e["id"]])})
+            if e["status"] in ("proposed", "specified") and not e["tickets"]:
+                findings.append({**where, "code": "no-ticket", "message": f"a {e['status']} entry lists no ticket"})
+            if e["status"] not in ("proposed", "specified", "implemented"):
+                continue
+            states = []
+            for number in e["tickets"]:
+                if number not in cache:
+                    cache[number] = gh.get_issue(number)
+                raw = cache[number]
+                if raw is None:
+                    findings.append({**where, "code": "unknown-ticket", "message": f"#{number} does not exist"})
+                    continue
+                ticket = normalize(raw)
+                states.append((number, ticket))
+            if e["status"] in ("proposed", "specified") and states and all(t["state"] == "closed" for _n, t in states):
+                findings.append({**where, "code": "orphaned-promise",
+                                 "message": "every ticket is closed but the entry is still " + e["status"]})
+            if e["status"] == "implemented":
+                for number, t in states:
+                    if t["state"] == "open" and status_of(t["labels"]) in WIKI_PRE_DEV:
+                        findings.append({**where, "code": "implemented-but-reopened",
+                                         "message": f"#{number} is back at {status_of(t['labels'])}"})
+        return {"ok": not findings, "entries": len(entries), "findings": findings}
+
+    def _write(self, entry, replacement):
+        lines = entry["lines"]
+        lines[entry["meta_at"]] = replacement
+        tmp = entry["path"] + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as handle:
+            handle.write("\n".join(lines))
+        os.replace(tmp, entry["path"])
+
+    def set(self, entry_id, status=None, add=(), remove=(), stamp=None):
+        """The only writer of an entry's meta line. `stamp` is the commit lint verified the entry against."""
+        entry = self._find(entry_id)
+        if entry["meta_at"] is None:
+            raise Refused({"ok": False, "reason": "no-meta-line", "id": entry_id})
+        if status is not None and status not in WIKI_STATUSES:
+            raise Refused({"ok": False, "reason": "bad-status", "expected": list(WIKI_STATUSES),
+                           "hint": "in-dev, in-review, in-qa and verified are derived, never written"})
+        tickets = [n for n in entry["tickets"] if n not in set(remove)]
+        tickets += [n for n in add if n not in tickets]
+        at, commit = entry["verifiedAt"], entry["verifiedCommit"]
+        if stamp:
+            at, commit = now_iso(), stamp
+        line = self._line(status or entry["status"], tickets, at, commit)
+        self._write(entry, line)
+        return {"ok": True, "id": entry_id, "status": status or entry["status"], "tickets": tickets,
+                "verifiedAt": at, "verifiedCommit": commit}
+
+    def add(self, page, entry_id, title, status, tickets=(), body=""):
+        """Append an entry (heading + meta line + body) to a page, creating the page if needed."""
+        if not WIKI_ID_RE.match(entry_id):
+            raise Refused({"ok": False, "reason": "bad-id", "id": entry_id,
+                           "hint": "lowercase letters, digits and dashes"})
+        if status not in WIKI_STATUSES:
+            raise Refused({"ok": False, "reason": "bad-status", "expected": list(WIKI_STATUSES)})
+        if not page.endswith(".md") or os.path.isabs(page) or ".." in page.split("/"):
+            raise Refused({"ok": False, "reason": "bad-page", "page": page})
+        os.makedirs(self.root, exist_ok=True)
+        entries, _ = self.parse()
+        if any(e["id"] == entry_id for e in entries):
+            raise Refused({"ok": False, "reason": "duplicate-id", "id": entry_id})
+        path = os.path.join(self.root, *page.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        current = ""
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as handle:
+                current = handle.read()
+        else:
+            current = "# " + os.path.splitext(os.path.basename(page))[0].replace("-", " ").title() + "\n"
+        block = f"## {title.strip()} {{#{entry_id}}}\n{self._line(status, list(tickets))}\n"
+        if body.strip():
+            block += "\n" + body.strip() + "\n"
+        text = current.rstrip("\n") + "\n\n" + block
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        return {"ok": True, "id": entry_id, "page": page.replace(os.sep, "/"), "status": status}
+
+
 def repo_from_remote(url):
     match = REMOTE_RE.search(url.strip())
     return f"{match.group(1)}/{match.group(2)}" if match else None
@@ -706,6 +964,29 @@ def build_parser():
     p.add_argument("--out", help="write the document to this file and print only a summary")
     p = sub.add_parser("doctor")
     p.add_argument("--verbose", action="store_true", help="list every check, not only failures")
+    p = sub.add_parser("wiki")
+    p.add_argument("--dir", default=WIKI_DIR, help="the wiki directory (default: wiki)")
+    ws = p.add_subparsers(dest="wiki_cmd", required=True)
+    w = ws.add_parser("index", help="every entry: id, page, status, tickets, stamp (no GitHub call)")
+    w.add_argument("--ticket", type=int, help="only the entries that list this ticket")
+    w = ws.add_parser("show", parents=[common], help="one entry's text, meta line and derived status")
+    w.add_argument("id")
+    w = ws.add_parser("status", parents=[common], help="the derived (in-flight) status of entries, from their tickets")
+    w.add_argument("ids", nargs="*")
+    ws.add_parser("lint", parents=[common], help="mechanical checks, no judgment")
+    w = ws.add_parser("add", help="append an entry (heading + meta line + body) to a page")
+    w.add_argument("page", help="path under the wiki directory, e.g. features/search.md")
+    w.add_argument("id")
+    w.add_argument("--title", required=True)
+    w.add_argument("--status", required=True, choices=list(WIKI_STATUSES))
+    w.add_argument("--ticket", type=int, action="append", default=[])
+    w.add_argument("--body", default="")
+    w = ws.add_parser("set", help="rewrite an entry's meta line (the only writer of it)")
+    w.add_argument("id")
+    w.add_argument("--status", choices=list(WIKI_STATUSES))
+    w.add_argument("--add-ticket", type=int, action="append", default=[])
+    w.add_argument("--remove-ticket", type=int, action="append", default=[])
+    w.add_argument("--stamp", metavar="COMMIT", help="verifiedAt = now, verifiedCommit = COMMIT")
     for name in ("flag", "unflag"):
         p = sub.add_parser(name)
         p.add_argument("issue", type=int)
@@ -713,7 +994,28 @@ def build_parser():
     return parser
 
 
+def run_wiki(args, gh):
+    wiki = Wiki(args.dir)
+    if args.wiki_cmd == "index":
+        return wiki.index(args.ticket)
+    if args.wiki_cmd == "show":
+        return wiki.show(args.id, gh)
+    if args.wiki_cmd == "status":
+        return wiki.status(gh, args.ids)
+    if args.wiki_cmd == "lint":
+        return wiki.lint(gh)
+    if args.wiki_cmd == "add":
+        return wiki.add(args.page, args.id, args.title, args.status, args.ticket, args.body)
+    return wiki.set(args.id, args.status, args.add_ticket, args.remove_ticket, args.stamp)
+
+
+def needs_github(args):
+    return args.cmd != "wiki" or args.wiki_cmd in ("show", "status", "lint")
+
+
 def run(args, gh):
+    if args.cmd == "wiki":
+        return run_wiki(args, gh)
     machine = Machine(gh)
     if args.cmd == "pool":
         return {"phase": args.phase, **machine.pool(args.phase, args.limit)}
@@ -750,16 +1052,16 @@ def run(args, gh):
 def main(argv=None):
     args = build_parser().parse_args(argv)
     try:
-        repo = args.repo or resolve_repo()
-        result = run(args, GhClient(repo))
+        repo = (args.repo or resolve_repo()) if needs_github(args) else None
+        result = run(args, GhClient(repo) if repo else None)
     except Refused as refusal:
         print(json.dumps(refusal.payload, ensure_ascii=False))
         return 1
     except (GhError, FileNotFoundError, ValueError) as err:
         print(json.dumps({"error": str(err) or "gh CLI not found"}))
         return 2
-    print(json.dumps({"repo": repo, **result}, ensure_ascii=False))
-    return 1 if result.get("ok") is False and args.cmd == "doctor" else 0
+    print(json.dumps({"repo": repo, **result} if repo else result, ensure_ascii=False))
+    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki") else 0
 
 
 if __name__ == "__main__":
