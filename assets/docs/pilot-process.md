@@ -1120,5 +1120,6 @@ wiki …` and `/pilot-wiki` (it turns the module on; `--bootstrap` drafts the wi
 **`architecture`.** `architecture/` at the project root says how the product is built and why: an overview of the
 apps, the technical guidelines AIs and developers must respect, and the architecture decision records (ADR). Only
 a PR changes it. With the module on, `doctor` also requires `architecture/`. The layout, statuses and rules are
-`.pilot/pilot-link-architecture.md`; the mechanics are `python3 .pilot/pilot.py arch …` and `/pilot-architecture`
+`.pilot/pilot-link-architecture.md`, and how any agent reads the two bundles (by levels, search, then `show`, never the files) is
+`.pilot/pilot-link-knowledge.md`; the mechanics are `python3 .pilot/pilot.py arch …` and `/pilot-architecture`
 (it turns the module on; `--bootstrap` drafts it from the existing apps, `--scaffold` creates them).

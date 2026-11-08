@@ -6,7 +6,7 @@ argument-hint: "[<question>] | --lint [<domain or entry id>] [--auto] | --bootst
 
 # PILOT wiki — `pilot-wiki`
 
-Read `.pilot/pilot-link-wiki.md` first (entry format, statuses, the rules below). Mechanics are
+Read `.pilot/pilot-link-knowledge.md` (how to read the bundle) and `.pilot/pilot-link-wiki.md` (entry format, statuses, the rules below) first. Mechanics are
 in `python3 .pilot/pilot.py wiki …` (`index`, `reindex`, `show`, `status`, `lint`, `add`, `set`, `remove`,
 `migrate`); run the script, never hand-edit an entry's frontmatter or an `index.md`. Not one of the five phases: it
 claims no ticket and changes no label.
@@ -25,7 +25,7 @@ When the project has closed tickets or code to document, offer `--bootstrap` rig
 
 ## Question (no flag)
 
-1. `wiki index` for the entries; open (`wiki show <id>`) only those that bear on the question.
+1. Read per `.pilot/pilot-link-knowledge.md`: `wiki index --depth 1`, then `wiki search` or a folder, then `wiki show` only those that bear on the question.
 2. Answer from them, citing each as its `path` with its `display` status (e.g. `specified · in-review`).
    A `proposed`/`specified` entry is a promise, not behavior: say so. Where the wiki is silent,
    say it is not covered; do not fill the gap from the code.
