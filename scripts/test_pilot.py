@@ -1594,6 +1594,16 @@ class ProcessReferencesTests(unittest.TestCase):
                     bad.append((f.name, ref, title))
         self.assertEqual(bad, [])
 
+    def test_skill_descriptions_stay_short(self):
+        """Every skill's description sits in the context of every session of a consuming project, invoked or not: the
+        mechanics belong in the body, which is loaded only when the skill runs."""
+        sizes = {}
+        for f in (self.ROOT / ".claude/skills").glob("*/SKILL.md"):
+            m = re.search(r"^description: (.*)$", f.read_text(), re.M)
+            sizes[f.parent.name] = len(m.group(1).encode())
+        self.assertEqual({k: v for k, v in sizes.items() if v > 1500}, {})
+        self.assertLess(sum(sizes.values()), 12_000)
+
     def test_the_generic_file_stays_small(self):
         size = (self.ROOT / "assets/docs/pilot-process.md").stat().st_size
         self.assertLess(size, 28_000, "pilot-process.md is loaded by every phase; move what only some read into a link doc or a skill")
