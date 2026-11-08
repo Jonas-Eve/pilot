@@ -10,8 +10,7 @@ silently.
 **Where and what.** An OKF bundle (Open Knowledge Format) under `wiki/` at the project root (project-owned,
 never touched by `/pilot-update`): one markdown file per entry, `wiki/<domain>/<id>.md`, one folder per
 functional domain (`wiki/search/`), and an `index.md` in each folder listing its entries with their
-one-sentence description — read it, or `python3 .pilot/pilot.py wiki index`, to find what to open, then open
-only that. Functional only (architecture decisions live elsewhere): it says *what* — behavior, rules,
+one-sentence description, read through the commands of `.pilot/pilot-link-knowledge.md`. Functional only (architecture decisions live elsewhere): it says *what* — behavior, rules,
 vocabulary — never *how*; technical specs stay in tickets.
 
 **Entries.** The file name is the entry's id (lowercase letters, digits and dashes; it never changes once

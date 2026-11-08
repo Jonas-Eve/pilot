@@ -142,12 +142,10 @@ pre-submission pause as the last check against picking the wrong one.
    what each needs beyond that: the PR diff/description plus, for the PM, the linked
    story's acceptance criteria and any UI/UX description or attached mockup (and its own
    spec, for `type:e2e`); for the architect, its recorded decisions; for the tech lead,
-   its own spec (it re-runs validation on the PR branch itself). When the `wiki` module is enabled (`.pilot/pilot-process.md` §8), also pass every reviewer `.pilot/pilot-link-wiki.md` in full, the entries of the ticket under
-   review — and, for a `type:e2e` task, of its parent story —
-   (`python3 .pilot/pilot.py wiki index --ticket <n>`, each with `wiki show <id>`) and the PR's changes
-   under `wiki/` (`mcp__github__pull_request_read` `get_files`). When the `architecture` module is enabled, also pass every reviewer
-   `.pilot/pilot-link-architecture.md` in full, the output of `python3 .pilot/pilot.py arch index --active` (the index only) and the
-   PR's changes under `architecture/`. When step 3 found a prior
+   its own spec (it re-runs validation on the PR branch itself). When a knowledge module is enabled (`.pilot/pilot-process.md` §8), also pass every reviewer
+   `.pilot/pilot-link-knowledge.md` in full and, per module on, `.pilot/pilot-link-wiki.md` / `.pilot/pilot-link-architecture.md` in full, plus the PR's
+   changes under `wiki/` and `architecture/` (`mcp__github__pull_request_read` `get_files`); with `wiki` on, the entries of the ticket under
+   review — and, for a `type:e2e` task, of its parent story — (`python3 .pilot/pilot.py wiki index --ticket <n>`, each with `wiki show <id>`). When step 3 found a prior
    submitted review on this PR — whether reached via step 1's needs-human-resume branch or
    an ordinary reclaim after a pure-`change` fix — also pass its full body (every point,
    change and decision alike, marked which is which) to every reviewer this round, plus,

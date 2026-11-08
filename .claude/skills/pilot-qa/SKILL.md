@@ -51,7 +51,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
 4. Call the `Agent` tool with `subagent_type: "pilot-qa"`. Read `.pilot/pilot-task-human-qa.md`
    and pass its content as part of the prompt, plus `.pilot/pilot-link-bug-tickets.md` in
    full (the classify/originate mechanic for step 3's "real-bug failures" case — the task
-   doc covers the phase-5-specific delta itself), along with that context (and `.pilot/pilot-link-wiki.md`
+   doc covers the phase-5-specific delta itself), along with that context (and `.pilot/pilot-link-knowledge.md` and `.pilot/pilot-link-wiki.md`
    in full when the wiki module is enabled). The agent
    returns a manual test plan: concrete cases and how to test each.
 5. Walk the human through it (pair, always — no `--auto`): show the plan, then go case by

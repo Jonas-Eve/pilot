@@ -131,8 +131,8 @@ summoned persona's call.
      plus only what this phase needs beyond that: the ticket's current body (including,
      if resuming, the comment thread's resolution per §4), its parent Epic/linked tickets
      if any, pointers to this project's own coding standards/security conventions and
-     architecture docs (with the `architecture` module on: `.pilot/pilot-link-architecture.md` in full and
-     `python3 .pilot/pilot.py arch index --active`, the index only — they open the entries that bear on the story), and, for a `status:qa`/`status:in-qa` reclaim (step 1), which
+     architecture docs (with the `architecture` module on: `.pilot/pilot-link-knowledge.md` and `.pilot/pilot-link-architecture.md` in full — they
+     read the entries that bear on the story themselves — instead of pointers to documents), and, for a `status:qa`/`status:in-qa` reclaim (step 1), which
      existing tasks are already `status:done` from the earlier round, including the e2e
      one. Not the conversation history. **Checkpoint as the dialogue progresses, not only
      once it converges**: this pass can produce a split decision plus several full specs
@@ -264,8 +264,7 @@ summoned persona's call.
 5b. **Wiki** (only when the `wiki` module is enabled (`.pilot/pilot-process.md` §8), and for a `type:feature` story that was split or closed as won't-do): per `.pilot/pilot-link-wiki.md`. Won't-do → its
    `proposed` entries (`python3 .pilot/pilot.py wiki index --ticket <story>`) are removed (`wiki remove <id>`).
    Split → call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-entries.md` (target status
-   `specified`), `.pilot/pilot-link-wiki.md`, the story, its tasks and the existing entries of the domains it
-   touches. Apply on branch `wiki/spec-<story>` the way `pilot-discovery/SKILL.md` step 7b does, with
+   `specified`), `.pilot/pilot-link-knowledge.md`, `.pilot/pilot-link-wiki.md`, the story, its tasks and the domains it touches. Apply on branch `wiki/spec-<story>` the way `pilot-discovery/SKILL.md` step 7b does, with
    `--status specified`, and list on every entry the story plus its `type:feature`/`type:tech` tasks
    (`wiki set <id> --add-ticket <n>`) — never the `type:e2e` task. A `conflicts` question: pair → put it to
    the human; `--auto` → `python3 .pilot/pilot.py flag <story> --comment "<question>"` and write nothing for

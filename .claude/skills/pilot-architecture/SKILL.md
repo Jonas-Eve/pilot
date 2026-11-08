@@ -6,7 +6,7 @@ argument-hint: "[<question>] | --adr \"<decision>\" | --bootstrap | --scaffold [
 
 # PILOT architecture — `pilot-architecture`
 
-Read `.pilot/pilot-link-architecture.md` first (layout, statuses, the rules below). Mechanics are in
+Read `.pilot/pilot-link-knowledge.md` (how to read the bundle) and `.pilot/pilot-link-architecture.md` (layout, statuses, the rules below) first. Mechanics are in
 `python3 .pilot/pilot.py arch …` (`index`, `reindex`, `show`, `lint`, `add`, `set`, `remove`, `supersede`); run the
 script, never hand-edit an entry's frontmatter or an `index.md`. Not one of the five phases: it claims no ticket
 and changes no label.
@@ -25,7 +25,7 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 
 ## Question (no flag)
 
-1. `arch index --active` for the entries in force (plain `arch index` when the question is about history); open (`arch show <id>`) only those that bear on the question.
+1. Read per `.pilot/pilot-link-knowledge.md`: `arch index --depth 1`, then `arch search` or a folder, then `arch show` only those that bear on the question (`--all` for history).
 2. Answer from them, citing each as its `path` and status. A `proposed` entry is not yet a rule: say so; a
    `superseded` one is history, point at its successor. Where the architecture is silent, say it is not
    covered; do not fill the gap from the code.
@@ -35,7 +35,7 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 1. Check the decision meets the bar (`.pilot/pilot-link-architecture.md`: it outlives a ticket and someone could
    be tempted to reverse it); otherwise say it belongs in a guideline or a ticket and stop.
 2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-adr.md`,
-   `.pilot/pilot-link-architecture.md`, the decision, `arch index --active` (the index, not the entries — the architect opens the ones that bear on it) and the
+   `.pilot/pilot-link-architecture.md`, the decision, `.pilot/pilot-link-knowledge.md` (the architect reads the entries that bear on it itself) and the
    relevant code — nothing else from this conversation. Validate the returned JSON; fix or call again.
 3. Show the draft to the human, who edits and validates it (pair); `--auto` is not offered: a decision is a
    human's.
