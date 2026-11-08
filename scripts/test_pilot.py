@@ -1169,6 +1169,82 @@ class SnapshotModulesTests(unittest.TestCase):
         self.assertNotIn("modules", self.snapshot_in(None))
 
 
+class ArchitectureTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = pathlib.Path(self._tmp.name) / "architecture"
+        self.root.mkdir()
+        self.arch = pilot.Architecture(str(self.root))
+
+    def add(self, rel, status, **kw):
+        return self.arch.add(rel, kw.get("title", rel), kw.get("description", "A rule."), status, [], "")
+
+    def text(self, rel):
+        return (self.root / rel).read_text()
+
+    def codes(self):
+        return sorted(f["code"] for f in self.arch.lint()["findings"])
+
+    def test_type_follows_the_folder_and_status_maps_to_okf(self):
+        self.add("adr/0001-a.md", "accepted")
+        self.add("overview.md", "accepted")
+        self.add("guidelines/testing.md", "proposed")
+        self.assertIn("type: ADR", self.text("adr/0001-a.md"))
+        self.assertIn("status: stable", self.text("adr/0001-a.md"))
+        self.assertIn("type: Architecture", self.text("overview.md"))
+        self.assertIn("type: Guideline", self.text("guidelines/testing.md"))
+        self.assertIn("status: draft", self.text("guidelines/testing.md"))
+
+    def test_root_index_is_titled_and_versioned(self):
+        self.add("overview.md", "accepted")
+        index = self.text("index.md")
+        self.assertIn('okf_version: "0.2"', index)
+        self.assertIn("# Architecture", index)
+
+    def test_supersede_links_both_ways_and_lints_clean(self):
+        self.add("adr/0001-a.md", "accepted")
+        self.add("adr/0002-b.md", "proposed")
+        self.assertEqual(self.arch.supersede("0002-b", "0001-a")["supersedes"], "0001-a")
+        old = self.text("adr/0001-a.md")
+        self.assertIn("status: deprecated", old)
+        self.assertIn("supersededBy: 0002-b", old)
+        self.assertIn("supersedes: 0001-a", self.text("adr/0002-b.md"))
+        self.assertEqual(self.arch.show("0001-a")["supersededBy"], "0002-b")
+        self.assertEqual(self.codes(), [])
+
+    def test_supersede_refuses_a_non_accepted_target_and_itself(self):
+        self.add("adr/0001-a.md", "proposed")
+        self.add("adr/0002-b.md", "proposed")
+        with self.assertRaises(pilot.Refused) as ctx:
+            self.arch.supersede("0002-b", "0001-a")
+        self.assertEqual(ctx.exception.payload["reason"], "not-accepted")
+        with self.assertRaises(pilot.Refused):
+            self.arch.supersede("0001-a", "0001-a")
+
+    def test_lint_flags_a_superseded_entry_without_successor(self):
+        self.add("adr/0001-a.md", "superseded")
+        self.assertIn("missing-supersededBy", self.codes())
+
+    def test_remove_only_proposed(self):
+        self.add("adr/0001-a.md", "accepted")
+        self.add("adr/0002-b.md", "proposed")
+        with self.assertRaises(pilot.Refused):
+            self.arch.remove("0001-a")
+        self.assertTrue(self.arch.remove("0002-b")["ok"])
+        self.assertFalse((self.root / "adr/0002-b.md").exists())
+
+    def test_add_refuses_a_path_outside_the_layout(self):
+        for bad in ("notes.md", "wiki/x.md", "adr/sub/x.md"):
+            with self.assertRaises(pilot.Refused) as ctx:
+                self.add(bad, "accepted")
+            self.assertEqual(ctx.exception.payload["reason"], "bad-path")
+
+    def test_cli_needs_no_github(self):
+        args = pilot.build_parser().parse_args(["arch", "lint"])
+        self.assertFalse(pilot.needs_github(args))
+
+
 class VersionBumpTests(unittest.TestCase):
     """A change to what projects copy must raise VERSION (CLAUDE.md §4). Compares with origin/main;
     skipped where that ref or git is not available."""
