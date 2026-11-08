@@ -986,10 +986,12 @@ var ARCH_FR={proposed:'proposé',accepted:'accepté',deprecated:'déprécié',su
 var ARCH_CLS={proposed:'',accepted:'ok',deprecated:'warn',superseded:'warn'};
 var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',adr:'Décisions'};
 function archEntries(){return S.arch&&Array.isArray(S.arch.entries)?S.arch.entries.slice(0,2000):[];}
-function archGroup(e){var p=str(e.path,200).split('/'); return p.length>1&&ARCH_GROUPS[p[0]]?p[0]:'overview';}
+function archGroup(e){var p=str(e.path,200).split('/'); if(p[0]==='apps'&&p.length>2)return 'app:'+str(p[1],60); return p.length>1&&ARCH_GROUPS[p[0]]?p[0]:'overview';}
+function archLabel(g){return g.indexOf('app:')===0?'App '+g.slice(4):ARCH_GROUPS[g]||g;}
 function archGroups(){
   var n={}; archEntries().forEach(function(e){var g=archGroup(e); n[g]=(n[g]||0)+1;});
-  return Object.keys(ARCH_GROUPS).filter(function(g){return n[g];}).map(function(g){return [g,ARCH_GROUPS[g],n[g]];});
+  var keys=Object.keys(ARCH_GROUPS).filter(function(g){return n[g];}).concat(Object.keys(n).filter(function(g){return g.indexOf('app:')===0;}).sort());
+  return keys.map(function(g){return [g,archLabel(g),n[g]];});
 }
 function archEntry(e){
   var chips=[h('span',{class:'chip '+(ARCH_CLS[e.status]||'')},ARCH_FR[e.status]||str(e.status,40))];
@@ -1010,7 +1012,7 @@ function vArch(){
   return h('div',{class:'list'},h('h2',{},'Architecture · mis à jour '+ago(a.at)+(a.truncated?' · textes raccourcis':'')),
     h('div',{class:'refresh'},openLink('/pilot-architecture','Interroger l’architecture',true),openLink('/pilot-architecture --adr','Consigner une décision')),
     sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
-    pages.length?Object.keys(ARCH_GROUPS).filter(function(k){return by[k];}).map(function(k){return h('section',{class:'list','aria-label':ARCH_GROUPS[k]},h('h2',{},ARCH_GROUPS[k]),by[k].map(archEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
+    pages.length?archGroups().map(function(g){return g[0];}).filter(function(k){return by[k];}).map(function(k){return h('section',{class:'list','aria-label':archLabel(k)},h('h2',{},archLabel(k)),by[k].map(archEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
 }
 
 /* ---------- banner, chips, chrome ---------- */

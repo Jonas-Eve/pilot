@@ -1272,6 +1272,58 @@ class ArchitectureTests(unittest.TestCase):
         args = pilot.build_parser().parse_args(["arch", "snapshot"])
         self.assertFalse(pilot.needs_github(args))
 
+    def test_a_monorepo_keeps_each_app_in_its_own_subfolder(self):
+        self.add("overview.md", "accepted")
+        self.add("guidelines/layering.md", "accepted")
+        self.add("apps/web/web-overview.md", "accepted")
+        self.add("apps/web/guidelines/a11y.md", "accepted")
+        self.add("apps/api/guidelines/pagination.md", "accepted")
+        self.add("apps/api/adr/0003-store.md", "accepted")
+        self.assertIn("type: Architecture", self.text("apps/web/web-overview.md"))
+        self.assertIn("type: ADR", self.text("apps/api/adr/0003-store.md"))
+        self.assertIn("type: Guideline", self.text("apps/web/guidelines/a11y.md"))
+        for bad in ("apps/web/overview.md", "apps/web/notes.md", "apps/Web/guidelines/x.md", "apps/web/deep/guidelines/x.md",
+                    "apps/web/guidelines/sub/x.md", "apps/guidelines/x.md"):
+            with self.assertRaises(pilot.Refused, msg=bad):
+                self.add(bad, "accepted")
+
+    def test_an_app_view_is_the_transversal_entries_plus_that_apps(self):
+        for rel in ("overview.md", "guidelines/layering.md", "apps/web/guidelines/a11y.md", "apps/api/guidelines/pagination.md"):
+            self.add(rel, "accepted")
+        ids = lambda **kw: sorted(r["id"] for r in self.arch.index(active=True, **kw)["entries"])
+        self.assertEqual(ids(), ["a11y", "layering", "overview", "pagination"])
+        self.assertEqual(ids(app="web"), ["a11y", "layering", "overview"])
+        self.assertEqual(ids(app="api"), ["layering", "overview", "pagination"])
+        self.assertEqual([r["id"] for r in self.arch.search("pagination", app="web")["results"]], [])
+        self.assertEqual([r["id"] for r in self.arch.search("pagination", app="api")["results"]], ["pagination"])
+        outline = self.arch.outline("", app="web")
+        self.assertEqual([(f["path"], f["entries"]) for f in outline["folders"]], [("apps", 1), ("guidelines", 1)])
+        self.assertEqual([f["path"] for f in self.arch.outline("apps", app="web")["folders"]], ["apps/web"])
+
+    def test_adr_numbers_run_across_the_whole_bundle(self):
+        self.assertEqual(self.arch.next_number()["next"], "0001")
+        self.add("adr/0001-a.md", "accepted")
+        self.add("apps/api/adr/0004-b.md", "accepted")
+        self.assertEqual(self.arch.next_number()["next"], "0005")
+
+    def test_the_same_id_in_two_places_is_refused_and_found_by_lint(self):
+        self.add("guidelines/testing.md", "accepted")
+        with self.assertRaises(pilot.Refused) as ctx:
+            self.add("apps/web/guidelines/testing.md", "accepted")
+        self.assertEqual(ctx.exception.payload["reason"], "duplicate-id")
+        (self.root / "apps/web/guidelines").mkdir(parents=True)
+        (self.root / "apps/web/guidelines/testing.md").write_text((self.root / "guidelines/testing.md").read_text())
+        self.assertIn("duplicate-id", self.codes())
+
+    def test_cli_app_filter_and_next_number_need_no_github(self):
+        parser = pilot.build_parser()
+        args = parser.parse_args(["arch", "index", "--active", "--app", "web"])
+        self.assertEqual((args.app, pilot.needs_github(args)), ("web", False))
+        self.assertFalse(pilot.needs_github(parser.parse_args(["arch", "next-number"])))
+        self.assertEqual(parser.parse_args(["arch", "search", "x", "--app", "api"]).app, "api")
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["wiki", "index", "--app", "web"])
+
     def test_cli_needs_no_github(self):
         args = pilot.build_parser().parse_args(["arch", "lint"])
         self.assertFalse(pilot.needs_github(args))
