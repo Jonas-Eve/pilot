@@ -1166,6 +1166,10 @@ class SnapshotModulesTests(unittest.TestCase):
         doc = self.snapshot_in({"projectName": "p", "modules": {"wiki": True, "design": False}})
         self.assertEqual(doc["modules"], {"wiki": True, "design": False})
 
+    def test_the_snapshot_carries_the_project_language_english_by_default(self):
+        self.assertEqual(self.snapshot_in({"projectName": "p", "language": "fr"})["language"], "fr")
+        self.assertEqual(self.snapshot_in({"projectName": "p"})["language"], "en")
+
     def test_a_state_without_the_field_or_without_a_state_adds_nothing(self):
         self.assertNotIn("modules", self.snapshot_in({"projectName": "p"}))
         self.assertNotIn("modules", self.snapshot_in(None))

@@ -56,6 +56,7 @@ const STUB = (opts) => `
   const open = async (opts, file = FILE) => {
     const page = await browser.newPage({ viewport: { width: 400, height: 900 } });
     page.errors = []; page.on('pageerror', e => page.errors.push(String(e)));
+    if (opts.lang !== null) await page.addInitScript(`try{localStorage.setItem('cp.lang',${JSON.stringify(opts.lang || 'fr')})}catch(e){}`);
     await page.addInitScript(STUB(opts));
     await page.goto(file); await page.waitForTimeout(350);
     return page;
@@ -932,7 +933,7 @@ const STUB = (opts) => `
         (await text(page, '#helpLink')) === 'i' && (await page.$eval('#helpLink', (a) => a.getAttribute('href'))) === '#aide' && !(await page.$eval('#idea', (e) => e.hidden)));
   await page.click('#helpLink'); await page.waitForTimeout(150);
   check('reference page: its own page (#aide) with the 7 agents, replacing the tab content, no tab marked current',
-        (await page.$$('#view .agents .row')).length === 7 && (await page.$$('#view button, #view a.btn')).length === 0 && (await page.$eval('#idea', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)) &&
+        (await page.$$('#view .agents .row')).length === 7 && (await page.$$('#view button:not(#langSeg button), #view a.btn')).length === 0 && (await page.$$('#langSeg button')).length === 2 && (await page.$eval('#idea', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)) &&
         (await page.$$('#tabs a[aria-current="page"]')).length === 0 && (await page.$eval('#helpLink', (a) => a.getAttribute('aria-current'))) === 'page');
   check('reference page: sub-tabs Agents (open) and Steps; the agents are not mixed with the table',
         JSON.stringify(await page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent + (a.getAttribute('aria-current') ? '*' : '')))) === JSON.stringify(['Agents*', 'Steps']) && (await page.$$('#view table')).length === 0);
@@ -1082,6 +1083,52 @@ const STUB = (opts) => `
   }
   check('every tab and sub-tab fits a 400px phone, light and dark', wide.length === 0 && page.errors.length === 0, wide.join(', ') + ' ' + page.errors.join(' | '));
   await page.close();
+
+  // ---- language: English shows no French left, French stays, the choice sticks and follows the project ----
+  {
+    const FR_WORDS = /[éèêàùçôîï]|\b(le|la|les|des|du|une|pour|avec|sur|dans|est|vous|votre|ou|ne|pas|il y a|aucun|aucune)\b/i;
+    const leftovers = async (pg, routes) => {
+      const out = [];
+      for (const r of routes) {
+        await pg.evaluate((x) => { location.hash = x; }, r); await pg.waitForTimeout(150);
+        const t = await pg.evaluate(() => {
+          const bits = [document.body.innerText];
+          document.querySelectorAll('[title],[aria-label],[placeholder]').forEach((e) => ['title', 'aria-label', 'placeholder'].forEach((a) => { if (e.getAttribute(a)) bits.push(e.getAttribute(a)); }));
+          return bits.join('\n');
+        });
+        const own = t.split('\n').filter((l) => FR_WORDS.test(l) && !/Ticket|Layering|Catalog|Autre projet|Jonas|myavimobility|\bProto\b|du proto|Trop complexe|Piège|Pas de blanc/.test(l));
+        if (own.length) out.push('#' + r + ': ' + own.slice(0, 4).join(' ¦ '));
+      }
+      return out;
+    };
+    const full = { preload: [PSNAP], design: [DESIGN], wiki: [WIKI], architecture: [ARCH], protos: PROTOS, protoHtml: PHTML };
+    let page = await open(Object.assign({ lang: 'en' }, full));
+    const left = await leftovers(page, ROUTES.concat(['wiki', 'architecture', 'architecture/guidelines']));
+    check('language: English shows no French in any tab', left.length === 0, left.join('\n   '));
+    await page.evaluate(() => { location.hash = 'aide/agents'; }); await page.waitForTimeout(150);
+    check('language: English page is marked lang=en and the button says so', (await page.$eval('html', (e) => e.lang)) === 'en' && (await page.$eval('#langSeg button[aria-pressed=true]', (b) => b.textContent)) === 'EN');
+    check('language: page errors', page.errors.length === 0, page.errors.join('|'));
+    await page.evaluate(() => { location.hash = 'file'; }); await page.waitForTimeout(150);
+    await page.click('#ideaToggle'); await page.fill('#ideaText', 'ma note');
+    await page.evaluate(() => { location.hash = 'aide/agents'; }); await page.waitForTimeout(150);
+    await page.click('#langSeg button[lang=fr]'); await page.waitForTimeout(200);
+    check('language: switching to French translates back (tabs, form, footer) and keeps what was typed',
+          /Ma file/.test(await text(page, '#tabs')) && /Nouvelle demande/.test(await text(page, '#idea')) && /déployé le/.test(await text(page, '#version')) && (await page.inputValue('#ideaText')) === 'ma note');
+    check('language: the choice is remembered', (await page.evaluate(() => localStorage.getItem('cp.lang'))) === 'fr');
+    await page.close();
+    page = await open({ lang: null, preload: [Object.assign({}, BASE, { language: 'fr' })] });
+    check('language: with no choice yet the page follows the project language (fr)', /Ma file/.test(await text(page, '#tabs')));
+    await page.close();
+    page = await open({ lang: null, preload: [Object.assign({}, BASE, { language: 'en' })] });
+    check('language: and English when the project is English, or says nothing', /My queue/.test(await text(page, '#tabs')));
+    await page.close();
+    page = await open({ lang: 'en', preload: [Object.assign({}, BASE, { language: 'fr' })] });
+    check('language: a reader\'s own choice wins over the project language', /My queue/.test(await text(page, '#tabs')));
+    await page.close();
+    const keys = fs.readFileSync(TEMPLATE, 'utf8');
+    const stale = Object.keys(JSON.parse(keys.match(/var EN=(\{[\s\S]*?\n\});/)[1])).filter((k) => keys.split(k).length < 3);
+    check('language: every English key is a French text the page really contains', stale.length === 0, stale.join(' | '));
+  }
 
   // ---- renderer: the project name is HTML-escaped ----
   const escaped = render('A<b>"x"&y', 'o/r', path.join(TMP, 'escaped.html'));
