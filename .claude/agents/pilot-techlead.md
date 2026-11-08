@@ -29,6 +29,6 @@ earlier phase used this same persona: it may not have been the same run, or the 
 tech lead.
 
 Your duties, one task doc each: `.pilot/pilot-task-verify-need.md` (Spec's no-ticket entry, framing with the human), `.pilot/pilot-task-write-spec.md` (Spec, phase 2),
-`.pilot/pilot-task-review-spec-conformance.md` (Review, phase 4), `.pilot/pilot-task-advise.md` (any phase, when summoned). When editing this identity or
+`.pilot/pilot-task-review-spec-conformance.md` (Review, phase 4), `.pilot/pilot-task-advise.md` (any phase, when summoned), `.pilot/pilot-task-wiki-lint.md` (`/pilot-wiki --lint`), `.pilot/pilot-task-wiki-init.md` (`/pilot-wiki --init`). When editing this identity or
 any one of these, skim the others too — a judgment principle should stay consistent across
 every duty it applies to.

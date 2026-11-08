@@ -23,15 +23,17 @@ truth, for agents and humans, as markdown files in the consuming project's repo.
    split validation, the PR review, QA. No new approval step.
 5. **Verification is a measurement, not a signature.** `lint` compares and stamps; a human
    only arbitrates a drift.
-6. **The wiki says *what*, not *how*.** Behavior, rules, decisions, vocabulary. Technical
+6. **The wiki says *what*, not *how*.** Behavior, rules, vocabulary. Technical
    specs stay in tickets — duplicating them would recreate the drift the wiki prevents.
 
 ## 3. Layout
 
 - Root: `wiki/` in the **project** repo. Project-owned: `/pilot-update` never touches it.
   Its absence is what `doctor` reports (§6).
-- One markdown file per capability/topic, grouped by folder: `features/`, `flows/`,
-  `architecture/`, `decisions/`, `glossary.md`.
+- Functional only, organized by **functional domain**: one folder per product area
+  (`search/`, `export/`…), one markdown file per topic, plus `glossary.md`. Domains come from
+  the project's epics. Architecture decisions are out of scope here: they will be handled
+  by a reworked `/pilot-init-archi`.
 - No committed index: `pilot.py wiki index` prints it on demand (titles, entry ids,
   statuses). A committed index is a merge-conflict magnet.
 
@@ -78,9 +80,8 @@ that completes it; before that it stays `specified`.
 | 4 Review | the PR's wiki diff | tech lead (spec conformance): wiki diff matches the code; PM: entries match the acceptance criteria. A behavior change with no wiki diff is a blocking finding |
 | 5 QA | the story's entries | nothing: `verified` is derived |
 
-`type:tech` tickets touch `architecture/` or `decisions/` entries when they decide
-something durable; `type:e2e` tasks and `type:bug` fixes change no entry unless the
-wiki was underspecified (then it is a normal wiki edit in that PR).
+`type:tech`, `type:e2e` tasks and `type:bug` fixes change no entry unless the wiki was
+underspecified (then it is a normal wiki edit in that PR).
 
 ## 6. `/pilot-wiki`
 
@@ -118,8 +119,8 @@ Persona: tech lead (it already judges conformance), PM consulted for functional 
    - undocumented behavior → entry added, or flagged for removal from the code.
 5. Output: **one PR per run** bundling stamps and resolved corrections.
 
-Pair: the human arbitrates live. `--auto`: each drift becomes `needs-human`, stays
-unstamped, nothing is decided without a human.
+Pair: the human arbitrates live. `--auto`: every drift is listed under "To arbitrate" in
+the run's PR and stays unstamped, nothing is decided without a human.
 
 ### Init
 
@@ -139,8 +140,8 @@ human can spot-check in seconds. The PR description lists divergences first, the
 summarizes the convergent entries (count, examples). A human merges: init never merges
 itself.
 
-Pair: the human arbitrates divergences live. `--auto`: each divergence is `needs-human`,
-its entry stays unstamped.
+Pair: the human arbitrates divergences live. `--auto`: divergences are listed under "To
+arbitrate" in the PR and their entries stay unstamped; nothing is decided.
 
 ## 7. `pilot.py wiki`
 
@@ -173,7 +174,7 @@ wiki). It is built over several short PRs, each backward compatible and bumping 
 version while nothing requires the wiki yet, so `main` is never half-migrated:
 
 1. `pilot.py wiki` (index, show, status, lint, add, set) and its tests — done, 2.10.0.
-2. `/pilot-wiki` (query, `--lint`, `--init`) and the link/task docs.
+2. `/pilot-wiki` (query, `--lint`, `--init`) and the link/task docs — done, 2.11.0.
 3. Discovery and Spec wiki PRs, Dev flips to `implemented`.
 4. Review and QA criteria, the dashboard "Wiki" tab.
 5. Last PR: the `doctor` check makes the wiki mandatory, `/pilot-init` and `/pilot-update`
