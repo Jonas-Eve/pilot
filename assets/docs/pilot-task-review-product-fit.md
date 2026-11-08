@@ -23,6 +23,10 @@ review, even though its siblings are):
   specified. Where it left something unspecified, check consistency against this
   project's own design system/style guide instead, if it has one — block only on a clear
   break from established components/patterns, never a style preference of your own.
+- **Wiki** (only when the prompt carries entries, either type): the entries the PR touches state the
+  story's acceptance criteria as product rules. An entry that drops, changes or contradicts a
+  criterion, or states a product-visible rule the criteria never asked for, is a `change`; a
+  criterion no entry states at all is a `change` too.
 - **`type:e2e`** — review whether the test actually exercises the real, already-merged
   end-to-end flow it claims to (not a mocked-out subset), and whether, with its
   scenarios, it genuinely validates the story's acceptance criteria as a whole — the one

@@ -13,6 +13,8 @@ nobody has yet confirmed it behaves as intended for a real user.
    task's automated coverage doesn't reach — visual/UX judgment, a third-party integration
    only reachable live). State exactly how to trigger each case and what to expect — a plan
    to *execute*, not a restatement of the acceptance criteria.
+   When the prompt carries wiki entries, each statement of an entry is a case of its own: they are
+   what the product promises, and a case that fails against one is a real failure of the story.
 2. **Present the plan to the human and wait** — no `--auto`, nothing to do here without
    them. Go case by case rather than dumping the whole plan for one verdict: have them run
    a case, report what happened, move to the next — this surfaces exactly which case
