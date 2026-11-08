@@ -26,32 +26,34 @@ when it needs it.
 
 ## 3. The modules
 
-| Module | Skills | Requires | `doctor` checks | Content / data | Initialization |
+| Module | Skills | Requires | `doctor` checks | Content / data | Bootstrap from what the project has |
 |---|---|---|---|---|---|
-| `wiki` | `/pilot-wiki` | — | `wiki/` | functional wiki, one folder per domain (`wiki-design.md`) | `/pilot-wiki --init` |
-| `architecture` | `/pilot-architecture` | — | `architecture/` | overview, technical guidelines, ADR (§6) | `/pilot-architecture --init` |
-| `dashboard` | `/pilot-dashboard` | — | — (its pushes are best-effort) | the team page and its database | `/pilot-dashboard` |
-| `design` | `/pilot-design` | `dashboard` | — | design system and charter (dashboard database) | `/pilot-design` |
-| `proto` | `/pilot-proto` | `dashboard` | — | prototypes (dashboard database) | `/pilot-proto` |
+| `wiki` | `/pilot-wiki` | — | `wiki/` | functional wiki, one folder per domain (`wiki-design.md`) | `/pilot-wiki --bootstrap` |
+| `architecture` | `/pilot-architecture` | — | `architecture/` | overview, technical guidelines, ADR (§6) | `/pilot-architecture --bootstrap` |
+| `dashboard` | `/pilot-dashboard` | — | — (its pushes are best-effort) | the team page and its database | — |
+| `design` | `/pilot-design` | `dashboard` | — | design system and charter (dashboard database) | — |
+| `proto` | `/pilot-proto` | `dashboard` | — | prototypes (dashboard database) | — |
 
 `pilot-init-archi` disappears: its job is the `architecture` module's.
 
 ## 4. State, commands and existing projects
 
-- `pilot.py module list` prints each module with `enabled`, `requires`, its skills and its init command
+- `pilot.py module list` prints each module with `enabled`, `requires`, its skills, its first-use command (`use`) and its `bootstrap`
   (one registry in the script, extended by adding a module). `module enable <name>` refuses when a
   prerequisite is off (`--with-requires` enables it too); `module disable <name>` refuses while an
   enabled module requires it. Both write only the `modules` field.
 - `pilot.py doctor` runs the check of each **enabled** module only.
 - **Existing projects** (`/pilot-update` on a project from before modules): `dashboardUrl` present → `dashboard`, `design` and `proto` on
   (they only worked with it); `archInitialized: true` → `architecture` stays off, with an offer to
-  run `/pilot-architecture --init`, which reads the existing `apps/`; `wiki` off. Nothing is switched on
+  run `/pilot-architecture --bootstrap`, which reads the existing `apps/`; `wiki` off. Nothing is switched on
   without the human's answer except that continuity case, which only mirrors what already works.
 
 ## 5. Module skills when the module is off
 
-Running a module's skill while it is off says so and proposes: enable it (and its prerequisites), run
-its initialization, then continue with what was asked. `--init` is the explicit form. Everything else
+Running a module's skill while it is off says so and proposes: enable it (and its prerequisites), then continue
+with what was asked. Turning a module on and drafting its content are two things: `--bootstrap` exists only for
+the modules that have content to draft from what the project already has (`wiki`, `architecture`) and is offered
+right after enabling; the others start with their first run. Everything else
 that names the module — a phase step, a dashboard tab, `pilot-help`'s list — is skipped or hidden.
 `/pilot-init` asks which modules to enable (or takes `--modules wiki,architecture`, `--no-modules`);
 `/pilot-update` lists them and offers, never enables; `/pilot-help` shows each one's state.
@@ -100,7 +102,7 @@ Each step is backward compatible; the last one is the break.
 3. `dashboard`, `design`, `proto` under the switch: their skills' first-use flow, the dashboard tabs
    following the modules, `/pilot-init --modules`, the `/pilot-update` migration, `/pilot-help` status.
 4. The `architecture` module, built beside the old skill: layout, ADR, guidelines in the dev and review
-   prompts, `--init` from an existing `apps/`, `--scaffold`, the dashboard tab.
+   prompts, `--bootstrap` from an existing `apps/`, `--scaffold`, the dashboard tab.
 5. **v3**: `pilot-init-archi` removed, `archInitialized` and the `PILOT:ARCHITECTURE`/`PILOT:COMMANDS`
    blocks replaced by the module's pointer, `/pilot-update` migrating each project (§4).
 

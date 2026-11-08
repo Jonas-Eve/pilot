@@ -108,15 +108,15 @@ underspecified (then it is a normal wiki edit in that PR).
 - `/pilot-wiki <question>` (or no flag) — answers from the wiki with citations (page, entry
   id, derived status). No code reading beyond what the answer needs; says so when the wiki
   does not cover the question.
-- `/pilot-wiki --lint [page|entry]` — see below.
-- `/pilot-wiki --init [domain]` — creates the wiki: an empty skeleton on a new project, or,
-  on an existing one, entries deduced by crossing intent (closed tickets, accepted
-  prototypes) with reality (the code). Run by `/pilot-init` for a new project and proposed
-  by `/pilot-update` for an existing one. See "Init" below.
+- `/pilot-wiki --lint [domain|entry]` — see below.
+- `/pilot-wiki --bootstrap [domain]` — drafts the wiki from what the project has: entries deduced by
+  crossing intent (closed tickets, accepted prototypes) with reality (the code). Turning the module on is
+  separate: any `/pilot-wiki` run proposes it first, `/pilot-init` asks for it on a new project and
+  `/pilot-update` offers it on an existing one. See "Bootstrap" below.
 
 The wiki is an optional module: `.pilot/state.json` carries `"modules": {"wiki": true}` (`pilot.py module
 list|enable|disable`), asked by `/pilot-init` unless `--wiki`/`--no-wiki` is given, turned on by
-`/pilot-wiki --init` on an existing project. A project without it behaves as before; with it on,
+`/pilot-wiki` on an existing project. A project without it behaves as before; with it on,
 `pilot.py doctor` also requires `wiki/`.
 
 Without the skill: a `PILOT:INTRO` block in the project's `CLAUDE.md` tells any agent to
@@ -144,7 +144,7 @@ Persona: tech lead (it already judges conformance), PM consulted for functional 
 Pair: the human arbitrates live. `--auto`: every drift is listed under "To arbitrate" in
 the run's PR and stays unstamped, nothing is decided without a human.
 
-### Init
+### Bootstrap
 
 On an existing project, one PR **per domain** (one folder of `wiki/`), never one huge PR.
 For each behavior the agent crosses the two sources and triages it:
@@ -197,17 +197,17 @@ The wiki is an optional module, so every step is backward compatible and a minor
 never half-migrated:
 
 1. `pilot.py wiki` (index, show, status, lint, add, set) and its tests — done, 2.10.0.
-2. `/pilot-wiki` (query, `--lint`, `--init`) and the link/task docs — done, 2.11.0.
+2. `/pilot-wiki` (query, `--lint`, `--bootstrap`) and the link/task docs — done, 2.11.0.
 3. Discovery and Spec wiki PRs, Dev flips to `implemented` — done.
 4. Review and QA criteria, and the dashboard "Wiki" tab (read-only, by functional domain; `pilot.py wiki snapshot`, pushed by `/pilot-dashboard`) — done.
 5. The module switch (`modules.wiki` in `state.json`, `pilot.py module`), `doctor` checking `wiki/` only
-   when it is on, `/pilot-init` asking (or `--wiki`/`--no-wiki`), `/pilot-update` offering `--init` — done
+   when it is on, `/pilot-init` asking (or `--wiki`/`--no-wiki`), `/pilot-update` offering the module and `--bootstrap` — done
    (steps 4 and 5 share one PR: a single bump, 2.13.0).
 
 Content placement (re-run the three-tier test with `grep` at implementation time):
 contract and format in `assets/docs/pilot-link-wiki.md` (read by every phase that touches
 it, whole file injected); `pilot-process.md` gets only a pointer and the "only a PR changes
-the wiki" rule; one task doc per duty (`pilot-task-wiki-lint.md`, `pilot-task-wiki-init.md`…); persona
+the wiki" rule; one task doc per duty (`pilot-task-wiki-lint.md`, `pilot-task-wiki-bootstrap.md`…); persona
 files unchanged except their duty lists.
 
 ## 10. Known limits
