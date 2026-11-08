@@ -4,7 +4,7 @@
 
 Usage:
   python3 scripts/demo_snapshot.py --out FILE        # the `snapshots/Jonas-Eve__pilot` document
-  python3 scripts/demo_snapshot.py --dir DIR         # that document + a live session, a few events, a design document, a wiki document and prototypes
+  python3 scripts/demo_snapshot.py --dir DIR         # that document + a live session, a few events, a design document, a wiki document, an architecture document and prototypes
 
 Timestamps are relative to now, so re-run it to refresh the demo. Stdlib only.
 """
@@ -151,6 +151,20 @@ body.big{font-size:22px}button{min-height:48px;padding:0 18px;border:0;border-ra
 <script>document.getElementById("b").onclick=function(){document.body.classList.toggle("big")}</script>"""
 
 
+def architecture_document():
+    """The `architecture/Jonas-Eve__pilot` document `pilot.py arch snapshot` would have written."""
+    def entry(eid, title, path, status, tickets, text, supersedes="", superseded_by=""):
+        return {"id": eid, "title": title, "description": text.split(".")[0] + ".", "path": path, "status": status,
+                "tickets": tickets, "supersedes": supersedes, "supersededBy": superseded_by, "text": text}
+    entries = [
+        entry("overview", "Vue d'ensemble", "overview.md", "accepted", [], "Une application en ligne de commande, sans service distant."),
+        entry("layering", "Couches", "guidelines/layering.md", "accepted", [], "Le domaine n'importe jamais les adaptateurs."),
+        entry("0001-compute", "Catalogue calculé", "adr/0001-compute.md", "superseded", [5], "Le catalogue est recalculé à chaque appel.", "", "0002-store"),
+        entry("0002-store", "Catalogue stocké", "adr/0002-store.md", "accepted", [12], "Le catalogue est stocké, pas calculé.", "0001-compute"),
+    ]
+    return {"kind": "architecture", "repo": REPO, "at": iso(3), "total": len(entries), "truncated": False, "entries": entries}
+
+
 def wiki_document():
     """The `wiki/Jonas-Eve__pilot` document `pilot.py wiki snapshot` would have written."""
     def entry(eid, title, path, status, derived, tickets, verified, text):
@@ -227,6 +241,8 @@ def main():
             json.dump(design_document(), fh, ensure_ascii=False)
         with open(os.path.join(args.dir, "wiki.json"), "w", encoding="utf-8") as fh:
             json.dump(wiki_document(), fh, ensure_ascii=False)
+        with open(os.path.join(args.dir, "architecture.json"), "w", encoding="utf-8") as fh:
+            json.dump(architecture_document(), fh, ensure_ascii=False)
         for name, doc in proto_documents().items():
             with open(os.path.join(args.dir, name + ".json"), "w", encoding="utf-8") as fh:
                 json.dump(doc, fh, ensure_ascii=False)
