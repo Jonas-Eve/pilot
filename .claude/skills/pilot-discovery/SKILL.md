@@ -143,7 +143,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    `created` ones of step 4, and `--action closed` for a draft closed as `wont-do`. Skipped
    silently when `dashboardUrl` is absent from `.pilot/state.json`, or `.pilot/pilot.py` is
    missing: Discovery never stops for the dashboard.
-7b. **Wiki** (only when `wiki/` exists at the project root; else skip): per `.pilot/pilot-link-wiki.md`, for
+7b. **Wiki** (only when the `wiki` module is enabled (`.pilot/pilot-process.md` §8); else skip): per `.pilot/pilot-link-wiki.md`, for
    each finalized `type:feature` story call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-entries.md`
    (target status `proposed`), `.pilot/pilot-link-wiki.md`, the story as finalized and the existing entries
    of the domains it touches (`python3 .pilot/pilot.py wiki index`, then `wiki show <id>`). Put each

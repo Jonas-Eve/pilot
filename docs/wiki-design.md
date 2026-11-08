@@ -29,7 +29,7 @@ truth, for agents and humans, as markdown files in the consuming project's repo.
 ## 3. Layout
 
 - Root: `wiki/` in the **project** repo. Project-owned: `/pilot-update` never touches it.
-  Its absence is what `doctor` reports (§6).
+  With the module on, its absence is what `doctor` reports (§6).
 - Functional only, organized by **functional domain**: one folder per product area
   (`search/`, `export/`…), one markdown file per topic. Domains come from
   the project's epics. Architecture decisions are out of scope here: they will be handled
@@ -94,8 +94,10 @@ underspecified (then it is a normal wiki edit in that PR).
   prototypes) with reality (the code). Run by `/pilot-init` for a new project and proposed
   by `/pilot-update` for an existing one. See "Init" below.
 
-The wiki is mandatory: `pilot.py doctor`, each phase's preflight, fails with "wiki absent,
-run `/pilot-wiki --init`" when `wiki/` does not exist.
+The wiki is an optional module: `.pilot/state.json` carries `"modules": {"wiki": true}` (`pilot.py module
+list|enable|disable`), asked by `/pilot-init` unless `--wiki`/`--no-wiki` is given, turned on by
+`/pilot-wiki --init` on an existing project. A project without it behaves as before; with it on,
+`pilot.py doctor` also requires `wiki/`.
 
 Without the skill: a `PILOT:INTRO` block in the project's `CLAUDE.md` tells any agent to
 consult `wiki/` (via `pilot.py wiki index`) before answering about the product.
@@ -169,16 +171,16 @@ lives in it. Offline tests in `scripts/test_pilot.py` (`WikiTests`).
 
 ## 9. Delivery
 
-The wiki is mandatory; the release is **3.0.0** (major: a project's phases now act on the
-wiki). It is built over several short PRs, each backward compatible and bumping the minor
-version while nothing requires the wiki yet, so `main` is never half-migrated:
+The wiki is an optional module, so every step is backward compatible and a minor release; `main` is
+never half-migrated:
 
 1. `pilot.py wiki` (index, show, status, lint, add, set) and its tests — done, 2.10.0.
 2. `/pilot-wiki` (query, `--lint`, `--init`) and the link/task docs — done, 2.11.0.
-3. Discovery and Spec wiki PRs, Dev flips to `implemented` — done, 2.12.0 (only for a project that has a `wiki/`).
-4. Review and QA criteria (only for a project that has a `wiki/`), and the dashboard "Wiki" tab (read-only, by functional domain; `pilot.py wiki snapshot`, pushed by `/pilot-dashboard`) — done, 2.13.0.
-5. Last PR: the `doctor` check makes the wiki mandatory, `/pilot-init` and `/pilot-update`
-   run or propose `--init`, `VERSION` goes to 3.0.0.
+3. Discovery and Spec wiki PRs, Dev flips to `implemented` — done.
+4. Review and QA criteria, and the dashboard "Wiki" tab (read-only, by functional domain; `pilot.py wiki snapshot`, pushed by `/pilot-dashboard`) — done.
+5. The module switch (`modules.wiki` in `state.json`, `pilot.py module`), `doctor` checking `wiki/` only
+   when it is on, `/pilot-init` asking (or `--wiki`/`--no-wiki`), `/pilot-update` offering `--init` — done
+   (steps 4 and 5 share one PR: a single bump, 2.13.0).
 
 Content placement (re-run the three-tier test with `grep` at implementation time):
 contract and format in `assets/docs/pilot-link-wiki.md` (read by every phase that touches

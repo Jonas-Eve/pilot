@@ -12,6 +12,6 @@ phase at a time, there's no single command that runs the whole pipeline end to e
 the state machine, labels, and claim protocol — kept in sync by `/pilot-update`, never
 hand-edited here. Read it before creating or moving a ticket through any phase.
 
-If `wiki/` exists, it is the source of truth for what the product does and what is promised: read it
-(`/pilot-wiki <question>`, or `python3 .pilot/pilot.py wiki index`) before answering about the product, and
-never contradict it from the code alone.
+When the project's `wiki` module is enabled (`.pilot/state.json`), `wiki/` is the source of truth for what the
+product does and what is promised: read it (`/pilot-wiki <question>`, or `python3 .pilot/pilot.py wiki index`)
+before answering about the product, and never contradict it from the code alone.

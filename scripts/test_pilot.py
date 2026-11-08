@@ -623,20 +623,64 @@ class DashboardPayloadTests(unittest.TestCase):
 
 
 class DoctorTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.wiki_dir = pathlib.Path(self._tmp.name) / "wiki"
+        self.wiki_dir.mkdir()
+
     def report(self, **attrs):
         gh = FakeGh([])
         for key, value in attrs.items():
             setattr(gh, key, value)
-        return pilot.Machine(gh).doctor()
+        return pilot.Machine(gh).doctor(str(self.wiki_dir), {"wiki": True})
 
-    def test_everything_fine(self):
-        got = self.report()
-        self.assertTrue(got["ok"])
-        self.assertEqual(got["failed"], [])
+    def test_an_enabled_wiki_module_needs_its_directory(self):
+        got = pilot.Machine(FakeGh([])).doctor(str(self.wiki_dir / "missing"), {"wiki": True})
+        self.assertFalse(got["ok"])
+        self.assertEqual([c["name"] for c in got["failed"]], ["wiki"])
+        self.assertIn("/pilot-wiki --init", got["failed"][0]["detail"])
+
+    def test_a_disabled_or_absent_wiki_module_is_not_checked(self):
+        for modules in ({"wiki": False}, {}):
+            got = pilot.Machine(FakeGh([])).doctor(str(self.wiki_dir / "missing"), modules)
+            self.assertTrue(got["ok"], modules)
+            self.assertNotIn("wiki", [c["name"] for c in got["checks"]])
+
+    def test_the_modules_come_from_the_state_file_by_default(self):
+        state = pathlib.Path(self._tmp.name) / "state.json"
+        self.assertEqual(pilot.read_modules(str(state)), {})
+        state.write_text(json.dumps({"projectName": "p", "modules": {"wiki": True}}))
+        self.assertEqual(pilot.read_modules(str(state)), {"wiki": True})
+        state.write_text("{not json")
+        self.assertEqual(pilot.read_modules(str(state)), {})
+        state.write_text(json.dumps({"projectName": "p"}))
+        self.assertEqual(pilot.read_modules(str(state)), {})
+
+    def test_set_module_changes_only_the_modules_field(self):
+        state = pathlib.Path(self._tmp.name) / "state.json"
+        state.write_text(json.dumps({"projectName": "p", "pilotVersion": "2.0.0"}, indent=2) + "\n")
+        self.assertEqual(pilot.set_module("wiki", True, str(state)), {"ok": True, "modules": {"wiki": True}})
+        self.assertEqual(json.loads(state.read_text()), {"projectName": "p", "pilotVersion": "2.0.0", "modules": {"wiki": True}})
+        pilot.set_module("wiki", False, str(state))
+        self.assertEqual(pilot.read_modules(str(state)), {"wiki": False})
+
+    def test_set_module_refuses_an_unknown_module_and_a_missing_state(self):
+        with self.assertRaises(pilot.Refused) as caught:
+            pilot.set_module("nope", True, str(pathlib.Path(self._tmp.name) / "state.json"))
+        self.assertEqual(caught.exception.payload["reason"], "unknown-module")
+        with self.assertRaises(pilot.Refused) as caught:
+            pilot.set_module("wiki", True, str(pathlib.Path(self._tmp.name) / "absent.json"))
+        self.assertEqual(caught.exception.payload["reason"], "no-state")
+
+    def test_the_cli_flag_skips_the_wiki_check_and_module_is_offline(self):
+        self.assertTrue(pilot.build_parser().parse_args(["doctor", "--no-wiki"]).no_wiki)
+        self.assertFalse(pilot.build_parser().parse_args(["doctor"]).no_wiki)
+        self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(["module", "list"])))
 
     def test_not_authenticated(self):
         got = FakeGh([], me=None)
-        got = pilot.Machine(got).doctor()
+        got = pilot.Machine(got).doctor(str(self.wiki_dir), {})
         self.assertFalse(got["ok"])
         self.assertEqual([c["name"] for c in got["failed"]], ["github-api"])
 

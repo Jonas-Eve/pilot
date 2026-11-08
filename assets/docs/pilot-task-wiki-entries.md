@@ -2,7 +2,7 @@
 
 Injected by `.claude/skills/pilot-discovery/SKILL.md` (target status `proposed`) and
 `.claude/skills/pilot-spec/SKILL.md` (target status `specified`) into the `pilot-pm` persona's
-prompt, together with `.pilot/pilot-link-wiki.md`. Only for a project that has a `wiki/`.
+prompt, together with `.pilot/pilot-link-wiki.md`, when the project's `wiki` module is enabled.
 
 You receive the story as finalized (title, body, acceptance criteria; for Spec also its tasks),
 the entries that already exist in the domains it touches (id, title, page, status, text), the

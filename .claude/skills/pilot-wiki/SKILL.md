@@ -13,8 +13,10 @@ claims no ticket and changes no label.
 
 ## Preflight
 
-Run `python3 .pilot/pilot.py doctor` once per session; stop with its report if it fails. Without
-`--init`, a missing `wiki/` ends the run with: "no wiki yet, run `/pilot-wiki --init`".
+Run `python3 .pilot/pilot.py doctor --no-wiki` once per session (the wiki check is the one this skill
+repairs); stop with its report if it fails. Without `--init`, a project whose `wiki` module is off or whose
+`wiki/` is missing ends the run with: "no wiki yet, run `/pilot-wiki --init`" (`python3 .pilot/pilot.py
+module list` tells whether the module is on).
 
 ## Question (no flag)
 
@@ -44,8 +46,9 @@ Run `python3 .pilot/pilot.py doctor` once per session; stop with its report if i
 1. A domain is a functional area of the product (a folder of `wiki/`, e.g. `search/`), never a kind
    of document. Domains: the given one, else propose the list — one per `level:epic` ticket
    (its stories are the domain's tickets), and for stories under no epic, the areas the tickets and
-   the code suggest — and have the human confirm it; `--auto` takes the proposal as is. Create
-   `wiki/` if it is absent.
+   the code suggest — and have the human confirm it; `--auto` takes the proposal as is. First enable the
+   module (`python3 .pilot/pilot.py module enable wiki`) and, if `wiki/` is absent, create it with a short
+   `README.md` saying what the folder is (functional wiki, by domain, only a PR changes it).
 2. Per domain, gather the intent: closed tickets at `status:done` and prototypes at
    `status:poc-validated` that belong to it (`gh issue list`/`gh issue view`, with comments), and
    where its code lives. Nothing to gather → skip the domain, say so.
