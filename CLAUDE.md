@@ -38,11 +38,11 @@ itself.
 ## 2. STRUCTURE
 - `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
   consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
-  sync by `/pilot-update`) — same path on both sides. All fourteen carry the `pilot-`
+  sync by `/pilot-update`) — same path on both sides. All fifteen carry the `pilot-`
   prefix a project-local skill needs to avoid colliding with the project's own — there's
   no plugin namespace to rely on instead. `pilot-init`, `pilot-init-archi`,
   `pilot-update`, `pilot-dashboard` are this repo's own bootstrap/maintenance commands
-  (`pilot-dashboard` publishes the project's dashboard artifact from a template, below; `pilot-design` and `pilot-proto` are project commands, not phases — they write the design system and the prototypes the dashboard's "Design" and "Prototypes" tabs show; `pilot-wiki` is one too — it answers from, checks and bootstraps the project's wiki, see `docs/wiki-design.md`); `pilot-discovery`,
+  (`pilot-dashboard` publishes the project's dashboard artifact from a template, below; `pilot-design` and `pilot-proto` are project commands, not phases — they write the design system and the prototypes the dashboard's "Design" and "Prototypes" tabs show; `pilot-wiki` is one too — it answers from, checks and bootstraps the project's wiki, see `docs/wiki-design.md`; so is `pilot-architecture` — the architecture module's skill (`architecture/`: overview, guidelines, ADR; question, `--adr`, `--bootstrap`, `--scaffold`, `--lint`), which replaces `pilot-init-archi` in v3, see `docs/modules-design.md`); `pilot-discovery`,
   `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa` are the five PILOT
   phases (`pilot-spec` covers splitting a story into dev-sized tasks and writing each
   one's technical spec, in one continuous pass); `pilot-auto` is a dispatcher over the
@@ -122,7 +122,7 @@ itself.
   (the project's wiki under `wiki/`, an OKF bundle: `index`, `reindex`, `show`, `status`, `lint`, `snapshot` (the dashboard's Wiki tab document), `add`/`set`/`remove`, the only
   writers of an entry's frontmatter and of the folder `index.md` files, and `migrate` — design in `docs/wiki-design.md`; used by `pilot-wiki` and, when the `wiki` module is enabled, by all five phases) and
   `arch` (the architecture module's bundle under `architecture/` — `overview.md`, `guidelines/*.md`, `adr/NNNN-title.md` — on the same OKF engine as `wiki` (`index`, `reindex`, `show`, `lint`, `add`, `set`, `remove`, plus `supersede NEW OLD` for ADRs; no GitHub call); design in `docs/modules-design.md` §6) and `doctor` (preflight each phase skill runs as its step 0, once per session: python, gh auth,
-  repo access and push permission, the 32 PILOT labels, the `wiki/` directory when that module is on — `--no-wiki` lets `pilot-wiki` repair a missing one) and `module` (`list`, `enable`, `disable`: the optional modules of `.pilot/state.json` — `wiki`, `dashboard`, `design`, `proto` — with the prerequisites each declares; the snapshot document carries them so the dashboard's tabs follow). Every command prints one JSON
+  repo access and push permission, the 32 PILOT labels, the `wiki/` and `architecture/` directories when those modules are on — `--no-wiki` lets `pilot-wiki` repair a missing one) and `module` (`list`, `enable`, `disable`: the optional modules of `.pilot/state.json` — `wiki`, `architecture`, `dashboard`, `design`, `proto` — with the prerequisites each declares; the snapshot document carries them so the dashboard's tabs follow). Every command prints one JSON
   object; `claim`/`set`/`flag`/`unflag` also return the `event` (and `claim` the `activity`)
   the phase skills push to the dashboard (`pilot-link-dashboard.md`), and `event` builds one
   for a ticket a skill changed itself (Discovery, the tasks Spec creates). Judgment (which agent

@@ -1104,7 +1104,7 @@ failure resolved to "not actually a bug" → `status:done`, the one direct excep
 A project turns an optional module on in `.pilot/state.json` (`"modules": {"wiki": true, "dashboard": true, …}`; `python3
 .pilot/pilot.py module list|enable|disable`; a module may require another: `enable` refuses until it is on,
 `--with-requires` turns both on). A module that is off, or absent from the file, changes nothing: every step
-below that names it is skipped. A module's own skill proposes turning it on at first use. The modules: `wiki`,
+below that names it is skipped. A module's own skill proposes turning it on at first use. The modules: `wiki`, `architecture`,
 `dashboard` (the team page; its tabs follow the modules a project has on), `design` and `proto` (the design system
 and the prototypes, which need `dashboard`).
 
@@ -1116,3 +1116,9 @@ settled silently. **Only a PR changes the wiki** — a code PR carries its own w
 every branch stay coherent. With the module on, `python3 .pilot/pilot.py doctor` also requires `wiki/`. The
 entry format, statuses and rules are `.pilot/pilot-link-wiki.md`; the mechanics are `python3 .pilot/pilot.py
 wiki …` and `/pilot-wiki` (it turns the module on; `--bootstrap` drafts the wiki from the project's tickets and code).
+
+**`architecture`.** `architecture/` at the project root says how the product is built and why: an overview of the
+apps, the technical guidelines AIs and developers must respect, and the architecture decision records (ADR). Only
+a PR changes it. With the module on, `doctor` also requires `architecture/`. The layout, statuses and rules are
+`.pilot/pilot-link-architecture.md`; the mechanics are `python3 .pilot/pilot.py arch …` and `/pilot-architecture`
+(it turns the module on; `--bootstrap` drafts it from the existing apps, `--scaffold` creates them).

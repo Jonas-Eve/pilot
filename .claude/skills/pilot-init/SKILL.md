@@ -1,7 +1,7 @@
 ---
 name: pilot-init
 description: "One-time bootstrap for a new project adopting PILOT: asks for the project name and a short functional vision, copies PILOT's skills/agents and canonical docs into the project from github.com/Jonas-Eve/pilot, generates the project's own CLAUDE.md, README.md, and PROJECT-FUNCTIONAL-SCOPE.md from templates, scaffolds a default `.github/pull_request_template.md` if none exists, and provisions the GitHub labels the state machine depends on, and turns on the optional wiki module when asked (--wiki / --no-wiki, else it asks). Refuses to run twice — if already initialized, stops with an explicit message instead of touching anything. Use when a human wants to start using PILOT in a project that hasn't run it before. Not for describing the monorepo's apps/technologies — that's /pilot-init-archi, which requires this to have run first."
-argument-hint: "[project name] [functional vision] [--modules wiki,dashboard,design,proto | --no-modules]"
+argument-hint: "[project name] [functional vision] [--modules wiki,architecture,dashboard,design,proto | --no-modules]"
 disable-model-invocation: true
 ---
 
@@ -31,7 +31,7 @@ This skill's idempotency is tracked in `.pilot/state.json` at the project root:
   "projectName": "<name>",
   "archInitialized": false,
   "archInitializedAt": null,
-  "modules": {"wiki": <bool>, "dashboard": <bool>, "design": <bool>, "proto": <bool>},
+  "modules": {"wiki": <bool>, "architecture": <bool>, "dashboard": <bool>, "design": <bool>, "proto": <bool>},
   "lastProcessDocSyncAt": "<ISO8601>",
   "lastLabelsSyncAt": "<ISO8601>",
   "lastIntroSyncAt": "<ISO8601>",
@@ -63,7 +63,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
    (2-5 sentences) — enough to seed `PROJECT-FUNCTIONAL-SCOPE.md`'s "Vision" section and
    the one-line summary atop `CLAUDE.md`/`README.md`, not a full spec (the human fills in
    "In scope"/"Out of scope" themselves later, as the product takes shape).
-   Also decide the optional **modules** (`.pilot/pilot-process.md` §8): `wiki` (the project's functional wiki),
+   Also decide the optional **modules** (`.pilot/pilot-process.md` §8): `wiki` (the project's functional wiki), `architecture` (its apps, technical guidelines and decisions),
    `dashboard` (the team page), `design` and `proto` (the design system and prototypes, which need `dashboard`).
    `--modules <list>` or `--no-modules` if given, otherwise ask the human which to enable (recommending `wiki` and
    `dashboard` for a project with a product to describe); a module whose prerequisite is missing brings it along.
@@ -150,6 +150,11 @@ see `.claude/skills/pilot-update/SKILL.md`.
     `python3 .pilot/pilot.py wiki reindex`: it creates `wiki/` with its root `index.md`. From here it is
     project-owned: `/pilot-update` never touches it. When the project already has closed tickets or code to
     document, tell the human to run `/pilot-wiki --bootstrap` to fill it.
+
+9c. **Create the architecture** (only when the architecture module is on). Run
+    `python3 .pilot/pilot.py arch reindex`: it creates `architecture/` with its root `index.md`. From here it is
+    project-owned: `/pilot-update` never touches it. Tell the human to run `/pilot-architecture --scaffold` to create
+    the apps, or `--bootstrap` when they already exist.
 
 10. **Write the state marker.** Create `.pilot/state.json` per the schema above, with
     `pilotInitialized: true`, the current timestamp, the project name, `pilotVersion`, `modules`, and
