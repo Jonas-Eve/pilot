@@ -1276,6 +1276,128 @@ class ArchitectureTests(unittest.TestCase):
         self.assertFalse(pilot.needs_github(args))
 
 
+class ReadingContractTests(unittest.TestCase):
+    """The port the agents and skills depend on: index, search, show, outline. Whatever sits behind it (ranking,
+    caches) may change; these keys and shapes may only grow."""
+
+    def bundles(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        wiki = pilot.Wiki(os.path.join(tmp.name, "wiki"))
+        arch = pilot.Architecture(os.path.join(tmp.name, "architecture"))
+        os.makedirs(wiki.root)
+        os.makedirs(arch.root)
+        wiki.add("search/search-by-name.md", "Search by name", "Places are found by part of their name.", "implemented", [1],
+                 "A traveler types part of a place name and the matching places are listed. See [sorting](sort-results.md).")
+        wiki.add("search/sort-results.md", "Sort results", "Results come nearest first.", "specified", [2], "Nearest first.")
+        wiki.add("output/csv.md", "CSV export", "An option prints the result as CSV.", "proposed", [3], "One header line then one row per place.")
+        arch.add("overview.md", "Overview", "The apps and how they relate.", "accepted", [], "One CLI.")
+        arch.add("guidelines/layering.md", "Layering", "The domain never imports adapters.", "accepted", [], "Domain stays pure. See [ADR](../adr/0001-store.md).")
+        arch.add("adr/0001-store.md", "Catalog stored", "The catalog is stored, not computed.", "accepted", [], "Stored for speed.")
+        return [wiki, arch]
+
+    def test_every_bundle_answers_the_same_contract(self):
+        for b in self.bundles():
+            first = b.index(active=True)["entries"][0]
+            self.assertEqual(set(first), {"id", "path", "description", "status"})
+            out = b.outline("")
+            self.assertEqual(set(out), {"ok", "dir", "under", "description", "folders", "entries"})
+            self.assertTrue(all(set(f) == {"path", "description", "entries"} for f in out["folders"]))
+            hit = b.search("name places")["results"]
+            if hit:
+                self.assertEqual(set(hit[0]), {"id", "path", "description", "status", "score", "snippet"})
+            self.assertEqual(set(b.search("anything")), {"ok", "query", "total", "results"})
+
+    def test_outline_is_one_level_with_counts_and_descriptions(self):
+        wiki = self.bundles()[0]
+        wiki.describe("search", "Finding and ordering places.")
+        out = wiki.outline("")
+        self.assertEqual([(f["path"], f["entries"], f["description"]) for f in out["folders"]],
+                         [("output", 1, ""), ("search", 2, "Finding and ordering places.")])
+        self.assertEqual(out["entries"], [])
+        self.assertEqual([e["id"] for e in wiki.outline("search")["entries"]], ["search-by-name", "sort-results"])
+        self.assertIn("Finding and ordering places. (2 entries)", pathlib.Path(wiki.root, "index.md").read_text())
+        with self.assertRaises(pilot.Refused):
+            wiki.outline("nope")
+
+    def test_describe_survives_a_reindex_and_rejects_bad_text(self):
+        wiki = self.bundles()[0]
+        wiki.describe("search", "Finding places.")
+        wiki.describe("", "The product's behavior.")
+        wiki.reindex()
+        self.assertEqual(wiki.outline("")["description"], "The product's behavior.")
+        self.assertEqual(wiki.outline("")["folders"][1]["description"], "Finding places.")
+        self.assertIn('okf_version: "0.2"', pathlib.Path(wiki.root, "index.md").read_text())
+        for bad in ("", 'a "quote"', "x" * 161):
+            with self.assertRaises(pilot.Refused):
+                wiki.describe("search", bad)
+        with self.assertRaises(pilot.Refused):
+            wiki.describe("nope", "x")
+
+    def test_search_ranks_title_over_text_and_filters_history(self):
+        wiki, arch = self.bundles()
+        self.assertEqual(wiki.search("name")["results"][0]["id"], "search-by-name")
+        self.assertEqual([r["id"] for r in wiki.search("nearest")["results"]], ["sort-results", "search-by-name"][:1])
+        self.assertEqual([r["id"] for r in wiki.search("csv", under="search")["results"]], [])
+        self.assertTrue(wiki.search("traveler")["results"][0]["snippet"].startswith("A traveler types"))
+        arch.add("adr/0002-compute.md", "Catalog computed", "Compute the catalog.", "proposed", [], "Computed on demand.")
+        arch.supersede("0002-compute", "0001-store")
+        self.assertNotIn("0001-store", [r["id"] for r in arch.search("catalog")["results"]])
+        self.assertIn("0001-store", [r["id"] for r in arch.search("catalog", include_history=True)["results"]])
+        with self.assertRaises(pilot.Refused):
+            wiki.search("the of")
+
+    def test_search_folds_accents_and_plurals(self):
+        wiki = self.bundles()[0]
+        wiki.add("search/acces.md", "Accès de plain-pied", "Les lieux accessibles sont filtrés.", "specified", [4], "Filtre.")
+        self.assertEqual(wiki.search("acces lieu")["results"][0]["id"], "acces")
+        self.assertEqual(wiki.search("places")["results"][0]["id"], "search-by-name")
+
+    def test_show_lists_what_an_entry_cites_and_what_cites_it(self):
+        wiki, arch = self.bundles()
+        shown = arch.show("layering")
+        self.assertEqual([l["id"] for l in shown["links"]], ["0001-store"])
+        self.assertEqual([l["id"] for l in arch.show("0001-store")["backlinks"]], ["layering"])
+        by_name = wiki.show("search-by-name", FakeGh([issue(1)]))
+        self.assertEqual([l["id"] for l in by_name["links"]], ["sort-results"])
+        self.assertEqual([l["id"] for l in wiki.show("sort-results", FakeGh([issue(2)]))["backlinks"]], ["search-by-name"])
+        wiki.add("x/y.md", "Y", "Cites outside.", "proposed", [9], "See [it](../elsewhere/z.md).")
+        self.assertEqual(wiki.show("y", FakeGh([issue(9)]))["external"], ["../elsewhere/z.md"])
+
+    def test_lint_warns_about_size_without_failing(self):
+        wiki = self.bundles()[0]
+        wiki.add("search/long.md", "Long", "d" * 170, "proposed", [5], "word " * 450)
+        report = wiki.lint(FakeGh([issue(1), issue(2), issue(3), issue(5)]))
+        codes = sorted(f["code"] for f in report["findings"] if f.get("level") == "warn")
+        self.assertEqual(codes, ["long-description", "long-entry"])
+        self.assertTrue(report["ok"])
+
+    def test_what_a_first_look_costs_does_not_grow_with_the_bundle(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        sizes = []
+        for count in (30, 300):
+            root = os.path.join(tmp.name, "w%d" % count)
+            os.makedirs(root)
+            wiki = pilot.Wiki(root)
+            for n in range(count):
+                wiki.add("domain-%d/entry-%03d.md" % (n % 10, n), "Entry %d" % n, "Rule number %d of the product." % n,
+                         "implemented", [1], "Some prose about rule %d. " % n * 20)
+            for d in range(10):
+                wiki.describe("domain-%d" % d, "Area number %d." % d)
+            first = len(json.dumps(wiki.outline("")))
+            hits = len(json.dumps(wiki.search("rule product", limit=8)))
+            sizes.append((first, hits, len(json.dumps(wiki.index(active=True)))))
+        self.assertLess(abs(sizes[1][0] - sizes[0][0]), 40)  # only the counts' digits differ
+        self.assertLess(sizes[1][1], 8 * 400)  # a search is bounded by its limit
+        self.assertGreater(sizes[1][2], 5 * sizes[0][2] // 2)  # the flat index is what grows
+        self.assertLess(sizes[1][0] * 10, sizes[1][2])  # the outline is a small fraction of it
+
+    def test_cli_reads_without_github(self):
+        for argv in (["wiki", "search", "x"], ["wiki", "index", "--depth", "1"], ["arch", "describe", "", "x"], ["wiki", "describe", "a", "b"]):
+            self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(argv)))
+
+
 class VersionBumpTests(unittest.TestCase):
     """A change to what projects copy must raise VERSION (CLAUDE.md §4). Compares with origin/main;
     skipped where that ref or git is not available."""
