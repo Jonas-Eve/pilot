@@ -176,7 +176,7 @@ version while nothing requires the wiki yet, so `main` is never half-migrated:
 1. `pilot.py wiki` (index, show, status, lint, add, set) and its tests — done, 2.10.0.
 2. `/pilot-wiki` (query, `--lint`, `--init`) and the link/task docs — done, 2.11.0.
 3. Discovery and Spec wiki PRs, Dev flips to `implemented` — done, 2.12.0 (only for a project that has a `wiki/`).
-4. Review and QA criteria — done, 2.13.0 (only for a project that has a `wiki/`) — and the dashboard "Wiki" tab.
+4. Review and QA criteria (only for a project that has a `wiki/`), and the dashboard "Wiki" tab (read-only, by functional domain; `pilot.py wiki snapshot`, pushed by `/pilot-dashboard`) — done, 2.13.0.
 5. Last PR: the `doctor` check makes the wiki mandatory, `/pilot-init` and `/pilot-update`
    run or propose `--init`, `VERSION` goes to 3.0.0.
 

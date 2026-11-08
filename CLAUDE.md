@@ -105,7 +105,7 @@ itself.
   with the `Artifact` tool's `list`), never to a real project's dashboard** — those are only
   republished by `/pilot-update`, or when the human asks for it explicitly. Refresh the demo
   data with `python3 scripts/demo_snapshot.py --dir DIR` and `ArtifactData` (`snapshots`
-  `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, plus the `activity`/`events`/`protos`/`protoHtml` files it writes).
+  `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, `wiki` `Jonas-Eve__pilot` (`wiki.json`), plus the `activity`/`events`/`protos`/`protoHtml` files it writes).
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot-init` and `/pilot-update`; also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
@@ -119,7 +119,7 @@ itself.
   mandatory comment), `snapshot` (every open ticket as the dashboard's snapshot document),
   `proto` (accept or reject a prototype, or check it is accepted before a Discovery starts from it), `proto-pack`
   (check a prototype's mockup and split it into the cockpit's documents), `wiki`
-  (the project's wiki under `wiki/`: `index`, `show`, `status`, `lint`, and `add`/`set`, the only
+  (the project's wiki under `wiki/`: `index`, `show`, `status`, `lint`, `snapshot` (the dashboard's Wiki tab document), and `add`/`set`, the only
   writers of an entry's meta line — design in `docs/wiki-design.md`; used by `pilot-wiki` and, when the project has a `wiki/`, by `pilot-discovery`, `pilot-spec` and `pilot-dev`) and
   `doctor` (preflight each phase skill runs as its step 0, once per session: python, gh auth,
   repo access and push permission, the 32 PILOT labels). Every command prints one JSON

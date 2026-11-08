@@ -857,6 +857,26 @@ class WikiTests(unittest.TestCase):
         self.wiki.set("search-filter", stamp="abc123")
         self.assertEqual(self.derived("search-filter", done, issue(15, state="closed"))["derived"], "verified")
 
+    def test_snapshot_carries_entries_derived_status_and_text(self):
+        gh = FakeGh([issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]),
+                     issue(3, ["status:done"], state="closed")])
+        gh.repo = "o/r"
+        doc = self.wiki.snapshot(gh)
+        self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "o/r", 2, False))
+        first, second = doc["entries"]
+        self.assertEqual((first["id"], first["page"], first["display"], first["tickets"]),
+                         ("search-filter", "features/search.md", "specified · in-dev", [12, 15]))
+        self.assertEqual(first["text"], "The user can filter results.")
+        self.assertEqual((second["id"], second["verifiedAt"], second["text"]), ("search-sort", "2026-01-01T00:00:00Z", ""))
+
+    def test_snapshot_shortens_then_drops_text_to_fit_a_database_document(self):
+        self.page("big.md", "".join("## E%d {#e%d}\n<!-- wiki: status=implemented tickets= -->\n\n%s\n\n" % (i, i, "x" * 1500)
+                                    for i in range(250)))
+        doc = self.wiki.snapshot(FakeGh([issue(12), issue(15), issue(3)]))
+        self.assertTrue(doc["truncated"])
+        self.assertLessEqual(len(json.dumps(doc, ensure_ascii=False).encode("utf-8")), pilot.WIKI_SNAPSHOT_MAX_BYTES)
+        self.assertEqual(doc["total"], 252)
+
     def test_a_missing_ticket_is_reported_not_fatal(self):
         out = self.derived("search-sort")
         self.assertEqual(out["tickets"], [{"number": 3, "missing": True}])
@@ -947,6 +967,16 @@ class DemoSnapshotTests(unittest.TestCase):
         self.demo = importlib.util.module_from_spec(demo_spec)
         demo_spec.loader.exec_module(self.demo)
         self.doc = self.demo.snapshot()
+
+    def test_wiki_document_has_the_shape_of_wiki_snapshot(self):
+        doc = self.demo.wiki_document()
+        self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "Jonas-Eve/pilot", len(doc["entries"]), False))
+        self.assertLessEqual(len(json.dumps(doc, ensure_ascii=False).encode()), pilot.WIKI_SNAPSHOT_MAX_BYTES)
+        keys = {"id", "title", "page", "status", "derived", "display", "tickets", "verifiedAt", "text"}
+        for row in doc["entries"]:
+            self.assertEqual(set(row), keys)
+            self.assertIn(row["status"], pilot.WIKI_STATUSES)
+            self.assertIn(row["derived"], ("", "in-dev", "in-review", "in-qa", "verified"))
 
     def test_document_has_the_snapshot_shape_and_fits_a_database_document(self):
         self.assertEqual((self.doc["repo"], self.doc["truncated"], self.doc["total"]), ("Jonas-Eve/pilot", False, len(self.doc["issues"])))

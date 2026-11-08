@@ -4,7 +4,7 @@
 
 Usage:
   python3 scripts/demo_snapshot.py --out FILE        # the `snapshots/Jonas-Eve__pilot` document
-  python3 scripts/demo_snapshot.py --dir DIR         # that document + a live session, a few events, a design document and prototypes
+  python3 scripts/demo_snapshot.py --dir DIR         # that document + a live session, a few events, a design document, a wiki document and prototypes
 
 Timestamps are relative to now, so re-run it to refresh the demo. Stdlib only.
 """
@@ -150,6 +150,27 @@ body.big{font-size:22px}button{min-height:48px;padding:0 18px;border:0;border-ra
 <script>document.getElementById("b").onclick=function(){document.body.classList.toggle("big")}</script>"""
 
 
+def wiki_document():
+    """The `wiki/Jonas-Eve__pilot` document `pilot.py wiki snapshot` would have written."""
+    def entry(eid, title, page, status, derived, tickets, verified, text):
+        shown = status + (" · " + derived if derived else "")
+        return {"id": eid, "title": title, "page": page, "status": status, "derived": derived, "display": shown,
+                "tickets": tickets, "verifiedAt": iso(verified) if verified else "", "text": text}
+    entries = [
+        entry("search-by-name", "Rechercher un lieu par son nom", "recherche/nom.md", "implemented", "verified", [1], 40,
+              "On cherche un lieu par une partie de son nom, sans tenir compte des majuscules."),
+        entry("filter-step-free", "Filtrer sur l'accès de plain-pied", "recherche/filtres.md", "implemented", "", [2], 40,
+              "Avec l'option, seuls les lieux dont l'accès de plain-pied est confirmé sont proposés."),
+        entry("sort-by-distance", "Trier par distance, le plus proche d'abord", "recherche/tri.md", "implemented", "", [3], 0,
+              "Les résultats sont triés du plus proche au plus éloigné."),
+        entry("km-display", "Afficher les longues distances en km", "affichage/distances.md", "specified", "in-review", [12, 14], 0,
+              "Une distance de 1000 m ou plus est affichée en kilomètres avec une décimale."),
+        entry("csv-export", "Exporter le résultat en CSV", "export/csv.md", "proposed", "", [4], 0,
+              "Une option affiche le résultat en CSV avec une ligne d'en-tête."),
+    ]
+    return {"kind": "wiki", "repo": REPO, "at": iso(3), "total": len(entries), "truncated": False, "entries": entries}
+
+
 def small_mock(title, text, button, after):
     """A tiny interactive mockup, for the demo prototypes that have no hand-written one."""
     return ("<!doctype html><meta charset=utf8><title>" + title + "</title>"
@@ -202,6 +223,8 @@ def main():
             json.dump(snapshot(), fh, ensure_ascii=False)
         with open(os.path.join(args.dir, "design.json"), "w", encoding="utf-8") as fh:
             json.dump(design_document(), fh, ensure_ascii=False)
+        with open(os.path.join(args.dir, "wiki.json"), "w", encoding="utf-8") as fh:
+            json.dump(wiki_document(), fh, ensure_ascii=False)
         for name, doc in proto_documents().items():
             with open(os.path.join(args.dir, name + ".json"), "w", encoding="utf-8") as fh:
                 json.dump(doc, fh, ensure_ascii=False)

@@ -242,7 +242,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'agents',ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'agents',ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours',wiki:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -308,6 +308,10 @@ function watchLive(){
   /* a dashboard published before the design tab has no rule for this collection: ignore the error */
   try{S.db.collection('design').onSnapshot(function(snap){
     S.design=null; snap.docs.forEach(function(d){var v=d.data(); if(v&&v.kind==='design'&&v.repo&&snapId(v.repo)===snapId(S.repo))S.design=v;}); render();
+  },function(){});}catch(e){}
+  /* same for the wiki tab: a dashboard published before it has no rule for this collection */
+  try{S.db.collection('wiki').onSnapshot(function(snap){
+    S.wiki=null; snap.docs.forEach(function(d){var v=d.data(); if(v&&v.kind==='wiki'&&v.repo&&snapId(v.repo)===snapId(S.repo))S.wiki=v;}); render();
   },function(){});}catch(e){}
 }
 function minutesSince(iso){var d=(Date.now()-new Date(iso).getTime())/60000; return isFinite(d)?d:1e9;}
@@ -611,6 +615,11 @@ function subItems(tab){
     var ty=d.type||{}, sp=d.space||{};
     var n={colors:arr(d.colors).length,type:arr(ty.scale).length,space:arr(sp.spacing).length+arr(sp.radius).length,components:arr(d.components).length,a11y:arr(d.a11y).length};
     return DESIGN_SUBS.map(function(s){return [s[0],s[1],n[s[0]]||null];});
+  }
+  if(tab==='wiki'){
+    var ds=wikiDomains(); if(!ds.length)return [];
+    if(S.sub.wiki!=='tous'&&!ds.some(function(x){return x[0]===S.sub.wiki;}))S.sub.wiki='tous';
+    return [['tous','Tous',wikiEntries().length||null]].concat(ds);
   }
   if(tab==='prototypes'){var c=protoCounts();return [['encours','En cours',c.encours||null],['acceptes','Acceptés',c.acceptes||null],['rejetes','Rejetés',c.rejetes||null]];}
   if(tab==='activite')return [['sessions','Sessions',recentActs().length||null],['changements','Changements',Math.min(15,S.evlist.length)||null]];
@@ -926,6 +935,40 @@ function vDesign(){
     secs[S.sub.design]||secs.charter);
 }
 
+/* ---------- wiki tab: the project's `wiki` document (built by `pilot.py wiki snapshot`), read-only ---------- */
+var WIKI_FR={proposed:'proposé',specified:'spécifié',implemented:'implémenté',deprecated:'déprécié'};
+var WIKI_CLS={proposed:'',specified:'acc',implemented:'ok',deprecated:'warn'};
+var WIKI_DERIVED_FR={'in-dev':'en dev','in-review':'en review','in-qa':'en QA'};
+function wikiEntries(){return S.wiki&&Array.isArray(S.wiki.entries)?S.wiki.entries.slice(0,2000):[];}
+function wikiDomain(e){var p=str(e.page,200).split('/'); return p.length>1?p[0]:'général';}
+function wikiDomains(){
+  var n={}, order=[];
+  wikiEntries().forEach(function(e){var d=wikiDomain(e); if(n[d]==null){n[d]=0;order.push(d);} n[d]++;});
+  return order.sort().map(function(d){return [d,d,n[d]];});
+}
+function wikiEntry(e){
+  var chips=[h('span',{class:'chip '+(WIKI_CLS[e.status]||'')},WIKI_FR[e.status]||str(e.status,40))];
+  if(WIKI_DERIVED_FR[e.derived])chips.push(h('span',{class:'chip acc'},WIKI_DERIVED_FR[e.derived]));
+  if(e.verifiedAt)chips.push(h('span',{class:'chip ok'},'vérifié '+ago(e.verifiedAt)));
+  else if(e.status==='implemented')chips.push(h('span',{class:'chip warn'},'non vérifié'));
+  (Array.isArray(e.tickets)?e.tickets.slice(0,20):[]).forEach(function(n){n=Math.floor(Number(n));
+    if(n>0)chips.push(h('a',{class:'chip',href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n));});
+  var text=str(e.text,1600);
+  return drow(h('div',{class:'t'},str(e.title,160)),h('div',{class:'meta'},chips),
+    text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null);
+}
+function vWiki(){
+  var w=S.wiki;
+  if(!w)return h('div',{class:'list'},h('h2',{},'Wiki'),h('div',{class:'empty'},S.db?'Aucun wiki publié pour ce projet. Créez-le avec « /pilot-wiki --init », puis publiez-le avec « /pilot-dashboard --refresh ».':'La base partagée n’est pas disponible.'));
+  var cur=S.sub.wiki, shown=wikiEntries().filter(function(e){return cur==='tous'||wikiDomain(e)===cur;}), counts={}, pages=[], by={};
+  shown.forEach(function(e){counts[e.status]=(counts[e.status]||0)+1; var k=str(e.page,200); if(!by[k]){by[k]=[];pages.push(k);} by[k].push(e);});
+  var sum=Object.keys(WIKI_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+WIKI_CLS[k]},counts[k]+' '+WIKI_FR[k]);});
+  return h('div',{class:'list'},h('h2',{},'Wiki · mis à jour '+ago(w.at)+(w.truncated?' · textes raccourcis':'')),
+    h('div',{class:'refresh'},openLink('/pilot-wiki','Interroger le wiki',true),openLink('/pilot-wiki --lint','Vérifier le wiki')),
+    sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
+    pages.length?pages.map(function(k){return h('section',{class:'list','aria-label':k},h('h2',{},k),by[k].map(wikiEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
+}
+
 /* ---------- banner, chips, chrome ---------- */
 var REFRESH_CMD='/pilot-dashboard --refresh';
 function note(kind,text){return h('span',{class:'note '+kind,role:'status'},text);}
@@ -968,7 +1011,7 @@ function renderChrome(){
     return h('button',{type:'button','aria-pressed':String(S.role===r[0]),onclick:function(){S.role=r[0];S.page=0;store('cp.role',r[0]);render();}},r[1]);}));
   var alive=S.activity.filter(isAlive).length;
   var tabs=document.getElementById('tabs');
-  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['prototypes','Prototypes'+(protoCounts().encours?' ('+protoCounts().encours+')':'')],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')],['design','Design']].map(function(t){
+  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['prototypes','Prototypes'+(protoCounts().encours?' ('+protoCounts().encours+')':'')],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')],['design','Design'],['wiki','Wiki'+(wikiEntries().length?' ('+wikiEntries().length+')':'')]].map(function(t){
     return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]&&!S.viewHelp?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
@@ -981,13 +1024,13 @@ function render(){
   document.getElementById('search').hidden=H||S.tab!=='recherche';updateSearch();
   document.getElementById('designEdit').hidden=H||S.tab!=='design';updateDesign();
   document.getElementById('protoNew').hidden=H||S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
-  document.getElementById('banner').hidden=H||S.tab==='design'||(S.tab==='prototypes'&&!!S.viewProto);
+  document.getElementById('banner').hidden=H||S.tab==='design'||S.tab==='wiki'||(S.tab==='prototypes'&&!!S.viewProto);
   var items=subItems(S.tab), ph=PHASES.filter(function(p){return p.key===S.sub.ensemble;})[0];
   if(H)subnav('aide',HELP_SUBS,S.sub.aide);
   else if(items.length&&!(S.tab==='prototypes'&&S.viewProto))subnav(S.tab,items,S.sub[S.tab]); else subnav('',[],'');
   if(!H&&S.tab==='prototypes'&&!S.viewProto&&S.sub.prototypes==='acceptes')subnav('prototypes',protoSubItems(),S.sub3,'subtabs2','prototypes/acceptes'); else subnav('',[],'','subtabs2');
   var v=document.getElementById('view');
-  v.replaceChildren(H?vHelp():S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():S.tab==='prototypes'?vProtos():vFile());
+  v.replaceChildren(H?vHelp():S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():S.tab==='wiki'?vWiki():S.tab==='prototypes'?vProtos():vFile());
 }
 
 /* ---------- reference panel: the agents and who leads, validates or can be summoned at each step (mirrors pilot-process.md §4 "Roster") ---------- */
@@ -1031,7 +1074,8 @@ function fromHash(){
   S.viewProto=0; S.viewHelp=t==='aide'?1:0;
   if(S.viewHelp&&p[1]&&HELP_SUBS.some(function(s){return s[0]===p[1];}))S.sub.aide=p[1];
   if(t==='proto'){S.tab='prototypes';S.viewProto=Number(p[1])||0;}
-  else if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design'||t==='prototypes')S.tab=t;
+  else if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design'||t==='prototypes'||t==='wiki')S.tab=t;
+  if(S.tab==='wiki'&&p[1])S.sub.wiki=p[1];
   var list=SUBS[S.tab];
   if(list&&p[1]&&p[1]!==S.sub[S.tab]&&list.some(function(s){return s[0]===p[1];}))setSub(S.tab,p[1]);
   if(S.tab==='prototypes'&&S.sub.prototypes==='acceptes'&&p[2]&&ACC_SUBS.some(function(s){return s[0]===p[2];}))S.sub3=p[2];
