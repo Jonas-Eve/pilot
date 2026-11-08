@@ -11,8 +11,8 @@
   pilot.py doctor  [--verbose] [--no-wiki]      # preflight: can the commands above work here? (+ wiki/, when that module is on)
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
-  pilot.py wiki    index|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
-  pilot.py arch    index [--active]|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
+  pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
+  pilot.py arch    index [--active] [--under D] [--depth 1]|search|describe|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
@@ -29,11 +29,13 @@ dialogue stay with the skills. Requires the `gh` CLI and Python 3.
 import argparse
 import datetime
 import json
+import math
 import os
 import posixpath
 import re
 import subprocess
 import sys
+import unicodedata
 
 # phase -> statuses and which §4 rules apply to an explicitly-given ticket
 PHASES = {
@@ -1022,19 +1024,193 @@ class Bundle:
                            "paths": sorted(e["path"] for e in found)})
         return found[0]
 
-    LIVE = ()  # statuses that are history, left out of a `--active` index
+    LIVE = ()  # statuses that are history, left out of a `--active` index and of a search
+    MAX_DESCRIPTION = 160  # characters: the line an index shows
+    MAX_WORDS = 400  # words of prose in one entry: one concept per file, short enough to open without cost
+    ROW = ("id", "path", "description", "status")
 
-    def index(self, ticket=None, active=False):
+    def _max_words(self, entry):
+        return self.MAX_WORDS
+
+    @staticmethod
+    def _under(entry, under):
+        under = (under or "").strip("/")
+        return not under or entry["path"].startswith(under + "/")
+
+    def _brief(self, entry):
+        return {k: entry[k] for k in self.ROW}
+
+    def index(self, ticket=None, active=False, under=None):
         """Every entry; `active` keeps only what is in force and shrinks each row to id, path, description and
-        status (a line an agent can carry in its prompt, then open the entries that bear on its task)."""
+        status (a line an agent can carry in its prompt, then open the entries that bear on its task); `under`
+        keeps the entries below one folder."""
         entries = self.parse()
-        shown = [e for e in entries if (ticket is None or ticket in e["tickets"])
+        shown = [e for e in entries if (ticket is None or ticket in e["tickets"]) and self._under(e, under)
                  and not (active and e["status"] in self.LIVE)]
-        rows = [self._view(e) for e in shown]
-        if active:
-            rows = [{k: r[k] for k in ("id", "path", "description", "status")} for r in rows]
+        rows = [self._brief(e) if active else self._view(e) for e in shown]
         return {"ok": True, "dir": self.root, "entries": rows,
                 "problems": sum(len(e["problems"]) for e in entries)}
+
+    def outline(self, under="", active=False):
+        """One level of the bundle: the sub-folders of `under` (each with its description and how many entries it
+        holds below it) and the entries sitting directly in it. A fixed-size first look, however big the bundle."""
+        under = (under or "").strip("/")
+        counts, direct, known = {}, [], not under
+        for e in self.parse():
+            if active and e["status"] in self.LIVE:
+                continue
+            folder = posixpath.dirname(e["path"])
+            if under and not (folder == under or folder.startswith(under + "/")):
+                continue
+            known = True
+            rest = folder[len(under):].lstrip("/")
+            if rest:
+                name = rest.split("/")[0]
+                counts[name] = counts.get(name, 0) + 1
+            else:
+                direct.append(self._brief(e))
+        if not known:
+            raise Refused({"ok": False, "reason": "unknown-folder", "folder": under})
+        folders = [{"path": posixpath.join(under, n), "description": self._folder_description(posixpath.join(under, n)),
+                    "entries": counts[n]} for n in sorted(counts)]
+        return {"ok": True, "dir": self.root, "under": under, "description": self._folder_description(under),
+                "folders": folders, "entries": direct}
+
+    # ---- search ---------------------------------------------------------------------------
+    _STOP = frozenset("a an and are as at be by de des du el en et for from il in is la le les of on or the to un une "
+                      "with".split())
+
+    @classmethod
+    def _terms(cls, text):
+        folded = unicodedata.normalize("NFKD", str(text).lower())
+        words = re.findall(r"[a-z0-9]+", "".join(c for c in folded if not unicodedata.combining(c)))
+        return [w[:-1] if len(w) > 3 and w.endswith("s") else w for w in words if len(w) > 1 and w not in cls._STOP]
+
+    def search(self, query, under="", limit=8, include_history=False):
+        """The entries that best match some words, ranked (title, description, tags and id weigh more than the
+        text; rarer words weigh more), each with a one-line extract. Lexical and deterministic."""
+        terms = sorted(set(self._terms(query)))
+        if not terms:
+            raise Refused({"ok": False, "reason": "empty-query"})
+        limit = max(1, min(int(limit), 25))
+        pool = [e for e in self.parse() if self._under(e, under) and (include_history or e["status"] not in self.LIVE)]
+        docs = []
+        for e in pool:
+            tags = (e["fm"] or {}).get("tags") or []
+            tags = tags if isinstance(tags, list) else [tags]
+            fields = ((3, e["title"]), (2, e["description"]), (2, " ".join(map(str, tags))), (2, e["id"].replace("-", " ")),
+                      (1, e["text"]))
+            tf = {}
+            for weight, text in fields:
+                for t in self._terms(text):
+                    tf[t] = tf.get(t, 0) + weight
+            docs.append((e, tf))
+        size = len(docs) or 1
+        df = {t: sum(1 for _e, tf in docs if t in tf) for t in terms}
+        scored = []
+        for e, tf in docs:
+            score = sum((1 + math.log(tf[t])) * math.log(1 + size / df[t]) for t in terms if t in tf)
+            if score > 0:
+                scored.append((-score, e["path"], e))
+        scored.sort(key=lambda x: (x[0], x[1]))
+        rows = [{**self._brief(e), "score": round(-neg, 2), "snippet": self._snippet(e, terms)}
+                for neg, _p, e in scored[:limit]]
+        return {"ok": True, "query": query, "total": len(scored), "results": rows}
+
+    def _snippet(self, entry, terms):
+        best, hits = "", 0
+        for line in re.split(r"(?<=[.!?])\s+|\n+", entry["text"]):
+            n = len(set(self._terms(line)) & set(terms))
+            if n > hits:
+                best, hits = line.strip(), n
+        return best[:157] + "..." if len(best) > 160 else best
+
+    # ---- links ----------------------------------------------------------------------------
+    _LINK_RE = re.compile(r"\]\(([^)#\s]+\.md)(?:#[^)]*)?\)")
+
+    def _stems(self, entry):
+        return [posixpath.splitext(posixpath.basename(t))[0] for t in self._LINK_RE.findall(entry["rest"])
+                if not t.startswith(("http://", "https://"))]
+
+    def _related(self, entry, entries):
+        """What an entry cites and what cites it, inside the bundle; links that leave it are listed as paths."""
+        by_id = {e["id"]: e for e in entries}
+        links, external = [], []
+        for target in self._LINK_RE.findall(entry["rest"]):
+            if target.startswith(("http://", "https://")):
+                continue
+            stem = posixpath.splitext(posixpath.basename(target))[0]
+            if stem == entry["id"]:
+                continue
+            if stem in by_id:
+                other = by_id[stem]
+                row = {"id": stem, "path": other["path"], "title": other["title"]}
+                if row not in links:
+                    links.append(row)
+            elif target not in external:
+                external.append(target)
+        back = [{"id": e["id"], "path": e["path"], "title": e["title"]} for e in entries
+                if e["id"] != entry["id"] and entry["id"] in self._stems(e)]
+        return {"links": links, "backlinks": back, "external": external}
+
+    # ---- folder descriptions --------------------------------------------------------------
+    def _folder_description(self, folder):
+        path = os.path.join(self.root, folder, "index.md")
+        if not os.path.exists(path):
+            return ""
+        with open(path, encoding="utf-8") as handle:
+            block, _rest = split_frontmatter(handle.read())
+        try:
+            fm = parse_frontmatter(block) if block is not None else {}
+        except ValueError:
+            return ""
+        return str(fm.get("description") or "")
+
+    def describe(self, folder, description):
+        """Give a folder (or the bundle, with '') the one sentence an outline shows next to it."""
+        folder = (folder or "").strip("/")
+        description = " ".join(description.split())
+        if not description or '"' in description or "\\" in description or len(description) > self.MAX_DESCRIPTION:
+            raise Refused({"ok": False, "reason": "bad-description",
+                           "hint": f"one sentence of at most {self.MAX_DESCRIPTION} characters, no quote or backslash"})
+        entries = self.parse()
+        if folder and not any(self._under(e, folder) for e in entries):
+            raise Refused({"ok": False, "reason": "unknown-folder", "folder": folder})
+        self._set_folder_description(folder, description)
+        return {"ok": True, "folder": folder, "description": description, "changed": self.reindex(entries)}
+
+    def _set_folder_description(self, folder, description):
+        path = os.path.join(self.root, folder, "index.md")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(self._index_head(folder, description) + "\n")
+
+    @staticmethod
+    def _index_head(folder, description):
+        lines = []
+        if folder == "":
+            lines.append(f'okf_version: "{OKF_VERSION}"')
+        if description:
+            lines.append("description: " + json.dumps(description, ensure_ascii=False))
+        return "---\n" + "\n".join(lines) + "\n---" if lines else ""
+
+    def _size_findings(self, entries):
+        """Warnings, never errors: a description longer than an index line, a concept too long to be one concept."""
+        out = []
+        for e in entries:
+            where = {"entry": e["id"], "path": e["path"], "level": "warn"}
+            if len(e["description"]) > self.MAX_DESCRIPTION:
+                out.append({**where, "code": "long-description",
+                            "message": f"{len(e['description'])} characters; an index line stays under {self.MAX_DESCRIPTION}"})
+            words, limit = len(e["text"].split()), self._max_words(e)
+            if words > limit:
+                out.append({**where, "code": "long-entry",
+                            "message": f"{words} words; one concept per file, split it or tighten it ({limit} at most)"})
+        return out
+
+    @staticmethod
+    def _report(entries, findings):
+        return {"ok": not [f for f in findings if f.get("level") != "warn"], "entries": len(entries), "findings": findings}
 
     # ---- index.md files -------------------------------------------------------------------
     def _generated_indexes(self, entries):
@@ -1051,11 +1227,13 @@ class Bundle:
             lines = ["# " + (posixpath.basename(d) or self.TITLE), ""]
             for sub in sorted(x for x in dirs if x and posixpath.dirname(x) == d):
                 n = sum(1 for e in entries if e["path"].startswith(sub + "/"))
-                lines.append(f"* [{posixpath.basename(sub)}]({posixpath.basename(sub)}/) - {n} entr{'y' if n == 1 else 'ies'}")
+                count = f"{n} entr{'y' if n == 1 else 'ies'}"
+                about = self._folder_description(sub)
+                lines.append(f"* [{posixpath.basename(sub)}]({posixpath.basename(sub)}/) - " + (f"{about} ({count})" if about else count))
             for e in sorted(by_dir.get(d, []), key=lambda x: x["path"]):
                 lines.append(f"* [{e['title']}]({posixpath.basename(e['path'])})" + (f" - {e['description']}" if e["description"] else ""))
-            text = "\n".join(lines) + "\n"
-            out[d] = f'---\nokf_version: "{OKF_VERSION}"\n---\n' + text if d == "" else text
+            head = self._index_head(d, self._folder_description(d))
+            out[d] = (head + "\n" if head else "") + "\n".join(lines) + "\n"
         return out
 
     def reindex(self, entries=None):
@@ -1126,7 +1304,8 @@ class Bundle:
 
     def show(self, entry_id, gh):
         entry = self._find(entry_id)
-        return {"ok": True, **self._view(entry), "text": entry["text"], "derived": self.derive(entry, gh, {})}
+        return {"ok": True, **self._view(entry), "text": entry["text"], "derived": self.derive(entry, gh, {}),
+                **self._related(entry, self.parse())}
 
     def lint(self, gh):
         """The mechanical checks (no judgment): an unreadable entry, a duplicate id, a stale index.md, a promise
@@ -1170,7 +1349,7 @@ class Bundle:
             if current != text:
                 findings.append({"path": self._rel(path), "code": "stale-index",
                                  "message": "run `python3 .pilot/pilot.py wiki reindex`"})
-        return {"ok": not findings, "entries": len(entries), "findings": findings}
+        return self._report(entries, findings + self._size_findings(entries))
 
     def snapshot(self, gh):
         """Every managed entry as the dashboard's wiki document: frontmatter fields, derived status and the
@@ -1271,6 +1450,9 @@ class Bundle:
         self._write(target, fm, ("\n" + body.strip() + "\n") if body.strip() else "")
         self.reindex()
         return {"ok": True, "id": stem, "path": rel, "status": status}
+
+    def _max_words(self, entry):
+        return {"ADR": 600, "Architecture": 800}.get(entry["type"], self.MAX_WORDS)
 
     def _type_of(self, rel):
         return self.DEFAULT_TYPE
@@ -1380,7 +1562,8 @@ class Architecture(Bundle):
         entry = self._find(entry_id)
         pilot = (entry["fm"] or {}).get("pilot") or {}
         return {"ok": True, **self._view(entry), "type": entry["type"], "text": entry["text"],
-                "supersedes": pilot.get("supersedes") or "", "supersededBy": pilot.get("supersededBy") or ""}
+                "supersedes": pilot.get("supersedes") or "", "supersededBy": pilot.get("supersededBy") or "",
+                **self._related(entry, self.parse())}
 
     def snapshot(self, repo):
         """Every managed entry as the dashboard's architecture document (no GitHub call): frontmatter fields, the
@@ -1447,7 +1630,7 @@ class Architecture(Bundle):
                     current = handle.read()
             if current != text:
                 findings.append({"path": self._rel(path), "code": "stale-index", "message": "run `python3 .pilot/pilot.py arch reindex`"})
-        return {"ok": not findings, "entries": len(entries), "findings": findings}
+        return self._report(entries, findings + self._size_findings(entries))
 
     def migrate(self):
         raise Refused({"ok": False, "reason": "not-applicable", "hint": "the architecture bundle has no earlier format"})
@@ -1525,11 +1708,28 @@ def build_parser():
     p.add_argument("action", choices=["list", "enable", "disable"])
     p.add_argument("name", nargs="?", choices=list(MODULES))
     p.add_argument("--with-requires", action="store_true", help="enable: turn the modules it needs on too")
+    def index_flags(w):
+        w.add_argument("--active", action="store_true", help="only what is in force, one short row each")
+        w.add_argument("--under", metavar="FOLDER", help="only the entries below this folder")
+        w.add_argument("--depth", type=int, choices=[1], help="one level: the sub-folders (description, entry count) and the entries directly here")
+
+    def read_cmds(ws):
+        w = ws.add_parser("search", help="the entries that best match some words, ranked, with an extract")
+        w.add_argument("query")
+        w.add_argument("--under", metavar="FOLDER")
+        w.add_argument("--limit", type=int, default=8)
+        w.add_argument("--all", action="store_true", help="include entries that are history (deprecated, superseded)")
+        w = ws.add_parser("describe", help="the one sentence an outline shows next to a folder ('' for the bundle)")
+        w.add_argument("folder")
+        w.add_argument("description")
+
     p = sub.add_parser("wiki")
     p.add_argument("--dir", default=WIKI_DIR, help="the wiki directory (default: wiki)")
     ws = p.add_subparsers(dest="bundle_cmd", required=True)
+    read_cmds(ws)
     w = ws.add_parser("index", help="every entry: id, path, description, status, tickets, stamp (no GitHub call)")
     w.add_argument("--ticket", type=int, help="only the entries that list this ticket")
+    index_flags(w)
     ws.add_parser("reindex", help="write the index.md of every folder (OKF progressive disclosure)")
     w = ws.add_parser("show", parents=[common], help="one entry's text and derived status")
     w.add_argument("id")
@@ -1561,9 +1761,10 @@ def build_parser():
     p = sub.add_parser("arch")
     p.add_argument("--dir", default=ARCH_DIR, help="the architecture directory (default: architecture)")
     ws = p.add_subparsers(dest="bundle_cmd", required=True)
+    read_cmds(ws)
     w = ws.add_parser("index", help="every entry: id, path, description, status (no GitHub call)")
     w.add_argument("--ticket", type=int, help=argparse.SUPPRESS)
-    w.add_argument("--active", action="store_true", help="only what is in force (no deprecated or superseded), one short row each")
+    index_flags(w)
     ws.add_parser("reindex", help="write the index.md of every folder")
     w = ws.add_parser("snapshot", help="every entry as the dashboard's architecture document (no GitHub call)")
     w.add_argument("--out", help="write the document to this file and print only a summary")
@@ -1602,7 +1803,13 @@ def build_parser():
 def run_bundle(args, gh):
     wiki = (Wiki if args.cmd == "wiki" else Architecture)(args.dir)
     if args.bundle_cmd == "index":
-        return wiki.index(args.ticket, getattr(args, "active", False))
+        if args.depth:
+            return wiki.outline(args.under or "", args.active)
+        return wiki.index(args.ticket, args.active, args.under)
+    if args.bundle_cmd == "search":
+        return wiki.search(args.query, args.under or "", args.limit, args.all)
+    if args.bundle_cmd == "describe":
+        return wiki.describe(args.folder, args.description)
     if args.bundle_cmd == "show":
         return wiki.show(args.id, gh)
     if args.bundle_cmd == "status":
