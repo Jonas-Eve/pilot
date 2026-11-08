@@ -67,8 +67,10 @@ The user can filter search results to places with step-free access. …
 `status` (OKF: `draft`, `stable`, `deprecated`) is derived by the script from `pilot.status`
 (`proposed` and `specified` → `draft`, `implemented` → `stable`); `verified` is OKF's own provenance key,
 written only by a lint or an init, with the commit in `pilot.verifiedCommit`. Other keys are kept as
-they are. `pilot.py wiki` reads the YAML subset it writes (scalars, `[a, b]`, one nested block); a
-frontmatter outside it is reported by `lint` and never rewritten. An entry belongs to the tickets it
+they are. `pilot.py wiki` reads a YAML subset (scalars, `[a, b]`, `{k: v}` flow mappings, one nested block, inline
+comments); for an entry it manages (one with a `pilot:` block), a frontmatter outside it is reported by `lint`
+and never rewritten, while a concept it does not manage (valid OKF written by hand, e.g. with `sources:` lists)
+is indexed and left alone. An entry belongs to the tickets it
 lists: that list is what makes ownership and conflicts decidable.
 
 ## 4. Statuses

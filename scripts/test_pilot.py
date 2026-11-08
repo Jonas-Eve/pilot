@@ -845,10 +845,16 @@ class WikiTests(unittest.TestCase):
                                "pilot": {"status": "specified", "tickets": [12, 15]}})
 
     def test_frontmatter_outside_the_subset_is_refused_not_misread(self):
-        for block in ("verified:\n  - by: x\n    at: y", "verified: {by: x}", "a: 1\na: 2", "a:\n  b:\n    c: 1\n  d: 2",
+        for block in ("verified:\n  - by: x\n    at: y", "a: {b: c", "a: 1\na: 2", "a:\n  b:\n    c: 1\n  d: 2",
                       "not a mapping", "title: \"unterminated"):
             with self.assertRaises(ValueError, msg=block):
                 pilot.parse_frontmatter(block)
+
+    def test_frontmatter_accepts_flow_mappings_and_inline_comments_as_valid_okf_has_them(self):
+        got = pilot.parse_frontmatter('type: Metric  # a comment\ngenerated: { by: human:me, at: 2026-06-20T14:30:00Z }\n'
+                                      'title: "Quoted" # trailing\ntags: [a, b]  # more\nempty: {}\nsingle: \'it\'\'s\'\n')
+        self.assertEqual(got, {"type": "Metric", "generated": {"by": "human:me", "at": "2026-06-20T14:30:00Z"},
+                               "title": "Quoted", "tags": ["a", "b"], "empty": {}, "single": "it's"})
 
     def test_dump_and_parse_round_trip_including_awkward_strings(self):
         data = {"type": "Behavior", "title": "Colon: inside", "description": "- starts with a dash", "n": "12", "t": "true", "e": "",
@@ -885,7 +891,7 @@ class WikiTests(unittest.TestCase):
 
     def test_unreadable_entries_are_reported(self):
         self.raw("bad/no-front.md", "# just prose\n")
-        self.raw("bad/list-of-maps.md", "---\ntype: Behavior\nverified:\n  - by: x\n    at: y\n---\n")
+        self.raw("bad/list-of-maps.md", "---\ntype: Behavior\nverified:\n  - by: x\n    at: y\npilot:\n  status: proposed\n---\n")
         self.raw("bad/no-type.md", "---\ntitle: T\npilot:\n  status: proposed\n  tickets: [1]\n---\n")
         self.entry("bad/derived.md", "in-dev", [1])
         self.entry("bad/tickets.md", "proposed", [], okf="draft", extra="")
@@ -902,6 +908,23 @@ class WikiTests(unittest.TestCase):
                      "status-mismatch", "missing-description", "bad-id", "bad-pilot"):
             self.assertIn(code, self.codes(report))
         self.assertIn("derived", next(f for f in report["findings"] if f["code"] == "bad-status")["message"])
+
+    def test_valid_okf_the_script_cannot_read_is_tolerated_in_a_concept_it_does_not_manage(self):
+        self.raw("search/sources.md", "---\ntype: Reference\nsources:\n  - resource: https://example.com\n    id: a\n---\n\nText.\n")
+        self.wiki.reindex()
+        self.assertEqual(self.lint()["findings"], [])
+        self.assertEqual(self.wiki.index()["problems"], 0)
+        self.assertIn("[sources](sources.md)", self.text("search/index.md"))
+
+    def test_an_absent_okf_status_means_stable(self):
+        self.entry("search/no-status.md", "implemented", [3], "No status", "d")
+        self.raw("search/no-status.md", self.text("search/no-status.md").replace("status: stable\n", ""))
+        self.wiki.reindex()
+        self.assertEqual(self.lint()["findings"], [])
+        self.entry("search/spec-no-status.md", "specified", [12], "Spec", "d")
+        self.raw("search/spec-no-status.md", self.text("search/spec-no-status.md").replace("status: draft\n", ""))
+        self.wiki.reindex()
+        self.assertEqual([f["code"] for f in self.lint()["findings"]], ["status-mismatch"])
 
     def test_a_concept_pilot_does_not_manage_is_indexed_and_never_checked(self):
         self.raw("search/glossary.md", "---\ntype: Reference\ntitle: Glossary\ndescription: Words.\n---\n\nText.\n")

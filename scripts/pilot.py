@@ -759,21 +759,47 @@ def _y_split(inner):
     return parts
 
 
+def _y_close(v, closer):
+    """`v` cut after its closing bracket, when what follows is blank or a `# comment`."""
+    end = v.rfind(closer)
+    rest = v[end + 1:].strip() if end > 0 else "x"
+    if end <= 0 or (rest and not rest.startswith("#")):
+        raise ValueError("unterminated YAML value: " + v)
+    return v[:end + 1]
+
+
 def _y_scalar(raw):
     v = raw.strip()
-    if v in ("", "null", "~"):
+    if v in ("", "null", "~") or v.startswith("#"):
         return None
     if v[0] == '"':
         try:
-            return json.loads(v)
+            value, end = json.JSONDecoder().raw_decode(v)
         except ValueError:
             raise ValueError("bad quoted string: " + v)
-    if v[0] == "'" and len(v) > 1 and v[-1] == "'":
-        return v[1:-1].replace("''", "'")
-    if v[0] == "[" and v[-1] == "]":
-        return [_y_scalar(x) for x in _y_split(v[1:-1])] if v[1:-1].strip() else []
-    if v[0] in "{&*!|>":
+        if v[end:].strip() and not v[end:].strip().startswith("#"):
+            raise ValueError("bad quoted string: " + v)
+        return value
+    if v[0] == "'":
+        m = re.match(r"^'((?:[^']|'')*)'\s*(?:#.*)?$", v)
+        if not m:
+            raise ValueError("bad quoted string: " + v)
+        return m.group(1).replace("''", "'")
+    if v[0] == "[":
+        inner = _y_close(v, "]")[1:-1]
+        return [_y_scalar(x) for x in _y_split(inner)] if inner.strip() else []
+    if v[0] == "{":
+        inner = _y_close(v, "}")[1:-1]
+        out = {}
+        for part in _y_split(inner) if inner.strip() else []:
+            m = re.match(r"^\s*([A-Za-z_][\w.\-]*)\s*:(?:\s+(.*))?$", part)
+            if not m:
+                raise ValueError("unsupported YAML value: " + v)
+            out[m.group(1)] = _y_scalar(m.group(2) or "")
+        return out
+    if v[0] in "&*!|>":
         raise ValueError("unsupported YAML value: " + v)
+    v = re.split(r"\s+#", v, maxsplit=1)[0].strip()
     if v in ("true", "false"):
         return v == "true"
     if re.fullmatch(r"-?\d+", v):
@@ -904,7 +930,10 @@ class Wiki:
             try:
                 fm = parse_frontmatter(block)
             except ValueError as err:
-                entry["problems"].append(("bad-frontmatter", str(err)))
+                # valid OKF the script cannot read is fine for a concept it does not manage; only an entry that
+                # carries a `pilot:` block must be readable (it is the script that rewrites it)
+                if re.search(r"(?m)^pilot:", block):
+                    entry["problems"].append(("bad-frontmatter", str(err)))
                 continue
             entry["fm"] = fm
             self._read_fields(entry, fm)
@@ -935,8 +964,8 @@ class Wiki:
                  + (" (derived, never written)" if status in ("in-dev", "in-review", "in-qa", "verified") else "")))
         else:
             entry["status"] = status
-            if fm.get("status") != WIKI_OKF_STATUS[status]:
-                add(("status-mismatch", f"`status` is {fm.get('status')!r}, {WIKI_OKF_STATUS[status]!r} expected for {status}"))
+            if (fm.get("status") or "stable") != WIKI_OKF_STATUS[status]:  # OKF: no `status` means stable
+                add(("status-mismatch", f"`status` is {fm.get('status') or 'absent (stable)'!r}, {WIKI_OKF_STATUS[status]!r} expected for {status}"))
         tickets = pilot.get("tickets") or []
         if not isinstance(tickets, list) or not all(isinstance(n, int) and not isinstance(n, bool) and n > 0 for n in tickets):
             add(("bad-tickets", "`pilot.tickets` is a list of ticket numbers, e.g. [12, 15]"))
