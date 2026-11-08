@@ -28,8 +28,8 @@ truth, for agents and humans, as markdown files in the consuming project's repo.
 
 ## 3. Layout
 
-- Root: `wiki/` in the **project** repo (`wikiDir` in `.pilot/state.json`). Project-owned:
-  `/pilot-update` never touches it. Presence of `wikiDir` is what enables the feature.
+- Root: `wiki/` in the **project** repo. Project-owned: `/pilot-update` never touches it.
+  Its absence is what `doctor` reports (§6).
 - One markdown file per capability/topic, grouped by folder: `features/`, `flows/`,
   `architecture/`, `decisions/`, `glossary.md`.
 - No committed index: `pilot.py wiki index` prints it on demand (titles, entry ids,
@@ -88,9 +88,13 @@ wiki was underspecified (then it is a normal wiki edit in that PR).
   id, derived status). No code reading beyond what the answer needs; says so when the wiki
   does not cover the question.
 - `/pilot-wiki --lint [page|entry]` — see below.
-- `/pilot-wiki --bootstrap` — first pass on an existing project: drafts pages from code,
-  closed tickets and accepted prototypes as `implemented` entries with **no** `verifiedAt`,
-  in one PR a human reviews. Lint then verifies progressively.
+- `/pilot-wiki --init [domain]` — creates the wiki: an empty skeleton on a new project, or,
+  on an existing one, entries deduced by crossing intent (closed tickets, accepted
+  prototypes) with reality (the code). Run by `/pilot-init` for a new project and proposed
+  by `/pilot-update` for an existing one. See "Init" below.
+
+The wiki is mandatory: `pilot.py doctor`, each phase's preflight, fails with "wiki absent,
+run `/pilot-wiki --init`" when `wiki/` does not exist.
 
 Without the skill: a `PILOT:INTRO` block in the project's `CLAUDE.md` tells any agent to
 consult `wiki/` (via `pilot.py wiki index`) before answering about the product.
@@ -117,6 +121,27 @@ Persona: tech lead (it already judges conformance), PM consulted for functional 
 Pair: the human arbitrates live. `--auto`: each drift becomes `needs-human`, stays
 unstamped, nothing is decided without a human.
 
+### Init
+
+On an existing project, one PR **per domain** (one folder of `wiki/`), never one huge PR.
+For each behavior the agent crosses the two sources and triages it:
+
+| Case | Treatment |
+|---|---|
+| **Convergent**: tickets say X, code does X | `implemented` entry written directly, stamped (`verifiedAt` + `verifiedCommit`): the crossing is already a verification |
+| **Divergent**: tickets say X, code does Y | the human arbitrates: wiki says X (the code is a bug, `type:bug`) or Y (intent changed) |
+| **Code only**: behavior without a ticket | entry created unstamped, flagged "undocumented" |
+| **Tickets only**: closed ticket, no trace in code | gap to arbitrate: never delivered, or since removed |
+
+Tickets contradicting each other over time: the most recent wins; if unclear, treated as
+divergent. Each entry cites its two proofs (the ticket and the file or function), so a
+human can spot-check in seconds. The PR description lists divergences first, then
+summarizes the convergent entries (count, examples). A human merges: init never merges
+itself.
+
+Pair: the human arbitrates divergences live. `--auto`: each divergence is `needs-human`,
+its entry stays unstamped.
+
 ## 7. `pilot.py wiki`
 
 Deterministic, like the rest of the script: `index`, `show <id>` (entry + derived overlay),
@@ -140,21 +165,30 @@ Deterministic, like the rest of the script: `index`, `show <id>` (entry + derive
 
 ## 9. Delivery
 
-**Step 1 — opt-in, minor bump.** Projects without `wikiDir` behave exactly as today.
-`/pilot-init --wiki`, `/pilot-wiki` (query, lint, bootstrap), `pilot.py wiki`, Discovery and
-Spec wiki PRs, Dev flips to `implemented`, dashboard untouched.
-**Step 2 — default, major bump.** Review and QA criteria become mandatory, wiki enabled by
-default, dashboard "Wiki" tab (entries and statuses).
+The wiki is mandatory; the release is **3.0.0** (major: a project's phases now act on the
+wiki). It is built over several short PRs, each backward compatible and bumping the minor
+version while nothing requires the wiki yet, so `main` is never half-migrated:
+
+1. `pilot.py wiki` (parse, index, show, status, lint, set-status) and its tests.
+2. `/pilot-wiki` (query, `--lint`, `--init`) and the link/task docs.
+3. Discovery and Spec wiki PRs, Dev flips to `implemented`.
+4. Review and QA criteria, the dashboard "Wiki" tab.
+5. Last PR: the `doctor` check makes the wiki mandatory, `/pilot-init` and `/pilot-update`
+   run or propose `--init`, `VERSION` goes to 3.0.0.
 
 Content placement (re-run the three-tier test with `grep` at implementation time):
 contract and format in `assets/docs/pilot-link-wiki.md` (read by every phase that touches
 it, whole file injected); `pilot-process.md` gets only a pointer and the "only a PR changes
-the wiki" rule; one task doc per duty (`pilot-task-wiki-lint.md`, bootstrap…); persona
+the wiki" rule; one task doc per duty (`pilot-task-wiki-lint.md`, `pilot-task-wiki-init.md`…); persona
 files unchanged except their duty lists.
 
 ## 10. Known limits
 
-- An ingestion error now outranks the code: step 1 relies on the human checkpoints of §2.4,
-  and bootstrap entries stay unstamped until lint verifies them.
+- An ingestion error now outranks the code: this relies on the human checkpoints of §2.4.
+  For an entry never stamped, lint presents a drift as "the entry is probably wrong" first;
+  the human still arbitrates.
+- Sources that agree do not guarantee truth (ticket and code can both describe a behavior
+  the product has since dropped): init's convergent entries still reach `main` only through
+  a human-merged PR.
 - Lint's code comparison is only as good as the agent's reading; `unverifiable` is an
   honest verdict and leaves the entry unstamped.
