@@ -1,7 +1,7 @@
 ---
 name: pilot-review
-description: "Phase 4 of PILOT: claims a status:review-ready PR and runs the reviewers in parallel (PM and tech lead for type:feature/type:e2e, tech lead alone for type:tech/type:bug, the architect optional), then submits one GitHub PR review (Approve, Request changes or Comment) and the matching label: status:approved, or status:changes-requested (a pure code-level verdict never sets needs-human, so it is reclaimable at once; a judgment call adds it). Pair by default (a live human gets a last look and can resolve a needs-human block live), --auto for a Routine; --merge merges an all-approve PR; --with architect, --only <roles>, --multi, --resume; bare, it sweeps ready PRs. Use for a status:review-ready PR."
-argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto] [--merge] [--with architect] [--multi [N]] | <issue or PR number> --only <pm|architect|techlead>[,...] [--merge] | <issue number> --resume [--merge]"
+description: "Phase 4 of PILOT: claims a status:review-ready PR and runs the reviewers in parallel (PM and tech lead for type:feature/type:e2e, tech lead alone for type:tech/type:bug, the architect optional), then submits one GitHub PR review (Approve, Request changes or Comment) and the matching label: status:approved, or status:changes-requested (a pure code-level verdict never sets needs-human, so it is reclaimable at once; a judgment call adds it). Pair by default, or the project workflow's default (a live human gets a last look and can resolve a needs-human block live), --auto or --pair to choose, --auto for a Routine; --merge merges an all-approve PR; --with architect, --only <roles>, --multi, --resume; bare, it sweeps ready PRs. Use for a status:review-ready PR."
+argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto|--pair] [--merge] [--with architect] [--multi [N]] | <issue or PR number> --only <pm|architect|techlead>[,...] [--merge] | <issue number> --resume [--merge]"
 ---
 
 # PILOT — Phase 4: Review
@@ -10,7 +10,7 @@ Read `.pilot/pilot-process.md` first (labels, states, the claim protocol §4) an
 skill covers only phase 4's mechanics, including the reviewer set (step 3). `--with architect` adds the architect to that set, in a sweep too (the only persona
 summonable here, `.pilot/pilot-link-roster.md` "Roster"); `--only` (step 3) fixes the exact set instead; nothing can be summoned mid-review.
 
-Mode: pair by default (`.pilot/pilot-process.md` §4 "Interaction modes"). Every outcome is checkpointed as a pending GitHub PR review the moment it is decided
+Mode: `--auto` or `--pair` as given, else the ticket's own, pair by default (`.pilot/pilot-process.md` §4 "Interaction modes"). Every outcome is checkpointed as a pending GitHub PR review the moment it is decided
 (step 7). An all-approve or pure-`change` outcome (no `decision` point, so no `needs-human`) gets a pre-submission pause (step 8); an outcome carrying
 `needs-human` always submits at once (step 9) and pair's value comes after, in the live resolution of step 10. `--auto` skips both pauses (required for a scheduled
 Routine, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `--merge` (step 12) works with either mode; without it this skill never merges. `--multi <N>`
@@ -21,8 +21,8 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
 ## Steps
 
 0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation. `ok: false` (exit 1) or a failure (exit 2, script missing) → report each entry of `failed` (or the error) and stop here, before anything has changed.
-1. Resolve the ticket: `python3 .pilot/pilot.py resolve review <issue> [--resume]`. With none
-   given, run `python3 .pilot/pilot.py pool review` first — the pool of
+1. Resolve the ticket: `python3 .pilot/pilot.py resolve review <issue> [--resume] [--auto]` (`--auto` on `pool`, `resolve` and `claim` whenever this run is unattended, `.pilot/pilot-process.md` §4 "Interaction modes"). With none
+   given, run `python3 .pilot/pilot.py pool review [--auto]` first — the pool of
    `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:review-ready`,
    resumable `status:in-review` + `can-resume`; `needs-human`, `on-hold` and open "Depends on
    #N" excluded; priority, then "Blocks #M", then oldest; `status:changes-requested` tickets
@@ -52,16 +52,16 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
      `resume-mismatch`; `wrong-status`; `assigned`; `closed`; `not-found`).
    Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
    `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
-2. **Claim** it: `python3 .pilot/pilot.py claim review <issue> --mode <mode>` (the mode named
+2. **Claim** it: `python3 .pilot/pilot.py claim review <issue> --mode <mode> [--auto]` (the mode named
    in step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-review`, re-read to confirm). Exit 1 with `reason: lost-race` → stand down and
    return to step 1 for a different candidate (bare pool only — report nothing to do if a
    specific ticket was requested). Any other refusal → report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's, `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited") to pick the **default**
-   reviewer set; the architect is never part of a default: it is `rules.review[<type>]` of `python3 .pilot/pilot.py workflow show` (once per run):
-   - standard: `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`; `type:tech` or `type:bug` → `pilot-techlead` alone (no PM)
-   - a lean workflow: `pilot-techlead` alone for every type
+   reviewer set: it is `review` of `python3 .pilot/pilot.py workflow show --ticket <issue> --path <changed file>…` (the PR's changed files feed the path signals):
+   - standard: `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`; `type:tech` or `type:bug` → `pilot-techlead` alone (no PM); a signal may add reviewers
+   - a lean workflow: `pilot-techlead` alone for every type, plus what a signal adds
    - Whatever the flags, check whether the PR already carries a submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true after a reclaim fix
      (`.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket"), never for a first round. Found → fetch the latest submitted review's full body
      (every point, marked `change` or `decision`) to pass to every reviewer in step 5. This also feeds `--only`.

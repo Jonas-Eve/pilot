@@ -1,7 +1,7 @@
 ---
 name: pilot-spec
-description: "Phase 2 of PILOT: the architect and tech lead, in dialogue, split an already-formalized level:story into dev-sized tasks (mandatory for type:feature, a judgment call for type:tech) and write each ticket's technical spec in one pass; the PM checks a type:feature split against the acceptance criteria. Also specs a standalone type:bug task, originates a standalone type:tech need or a type:bug from a raw description (--tech, --bug), records dependencies, decides wont-do, and reclaims a story at status:qa for a new round. Pair by default, --auto for a Routine; --resume, --with, --multi; bare, it picks fresh or resumable work. Use to split and spec a story, spec a task or bug, or start a standalone technical need."
-argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume | --tech <raw need> | --bug <raw need>"
+description: "Phase 2 of PILOT: the architect and tech lead, in dialogue, split an already-formalized level:story into dev-sized tasks (mandatory for type:feature, a judgment call for type:tech) and write each ticket's technical spec in one pass; the PM checks a type:feature split against the acceptance criteria. Also specs a standalone type:bug task, originates a standalone type:tech need or a type:bug from a raw description (--tech, --bug), records dependencies, decides wont-do, and reclaims a story at status:qa for a new round. Pair by default (the project's workflow may default to auto), --auto or --pair to choose, --auto for a Routine; --resume, --with, --multi; bare, it picks fresh or resumable work. Use to split and spec a story, spec a task or bug, or start a standalone technical need."
+argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto|--pair] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume | --tech <raw need> | --bug <raw need>"
 ---
 
 # PILOT — Phase 2: Spec
@@ -23,8 +23,8 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
      idea instead → say so and point at `/pilot-discovery`) → **no-ticket entry**, skip to
      step 1a.
    - Anything else — an issue number, `--resume <issue>`, or none → `python3 .pilot/pilot.py
-     resolve spec <issue> [--resume]`. With no issue given, run `python3 .pilot/pilot.py pool
-     spec` first — the pool of `.pilot/pilot-process.md` §4 "Picking the next ticket..."
+     resolve spec <issue> [--resume] [--auto]` (`--auto` on `pool`, `resolve` and `claim` whenever this run is unattended, `.pilot/pilot-process.md` §4 "Interaction modes"). With no issue given, run `python3 .pilot/pilot.py pool
+     spec [--auto]` first — the pool of `.pilot/pilot-process.md` §4 "Picking the next ticket..."
      (fresh `status:backlog`, resumable `status:in-spec` + `can-resume`; `needs-human`,
      `on-hold` and open "Depends on #N" excluded; priority, then "Blocks #M", then oldest;
      what a scheduled cron Routine drives with `--auto`, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `pick: null`
@@ -79,7 +79,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
     (`.pilot/pilot-process.md` §4 "Interaction modes"). Once approved this session already holds the claim: continue to step 3 with this ticket, skipping step 2 and step 1's pool selection,
     `status:draft` → `status:in-spec` directly (no `status:backlog` stop, since this run is about to split and spec it). Never with `--resume`; `--resume <issue>` instead recovers a
     no-ticket entry left mid-pair at `status:draft`.
-2. **Claim** the ticket: `python3 .pilot/pilot.py claim spec <issue> --mode <mode>` (the mode
+2. **Claim** the ticket: `python3 .pilot/pilot.py claim spec <issue> --mode <mode> [--auto]` (the mode
    named in step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-spec`, re-read to confirm). Skipped for the no-ticket entry (step 1a), which
    already holds its claim. Exit 1 with `reason: lost-race` →
@@ -87,7 +87,12 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
    refusal → report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag|event` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Branch on `level:`:
-   - **`level:story`**: run the architect+tech lead dialogue
+   - **`level:story`**: first `python3 .pilot/pilot.py workflow show --ticket <story>` once: its `spec.architect` says how the pass runs, its
+     `notes` go with every prompt, and `designer: true` adds `pilot-designer` as `--with` would. `leads` → the architect+tech lead dialogue below.
+     `validates` → the tech lead alone writes the spec (`.pilot/pilot-task-write-spec.md`), then `pilot-architect` validates that deliverable with
+     `.pilot/pilot-task-validate-tech-spec.md` (it gets the deliverable only, `.pilot/pilot-link-roster.md` "Validator"); an objection opens the dialogue below on it.
+     `absent` → the tech lead alone, no validation. A tech lead alone who finds the story must be split, or depends on other tickets, stops and says so:
+     run the dialogue below with the architect leading. Dialogue: run the architect+tech lead dialogue
      (`.pilot/pilot-link-agent-dialogue.md`) — or, with `--multi <N>`, an N-instance
      ensemble of the same dialogue, converging with no fixed round cap before continuing.
      Call `Agent`, alternating `pilot-architect` and `pilot-techlead` turns. Read
@@ -171,7 +176,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
    - Split into tasks: create the sub-issues, link to the parent as native
      sub-issues, each labeled `level:task` plus its own `type:` as decided in step 4
      (never the parent's — `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited": `type:feature`/`type:tech` for a dev task, `type:e2e` for the
-     end-to-end one), its own written spec, and **`status:dev-ready` directly** — split
+     end-to-end one) and the story's own `workflow:` label when it has one (`inherit_labels` of its route — a story and its tasks follow the same path), its own written spec, and **`status:dev-ready` directly** — split
      and spec happen in the same pass, so a fresh task never stops at an intermediate
      "scoped but not yet spec'd" status. Once the tasks are linked, one `python3 .pilot/pilot.py event
      <task> <task>... --action created --phase spec` gives their dashboard events (step 2a;

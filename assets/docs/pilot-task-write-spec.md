@@ -8,6 +8,10 @@ a standalone `type:bug` — the only `level:task` that ever waits on its own spe
 freshly split-off task is always spec'd in the same pass that creates it) you work alone,
 no split decision to make.
 
+**A `type:tech` story with no architect leading** (the prompt says so; a `pilot-architect` validation may follow): write one spec for the whole story, never a split. Also write its
+**Architecture decisions** and **Security decisions** sections (concrete choices, or why none were needed) and reconfirm its `priority:`. If it must be split, or depends on other
+tickets, stop and say so instead: the architect then leads.
+
 You receive one ticket carrying either the architect's split-time
 security/architecture decisions (a `level:story`'s own task, this same pass), or, for a
 `type:bug` ticket (which never splits — `.pilot/pilot-link-ticket-tree.md` "Three levels"), the

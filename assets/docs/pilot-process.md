@@ -130,6 +130,11 @@ ticket should resume unattended, or after verifying firsthand that an orphaned c
 whatever is recorded on the ticket is safe to continue from. A plain label check, never something a subagent reasons about. The claiming phase removes it as it claims; a
 human who prefers resumes at once with `--resume <issue>`.
 
+### `workflow:` — one ticket's own workflow profile (optional)
+`workflow:standard` / `workflow:lean` on a ticket overrides the project's profile for that ticket and its tasks, when the project allows it (`python3 .pilot/pilot.py workflow show --ticket <N>`
+gives the route). Set before Dev starts and then frozen (`pilot.py set` refuses to change it once the ticket is in Dev); Spec copies it from a story to every task it creates (`inherit_labels`).
+Without a `workflow` block in `.pilot/state.json` the label is ignored.
+
 ### `priority:`
 `priority:P0` / `P1` / `P2`, set at creation by whoever creates the ticket: the PM for `type:feature` and a grouped `type:tech` (business value and urgency for the
 feature, the architect's technical framing for a grouped tech story), the architect for a standalone `type:tech` or a `type:bug`. It orders `pool`. At Spec the architect and
@@ -196,10 +201,12 @@ resume via `--resume`:
 2. `pilot.py claim --mode resume-orphaned` — an existing assignee is no conflict: it is overwritten, `status:` stays.
 3. Pass what step 1 recovered to the phase's `Agent` call(s) and continue (the pair loop where one exists, else a fresh pass). Finalization is as in any run.
 
-### Interaction modes: pair (default) and `--auto`
+### Interaction modes: pair and `--auto`
 
 Each phase's own `SKILL.md` follows this contract and may specialize it. Discovery and QA are **pair only** (no `--auto`, never driven by a scheduled Routine; both support `--resume`). Spec, Dev and
-Review default to **pair**, with `--auto` to opt out; `--auto` is what a scheduled Routine uses (`.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). Review specializes pair: its reviewers always
+Review take `--auto` or `--pair` when given, else the ticket's `mode` from `python3 .pilot/pilot.py workflow show --ticket <N>` (`pair` unless the project's workflow defaults to `auto`;
+a project with no `workflow` block is pair). A ticket a risk signal makes pair only is never run unattended: an unattended run passes `--auto` to `pilot.py pool`/`resolve`/`claim`,
+which leave it out or refuse it. `--auto` is what a scheduled Routine uses (`.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). Review specializes pair: its reviewers always
 run in parallel and isolated, so an outcome carrying `needs-human` submits at once in both modes (the block must reach GitHub before any resolution) and a live human resolves it afterwards
 ("A human is live in the same session", `needs-human` above), while an all-approve or pure-`change` outcome pauses before submitting for a last look (`pilot-review/SKILL.md`). Both modes claim immediately, the same way.
 
