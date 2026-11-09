@@ -1070,6 +1070,7 @@ const STUB = (opts) => `
   // ---- the phases and the profile follow the workflow the snapshot says the project runs ----
   {
     const rulesFor = (qa) => ({ qa, e2e_task: qa, feature_done_goes_to: qa ? 'status:qa' : 'status:done',
+      default_mode: qa ? 'pair' : 'auto', spec: { tech: { architect: qa ? 'validates' : 'on-signal' } },
       review: qa ? { feature: ['pilot-pm', 'pilot-techlead'], e2e: ['pilot-pm', 'pilot-techlead'], tech: ['pilot-techlead'], bug: ['pilot-techlead'] }
                  : { feature: ['pilot-techlead'], e2e: ['pilot-techlead'], tech: ['pilot-techlead'], bug: ['pilot-techlead'] } });
     const LEAN = { profile: 'lean', phases: ['dev', 'discovery', 'proto', 'review', 'spec'], rules: rulesFor(false) };
@@ -1095,12 +1096,41 @@ const STUB = (opts) => `
           (await page.$eval('#subtabs a[aria-current=page]', (a) => a.textContent)) === 'Tableau' && !!(await page.$('#view .board')));
     await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
     check('profile: the help page states the profile and its rules', /Profil du projet : lean\. Pas de QA humaine\. Pas de tâche e2e\. Relecture : Tech lead seul\./.test(await text(page, '#profileNote')), await text(page, '#profileNote'));
+    check('profile: the help page states the default mode and the Spec rule of a tech story',
+          /Mode par défaut : auto \(sans vous\)\./.test(await text(page, '#profileNote')) && /Spec tech : le tech lead seul ; l’architecte intervient/.test(await text(page, '#profileNote')), await text(page, '#profileNote'));
+    check('profile: the help page says a ticket can be pair only or carry its own profile', /pair seulement/.test(await text(page, '#signalNote')) && /workflow:<profil>/.test(await text(page, '#signalNote')));
+    let table = await text(page, '#view table');
+    check('profile: lean has no human QA row, and a tech Spec is the tech lead alone',
+          !/QA humaine/.test(table) && /Spec · tech\s*Tech lead/.test(table) && /Spec · feature/.test(table) && !/Spec · feature ou tech/.test(table), table);
+    check('profile: lean reviews with the tech lead alone, in one row', /Review\s*Tech lead/.test(table) && !/Review · feature/.test(table), table);
+    await page.goto(FILE + '#aide/agents'); await page.waitForTimeout(250);
+    const agents = await text(page, '#view');
+    check('profile: lean shows neither the QA nor the E2E persona', !/Déroule avec vous le plan de test/.test(agents) && !/test de bout en bout/.test(agents) && /Implémente un ticket spécifié/.test(agents), agents.slice(0, 200));
     check('profile: no page errors', page.errors.length === 0, page.errors.join('|'));
+    await page.close();
+
+    page = await open({ preload: [withWf(STANDARD)] });
+    await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
+    table = await text(page, '#view table');
+    check('profile: standard keeps the QA row, the architect validates a tech Spec and the PM reviews a feature apart',
+          /QA humaine/.test(table) && /Spec · tech\s*Tech lead[^]*Architecte/.test(table) && /Review · feature ou e2e/.test(table) && /Review · tech ou bug/.test(table)
+          && /Mode par défaut : pair \(avec vous\)\./.test(await text(page, '#profileNote')), table);
+    await page.goto(FILE + '#aide/agents'); await page.waitForTimeout(250);
+    check('profile: standard shows the QA and E2E personas', /Déroule avec vous le plan de test/.test(await text(page, '#view')) && /test de bout en bout/.test(await text(page, '#view')));
+    await page.close();
+
+    page = await open({ preload: [withWf(null)] });
+    await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
+    table = await text(page, '#view table');
+    check('profile: a project without a workflow keeps the whole table as before', /Spec · feature ou tech/.test(table) && /QA humaine/.test(table) && (await page.$('#signalNote')) === null, table);
     await page.close();
 
     page = await open({ preload: [withWf(LEAN)], lang: 'en' });
     c = await chip(page);
     await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
+    check('profile: the default mode, the Spec rule and the rows are translated',
+          /Default mode: auto \(without you\)\./.test(await text(page, '#profileNote')) && /Tech spec: the tech lead alone/.test(await text(page, '#profileNote'))
+          && /Spec · tech/.test(await text(page, '#view table')) && /the architect too on dependencies/.test(await text(page, '#view table')) && /can also carry its own profile/.test(await text(page, '#signalNote')), await text(page, '#view'));
     check('profile: the chip and the rules are translated',
           c.text === 'Profile lean' && /No human QA/.test(c.title) && /Review: Tech lead alone/.test(c.title) && /Project profile: lean\. No human QA\. No e2e task\. Review: Tech lead alone\./.test(await text(page, '#profileNote')),
           JSON.stringify(c) + ' ' + (await text(page, '#profileNote')));

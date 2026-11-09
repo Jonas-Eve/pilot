@@ -227,6 +227,10 @@ mode, and is invalid only with `--resume`.
 
 Unrelated to the "ask live" behavior of `needs-human`: that fires for a genuine blocker, pair or not; pair is for iterating on a draft together even when nothing blocks.
 
+### The engine and `gh`
+
+`.pilot/pilot.py` reads and writes GitHub itself with the `gh` CLI (`gh api`). In a cloud session `gh auth status` can print an invalid-token error while `gh api` works (a proxy swaps the token): trust `doctor`, not `gh auth status`.
+
 ## 5. Token Efficiency: Isolated Contexts Per Phase
 
 1. **No phase carries a prior phase's transcript.** A phase skill reads only what it needs from the ticket (its body, linked parent and children, the relevant docs) and hands that, never the

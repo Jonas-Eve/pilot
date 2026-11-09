@@ -21,9 +21,8 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:qa`, resumable
    `status:in-qa` + `can-resume`; `needs-human`, `on-hold` and open "Depends on #N" excluded;
    priority, then "Blocks #M", then oldest). `pick: null` → report nothing to do; otherwise
-   resolve `pick.number` the same way. No `--auto`, never Routine-driven
-   (`.pilot/pilot-process.md` §4 "Interaction modes", "Scheduled sweeps"). Act on the
-   returned `action`:
+   the pool has already resolved its pick: act on `pick.action` (no `--auto`, never Routine-driven,
+   `.pilot/pilot-process.md` §4 "Interaction modes", "Scheduled sweeps"):
    - `claim-fresh` → step 2 (mode `fresh`).
    - `resume-orphaned` (`--resume`: a session left mid-pair) or `resume-cleared`
      (`can-resume`: a human cleared `needs-human`) → step 2 (mode of the same name), then

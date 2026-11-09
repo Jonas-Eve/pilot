@@ -22,7 +22,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    reclaimable `status:changes-requested`; `needs-human`, `on-hold` and open "Depends on #N"
    excluded; priority, then "Blocks #M", then oldest; a scheduled cron Routine drives this
    with `--auto` added, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `pick: null` → report nothing to do;
-   otherwise resolve `pick.number` the same way. Act on the returned `action`:
+   otherwise the pool has already resolved its pick: act on `pick.action`:
    - `claim-fresh` → step 2 (mode `fresh`).
    - `reclaim` → step 2 (mode `reclaim`): a PR already exists, phase 4 sent it back
      (`.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket"). Then
