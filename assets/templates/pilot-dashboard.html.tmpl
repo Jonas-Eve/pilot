@@ -139,7 +139,7 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
 <div class="wrap">
   <div class="top">
     <div>
-      <div class="ttl"><h1>Cockpit {{PROJECT_NAME}}</h1><a class="info" id="helpLink" href="#aide" title="Agents et steps" aria-label="Agents et steps">i</a></div>
+      <div class="ttl"><h1>Cockpit {{PROJECT_NAME}}</h1><a class="info" id="helpLink" href="#aide" title="Agents et steps" aria-label="Agents et steps">i</a><span class="chip" id="profileChip" hidden></span></div>
       <p class="sub">Tickets par phase et file d’actions selon votre rôle, avec la commande PILOT prête à copier.</p>
     </div>
     <div class="controls">
@@ -181,6 +181,14 @@ function h(tag,attrs){
 function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
 /* ---------- language: the page text is written in French; EN maps a French text to its English one (exact for short texts, by fragment for the long ones; a ticket title is never a key) ---------- */
 var EN={
+"Profil": "Profile",
+"Profil du projet : ": "Project profile: ",
+"QA humaine pour les features.": "Human QA for features.",
+"Pas de QA humaine.": "No human QA.",
+"Une tâche e2e par feature.": "One e2e task per feature.",
+"Pas de tâche e2e.": "No e2e task.",
+"Relecture : ": "Review: ",
+" seul": " alone",
 "La commande est écrite, pas envoyée.": "The command is written, not sent.",
 "Lancez la mise à jour depuis une session du projet.": "Run the update from a project session.",
 "Filtres ": "Filters ",
@@ -507,7 +515,20 @@ var PHASES=[
   {key:'qa',name:'QA humaine',n:5,role:'produit',statuses:['qa','in-qa']}
 ];
 var STATUS_FR={'poc-draft':'prototype en construction','poc-review':'prototype à décider','poc-validated':'prototype accepté','poc-rejected':'prototype rejeté','draft':'brouillon','backlog':'à spécifier','in-spec':'spec en cours','dev-ready':'prêt à coder','in-dev':'dev en cours','changes-requested':'corrections demandées','review-ready':'à relire','in-review':'relecture en cours','approved':'approuvé, à merger','split':'découpée en tâches','qa':'à tester','in-qa':'test en cours'};
-function phaseOf(status){for(var i=0;i<PHASES.length;i++)if(PHASES[i].statuses.indexOf(status)>-1)return PHASES[i];return null;}
+/* the phases this project runs: a snapshot without a `workflow` field means the whole chain, as before */
+function phasesOn(){var w=S.gh&&S.gh.workflow; return w&&w.phases?PHASES.filter(function(p){return w.phases.indexOf(p.key)>-1;}):PHASES;}
+function phaseOf(status){var ps=phasesOn();for(var i=0;i<ps.length;i++)if(ps[i].statuses.indexOf(status)>-1)return ps[i];return null;}
+/* what the project's workflow profile means, from the rules the snapshot carries (`pilot.py workflow show`) */
+function profileSummary(w){
+  var r=w.rules||{}, out=[];
+  if(typeof r.qa==='boolean')out.push(tr(r.qa?'QA humaine pour les features.':'Pas de QA humaine.'));
+  if(typeof r.e2e_task==='boolean')out.push(tr(r.e2e_task?'Une tâche e2e par feature.':'Pas de tâche e2e.'));
+  if(r.review){
+    var kinds=['feature','e2e','tech','bug'], sets=kinds.map(function(k){return arr(r.review[k]).map(function(x){return tr(agentName(String(x).replace(/^pilot-/,'')));}).join(' + ');});
+    out.push(tr('Relecture : ')+(sets.every(function(x){return x===sets[0];})?sets[0]+(sets[0].indexOf('+')<0?tr(' seul'):''):kinds.map(function(k,i){return k+' → '+sets[i];}).join(' ; '))+'.');
+  }
+  return tr('Profil du projet : ')+w.profile+'. '+out.join(' ');
+}
 
 function lab(t,p){for(var i=0;i<t.labels.length;i++)if(t.labels[i].indexOf(p)===0)return t.labels[i].slice(p.length);return '';}
 function has(t,l){return t.labels.indexOf(l)>-1;}
@@ -577,7 +598,7 @@ function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updat
 function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
-  S.gh={state:'live',msg:'',live:(s.issues||[]).map(normSnap),at:s.at,total:s.total,truncated:!!s.truncated,modules:(s.modules&&typeof s.modules==='object'&&!Array.isArray(s.modules))?s.modules:null};
+  S.gh={state:'live',msg:'',live:(s.issues||[]).map(normSnap),at:s.at,total:s.total,truncated:!!s.truncated,modules:(s.modules&&typeof s.modules==='object'&&!Array.isArray(s.modules))?s.modules:null,workflow:(s.workflow&&typeof s.workflow==='object'&&Array.isArray(s.workflow.phases))?s.workflow:null};
   var sv=store('cp.lang'); if(sv!=='fr'&&sv!=='en'&&s.language&&pickLang(s.language)!==LANG)setLang(s.language,false); /* a reader's own choice wins over the project's language */
 }
 function watchSnapshots(){
@@ -930,8 +951,9 @@ function phaseItems(p){
   return tickets().filter(function(t){return p.statuses.indexOf(t.status)>-1;}).sort(function(a,b){
     return p.statuses.indexOf(a.status)-p.statuses.indexOf(b.status)||byUrgency(a,b);});
 }
+function ovSubs(){return [['tableau','Tableau']].concat(phasesOn().map(function(p){return [p.key,p.name];}));}
 function subItems(tab){
-  if(tab==='ensemble')return OV_SUBS.map(function(s){var p=PHASES.filter(function(q){return q.key===s[0];})[0];return [s[0],s[1],p?phaseItems(p).length:null];});
+  if(tab==='ensemble')return ovSubs().map(function(s){var p=phasesOn().filter(function(q){return q.key===s[0];})[0];return [s[0],s[1],p?phaseItems(p).length:null];});
   if(tab==='design'){
     var d=S.design; if(!d)return [];
     var ty=d.type||{}, sp=d.space||{};
@@ -965,7 +987,7 @@ function vPhase(p){
 }
 function vOverview(){
   var all=tickets();
-  var cols=PHASES.map(function(p){
+  var cols=phasesOn().map(function(p){
     var items=all.filter(function(t){return p.statuses.indexOf(t.status)>-1;}).sort(byUrgency);
     var open=!!S.expanded[p.key], shown=open?items:items.slice(0,COL_LIMIT);
     return h('section',{class:'col','aria-label':p.name},
@@ -1387,7 +1409,10 @@ function render(){
   document.getElementById('designEdit').hidden=H||S.tab!=='design';updateDesign();
   document.getElementById('protoNew').hidden=H||S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
   document.getElementById('banner').hidden=H||S.tab==='design'||S.tab==='wiki'||S.tab==='architecture'||(S.tab==='prototypes'&&!!S.viewProto);
-  var items=subItems(S.tab), ph=PHASES.filter(function(p){return p.key===S.sub.ensemble;})[0];
+  if(S.tab==='ensemble'&&S.sub.ensemble!=='tableau'&&!phasesOn().some(function(p){return p.key===S.sub.ensemble;}))S.sub.ensemble='tableau'; /* a phase this project does not run */
+  var pc=document.getElementById('profileChip'), wf=S.gh&&S.gh.workflow;
+  pc.hidden=!wf; if(wf){pc.textContent=tr('Profil')+' '+wf.profile; pc.title=profileSummary(wf);}
+  var items=subItems(S.tab), ph=phasesOn().filter(function(p){return p.key===S.sub.ensemble;})[0];
   if(H)subnav('aide',HELP_SUBS,S.sub.aide);
   else if(items.length&&!(S.tab==='prototypes'&&S.viewProto))subnav(S.tab,items,S.sub[S.tab]); else subnav('',[],'');
   if(!H&&S.tab==='prototypes'&&!S.viewProto&&S.sub.prototypes==='acceptes')subnav('prototypes',protoSubItems(),S.sub3,'subtabs2','prototypes/acceptes'); else subnav('',[],'','subtabs2');
@@ -1422,6 +1447,7 @@ function vHelp(){
   var steps=S.sub.aide==='steps';
   return h('div',{class:'list'},
     h('div',{class:'pair'},h('span',{class:'note'},'Langue'),h('div',{class:'seg',role:'group','aria-label':'Langue',id:'langSeg'},['fr','en'].map(function(l){return h('button',{type:'button',lang:l,'aria-pressed':String(LANG===l),onclick:function(){setLang(l,true);}},l.toUpperCase());}))),
+    steps&&S.gh&&S.gh.workflow?h('p',{class:'note',id:'profileNote'},profileSummary(S.gh.workflow)):null,
     steps?h('p',{class:'note'},'À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.'):null,
     steps?h('div',{class:'ref'},h('table',{},
       h('thead',{},h('tr',{},['Step','Lead','Validateur','Convocable'].map(function(t){return h('th',{scope:'col'},t);}))),

@@ -1676,7 +1676,10 @@ class WorkflowProfileTests(unittest.TestCase):
                     return pilot.Machine(FakeGh([issue(1, ["status:backlog"])])).snapshot()
                 finally:
                     os.chdir(old)
-        self.assertEqual(snap({"workflow": {"profile": "lean"}})["workflow"], {"profile": "lean"})
+        self.assertEqual(snap({"workflow": {"profile": "lean"}})["workflow"],
+                         {"profile": "lean", "phases": sorted(pilot.chain("lean")["contracts"]),
+                          "rules": pilot.profile_rules("lean")})
+        self.assertNotIn("qa", snap({"workflow": {"profile": "lean"}})["workflow"]["phases"])
         self.assertNotIn("workflow", snap({"projectName": "p"}))
         self.assertNotIn("workflow", snap(None))
 

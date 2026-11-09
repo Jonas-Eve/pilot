@@ -1,6 +1,6 @@
 # PILOT — adaptive workflow (design proposal)
 
-Status: **proposal; the engine and `lean`'s first rules exist** (3.3.0: `pilot.py workflow`, a chain that is a function of a profile; 3.4.0: `lean` is ready for what it declares: no human QA, no e2e task in a feature split, the tech lead alone reviews, a finished feature story goes to `done`; the skills, task docs and the merge workflow read these rules from `pilot.py workflow show`). Not yet: Spec's roster by profile, the default mode, risk signals, a profile for one ticket (section 4), and the cockpit. Human-only document: no skill or agent reads it, and it
+Status: **proposal; the engine and `lean`'s first rules exist** (3.3.0: `pilot.py workflow`, a chain that is a function of a profile; 3.4.0: `lean` is ready for what it declares: no human QA, no e2e task in a feature split, the tech lead alone reviews, a finished feature story goes to `done`; the skills, task docs and the merge workflow read these rules from `pilot.py workflow show`). 3.5.0: the cockpit follows the profile (phases from the snapshot, a profile chip with the rules, the rules in the help page). Not yet: Spec's roster by profile, the default mode, risk signals, a profile for one ticket (section 4), and the launch buttons following the mode. Human-only document: no skill or agent reads it, and it
 is not copied into consuming projects. Once validated, the contract moves into `assets/docs/` and
 this file is removed. Companion of `docs/roles-matrix.md` (who does what today) and
 `docs/modules-design.md` (the module switch this builds on).

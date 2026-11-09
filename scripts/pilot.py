@@ -769,8 +769,9 @@ class Machine:
             doc["modules"] = modules  # the dashboard's tabs follow the modules a project has on
         doc["language"] = read_language()  # the dashboard opens in it (a reader can switch)
         declared = read_workflow()
-        if declared["source"] == "state":
-            doc["workflow"] = {"profile": declared["profile"]}  # the chain this project runs
+        if declared["source"] == "state":  # the chain this project runs: the dashboard shows its phases and its rules
+            doc["workflow"] = {"profile": declared["profile"], "phases": sorted(chain(declared["profile"])["contracts"]),
+                               "rules": profile_rules(declared["profile"])}
         while len(json.dumps(doc, ensure_ascii=False).encode()) > SNAPSHOT_MAX_BYTES and rows:
             del rows[max(1, len(rows) * 9 // 10):]
             doc["truncated"] = True
