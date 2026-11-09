@@ -877,7 +877,7 @@ class Machine:
             login = self.gh.me()
             check("github-api", True, f"authenticated as {login}")
         except (GhError, ValueError, FileNotFoundError, KeyError) as err:
-            check("github-api", False, str(err) or "gh CLI not found or not authenticated")
+            check("github-api", False, str(err) or "gh CLI not found, or `gh api user` fails (`gh auth status` can be wrong behind a token-swapping proxy: check `gh api user`)")
         if login:
             try:
                 info = self.gh.repo_info()

@@ -192,12 +192,14 @@ computes the route.
 0. Done (3.3.0): the contract engine takes a profile (`pilot.py workflow show|check|set`, `contract --profile`),
    `standard` is unchanged, `lean` composes (`workflow check`) and is refused by `workflow set` until it is ready.
 1. Done (3.4.0): `lean` is ready for what it declares (no QA, no e2e task, the tech lead alone reviews),
-   carried to projects by `pilot-update`. Next: apply it to `pilot` itself, then Spec's roster, the default
-   mode, risk signals and the cockpit.
-2. Measure a few tickets (agent calls, objections, time) before generalising.
-3. Define `standard` and its signals with myAVI's real constraints (migration from PILOT 2.9.0:
-   no `workflow` block means today's chain).
-4. Cockpit changes on the demo artifact, then published with the release.
+   carried to projects by `pilot-update`.
+2. Done (3.5.0 to 3.6.0): Spec's route, the default mode of each profile, risk signals (none by default, a
+   project declares its own), a per-ticket `workflow:` label, the cockpit following the profile, and `pilot`
+   running PILOT on itself (`lean`).
+3. Measured (3.7.0, `docs/engine-comparison.md`): one ticket from creation to `approved` in three arms; the
+   engine that reaches GitHub with `gh` cost the least. More tickets, by type, remain to be measured.
+4. To do: define `standard` and its signals with myAVI's real constraints (migration from PILOT 2.9.0: no
+   `workflow` block means today's chain), then publish the cockpit changes with the release.
 
 ## 11. Evidence from myAVI (measured 2026-11, read-only)
 

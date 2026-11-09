@@ -107,7 +107,7 @@ dialogue rather than one handing a finished draft to the other
 - **Scripts** (`scripts/`): `setup-github-labels.sh`, idempotent creation/update of every
   label the state machine uses — also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) when run from that project's root; and
-  `pilot.py`, the deterministic ticket mechanics (pool selection, claim, status transitions,
+  `pilot.py`, the deterministic ticket mechanics (pool selection, the pick's action, claim, status transitions,
   `needs-human` flagging) that the phase skills call — copied into a project as
   `.pilot/pilot.py` by `/pilot-init`/`/pilot-update`.
 - **Templates** (`assets/templates/`): the doc skeletons `/pilot-init` fills in.
