@@ -181,6 +181,8 @@ function h(tag,attrs){
 function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
 /* ---------- language: the page text is written in French; EN maps a French text to its English one (exact for short texts, by fragment for the long ones; a ticket title is never a key) ---------- */
 var EN={
+"pair seulement": "pair only",
+"profil": "profile",
 "Profil": "Profile",
 "Profil du projet : ": "Project profile: ",
 "QA humaine pour les features.": "Human QA for features.",
@@ -594,7 +596,7 @@ function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.a
 
 /* ---------- snapshots (db): written by Claude from GitHub, read by everyone ---------- */
 function snapId(repo){return String(repo).replace('/','__');}
-function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||'',p:i.p||0,k:i.k||null,r:i.r||0};t.status=lab(t,'status:');return t;}
+function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||'',p:i.p||0,k:i.k||null,r:i.r||0,g:i.g||null};t.status=lab(t,'status:');return t;}
 function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
@@ -705,6 +707,8 @@ function ticketChips(t){
   if(t.status)out.push(h('span',{class:'chip acc'},STATUS_FR[t.status]||t.status));
   if(has(t,'needs-human'))out.push(h('span',{class:'chip warn'},h('span',{class:'dot'}),'attend un humain'));
   if(has(t,'on-hold'))out.push(h('span',{class:'chip'},'en pause'));
+  if(t.g&&t.g.p)out.push(h('span',{class:'chip warn',title:arr(t.g.s).join(', ')},tr('pair seulement')));
+  if(t.g&&t.g.w)out.push(h('span',{class:'chip'},tr('profil')+' '+t.g.w));
   return out;
 }
 function ghLink(t,text){return h('a',{class:'btn',href:'https://github.com/'+S.repo+'/issues/'+t.n,target:'_blank',rel:'noopener'},text);}
@@ -765,7 +769,7 @@ function kidsOf(n){
 }
 function rowCmds(t,a,o){
   if(a.container)return {canAuto:true,multiOK:true,container:true,auto:a.cmd+(o.multi?' --multi '+o.multi:'')+(o.next?' --next':''),pair:null};
-  var canAuto=a.kind==='run'&&!a.pairOnly, multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
+  var canAuto=a.kind==='run'&&!a.pairOnly&&!(t.g&&t.g.p), multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
   var mu=multiOK&&o.multi?' --multi '+o.multi:'';
   var p=phaseCmd(a), withs=!p?[]:p==='/pilot-spec'&&lab(t,'type:')==='bug'?['architect']:WITHS[p], onlys=onlyList(t,a), only=picked(o.only,onlys), wl=o.next||only.length?[]:picked(o.w,withs);
   var wt=wl.length?' --with '+wl.join(','):'', ot=only.length?' --only '+only.join(','):'';
@@ -780,7 +784,9 @@ function protoOf(n){
 }
 function ticketRow(t,withLevel,depth){
   if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
-  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
+  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), pairFirst=!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='pair'); /* the project's workflow makes pair the default: its button leads */
+  var autoBtn=rc.canAuto?openLink(rc.auto,'Ouvrir (auto)',!pairFirst):null, pairBtn=rc.pair?openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto||pairFirst):null;
+  var hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
   var kids=depth<3?kidsOf(t.n):[];
   function set(k,v){o[k]=v;render();}
@@ -795,8 +801,7 @@ function ticketRow(t,withLevel,depth){
             a.kind==='run'?h('span',{class:'cmd'},(rc.auto||rc.pair)+(rc.canAuto?'':'  (pair)')):null)),
         h('div',{class:'acts'},
           a.kind==='run'?[
-            rc.canAuto?openLink(rc.auto,'Ouvrir (auto)',true):null,
-            rc.pair?openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto):null,
+            pairFirst?pairBtn:autoBtn, pairFirst?autoBtn:pairBtn,
             rc.canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.auto,e.target);}},'Copier auto'):null,
             rc.pair?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.pair,e.target);}},rc.canAuto?'Copier pair':'Copier'):null,
             hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
