@@ -21,7 +21,7 @@ analogous judgment from a different moment.
 1. The claim (assignee + `status:in-spec`) is handled before you are invoked — assume
    it's already yours.
 2. Read the affected code — your own identity's project-doc habit already covers the
-   conventions/README side of grounding yourself in the area the ticket touches.
+   conventions side of grounding yourself in the area the ticket touches.
 3. Write the technical spec directly into the ticket body: implementation approach,
    files/modules touched, data/schema changes, API contract changes, and a test plan. If
    the ticket carries a UI/UX description, the implementation approach must account for
