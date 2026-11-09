@@ -77,6 +77,9 @@ a YAML frontmatter, an `index.md` per folder, so an agent reads the index and op
 - `adr/NNNN-title.md` — architecture decision records: context, decision, alternatives rejected,
   consequences, status (`proposed`, `accepted`, `deprecated`, `superseded`), and the ADR it supersedes.
   An ADR is never edited once accepted: a later one supersedes it.
+- `runbooks/<id>.md` — how to operate the product (deploy, provision, onboard a client): procedures step by step, read on
+  demand and never carried in a phase's prompt (`index --active` leaves them out). Added in 3.9.0 so that a project can retire its
+  operating documents without losing a step.
 - Scaffolding the apps (`apps/<name>/`, pinned latest compatible versions) stays, as `--scaffold`.
 
 **Where an ADR sits.** The wiki says *what* the product does; the guidelines say *how* we build; an ADR

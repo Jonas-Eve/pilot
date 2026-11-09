@@ -18,7 +18,7 @@ particular and stop as soon as you have what the task needs:
    transversal entries and that app's, never the other apps'.
 3. **Open:** `<b> show <id>` only for the few entries that bear on the task. `show` also lists what the entry
    cites (`links`) and what cites it (`backlinks`): follow them instead of searching again.
-4. **A listing of what is in force:** `<b> index --active` (history left out) when you need the rows themselves; add
+4. **A listing of what is in force:** `<b> index --active` (history left out; `architecture/` runbooks too, they are read on demand) when you need the rows themselves; add
    `--ticket <n>` for the entries a ticket owns.
 
 **What you read.** Where the bundle is silent, say it is not covered; do not fill the gap from the code. A

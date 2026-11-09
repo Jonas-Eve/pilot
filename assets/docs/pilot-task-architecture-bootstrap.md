@@ -12,11 +12,14 @@ those that are architecture or decision, and read the code where cheap to confir
 - `architecture` — how the project is built: the apps, their stack, how they relate, commands, technical rules.
 - `decision` — a document that justifies a choice (why X rather than Y).
 - `functional` — what the product does for its users; not yours, list it.
-- `other` — a contribution guide, a runbook, user documentation; leave it.
+- `runbook` — how to operate the product (deploy, provision, onboard a client): the steps, the commands, the values to check.
+- `other` — a contribution guide, user documentation; leave it.
 
 Produce:
 - `overview.md` — each app or service: purpose, stack, how it talks to the others, and its dev/test/build
   commands, as they actually are.
+- `runbooks/<id>.md` — one procedure per file for each `runbook` document (and each distinct procedure it holds): the steps in order,
+  the commands and values as the document gives them, what to check at the end. Nothing summarised away: a procedure that loses a step is wrong.
 - `guidelines/<id>.md` — one rule per file for each technical rule the project really follows or states
   (layering, testing, security, naming, dependencies): the rule in the imperative, one short paragraph, with
   the reason only when the code or documents give one. A rule stated in the documents that the code does not
@@ -34,7 +37,7 @@ came from (`source`, or "code" when you read it there).
 Return one JSON object, nothing else:
 
 ```json
-{"entries": [{"path": "overview.md|guidelines/<id>.md|apps/<app>/…", "title": "", "description": "", "body": "", "source": "",
+{"entries": [{"path": "overview.md|guidelines/<id>.md|runbooks/<id>.md|apps/<app>/…", "title": "", "description": "", "body": "", "source": "",
               "triage": "convergent|divergent|documented-only|code-only", "proof": "", "question": ""}],
  "decisions": [{"source": "", "decision": "", "reasoning": ""}],
  "functional": [""], "ignored": [""]}

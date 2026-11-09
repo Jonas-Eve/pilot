@@ -51,7 +51,7 @@ For a project that already has apps and documents.
    (`placeholder`, `pointer`, `filled` with the project's own content, `absent`). Nothing to gather → say so and propose `--scaffold`.
 2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-bootstrap.md`, `.pilot/pilot-link-architecture.md`, the project's language (`pilot.py module list`), the inventory and
    `git rev-parse HEAD`; it opens only the documents it classifies as architecture or decision. Validate the returned JSON (paths `overview.md`,
-   `guidelines/<id>.md` or the same under `apps/<app>/`, ids in `[a-z0-9-]+`, a one-sentence `description` and a `source` each); fix or call again.
+   `guidelines/<id>.md`, `runbooks/<id>.md` or the same under `apps/<app>/`, ids in `[a-z0-9-]+`, a one-sentence `description` and a `source` each); fix or call again.
 3. The human confirms or edits each guideline; write them with `arch add … --status accepted`. A `decision` document becomes an ADR only once the human gives
    the reasoning (`--adr`); a `functional` document is listed for `/pilot-wiki --bootstrap`, not converted here.
 4. Blocks: a `placeholder` block of `CLAUDE.md`/`README.md` is replaced by the canonical pointer (`pilot-architecture-*.md.tmpl`, `pilot-commands-*.md.tmpl`);

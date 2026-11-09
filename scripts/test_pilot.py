@@ -1271,6 +1271,22 @@ class ArchitectureTests(unittest.TestCase):
         self.assertTrue(self.arch.remove("0002-b")["ok"])
         self.assertFalse((self.root / "adr/0002-b.md").exists())
 
+    def test_a_runbook_is_an_entry_read_on_demand_never_carried_in_a_prompt(self):
+        self.add("guidelines/layering.md", "accepted")
+        self.add("runbooks/deploy.md", "accepted", description="How a release goes out.")
+        self.add("apps/web/runbooks/provision.md", "accepted", description="How the web app is provisioned.")
+        self.assertIn("type: Runbook", self.text("runbooks/deploy.md"))
+        self.assertIn("type: Runbook", self.text("apps/web/runbooks/provision.md"))
+        everything = [e["id"] for e in self.arch.index()["entries"]]
+        in_force = [e["id"] for e in self.arch.index(active=True)["entries"]]
+        self.assertEqual(sorted(everything), ["deploy", "layering", "provision"])
+        self.assertEqual(in_force, ["layering"])  # what a phase prompt carries leaves runbooks out
+        self.assertIn("deploy", [e["id"] for e in self.arch.search("release")["results"]])  # but they are found on demand
+        self.assertEqual(self.codes(), [])
+        self.assertEqual(self.arch.snapshot("o/r")["total"], 3)
+        outline = self.arch.outline("", active=True)
+        self.assertNotIn("runbooks", [f["path"].strip("/") for f in outline.get("folders", [])])
+
     def test_add_refuses_a_path_outside_the_layout(self):
         for bad in ("notes.md", "wiki/x.md", "adr/sub/x.md"):
             with self.assertRaises(pilot.Refused) as ctx:

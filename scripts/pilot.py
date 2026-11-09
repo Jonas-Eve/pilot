@@ -1456,6 +1456,7 @@ class Bundle:
         return found[0]
 
     LIVE = ()  # statuses that are history, left out of a `--active` index and of a search
+    ACTIVE_LEFT_OUT = ()  # types read on demand, never carried in a prompt: left out of a `--active` index too
     MAX_DESCRIPTION = 160  # characters: the line an index shows
     MAX_WORDS = 400  # words of prose in one entry: one concept per file, short enough to open without cost
     ROW = ("id", "path", "description", "status")
@@ -1481,7 +1482,8 @@ class Bundle:
         keeps the entries below one folder."""
         entries = self.parse()
         shown = [e for e in entries if (ticket is None or ticket in e["tickets"]) and self._under(e, under)
-                 and self._scoped(e, app) and not (active and e["status"] in self.LIVE)]
+                 and self._scoped(e, app)
+                 and not (active and (e["status"] in self.LIVE or e["type"] in self.ACTIVE_LEFT_OUT))]
         rows = [self._brief(e) if active else self._view(e) for e in shown]
         return {"ok": True, "dir": self.root, "entries": rows,
                 "problems": sum(len(e["problems"]) for e in entries)}
@@ -1492,7 +1494,7 @@ class Bundle:
         under = (under or "").strip("/")
         counts, direct, known = {}, [], not under
         for e in self.parse():
-            if (active and e["status"] in self.LIVE) or not self._scoped(e, app):
+            if (active and (e["status"] in self.LIVE or e["type"] in self.ACTIVE_LEFT_OUT)) or not self._scoped(e, app):
                 continue
             folder = posixpath.dirname(e["path"])
             if under and not (folder == under or folder.startswith(under + "/")):
@@ -1907,7 +1909,7 @@ class Bundle:
         return {"ok": True, "id": stem, "path": rel, "status": status}
 
     def _max_words(self, entry):
-        return {"ADR": 600, "Architecture": 800}.get(entry["type"], self.MAX_WORDS)
+        return {"ADR": 600, "Architecture": 800, "Runbook": 1500}.get(entry["type"], self.MAX_WORDS)
 
     def _type_of(self, rel):
         return self.DEFAULT_TYPE
@@ -1993,20 +1995,21 @@ ARCH_OKF_STATUS = {"proposed": "draft", "accepted": "stable", "deprecated": "dep
 
 
 class Architecture(Bundle):
-    """The architecture module's bundle: `architecture/overview.md`, `guidelines/<id>.md` and `adr/<NNNN-title>.md`.
+    """The architecture module's bundle: `architecture/overview.md`, `guidelines/<id>.md`, `adr/<NNNN-title>.md` and
+    `runbooks/<id>.md` (how to operate: deploy, onboard; read on demand, never carried in a prompt).
     Same OKF files, same frontmatter writer, same indexes as the wiki; its own statuses (an ADR is accepted, then
     deprecated or superseded by a later one, and never edited in between), no ticket-driven checks."""
     TITLE = "Architecture"
     ABSENT = "architecture-absent"
     ABSENT_HINT = "run /pilot-architecture (it turns the architecture module on and creates architecture/)"
-    PATH_HINT = ("overview.md, guidelines/<id>.md or adr/<NNNN-title>.md; for one app of a monorepo, the same under "
+    PATH_HINT = ("overview.md, guidelines/<id>.md, adr/<NNNN-title>.md or runbooks/<id>.md; for one app of a monorepo, the same under "
                  "apps/<app>/ with its overview named <app>-overview.md (an id is unique across the whole bundle)")
 
     @staticmethod
     def _layout_ok(parts, app=None):
         if len(parts) == 1:
             return parts[0] == ("overview.md" if app is None else f"{app}-overview.md")
-        return len(parts) == 2 and parts[0] in ("guidelines", "adr")
+        return len(parts) == 2 and parts[0] in ("guidelines", "adr", "runbooks")
 
     def _path_ok(self, rel):
         parts = rel.split("/")
@@ -2089,12 +2092,15 @@ class Architecture(Bundle):
     DEFAULT_TYPE = "Guideline"
     DERIVED_NAMES = ()
     LIVE = ("deprecated", "superseded")
+    ACTIVE_LEFT_OUT = ("Runbook",)
 
     def _type_of(self, rel):
         parts = rel.split("/")
         stem = posixpath.splitext(parts[-1])[0]
         if "adr" in parts[:-1]:
             return "ADR"
+        if "runbooks" in parts[:-1]:
+            return "Runbook"
         return "Architecture" if stem == "overview" or stem.endswith("-overview") else self.DEFAULT_TYPE
 
     def show(self, entry_id, gh=None):
@@ -2327,7 +2333,7 @@ def build_parser():
     w = ws.add_parser("show", help="one entry's text; an ADR also its supersession")
     w.add_argument("id")
     ws.add_parser("lint", help="mechanical checks, no judgment")
-    w = ws.add_parser("add", help="create an entry file (overview.md, guidelines/<id>.md or adr/<NNNN-title>.md)")
+    w = ws.add_parser("add", help="create an entry file (overview.md, guidelines/<id>.md, adr/<NNNN-title>.md or runbooks/<id>.md)")
     w.add_argument("path")
     w.add_argument("--title", required=True)
     w.add_argument("--description", required=True, help="one sentence, shown in the index")

@@ -15,8 +15,11 @@ architecture is right**, and a human arbitrates, never silently.
 - `adr/<NNNN-title>.md` — an architecture decision record: context, decision, alternatives rejected,
   consequences. The number is the next free one across the whole bundle (`arch next-number`); the file name is the id and
   never changes.
+- `runbooks/<id>.md` — how to operate the product: deploy, provision, onboard a client. Procedures step by step, with
+  the commands and the values to check. Read on demand when the task is to operate, **never carried in a phase's prompt**
+  (`index --active` leaves them out; `search` and `show` find them).
 - `apps/<app>/` — only in a monorepo, and only when a rule or a decision belongs to one app: `<app>-overview.md`,
-  `guidelines/<id>.md`, `adr/<NNNN-title>.md` under it. Everything transversal stays at the root. An id (the file name) is unique across
+  `guidelines/<id>.md`, `adr/<NNNN-title>.md`, `runbooks/<id>.md` under it. Everything transversal stays at the root. An id (the file name) is unique across
   the whole bundle.
 
 **Where a decision sits.** The wiki says *what* the product does; a guideline says *how* we build; an ADR says
