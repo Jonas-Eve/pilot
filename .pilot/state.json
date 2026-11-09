@@ -1,0 +1,21 @@
+{
+  "pilotInitialized": true,
+  "pilotInitializedAt": "2026-11-09T11:35:43Z",
+  "pilotVersion": "3.6.0",
+  "projectName": "pilot",
+  "language": "en",
+  "modules": {
+    "wiki": true,
+    "architecture": true,
+    "dashboard": true,
+    "design": false,
+    "proto": false
+  },
+  "lastProcessDocSyncAt": "2026-11-09T11:35:43Z",
+  "lastLabelsSyncAt": null,
+  "lastIntroSyncAt": null,
+  "lastSkillsSyncAt": "2026-11-09T11:35:43Z",
+  "workflow": {
+    "profile": "lean"
+  }
+}

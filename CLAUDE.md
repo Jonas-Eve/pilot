@@ -41,6 +41,12 @@ itself.
 - `PROJECT-FUNCTIONAL-SCOPE.md` — this repo's own functional scope: the process and tools it gives
   its users, read first by the PM and designer personas. Not copied into consuming projects:
   `/pilot-init` renders each project's own from `assets/templates/PROJECT-FUNCTIONAL-SCOPE.md.tmpl`.
+- `.pilot/`, `.github/`, `wiki/`, `architecture/` — this repo runs PILOT on itself (`/pilot-init`, `workflow.profile`
+  `lean`, modules `dashboard`, `wiki`, `architecture`). `.pilot/` and `.github/workflows/pilot-status-on-merge.yml` are
+  verbatim copies of `assets/docs/`, `scripts/pilot.py` and `assets/github/`, PILOT-owned like in any project: never edited
+  here, synced from the published `main` by `/pilot-update`, so they lag a change until it is merged and synced. The
+  sources stay `assets/docs/`, `scripts/` and `.claude/`; `scripts/test_pilot.py` runs from an empty directory so the
+  repo's own `.pilot/state.json` never changes what it sees.
 - `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
   consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
   sync by `/pilot-update`) — same path on both sides. All fourteen carry the `pilot-`

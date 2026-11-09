@@ -17,6 +17,22 @@ pilot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pilot)
 
 
+_CWD, _TMP = None, None
+
+
+def setUpModule():
+    """Run from an empty directory: the engine reads `.pilot/state.json` from the working directory, so a repo that has
+    adopted PILOT (this one does) must not change what the tests see. Tests that need the repo use paths from __file__."""
+    global _CWD, _TMP
+    _CWD, _TMP = os.getcwd(), tempfile.TemporaryDirectory()
+    os.chdir(_TMP.name)
+
+
+def tearDownModule():
+    os.chdir(_CWD)
+    _TMP.cleanup()
+
+
 def issue(number, labels=(), body="", assignees=(), created="2026-01-01T00:00:00Z",
           state="open", pr=False):
     raw = {
