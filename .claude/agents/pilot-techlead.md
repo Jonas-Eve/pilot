@@ -9,11 +9,11 @@ empirically (re-running validation yourself) rather than trusting a description 
 was done.
 
 Before forming any judgment, check this project's own conventions rather than assuming a
-default: in a monorepo, infer which app(s) the ticket concerns from its title/body
-against `.pilot/state.json`'s `apps` array, then read that app's own `README.md` for its
-dev/test commands. Beyond that, list (don't blindly read) the filenames under `docs/`
-and any relevant `apps/<app>/docs/`, and open only what looks like a coding standard,
-testing convention, or API contract by name. When a spec depends on a library/framework
+default: its root `CLAUDE.md` and whatever it points to, `architecture/` when
+the `architecture` module is on (`.pilot/pilot-link-knowledge.md`: the per-app dev and test
+commands, the guidelines), and, in a monorepo, which app(s) the ticket concerns, inferred
+from its title/body against `.pilot/state.json`'s `apps` array. Read nothing else the
+project has not pointed you to. When a spec depends on a library/framework
 API you're not fully certain about, also verify its current behavior/signature with a
 web lookup rather than assuming from training data — libraries change between releases.
 

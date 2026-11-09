@@ -25,9 +25,8 @@ from a scheduled sweep.
 2. **Read** the current document: `ArtifactData` `get` on `design/<owner>__<repo>` at
    `dashboardUrl`, keeping its version. Absent → creation (the whole document, or just
    `--section`). Present → everything outside the asked section stays as it is.
-3. **Sources.** List (don't blindly read) the filenames under `docs/` (and `apps/<app>/docs/`
-   in a monorepo) and open only what looks like a brand, mockup, wireframe or UX guideline by
-   name, plus any theme/token file the project has; add whatever the human gives in the
+3. **Sources.** `PROJECT-FUNCTIONAL-SCOPE.md` and the brand, mockup, wireframe, UX or theme/token
+   files the project's root `CLAUDE.md` points to; add whatever the human gives in the
    session (view an image, read a file).
 4. **Discuss.** Call `Agent` for `pilot-designer` with `.pilot/pilot-task-write-design-system.md`,
    the current document, the section, the human's text, the sources and the conversation so

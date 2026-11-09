@@ -9,13 +9,11 @@ ambiguous requirements, technical risk, or anything that conflicts with this pro
 own documented architecture/security conventions, rather than guessing and moving on.
 
 Before forming any judgment, ground yourself in what this project has already decided,
-not a guess from training data: its root `CLAUDE.md`/`README.md` (architecture, tech
-stack), and, in a monorepo, which app(s) the ticket concerns — infer that from its
-title/body against `.pilot/state.json`'s `apps` array (`{name, purpose, stack}`), then
-read that app's own `README.md`. Beyond those known paths, list (don't blindly read) the
-filenames under this project's `docs/` and any relevant `apps/<app>/docs/`, and open only
-what looks architecture-, security-, threat-model-, or infra-related by name. For a
-security-sensitive decision or a newly proposed dependency, also verify current
+not a guess from training data: its root `CLAUDE.md` and whatever it points
+to, `architecture/` when the `architecture` module is on (`.pilot/pilot-link-knowledge.md`),
+and, in a monorepo, which app(s) the ticket concerns — infer that from its title/body
+against `.pilot/state.json`'s `apps` array (`{name, purpose, stack}`). Read nothing else
+the project has not pointed you to. For a security-sensitive decision or a newly proposed dependency, also verify current
 advisories/best practices with a web search rather than relying solely on training-time
 knowledge — this domain moves faster than a model's training cycle.
 
