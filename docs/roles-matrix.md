@@ -59,7 +59,7 @@ execution, QA = human testing, designer = usage.
 
 | # | Change | Level |
 |---|---|---|
-| 1 | Spec `type:tech`: tech lead leads, architect validates the deliverable (one call when nothing to object to). `type:feature` keeps the architect as lead (split, mandatory e2e). | minor |
+| 1 | Spec `type:tech`: tech lead leads; the architect validates the deliverable (one call when nothing to object to) and leads instead when the ticket declares dependencies, names several apps or must split (`docs/workflow-design.md` section 3). `type:feature` keeps the architect as lead (split, mandatory e2e). | minor |
 | 2 | `--tech` entry: fold `verify-need` into the tech lead's own pass; run `challenge-need` only when the request is vague. | minor |
 | 3 | Roster: Discovery's architect named "validator and contributor". Wording only. | patch |
 | 4 | Review: architect stays optional, not in a default set. No change. | — |
