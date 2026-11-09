@@ -1,6 +1,6 @@
 # PILOT — adaptive workflow (design proposal)
 
-Status: **proposal; the engine and `lean`'s first rules exist** (3.3.0: `pilot.py workflow`, a chain that is a function of a profile; 3.4.0: `lean` is ready for what it declares: no human QA, no e2e task in a feature split, the tech lead alone reviews, a finished feature story goes to `done`; the skills, task docs and the merge workflow read these rules from `pilot.py workflow show`). Not yet: Spec's roster by profile, the default mode, risk signals, and the cockpit. Human-only document: no skill or agent reads it, and it
+Status: **proposal; the engine and `lean`'s first rules exist** (3.3.0: `pilot.py workflow`, a chain that is a function of a profile; 3.4.0: `lean` is ready for what it declares: no human QA, no e2e task in a feature split, the tech lead alone reviews, a finished feature story goes to `done`; the skills, task docs and the merge workflow read these rules from `pilot.py workflow show`). Not yet: Spec's roster by profile, the default mode, risk signals, a profile for one ticket (section 4), and the cockpit. Human-only document: no skill or agent reads it, and it
 is not copied into consuming projects. Once validated, the contract moves into `assets/docs/` and
 this file is removed. Companion of `docs/roles-matrix.md` (who does what today) and
 `docs/modules-design.md` (the module switch this builds on).
@@ -60,6 +60,31 @@ in `pilot.py`:
 
 A ticket with a signal is pair-only (the cockpit's `pairOnly`). Keep the list short at first,
 three or four signals, and grow it from what the measurements show.
+
+### A profile for one ticket (extension, not built)
+
+A signal is the automatic way to give one ticket a different workflow; a label is the manual one.
+`workflow:standard` or `workflow:lean` on a ticket, resolved by one function,
+`effective_profile(ticket)`: the ticket's label, else the signals, else the project's profile.
+`Machine` would use it per ticket (`set`, `resolve`, `claim`), `workflow show --ticket N` would give
+the skills that ticket's rules, and the merge workflow would read the story's label at the cascade
+(`workflow check` already returns the rules of every profile, so it picks the right entry without new
+logic). The cockpit would show the ticket's profile as a chip. Rules that keep it predictable:
+
+1. **The profile is fixed before work starts** (Discovery or Spec) and no longer changes once the
+   ticket is in Dev: a split created without an e2e task must not later need a QA stop.
+2. **Tasks inherit their story's profile at split time**, the one exception to "`type:` is never
+   inherited": a story and its tasks must agree on the path, or the cascade and the review contradict.
+3. **Stricter is free, lighter leaves a trace.** A ticket stricter than the project needs only the
+   label. A lighter one (a `lean` ticket in a `standard` project) needs a written reason, and is
+   refused for a `type:feature` that carries an accessibility signal. The tech lead stays in every
+   review whatever the profile (already enforced by `workflow check`).
+4. **The project's state graph must contain the ticket's**: a `lean` project has no QA phase, so a
+   ticket asking for QA there only works toward a profile the project declared.
+
+Cost: two labels (`setup-github-labels.sh`, `doctor`, the label list), the resolver, a `--ticket`
+option on `workflow show`, the merge workflow reading the label. A minor version. To be built after
+`lean` has been lived on `pilot` itself.
 
 ## 5. What never changes, whatever the profile
 
@@ -150,8 +175,8 @@ computes the route.
    `type:feature` that adds a capability to this repo; validation is the `pilot-test` suite, which
    lives in another repository, and review stays the tech lead alone. The cost: the process today
    mandates one `type:e2e` task per feature split and a `status:qa` stop before `done`, so the
-   state machine must admit "all tasks done, story `done`" with neither. It is question 2, and
-   `contract` must confirm it before any code.
+   state machine must admit "all tasks done, story `done`" with neither. Done in 3.4.0: the
+   machine depends on the profile (section 7) and `workflow check` confirms `lean` composes.
 
 ## 10. Rollout
 
