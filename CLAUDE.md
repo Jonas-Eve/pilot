@@ -1,7 +1,7 @@
 # CLAUDE CODE GUIDE & DIRECTIVES — `pilot` REPO
 
 ## 1. WHAT THIS REPO IS
-This repo packages PILOT — a 6-phase ticket-process framework — for reuse across
+This repo packages PILOT — a 5-phase ticket-process framework — for reuse across
 projects, as a **plain repo consuming projects clone and copy from**, not a Claude Code
 plugin. A plugin was tried first, but plugin installation turned out to be local to
 whichever machine/container runs it (a Codespace, a local CLI) and never reached Claude
