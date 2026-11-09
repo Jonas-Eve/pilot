@@ -1601,9 +1601,14 @@ class WorkflowProfileTests(unittest.TestCase):
 
     def test_set_refuses_a_profile_that_is_not_ready_and_an_unknown_one(self):
         path = self.in_state({"projectName": "p"})
-        with self.assertRaises(pilot.Refused) as got:
-            pilot.set_workflow("lean", path)
-        self.assertEqual(got.exception.payload["reason"], "profile-not-ready")
+        saved = pilot.PROFILES["lean"]["ready"]
+        try:
+            pilot.PROFILES["lean"]["ready"] = False  # a profile the skills do not follow yet
+            with self.assertRaises(pilot.Refused) as got:
+                pilot.set_workflow("lean", path)
+            self.assertEqual(got.exception.payload["reason"], "profile-not-ready")
+        finally:
+            pilot.PROFILES["lean"]["ready"] = saved
         with self.assertRaises(pilot.Refused) as got:
             pilot.set_workflow("wild", path)
         self.assertEqual(got.exception.payload["reason"], "unknown-profile")
@@ -1634,6 +1639,15 @@ class WorkflowProfileTests(unittest.TestCase):
         finally:
             pilot.CONTRACTS["spec"]["produces"], pilot.PROFILES["lean"]["ready"] = saved, ready
         self.assertNotIn("workflow", json.loads(pathlib.Path(path).read_text()))
+
+    def test_set_warns_about_the_statuses_the_profile_drops(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "state.json"
+            path.write_text(json.dumps({"projectName": "p"}))
+            got = pilot.set_workflow("lean", str(path))
+            self.assertEqual(got["warning"]["code"], "dropped-statuses")
+            self.assertEqual(got["warning"]["statuses"], ["status:qa", "status:in-qa"])
+            self.assertNotIn("warning", pilot.set_workflow("standard", str(path)))
 
     def test_a_machine_refuses_a_phase_its_profile_does_not_run(self):
         m = pilot.Machine(FakeGh([issue(1, ["status:qa", "type:feature", "level:story"])]), profile="lean")
@@ -1682,6 +1696,70 @@ class WorkflowProfileTests(unittest.TestCase):
         self.assertTrue(pilot.run_contract(parse(["contract", "--profile", "lean"]))["ok"])
         self.assertNotIn("qa", pilot.run_contract(parse(["contract", "--profile", "lean"]))["phases"])
         self.assertIn("qa", pilot.run_contract(parse(["contract"]))["phases"])
+
+
+class WorkflowRulesTests(unittest.TestCase):
+    """What a profile means for the skills, the task docs and the merge workflow, as data they read instead of restating."""
+
+    def test_standard_rules_are_todays_process(self):
+        rules = pilot.profile_rules("standard")
+        self.assertEqual((rules["qa"], rules["e2e_task"], rules["feature_done_goes_to"]), (True, True, "status:qa"))
+        self.assertEqual(rules["review"]["feature"], ["pilot-pm", "pilot-techlead"])
+        self.assertEqual(rules["review"]["e2e"], ["pilot-pm", "pilot-techlead"])
+        self.assertEqual(rules["review"]["tech"], ["pilot-techlead"])
+        self.assertEqual(rules["review"]["bug"], ["pilot-techlead"])
+
+    def test_lean_has_no_qa_no_e2e_task_and_the_tech_lead_alone_reviews(self):
+        rules = pilot.profile_rules("lean")
+        self.assertEqual((rules["qa"], rules["e2e_task"], rules["feature_done_goes_to"]), (False, False, "status:done"))
+        for kind in ("feature", "e2e", "tech", "bug"):
+            self.assertEqual(rules["review"][kind], ["pilot-techlead"], kind)
+
+    def test_lean_is_ready_and_every_profile_has_no_problem(self):
+        self.assertTrue(pilot.PROFILES["lean"]["ready"])
+        for name in pilot.PROFILES:
+            self.assertEqual(pilot.profile_problems(name), [], name)
+
+    def test_a_profile_never_takes_the_tech_lead_out_of_a_review(self):
+        saved = pilot.PROFILES["lean"]["review"]
+        try:
+            pilot.PROFILES["lean"]["review"] = {**saved, "feature": ["pilot-pm"]}
+            self.assertIn({"code": "review-without-techlead", "type": "feature"}, pilot.profile_problems("lean"))
+            pilot.PROFILES["lean"]["review"] = {**saved, "tech": []}
+            self.assertIn({"code": "review-without-techlead", "type": "tech"}, pilot.profile_problems("lean"))
+            pilot.PROFILES["lean"]["review"] = {**saved, "bug": ["pilot-techlead", "pilot-nobody"]}
+            self.assertIn({"code": "unknown-reviewer", "type": "bug", "reviewer": "pilot-nobody"},
+                          pilot.profile_problems("lean"))
+        finally:
+            pilot.PROFILES["lean"]["review"] = saved
+
+    def test_the_qa_stop_and_the_qa_phase_agree(self):
+        saved = pilot.PROFILES["lean"]["drop_external"]
+        try:
+            pilot.PROFILES["lean"]["drop_external"] = ()  # the stop is back but the phase is still dropped
+            self.assertIn({"code": "qa-stop-without-qa-phase"}, pilot.profile_problems("lean"))
+        finally:
+            pilot.PROFILES["lean"]["drop_external"] = saved
+
+    def test_workflow_show_and_check_carry_the_rules_and_set_accepts_lean(self):
+        parse = pilot.build_parser().parse_args
+        shown = pilot.run_workflow(parse(["workflow", "show"]))
+        self.assertEqual(shown["rules"], pilot.profile_rules("standard"))
+        checked = pilot.run_workflow(parse(["workflow", "check"]))
+        self.assertEqual(checked["profiles"]["lean"]["rules"], pilot.profile_rules("lean"))
+        self.assertTrue(checked["ok"])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "state.json"
+            path.write_text(json.dumps({"projectName": "p"}))
+            self.assertEqual(pilot.set_workflow("lean", str(path))["profile"], "lean")
+            self.assertEqual(pilot.read_workflow(str(path))["profile"], "lean")
+
+    def test_the_merge_workflow_asks_the_engine_where_a_finished_feature_goes(self):
+        text = pathlib.Path(__file__).with_name("..").joinpath("assets/github/workflows/pilot-status-on-merge.yml").resolve().read_text()
+        self.assertIn("workflow show", text)
+        self.assertIn("feature_done_goes_to", text)
+        self.assertIn("contents: read", text)
+        self.assertIn("'status:qa'", text)  # the fallback when the rules cannot be read is today's behaviour
 
 
 class ProcessReferencesTests(unittest.TestCase):

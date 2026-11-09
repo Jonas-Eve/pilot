@@ -1,5 +1,8 @@
 # PILOT link — End-to-end test tasks
 
+Applies only when the project's workflow rules have `e2e_task` true (`python3 .pilot/pilot.py workflow show`); otherwise a
+`type:feature` split carries no e2e task and nothing below does.
+
 Canonical version of this mechanic — `.pilot/pilot-task-scope-story.md` (Spec, the one
 duty that actually proposes the task) restates it inline rather than read it live (no task
 doc ever instructs a `Read` of this file), so keep it in sync by hand whenever this changes

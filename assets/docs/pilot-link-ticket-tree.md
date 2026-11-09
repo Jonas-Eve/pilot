@@ -71,7 +71,7 @@ from the story above it. A `type:feature` story's split is typically a mix: one 
 `type:feature` tasks doing the user-facing work, sometimes a `type:tech` task alongside
 them for a technical enabler the feature tasks depend on (a migration, a shared piece of
 infra) — free to block the feature tasks the ordinary way ("Dependencies between tasks of
-the same split", `.pilot/pilot-link-split-tickets.md`) — and always exactly one `type:e2e` task
+the same split", `.pilot/pilot-link-split-tickets.md`) — and, when the workflow has it, exactly one `type:e2e` task
 (`.pilot/pilot-link-e2e-tasks.md`). A purely technical enabler task shouldn't get a
 PM review it has nothing useful to say about
 (`pilot-review/SKILL.md` step 3), and a task's own `type:` is
@@ -123,9 +123,9 @@ to conflate.
     one place `level:task` exists standalone. Classified once, at the point it's reported
     or discovered ("Types and where each originates"; `.pilot/pilot-link-bug-tickets.md`), never in a later pass.
   - **`type:feature` story: splitting is never optional.** A feature story always ends up
-    `status:split` with **at least two** tasks — one or more tasks doing the dev work
-    (typically `type:feature`, sometimes mixed with a `type:tech` enabler, above) plus
-    exactly one `type:e2e` task — never a single unsplit ticket carried through Dev
+    `status:split` with **at least two** tasks (one when the workflow has no e2e task) — one or more tasks doing the dev work
+    (typically `type:feature`, sometimes mixed with a `type:tech` enabler, above) plus,
+    when the workflow has it, exactly one `type:e2e` task — never a single unsplit ticket carried through Dev
     directly. See `.pilot/pilot-link-e2e-tasks.md` for why, and `.claude/skills/pilot-qa/SKILL.md` "Phase 5 — Human QA" for
     what this makes possible once every task is done. The architect's real judgment for a
     feature story is how many tasks it needs and what each one's own `type:` should be —

@@ -28,7 +28,7 @@ the one deliberate backward transition in the state machine, `.pilot/pilot-link-
 "Re-scoping a `type:feature` story after its split is done") — you're also given
 which tasks from the earlier round(s) are already `status:done`, including the
 original e2e task(s). Steps 4/4a below still apply, scoped to *this round only*:
-propose new tasks for the new work, plus exactly one new `type:e2e` task extending the
+propose new tasks for the new work, plus, when the prompt's `rules.e2e_task` is true, exactly one new `type:e2e` task extending the
 existing e2e coverage rather than duplicating it (never reopen or touch the
 already-done one), and run the PM coverage check (step 4a) against this round's new
 `type:feature` tasks only — the earlier ones were already checked when proposed.
@@ -60,13 +60,14 @@ already-done one), and run the PM coverage check (step 4a) against this round's 
    - **`type:feature`: always split, never a single unsplit ticket.** Propose one or
      more dev tasks (one is enough for a small story — the only real judgment call
      left is *how many*, and each one's own `type:`, never *whether* to split at all),
-     along the same vertical-slice principle above, **plus** go to step 4a for the
+     along the same vertical-slice principle above, **plus**, when the prompt's
+     `rules.e2e_task` is true (false: no e2e task, skip step 4a), go to step 4a for the
      mandatory e2e task. A dev task's own `type:` is whatever fits *that task*, not
      automatically `type:feature`: a technical enabler the feature tasks depend on (a
      migration, shared infra) is its own `type:tech` task in the same split, free to
      block the feature tasks the ordinary way (step 5 "Between tasks of the same
      split").
-4a. **`type:feature` only**: propose exactly one additional task titled
+4a. **`type:feature` only, when `rules.e2e_task` is true**: propose exactly one additional task titled
     "E2E: <story summary>" (or "E2E: <story summary> (round N)" for a re-scope round,
     per the note above) — covering every case of the story's flow worth exercising,
     not just a happy path — labeled `type:e2e` (its own type, not stacked with

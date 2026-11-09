@@ -1,6 +1,6 @@
 # PILOT — adaptive workflow (design proposal)
 
-Status: **proposal; only the engine slice exists so far** (3.3.0: `pilot.py workflow`, a chain that is a function of a profile, `lean` defined but not `ready`; the skills, task docs, merge workflow and cockpit do not follow a profile yet). Human-only document: no skill or agent reads it, and it
+Status: **proposal; the engine and `lean`'s first rules exist** (3.3.0: `pilot.py workflow`, a chain that is a function of a profile; 3.4.0: `lean` is ready for what it declares: no human QA, no e2e task in a feature split, the tech lead alone reviews, a finished feature story goes to `done`; the skills, task docs and the merge workflow read these rules from `pilot.py workflow show`). Not yet: Spec's roster by profile, the default mode, risk signals, and the cockpit. Human-only document: no skill or agent reads it, and it
 is not copied into consuming projects. Once validated, the contract moves into `assets/docs/` and
 this file is removed. Companion of `docs/roles-matrix.md` (who does what today) and
 `docs/modules-design.md` (the module switch this builds on).
@@ -157,8 +157,9 @@ computes the route.
 
 0. Done (3.3.0): the contract engine takes a profile (`pilot.py workflow show|check|set`, `contract --profile`),
    `standard` is unchanged, `lean` composes (`workflow check`) and is refused by `workflow set` until it is ready.
-1. Make `lean` ready: the agent-facing rules (no e2e task in a feature split, no `status:qa` stop), the
-   `pilot-status-on-merge` workflow, then `pilot-update` carrying them. Apply it to `pilot` itself first.
+1. Done (3.4.0): `lean` is ready for what it declares (no QA, no e2e task, the tech lead alone reviews),
+   carried to projects by `pilot-update`. Next: apply it to `pilot` itself, then Spec's roster, the default
+   mode, risk signals and the cockpit.
 2. Measure a few tickets (agent calls, objections, time) before generalising.
 3. Define `standard` and its signals with myAVI's real constraints (migration from PILOT 2.9.0:
    no `workflow` block means today's chain).
