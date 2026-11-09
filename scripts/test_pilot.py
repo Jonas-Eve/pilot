@@ -1760,6 +1760,8 @@ class WorkflowRulesTests(unittest.TestCase):
     def test_the_merge_workflow_asks_the_engine_where_a_finished_feature_goes(self):
         text = pathlib.Path(__file__).with_name("..").joinpath("assets/github/workflows/pilot-status-on-merge.yml").resolve().read_text()
         self.assertIn("workflow show", text)
+        self.assertIn("workflow check", text)  # the story's own workflow: label picks its profile's rules
+        self.assertIn("workflow:", text)
         self.assertIn("feature_done_goes_to", text)
         self.assertIn("contents: read", text)
         self.assertIn("'status:qa'", text)  # the fallback when the rules cannot be read is today's behaviour
