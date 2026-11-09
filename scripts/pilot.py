@@ -9,8 +9,9 @@
   pilot.py flag    <issue> --comment TEXT      # needs-human + the mandatory why/what's-needed comment
   pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
   pilot.py doctor  [--verbose] [--no-wiki]      # preflight: can the commands above work here? (+ wiki/, when that module is on)
-  pilot.py contract [PHASE]                    # a phase's contract (statuses it consumes / claims / produces); bare: all, and whether they compose
+  pilot.py contract [PHASE] [--profile P]      # a phase's contract (statuses it consumes / claims / produces); bare: all, and whether they compose
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
+  pilot.py workflow show|check|set [PROFILE]   # the project's workflow profile: the chain it runs, and the check that every profile composes
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
   pilot.py arch    index [--active] [--app A] [--under D] [--depth 1]|search|describe|next-number|inventory|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
@@ -77,24 +78,55 @@ EXTERNAL = (("status:approved", "status:done"), ("status:split", "status:done"),
 SINKS = ("status:done", "status:wont-do", "status:poc-rejected")  # statuses nothing consumes
 
 
-def phase_contract(phase):
+DEFAULT_PROFILE = "standard"
+# A workflow profile is the part of the chain a project runs (`workflow.profile` in .pilot/state.json). `standard` is
+# the whole chain, what every project ran before profiles. A profile drops phases, merge-workflow transitions and the
+# statuses only those use; what it keeps must still compose (`pilot.py workflow check`). `ready` stays false while the
+# skills, the task docs and the merge workflow do not follow the profile yet: `workflow set` refuses it until they do.
+PROFILES = {
+    "standard": {"drop_phases": (), "drop_external": (), "drop_statuses": (), "ready": True},
+    "lean": {"drop_phases": ("qa",), "drop_external": (("status:split", "status:qa"),),
+             "drop_statuses": ("status:qa", "status:in-qa"), "ready": False},
+}
+
+
+def chain(profile=DEFAULT_PROFILE):
+    """The part of the chain a profile runs: its phases, their contracts, the merge-workflow transitions and the
+    statuses. A phase keeps no consumption of a status the profile dropped; a contract that still produces one is
+    a drift `composition_problems` reports."""
+    if profile not in PROFILES:
+        raise Refused({"ok": False, "reason": "unknown-profile", "expected": list(PROFILES)})
+    drop = PROFILES[profile]
+    gone = set(drop["drop_statuses"])
+    return {"phases": {k: v for k, v in PHASES.items() if k not in drop["drop_phases"]},
+            "contracts": {k: {"consumes": [st for st in v["consumes"] if st not in gone], "produces": list(v["produces"])}
+                          for k, v in CONTRACTS.items() if k not in drop["drop_phases"]},
+            "external": tuple(t for t in EXTERNAL if t not in drop["drop_external"]),
+            "statuses": {f"status:{name}" for name in STATUSES} - gone}
+
+
+def phase_contract(phase, profile=DEFAULT_PROFILE):
     """One phase's contract: the statuses it consumes, the one it claims into, the ones it produces."""
-    if phase not in CONTRACTS:
-        raise Refused({"ok": False, "reason": "unknown-phase", "expected": sorted(CONTRACTS)})
-    cfg, extra = PHASES.get(phase, {}), CONTRACTS[phase]
+    ch = chain(profile)
+    if phase not in ch["contracts"]:
+        if phase in CONTRACTS:
+            raise Refused({"ok": False, "reason": "phase-not-in-profile", "phase": phase, "profile": profile})
+        raise Refused({"ok": False, "reason": "unknown-phase", "expected": sorted(ch["contracts"])})
+    cfg, extra = ch["phases"].get(phase, {}), ch["contracts"][phase]
     consumes = {cfg.get("fresh"), cfg.get("reclaim"), cfg.get("inprog")} | set(cfg.get("resumable", ())) | set(extra["consumes"])
     consumes.discard(None)
     return {"ok": True, "phase": phase, "consumes": sorted(consumes), "claims": cfg.get("inprog"),
             "produces": sorted(extra["produces"])}
 
 
-def composition_problems():
-    """The chain as the composition of the contracts: every status has a producer and a consumer, a sink apart."""
-    known = {f"status:{name}" for name in STATUSES}
-    produced = {cfg["inprog"] for cfg in PHASES.values()} | {b for _a, b in EXTERNAL}
-    consumed = {a for a, _b in EXTERNAL}
-    for phase in CONTRACTS:
-        contract = phase_contract(phase)
+def composition_problems(profile=DEFAULT_PROFILE):
+    """The chain a profile runs as the composition of the contracts: every status has a producer and a consumer, a sink apart."""
+    ch = chain(profile)
+    known = ch["statuses"]
+    produced = {cfg["inprog"] for cfg in ch["phases"].values()} | {b for _a, b in ch["external"]}
+    consumed = {a for a, _b in ch["external"]}
+    for phase in ch["contracts"]:
+        contract = phase_contract(phase, profile)
         produced |= set(contract["produces"])
         consumed |= set(contract["consumes"])
     problems = [{"status": st, "code": "no-producer"} for st in sorted(known - produced)]
@@ -103,15 +135,16 @@ def composition_problems():
     return problems
 
 
-def transition_allowed(current, new):
-    """Whether some contract admits `current` -> `new` (a phase that consumes or claims `current` and produces `new`,
-    or the merge workflow). Creation (no status yet), no change and clearing the status are always fine."""
+def transition_allowed(current, new, profile=DEFAULT_PROFILE):
+    """Whether some contract of the profile admits `current` -> `new` (a phase that consumes or claims `current` and
+    produces `new`, or the merge workflow). Creation (no status yet), no change and clearing the status are always fine."""
     if not current or current == new or new == "status:none":
         return True
-    if (current, new) in EXTERNAL:
+    ch = chain(profile)
+    if (current, new) in ch["external"]:
         return True
-    for phase in CONTRACTS:
-        contract = phase_contract(phase)
+    for phase in ch["contracts"]:
+        contract = phase_contract(phase, profile)
         if current in contract["consumes"] + [contract["claims"]] and new in contract["produces"]:
             return True
     return False
@@ -182,6 +215,52 @@ def read_modules(path=STATE_PATH):
         return {}
     modules = data.get("modules") if isinstance(data, dict) else None
     return {k: bool(v) for k, v in modules.items()} if isinstance(modules, dict) else {}
+
+
+def read_workflow(path=STATE_PATH):
+    """The project's workflow profile, from `.pilot/state.json` (`workflow.profile`): {"profile", "source"} where source is
+    "state" or "default" (the standard chain: no file, no field, or a name that is not a profile, which `unknown` then names)."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return {"profile": DEFAULT_PROFILE, "source": "default"}
+    block = data.get("workflow") if isinstance(data, dict) else None
+    name = block.get("profile") if isinstance(block, dict) else None
+    if name is None:
+        return {"profile": DEFAULT_PROFILE, "source": "default"}
+    if name not in PROFILES:
+        return {"profile": DEFAULT_PROFILE, "source": "default", "unknown": name}
+    return {"profile": name, "source": "state"}
+
+
+def read_profile(path=STATE_PATH):
+    return read_workflow(path)["profile"]
+
+
+def set_workflow(name, path=STATE_PATH):
+    """Choose the project's workflow profile in `.pilot/state.json`, leaving every other field alone. Refused for a profile
+    the skills do not follow yet, or whose chain does not compose."""
+    if name not in PROFILES:
+        raise Refused({"ok": False, "reason": "unknown-profile", "expected": list(PROFILES)})
+    if not PROFILES[name]["ready"]:
+        raise Refused({"ok": False, "reason": "profile-not-ready", "profile": name,
+                       "hint": "the skills, task docs and merge workflow do not follow it yet"})
+    problems = composition_problems(name)
+    if problems:
+        raise Refused({"ok": False, "reason": "does-not-compose", "profile": name, "problems": problems})
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except FileNotFoundError:
+        raise Refused({"ok": False, "reason": "no-state", "hint": "run /pilot-init"})
+    block = data.get("workflow") if isinstance(data.get("workflow"), dict) else {}
+    block["profile"] = name
+    data["workflow"] = block
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
+    return {"ok": True, "profile": name}
 
 
 DEFAULT_LANGUAGE = "en"
@@ -404,9 +483,14 @@ class Refused(Exception):
 
 
 class Machine:
-    def __init__(self, gh):
+    def __init__(self, gh, profile=None):
         self.gh = gh
+        self.profile = profile or read_profile()
         self._open = {}
+
+    def _require_phase(self, phase):
+        if phase not in chain(self.profile)["phases"]:
+            raise Refused({"ok": False, "reason": "phase-not-in-profile", "phase": phase, "profile": self.profile})
 
     # ---- shared checks -------------------------------------------------------------------
     def open_state(self, number):
@@ -429,6 +513,7 @@ class Machine:
 
     # ---- pool ----------------------------------------------------------------------------
     def pool(self, phase, limit, only=None):
+        self._require_phase(phase)
         cfg = PHASES[phase]
         candidates, excluded = [], []
 
@@ -493,6 +578,7 @@ class Machine:
         return found
 
     def resolve(self, phase, number, resume=False):
+        self._require_phase(phase)
         cfg = PHASES[phase]
         raw = self.gh.get_issue(number)
         if raw is None:
@@ -642,6 +728,9 @@ class Machine:
         if modules is not None:
             doc["modules"] = modules  # the dashboard's tabs follow the modules a project has on
         doc["language"] = read_language()  # the dashboard opens in it (a reader can switch)
+        declared = read_workflow()
+        if declared["source"] == "state":
+            doc["workflow"] = {"profile": declared["profile"]}  # the chain this project runs
         while len(json.dumps(doc, ensure_ascii=False).encode()) > SNAPSHOT_MAX_BYTES and rows:
             del rows[max(1, len(rows) * 9 // 10):]
             doc["truncated"] = True
@@ -656,6 +745,7 @@ class Machine:
         return normalize(self.gh.patch_issue(number, body))
 
     def claim(self, phase, number, mode):
+        self._require_phase(phase)
         cfg = PHASES[phase]
         raw = self.gh.get_issue(number)
         if raw is None:
@@ -729,7 +819,7 @@ class Machine:
         result = {"ok": True, "issue": number, "status": status_of(after["labels"]),
                   "labels": sorted(after["labels"]), "assignees": after["assignees"],
                   "state": after["state"], "event": self._event(after, "set", pr=pr)}
-        if not transition_allowed(before, result["status"]):
+        if not transition_allowed(before, result["status"], self.profile):
             result["warning"] = {"code": "unexpected-transition", "from": before, "to": result["status"],
                                  "hint": "no phase contract (`pilot.py contract`) takes a ticket from one to the other"}
         return result
@@ -1934,6 +2024,10 @@ def build_parser():
 
     p = sub.add_parser("contract", help="a phase's contract (consumes, claims, produces), or all of them and the check that they compose")
     p.add_argument("phase", nargs="?", choices=sorted(CONTRACTS))
+    p.add_argument("--profile", choices=list(PROFILES), help="the workflow profile (default: the project's, else standard)")
+    p = sub.add_parser("workflow", help="the project's workflow profile: show it, check that every profile composes, or set it")
+    p.add_argument("action", choices=["show", "check", "set"])
+    p.add_argument("name", nargs="?", choices=list(PROFILES))
     p = sub.add_parser("wiki")
     p.add_argument("--dir", default=WIKI_DIR, help="the wiki directory (default: wiki)")
     ws = p.add_subparsers(dest="bundle_cmd", required=True)
@@ -2056,15 +2150,32 @@ def run_bundle(args, gh):
 
 
 def run_contract(args):
+    profile = getattr(args, "profile", None) or read_profile()
     if args.phase:
-        return phase_contract(args.phase)
-    problems = composition_problems()
-    return {"ok": not problems, "phases": {p: phase_contract(p) for p in sorted(CONTRACTS)}, "external": [list(t) for t in EXTERNAL],
-            "sinks": list(SINKS), "problems": problems}
+        return phase_contract(args.phase, profile)
+    ch = chain(profile)
+    problems = composition_problems(profile)
+    return {"ok": not problems, "profile": profile, "phases": {p: phase_contract(p, profile) for p in sorted(ch["contracts"])},
+            "external": [list(t) for t in ch["external"]], "sinks": list(SINKS), "problems": problems}
+
+
+def run_workflow(args):
+    if args.action == "set":
+        if not args.name:
+            raise Refused({"ok": False, "reason": "profile-name-required", "expected": list(PROFILES)})
+        return set_workflow(args.name)
+    if args.action == "check":
+        profiles = {name: {"ready": meta["ready"], "phases": sorted(chain(name)["contracts"]),
+                           "problems": composition_problems(name)} for name, meta in PROFILES.items()}
+        return {"ok": not any(p["problems"] for p in profiles.values()), "profiles": profiles}
+    current = read_workflow()
+    problems = composition_problems(current["profile"])
+    return {"ok": not problems, **current, "ready": PROFILES[current["profile"]]["ready"],
+            "phases": sorted(chain(current["profile"])["contracts"]), "problems": problems}
 
 
 def needs_github(args):
-    if args.cmd in ("module", "contract"):
+    if args.cmd in ("module", "contract", "workflow"):
         return False
     if args.cmd == "arch":
         return False
@@ -2084,6 +2195,8 @@ def run(args, gh):
         return run_module(args)
     if args.cmd == "contract":
         return run_contract(args)
+    if args.cmd == "workflow":
+        return run_workflow(args)
     if args.cmd in ("wiki", "arch"):
         return run_bundle(args, gh)
     machine = Machine(gh)
@@ -2131,7 +2244,7 @@ def main(argv=None):
         print(json.dumps({"error": str(err) or "gh CLI not found"}))
         return 2
     print(json.dumps({"repo": repo, **result} if repo else result, ensure_ascii=False))
-    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki", "arch", "contract") else 0
+    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki", "arch", "contract", "workflow") else 0
 
 
 if __name__ == "__main__":

@@ -1545,6 +1545,145 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(pilot.run_contract(pilot.build_parser().parse_args(["contract", "qa"]))["produces"], ["status:done"])
 
 
+class WorkflowProfileTests(unittest.TestCase):
+    """The chain a project runs depends on its workflow profile (`workflow` in .pilot/state.json); standard is today's."""
+
+    def in_state(self, state):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = pathlib.Path(tmp.name) / "state.json"
+        if state is not None:
+            path.write_text(json.dumps(state))
+        return str(path)
+
+    def test_standard_is_the_whole_chain_and_the_default(self):
+        self.assertEqual(pilot.DEFAULT_PROFILE, "standard")
+        self.assertEqual(pilot.composition_problems("standard"), [])
+        self.assertEqual(pilot.phase_contract("qa", "standard"), pilot.phase_contract("qa"))
+        self.assertTrue(pilot.transition_allowed("status:split", "status:qa", "standard"))
+
+    def test_every_profile_composes(self):
+        for name in pilot.PROFILES:
+            self.assertEqual(pilot.composition_problems(name), [], name)
+
+    def test_lean_has_no_qa_phase_and_no_qa_stop(self):
+        with self.assertRaises(pilot.Refused) as got:
+            pilot.phase_contract("qa", "lean")
+        self.assertEqual(got.exception.payload["reason"], "phase-not-in-profile")
+        self.assertNotIn("status:qa", pilot.phase_contract("spec", "lean")["consumes"])
+        self.assertFalse(pilot.transition_allowed("status:split", "status:qa", "lean"))
+        self.assertTrue(pilot.transition_allowed("status:split", "status:done", "lean"))
+        self.assertTrue(pilot.transition_allowed("status:approved", "status:done", "lean"))
+        self.assertTrue(pilot.transition_allowed("status:in-review", "status:approved", "lean"))
+
+    def test_a_contract_producing_a_status_the_profile_dropped_is_found(self):
+        saved = pilot.CONTRACTS["spec"]["produces"]
+        try:
+            pilot.CONTRACTS["spec"]["produces"] = saved + ["status:qa"]
+            self.assertIn(("status:qa", "unknown-status"),
+                          {(p["status"], p["code"]) for p in pilot.composition_problems("lean")})
+            self.assertEqual(pilot.composition_problems("standard"), [])
+        finally:
+            pilot.CONTRACTS["spec"]["produces"] = saved
+
+    def test_an_unknown_profile_is_refused(self):
+        with self.assertRaises(pilot.Refused) as got:
+            pilot.composition_problems("nope")
+        self.assertEqual(got.exception.payload["reason"], "unknown-profile")
+
+    def test_the_profile_is_read_from_the_state_standard_when_absent(self):
+        self.assertEqual(pilot.read_workflow(self.in_state(None)), {"profile": "standard", "source": "default"})
+        self.assertEqual(pilot.read_workflow(self.in_state({"projectName": "p"}))["source"], "default")
+        got = pilot.read_workflow(self.in_state({"workflow": {"profile": "lean"}}))
+        self.assertEqual((got["profile"], got["source"]), ("lean", "state"))
+        bad = pilot.read_workflow(self.in_state({"workflow": {"profile": "wild"}}))
+        self.assertEqual((bad["profile"], bad["source"], bad["unknown"]), ("standard", "default", "wild"))
+
+    def test_set_refuses_a_profile_that_is_not_ready_and_an_unknown_one(self):
+        path = self.in_state({"projectName": "p"})
+        with self.assertRaises(pilot.Refused) as got:
+            pilot.set_workflow("lean", path)
+        self.assertEqual(got.exception.payload["reason"], "profile-not-ready")
+        with self.assertRaises(pilot.Refused) as got:
+            pilot.set_workflow("wild", path)
+        self.assertEqual(got.exception.payload["reason"], "unknown-profile")
+        with self.assertRaises(pilot.Refused) as got:
+            pilot.set_workflow("standard", self.in_state(None))
+        self.assertEqual(got.exception.payload["reason"], "no-state")
+
+    def test_set_writes_the_profile_and_keeps_every_other_field(self):
+        path = self.in_state({"projectName": "p", "modules": {"wiki": True}, "workflow": {"note": "x"}})
+        saved = pilot.PROFILES["lean"]["ready"]
+        try:
+            pilot.PROFILES["lean"]["ready"] = True
+            self.assertEqual(pilot.set_workflow("lean", path)["profile"], "lean")
+        finally:
+            pilot.PROFILES["lean"]["ready"] = saved
+        data = json.loads(pathlib.Path(path).read_text())
+        self.assertEqual(data, {"projectName": "p", "modules": {"wiki": True}, "workflow": {"note": "x", "profile": "lean"}})
+
+    def test_set_refuses_a_profile_whose_chain_does_not_compose(self):
+        path = self.in_state({"projectName": "p"})
+        saved, ready = pilot.CONTRACTS["spec"]["produces"], pilot.PROFILES["lean"]["ready"]
+        try:
+            pilot.PROFILES["lean"]["ready"] = True
+            pilot.CONTRACTS["spec"]["produces"] = saved + ["status:qa"]
+            with self.assertRaises(pilot.Refused) as got:
+                pilot.set_workflow("lean", path)
+            self.assertEqual(got.exception.payload["reason"], "does-not-compose")
+        finally:
+            pilot.CONTRACTS["spec"]["produces"], pilot.PROFILES["lean"]["ready"] = saved, ready
+        self.assertNotIn("workflow", json.loads(pathlib.Path(path).read_text()))
+
+    def test_a_machine_refuses_a_phase_its_profile_does_not_run(self):
+        m = pilot.Machine(FakeGh([issue(1, ["status:qa", "type:feature", "level:story"])]), profile="lean")
+        for call in (lambda: m.pool("qa", 5), lambda: m.resolve("qa", 1), lambda: m.claim("qa", 1, "fresh")):
+            with self.assertRaises(pilot.Refused) as got:
+                call()
+            self.assertEqual((got.exception.payload["reason"], got.exception.payload["profile"]),
+                             ("phase-not-in-profile", "lean"))
+        self.assertEqual(pilot.Machine(FakeGh([]), profile="standard").pool("qa", 5)["pick"], None)
+
+    def test_set_warns_by_the_machines_profile(self):
+        lean = pilot.Machine(FakeGh([issue(1, ["status:split"])]), profile="lean")
+        self.assertEqual(lean.set(1, status="qa")["warning"]["code"], "unexpected-transition")
+        std = pilot.Machine(FakeGh([issue(2, ["status:split"])]), profile="standard")
+        self.assertNotIn("warning", std.set(2, status="qa"))
+
+    def test_the_snapshot_carries_the_profile_only_when_the_state_declares_one(self):
+        def snap(state):
+            with tempfile.TemporaryDirectory() as tmp:
+                old = os.getcwd()
+                os.chdir(tmp)
+                try:
+                    if state is not None:
+                        os.makedirs(".pilot")
+                        pathlib.Path(".pilot/state.json").write_text(json.dumps(state))
+                    return pilot.Machine(FakeGh([issue(1, ["status:backlog"])])).snapshot()
+                finally:
+                    os.chdir(old)
+        self.assertEqual(snap({"workflow": {"profile": "lean"}})["workflow"], {"profile": "lean"})
+        self.assertNotIn("workflow", snap({"projectName": "p"}))
+        self.assertNotIn("workflow", snap(None))
+
+    def test_cli_workflow_needs_no_github_and_check_covers_every_profile(self):
+        parse = pilot.build_parser().parse_args
+        self.assertFalse(pilot.needs_github(parse(["workflow", "check"])))
+        got = pilot.run_workflow(parse(["workflow", "check"]))
+        self.assertTrue(got["ok"])
+        self.assertEqual(sorted(got["profiles"]), sorted(pilot.PROFILES))
+        self.assertNotIn("qa", got["profiles"]["lean"]["phases"])
+        self.assertIn("qa", got["profiles"]["standard"]["phases"])
+        shown = pilot.run_workflow(parse(["workflow", "show"]))
+        self.assertEqual((shown["profile"], shown["problems"]), ("standard", []))
+
+    def test_cli_contract_takes_a_profile(self):
+        parse = pilot.build_parser().parse_args
+        self.assertTrue(pilot.run_contract(parse(["contract", "--profile", "lean"]))["ok"])
+        self.assertNotIn("qa", pilot.run_contract(parse(["contract", "--profile", "lean"]))["phases"])
+        self.assertIn("qa", pilot.run_contract(parse(["contract"]))["phases"])
+
+
 class ProcessReferencesTests(unittest.TestCase):
     """Sections move between the generic file, the link docs and the skills; no citation may be left pointing at one that
     is gone, whether it names a section of pilot-process.md or a titled section of another doc."""
