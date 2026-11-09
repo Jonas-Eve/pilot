@@ -1067,6 +1067,58 @@ const STUB = (opts) => `
     await page.close();
   }
 
+  // ---- the phases and the profile follow the workflow the snapshot says the project runs ----
+  {
+    const rulesFor = (qa) => ({ qa, e2e_task: qa, feature_done_goes_to: qa ? 'status:qa' : 'status:done',
+      review: qa ? { feature: ['pilot-pm', 'pilot-techlead'], e2e: ['pilot-pm', 'pilot-techlead'], tech: ['pilot-techlead'], bug: ['pilot-techlead'] }
+                 : { feature: ['pilot-techlead'], e2e: ['pilot-techlead'], tech: ['pilot-techlead'], bug: ['pilot-techlead'] } });
+    const LEAN = { profile: 'lean', phases: ['dev', 'discovery', 'proto', 'review', 'spec'], rules: rulesFor(false) };
+    const STANDARD = { profile: 'standard', phases: ['dev', 'discovery', 'proto', 'qa', 'review', 'spec'], rules: rulesFor(true) };
+    const issues = [ticket(11, ['type:feature', 'level:story', 'status:qa', 'priority:P1'], { t: 'Story restée à tester' }),
+                    ticket(12, ['type:tech', 'status:dev-ready', 'priority:P1'], { t: 'Tâche prête' })];
+    const withWf = (w) => Object.assign({}, snapshot(issues, 120), w ? { workflow: w } : {});
+    const subTabs = (pg) => pg.$$eval('#subtabs a', (as) => as.map((a) => a.textContent.replace(/ \(\d+\)$/, '')));
+    const chip = (pg) => pg.$eval('#profileChip', (e) => ({ hidden: e.hidden, text: e.textContent, title: e.title }));
+
+    let page = await open({ preload: [withWf(LEAN)] });
+    let c = await chip(page);
+    check('profile: the chip shows the project\'s profile, with its rules as the tooltip',
+          !c.hidden && c.text === 'Profil lean' && /Pas de QA humaine/.test(c.title) && /Pas de tâche e2e/.test(c.title) && /Relecture : Tech lead seul/.test(c.title), JSON.stringify(c));
+    await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(200);
+    check('profile: a phase the project does not run has no sub-tab (lean: no human QA)',
+          JSON.stringify(await subTabs(page)) === JSON.stringify(['Tableau', 'Discovery', 'Spec', 'Dev', 'Review']), JSON.stringify(await subTabs(page)));
+    check('profile: the board has one column per phase the project runs', (await page.$$eval('#view section.col', (x) => x.length)) === 4);
+    check('profile: a ticket left at a status of a dropped phase is outside every queue, not shown in a column',
+          !/Story restée à tester/.test(await text(page, '#view .board')) && /Tâche prête/.test(await text(page, '#view .board')));
+    await page.goto(FILE + '#ensemble/qa'); await page.waitForTimeout(350);
+    check('profile: an address into a phase the project does not run falls back to the board',
+          (await page.$eval('#subtabs a[aria-current=page]', (a) => a.textContent)) === 'Tableau' && !!(await page.$('#view .board')));
+    await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
+    check('profile: the help page states the profile and its rules', /Profil du projet : lean\. Pas de QA humaine\. Pas de tâche e2e\. Relecture : Tech lead seul\./.test(await text(page, '#profileNote')), await text(page, '#profileNote'));
+    check('profile: no page errors', page.errors.length === 0, page.errors.join('|'));
+    await page.close();
+
+    page = await open({ preload: [withWf(LEAN)], lang: 'en' });
+    c = await chip(page);
+    await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
+    check('profile: the chip and the rules are translated',
+          c.text === 'Profile lean' && /No human QA/.test(c.title) && /Review: Tech lead alone/.test(c.title) && /Project profile: lean\. No human QA\. No e2e task\. Review: Tech lead alone\./.test(await text(page, '#profileNote')),
+          JSON.stringify(c) + ' ' + (await text(page, '#profileNote')));
+    await page.close();
+
+    page = await open({ preload: [withWf(STANDARD)] });
+    await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(200);
+    check('profile: standard keeps the QA phase and shows its rules',
+          (await subTabs(page)).includes('QA humaine') && (await page.$$eval('#view section.col', (x) => x.length)) === 5 && (await chip(page)).text === 'Profil standard' && /QA humaine pour les features/.test((await chip(page)).title), JSON.stringify(await subTabs(page)));
+    await page.close();
+
+    page = await open({ preload: [withWf(null)] });
+    await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(200);
+    check('profile: a snapshot without the field shows the whole chain and no chip, as before',
+          (await chip(page)).hidden && (await subTabs(page)).includes('QA humaine') && (await page.$$eval('#view section.col', (x) => x.length)) === 5, JSON.stringify(await subTabs(page)));
+    await page.close();
+  }
+
   // every tab and sub-tab fits a phone, in both themes, with no script error
   const ROUTES = ['file', 'ensemble', 'ensemble/discovery', 'ensemble/spec', 'ensemble/dev', 'ensemble/review', 'ensemble/qa',
     'prototypes/encours', 'prototypes/acceptes/alancer', 'prototypes/acceptes/encours', 'prototypes/acceptes/termines', 'prototypes/rejetes', 'proto/702',
