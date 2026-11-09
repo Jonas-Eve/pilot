@@ -999,22 +999,23 @@ const STUB = (opts) => `
   }
 
   // ---- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ----
-  const ARCH = { kind: 'architecture', repo: REPO, at: iso(20), total: 6, truncated: false, entries: [
+  const ARCH = { kind: 'architecture', repo: REPO, at: iso(20), total: 7, truncated: false, entries: [
     { id: 'overview', title: 'Overview', description: 'The apps and how they relate.', path: 'overview.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'One CLI <img src=x onerror="window.__pwn=1">.' },
     { id: 'layering', title: 'Layering', description: 'Domain never imports adapters.', path: 'guidelines/layering.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Domain never imports adapters.' },
     { id: '0001-compute', title: 'Catalog computed', description: 'Compute the catalog.', path: 'adr/0001-compute.md', status: 'superseded', tickets: [5], supersedes: '', supersededBy: '0002-store', text: '' },
     { id: '0002-store', title: 'Catalog stored', description: 'The catalog is stored, not computed.', path: 'adr/0002-store.md', status: 'accepted', tickets: [12], supersedes: '0001-compute', supersededBy: '', text: 'Stored.' },
     { id: 'web-overview', title: 'Web app', description: 'The web front end.', path: 'apps/web/web-overview.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'React.' },
-    { id: 'a11y', title: 'Accessible by default', description: 'Every control has a name.', path: 'apps/web/guidelines/a11y.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Name every control.' }] };
+    { id: 'a11y', title: 'Accessible by default', description: 'Every control has a name.', path: 'apps/web/guidelines/a11y.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Name every control.' },
+    { id: 'deploy', title: 'Deploy', description: 'How a release goes out.', path: 'runbooks/deploy.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Run the deploy workflow.' }] };
   { let page = await open({ preload: [BASE] });
   await page.goto(FILE + '#architecture'); await page.waitForTimeout(350);
   check('architecture tab: empty state names the commands, no ticket banner', /Aucune architecture publiée/.test(await text(page, '#view')) && /pilot-architecture --bootstrap/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Architecture');
   await page.evaluate((d) => window.__push('architecture', 'r0', d), ARCH); await page.waitForTimeout(200);
   const av = await text(page, '#view');
-  check('architecture tab: counted in the tab, grouped by overview, rules and decisions', (await page.$$eval('#tabs a', (a) => a.map((x) => x.textContent))).includes('Architecture (6)') && /Vue d’ensemble/.test(av) && /Règles/.test(av) && /Décisions/.test(av) && /Catalog stored/.test(av), av);
+  check('architecture tab: counted in the tab, grouped by overview, rules, decisions and runbooks', (await page.$$eval('#tabs a', (a) => a.map((x) => x.textContent))).includes('Architecture (7)') && /Vue d’ensemble/.test(av) && /Règles/.test(av) && /Décisions/.test(av) && /Procédures/.test(av) && /Run the deploy workflow/.test(av) && /Catalog stored/.test(av), av);
   check('architecture sub-tabs: Tous, then one per group with its count',
-        JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))) === JSON.stringify(['Tous (6)', 'Vue d’ensemble (1)', 'Règles (1)', 'Décisions (2)', 'App web (2)']), JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))));
-  check('architecture summary and supersession chips', /5 accepté/.test(av) && /1 remplacé/.test(av) && /remplace 0001-compute/.test(av) && /remplacé par 0002-store/.test(av), av);
+        JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))) === JSON.stringify(['Tous (7)', 'Vue d’ensemble (1)', 'Règles (1)', 'Décisions (2)', 'Procédures (1)', 'App web (2)']), JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))));
+  check('architecture summary and supersession chips', /6 accepté/.test(av) && /1 remplacé/.test(av) && /remplace 0001-compute/.test(av) && /remplacé par 0002-store/.test(av), av);
   check('architecture: ticket link, and HTML in an entry stays text', (await page.$eval('#view a[href$="/issues/12"]', (a) => a.getAttribute('href'))) === 'https://github.com/' + REPO + '/issues/12' && (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined);
   await page.click('#subtabs >> text=App web'); await page.waitForTimeout(150);
   const aw = await text(page, '#view');

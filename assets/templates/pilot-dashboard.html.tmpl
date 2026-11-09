@@ -347,6 +347,7 @@ var EN={
 "Rien n’attend ce rôle pour le moment.": "Nothing is waiting for this role for now.",
 "Rien à prendre pour ce rôle pour le moment.": "Nothing to take for this role for now.",
 "Règles": "Rules",
+"Procédures": "Runbooks",
 "Règles d’usage": "Usage rules",
 "Réduire": "Collapse",
 "Réinitialiser": "Reset",
@@ -1340,7 +1341,7 @@ function vWiki(){
 /* ---------- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ---------- */
 var ARCH_FR={proposed:'proposé',accepted:'accepté',deprecated:'déprécié',superseded:'remplacé'};
 var ARCH_CLS={proposed:'',accepted:'ok',deprecated:'warn',superseded:'warn'};
-var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',adr:'Décisions'};
+var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',adr:'Décisions',runbooks:'Procédures'};
 function archEntries(){return S.arch&&Array.isArray(S.arch.entries)?S.arch.entries.slice(0,2000):[];}
 function archGroup(e){var p=str(e.path,200).split('/'); if(p[0]==='apps'&&p.length>2)return 'app:'+str(p[1],60); return p.length>1&&ARCH_GROUPS[p[0]]?p[0]:'overview';}
 function archLabel(g){return g.indexOf('app:')===0?'App '+g.slice(4):ARCH_GROUPS[g]||g;}
