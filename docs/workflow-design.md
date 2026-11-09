@@ -32,7 +32,7 @@ Two, not three: what a third `strict` profile would have bought is expressed as 
 
 | | `lean` (pilot) | `standard` (myAVI) |
 |---|---|---|
-| Discovery | optional | PM + architect |
+| Discovery | a new capability (skill, flag, command, dashboard feature, i.e. a `type:feature` of the repo's functional scope) gets a light framing; an internal `type:tech` has none | PM + architect |
 | Spec, `type:tech` | tech lead alone; the architect validates on a signal and **leads** when the ticket declares dependencies, names several apps, or the tech lead's pass finds it must split | tech lead leads, the architect always validates (one call), and leads on the same triggers |
 | Spec, `type:feature` | architect + tech lead | architect + tech lead |
 | Dev | auto | pair by default, or auto with pair forced by a signal |
@@ -81,8 +81,17 @@ personas sit in the roster, never the vocabulary.
 
 - A `workflow` block in `.pilot/state.json` (profile, default mode, escalation rules), read by
   `pilot.py` the way it reads `modules`.
+- **The state machine depends on the project's configuration.** Three places decide it today and
+  each must read the same config: (1) `pilot.py`, where `PHASES`, `CONTRACTS` and `EXTERNAL` are
+  static data and become a function of the profile (for `lean`: no `qa` phase, and a feature story
+  goes `status:split` to `status:done` like a tech story, a transition `EXTERNAL` already holds);
+  (2) the agent-facing rules in the task and link docs (the mandatory `type:e2e` task of a feature
+  split, the `status:qa` stop), which become conditional on the config; (3) the
+  `pilot-status-on-merge` workflow each project carries, which sets `status:done` and the cascade.
+  The script stays the reference: skills and task docs ask `pilot.py` for the effective contract
+  instead of restating it.
 - `pilot.py contract` checks that every path a profile allows composes (no status without a
-  producer or a consumer); today it checks the single chain.
+  producer or a consumer), once per profile; today it checks the single chain.
 - The roster becomes one table per profile instead of one fixed table.
 - `pilot.py snapshot` adds, per ticket, its **route**: effective profile, the signals that apply,
   the roster of its next step, whether auto is allowed.
@@ -126,8 +135,9 @@ computes the route.
    issues are `type:tech`, 74 of those 162 mention security, 121 tenants): identity and tenant
    isolation first. Accessibility is already enforced mechanically in the front components and
    their tests; the open gap is new screens and flows, covered by the `type:feature` signal above.
-2. Does the state machine admit a path that skips Spec's dialogue (`lean`) without a new status?
-   `contract` should answer before any code.
+2. Decided: the state machine depends on the project's configuration (section 7). Still to
+   confirm with `contract`, per profile: that `lean`'s path (no QA, no e2e task, a lighter Spec)
+   composes without a new status.
 3. Signals: declared per project in `state.json` with a default set in `pilot.py` (as written
    above); confirm the schema, and who may edit it.
 4. Is the profile per project only, or can a monorepo set one per app?
@@ -136,6 +146,12 @@ computes the route.
    cannot close either (they auto-close once every story is closed).
 6. Mode of Dev: no measurement could separate auto from pair (section 11), so the default per
    profile stays a choice until PILOT records the mode in a field instead of inferring it.
+7. Decided: `lean` has no e2e task and no human QA, for every ticket type, including a
+   `type:feature` that adds a capability to this repo; validation is the `pilot-test` suite, which
+   lives in another repository, and review stays the tech lead alone. The cost: the process today
+   mandates one `type:e2e` task per feature split and a `status:qa` stop before `done`, so the
+   state machine must admit "all tasks done, story `done`" with neither. It is question 2, and
+   `contract` must confirm it before any code.
 
 ## 10. Rollout
 
