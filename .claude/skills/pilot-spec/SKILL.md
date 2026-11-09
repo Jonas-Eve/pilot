@@ -94,7 +94,9 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
      `.pilot/pilot-task-scope-story.md` (architect's split-decision duty) and
      `.pilot/pilot-task-write-spec.md` (tech lead's spec-writing duty) and pass the
      matching one as part of each call's prompt, plus `.pilot/pilot-link-bug-tickets.md`
-     in full (the classify/originate mechanic for a prerequisite bug found mid-pass) —
+     in full (the classify/originate mechanic for a prerequisite bug found mid-pass), plus
+     the `rules` of `python3 .pilot/pilot.py workflow show` (this project's workflow: `e2e_task`
+     false means a `type:feature` split carries no e2e task) —
      plus only what this phase needs beyond that: the ticket's current body (including,
      if resuming, the comment thread's resolution per §4), its parent Epic/linked tickets
      if any, pointers to this project's own coding standards/security conventions and
@@ -123,7 +125,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
      own written spec.
    - `type:feature`: always a set of proposed tasks — one or more dev tasks (each
      its own `type:feature` or `type:tech`, whichever fits — `.pilot/pilot-link-ticket-tree.md`
-     "`type:` is never inherited"), plus exactly one flagged as the mandatory
+     "`type:` is never inherited"), plus, when `rules.e2e_task` is true, exactly one flagged as the mandatory
      end-to-end-test task, its own `type:e2e` (`.pilot/pilot-link-e2e-tasks.md`),
      dependent on every other task in the set — each with its own written spec. Never a
      single unsplit body.

@@ -59,8 +59,10 @@ now also done/wont-do. A standalone `type:bug` task has no parent at all (`.pilo
   `status:done` **and close its issue** — it was never merged directly, so nothing else
   in the pipeline would otherwise ever close it (unlike a task, whose merging PR closes it
   natively via `Closes #N`).
-- All done, parent is `type:feature` → set the parent to **`status:qa`** instead of
-  `status:done` (`.claude/skills/pilot-qa/SKILL.md` "Phase 5 — Human QA") — every `type:feature` split includes exactly
+- All done, parent is `type:feature` → set the parent to the workflow's `feature_done_goes_to`
+  (`python3 .pilot/pilot.py workflow show`): **`status:qa`** instead of
+  `status:done` (`.claude/skills/pilot-qa/SKILL.md` "Phase 5 — Human QA"), or, with no human QA in the workflow,
+  `status:done` and closed like a `type:tech` story — in a workflow with QA every `type:feature` split includes exactly
   one e2e task depending on all its dev siblings, so "all done" here is structurally the
   same moment the e2e task itself just finished. `status:done` for this story is set
   later, by `/pilot-qa` itself, once a human confirms the behavior.

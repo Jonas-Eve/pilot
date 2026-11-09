@@ -15,7 +15,8 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
 ## Steps
 
 0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation. `ok: false` (exit 1) or a failure (exit 2, script missing) → report each entry of `failed` (or the error) and stop here, before anything has changed.
-1. Determine the input: `python3 .pilot/pilot.py resolve qa <issue> [--resume]`. With no issue
+1. Determine the input: `python3 .pilot/pilot.py resolve qa <issue> [--resume]` (or `pool qa`; a refusal `phase-not-in-profile`:
+   this project's workflow has no human QA — say so and stop). With no issue
    given, run `python3 .pilot/pilot.py pool qa` first — the pool of
    `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:qa`, resumable
    `status:in-qa` + `can-resume`; `needs-human`, `on-hold` and open "Depends on #N" excluded;

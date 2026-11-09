@@ -20,8 +20,10 @@ canonical description of that process is `assets/docs/pilot-process.md`.
   snapshots, the wiki and architecture engines, and the preflight checks.
 - **Distribution**: a plain repo that projects clone and copy from, kept in sync by `pilot-init`
   and `pilot-update`, with optional modules a project turns on or off.
-- **Adaptation to a project**: today per call (pair or auto, `--with`, `--multi`) and per module;
-  a per-project profile and ticket-level risk signals are proposed in `docs/workflow-design.md`.
+- **Adaptation to a project**: per call (pair or auto, `--with`, `--multi`), per module, and per
+  workflow profile (`standard`, the whole chain, or `lean`: no human QA, no e2e task, the tech lead
+  alone reviews), chosen with `pilot.py workflow`; ticket-level risk signals are proposed in
+  `docs/workflow-design.md`.
 
 ## Out of scope / not yet decided
 - A Claude Code plugin: tried first, dropped, because installation stays local to one machine.
@@ -29,8 +31,9 @@ canonical description of that process is `assets/docs/pilot-process.md`.
   its own Claude Artifact.
 - Replacing a project's own CI, deployment or documentation conventions.
 - Merging a pull request on its own: only a human merges, unless they pass `--merge` explicitly.
-- Not yet decided: per-project workflow profiles (`docs/workflow-design.md`), the `wiki` module on
-  this repo itself, and recording the interaction mode of each run.
+- Not yet decided: ticket-level risk signals and a profile's Spec roster and default mode
+  (`docs/workflow-design.md`), the `wiki` module on this repo itself, and recording the
+  interaction mode of each run.
 
 ## Glossary
 - **Phase**: one of the five steps a ticket goes through, each a `pilot-<phase>` skill.

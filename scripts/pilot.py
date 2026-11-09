@@ -81,12 +81,18 @@ SINKS = ("status:done", "status:wont-do", "status:poc-rejected")  # statuses not
 DEFAULT_PROFILE = "standard"
 # A workflow profile is the part of the chain a project runs (`workflow.profile` in .pilot/state.json). `standard` is
 # the whole chain, what every project ran before profiles. A profile drops phases, merge-workflow transitions and the
-# statuses only those use; what it keeps must still compose (`pilot.py workflow check`). `ready` stays false while the
-# skills, the task docs and the merge workflow do not follow the profile yet: `workflow set` refuses it until they do.
+# statuses only those use, says whether a feature split carries an e2e task (`e2e_task`) and who reviews which type
+# (`review`, None = the default sets); what it keeps must still compose (`pilot.py workflow check`). `ready` stays false
+# while the skills, the task docs and the merge workflow do not follow a profile: `workflow set` refuses it until they do.
+REVIEWERS = ("pilot-pm", "pilot-techlead", "pilot-architect")
+DEFAULT_REVIEW = {"feature": ["pilot-pm", "pilot-techlead"], "e2e": ["pilot-pm", "pilot-techlead"],
+                  "tech": ["pilot-techlead"], "bug": ["pilot-techlead"]}
 PROFILES = {
-    "standard": {"drop_phases": (), "drop_external": (), "drop_statuses": (), "ready": True},
+    "standard": {"drop_phases": (), "drop_external": (), "drop_statuses": (), "e2e_task": True, "review": None,
+                 "ready": True},
     "lean": {"drop_phases": ("qa",), "drop_external": (("status:split", "status:qa"),),
-             "drop_statuses": ("status:qa", "status:in-qa"), "ready": False},
+             "drop_statuses": ("status:qa", "status:in-qa"), "e2e_task": False,
+             "review": {kind: ["pilot-techlead"] for kind in DEFAULT_REVIEW}, "ready": True},
 }
 
 
@@ -103,6 +109,35 @@ def chain(profile=DEFAULT_PROFILE):
                           for k, v in CONTRACTS.items() if k not in drop["drop_phases"]},
             "external": tuple(t for t in EXTERNAL if t not in drop["drop_external"]),
             "statuses": {f"status:{name}" for name in STATUSES} - gone}
+
+
+def profile_rules(profile=DEFAULT_PROFILE):
+    """What a profile means for the skills, the task docs and the merge workflow, as data they read (`workflow show`)
+    instead of restating it: whether there is a QA phase and an e2e task, where a finished feature story goes, and the
+    default reviewers of each ticket type."""
+    ch, meta = chain(profile), PROFILES[profile]
+    review = meta["review"] or DEFAULT_REVIEW
+    return {"qa": "qa" in ch["phases"], "e2e_task": meta["e2e_task"],
+            "feature_done_goes_to": "status:qa" if ("status:split", "status:qa") in ch["external"] else "status:done",
+            "review": {kind: list(review[kind]) for kind in DEFAULT_REVIEW}}
+
+
+def rules_problems(profile=DEFAULT_PROFILE):
+    """What makes a profile's rules contradict themselves: a QA stop without a QA phase (or the reverse), a review without
+    the tech lead (every change is reviewed by it, whatever the profile), or an unknown reviewer."""
+    rules, problems = profile_rules(profile), []
+    if rules["qa"] != (rules["feature_done_goes_to"] == "status:qa"):
+        problems.append({"code": "qa-stop-without-qa-phase" if not rules["qa"] else "qa-phase-without-qa-stop"})
+    for kind, reviewers in rules["review"].items():
+        if "pilot-techlead" not in reviewers:
+            problems.append({"code": "review-without-techlead", "type": kind})
+        problems += [{"code": "unknown-reviewer", "type": kind, "reviewer": r} for r in reviewers if r not in REVIEWERS]
+    return problems
+
+
+def profile_problems(profile=DEFAULT_PROFILE):
+    """Everything wrong with a profile: its chain does not compose, or its rules contradict themselves."""
+    return composition_problems(profile) + rules_problems(profile)
 
 
 def phase_contract(phase, profile=DEFAULT_PROFILE):
@@ -246,7 +281,7 @@ def set_workflow(name, path=STATE_PATH):
     if not PROFILES[name]["ready"]:
         raise Refused({"ok": False, "reason": "profile-not-ready", "profile": name,
                        "hint": "the skills, task docs and merge workflow do not follow it yet"})
-    problems = composition_problems(name)
+    problems = profile_problems(name)
     if problems:
         raise Refused({"ok": False, "reason": "does-not-compose", "profile": name, "problems": problems})
     try:
@@ -260,7 +295,12 @@ def set_workflow(name, path=STATE_PATH):
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=2, ensure_ascii=False)
         handle.write("\n")
-    return {"ok": True, "profile": name}
+    result = {"ok": True, "profile": name}
+    gone = list(PROFILES[name]["drop_statuses"])
+    if gone:  # a ticket already at one of them has no phase to claim it any more
+        result["warning"] = {"code": "dropped-statuses", "statuses": gone,
+                             "hint": "no ticket should be at these statuses when the profile is switched: nothing claims them afterwards"}
+    return result
 
 
 DEFAULT_LANGUAGE = "en"
@@ -2166,12 +2206,14 @@ def run_workflow(args):
         return set_workflow(args.name)
     if args.action == "check":
         profiles = {name: {"ready": meta["ready"], "phases": sorted(chain(name)["contracts"]),
-                           "problems": composition_problems(name)} for name, meta in PROFILES.items()}
+                           "rules": profile_rules(name), "problems": profile_problems(name)}
+                    for name, meta in PROFILES.items()}
         return {"ok": not any(p["problems"] for p in profiles.values()), "profiles": profiles}
     current = read_workflow()
-    problems = composition_problems(current["profile"])
+    problems = profile_problems(current["profile"])
     return {"ok": not problems, **current, "ready": PROFILES[current["profile"]]["ready"],
-            "phases": sorted(chain(current["profile"])["contracts"]), "problems": problems}
+            "phases": sorted(chain(current["profile"])["contracts"]), "rules": profile_rules(current["profile"]),
+            "problems": problems}
 
 
 def needs_github(args):

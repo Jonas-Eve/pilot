@@ -5,7 +5,7 @@ after the architect+tech lead dialogue has proposed a split.
 
 You're given the original story's acceptance criteria and the architect's proposed task
 split, each task with its own `type:` (`.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited" — typically a mix of `type:feature` tasks for the user-facing work, sometimes a
-`type:tech` enabler alongside them, and always exactly one `type:e2e` task). Confirm the
+`type:tech` enabler alongside them, and exactly one `type:e2e` task when the project's workflow has it). Confirm the
 **`type:feature` tasks only**, taken together, still cover every acceptance criterion the
 story promised — the one point before phase 4 checking a split didn't quietly drop part of
 what the story committed to. Exclude `type:tech`/`type:e2e` from this coverage surface

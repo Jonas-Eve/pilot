@@ -18,6 +18,7 @@ on:
         default: true
 
 permissions:
+  contents: read
   issues: write
   pull-requests: read
 
@@ -33,6 +34,18 @@ jobs:
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Read the project's workflow rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          # The workflow profile decides where a finished feature story goes (.pilot/pilot-link-cascade.md).
+          # Any failure here (no clone, an older .pilot/pilot.py) leaves '{}': the script below then keeps today's behaviour.
+          rules='{}'
+          if git clone --quiet --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" project 2>/dev/null; then
+            rules=$(cd project && python3 .pilot/pilot.py workflow show 2>/dev/null) || rules='{}'
+          fi
+          echo "$rules" > "$RUNNER_TEMP/pilot-workflow.json"
       - name: Resolve closed issues and update status labels
         uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
         with:
@@ -40,6 +53,17 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const STATUS_PREFIX = 'status:';
+
+            // Where a finished type:feature story goes: the project's workflow rules (`pilot.py workflow show`),
+            // status:qa when they cannot be read (every project before workflow profiles).
+            let featureDoneGoesTo = 'status:qa';
+            try {
+              const shown = JSON.parse(require('fs').readFileSync(`${process.env.RUNNER_TEMP}/pilot-workflow.json`, 'utf8'));
+              const target = shown.rules && shown.rules.feature_done_goes_to;
+              if (target === 'status:qa' || target === 'status:done') featureDoneGoesTo = target;
+            } catch (err) {
+              core.info(`Workflow rules not readable (${err.message}); keeping status:qa for a finished type:feature story.`);
+            }
 
             function statusLabelsOf(issue) {
               return issue.labels.map(l => (typeof l === 'string' ? l : l.name)).filter(n => n && n.startsWith(STATUS_PREFIX));
@@ -160,15 +184,16 @@ jobs:
                 return;
               }
 
-              // A type:feature story always splits into dev task(s) plus exactly
-              // one e2e task depending on all of them (.pilot/pilot-link-e2e-tasks.md),
-              // so "all done" here is the same moment the
+              // A type:feature story always splits into dev task(s) plus, in a profile with
+              // human QA, exactly one e2e task depending on all of them
+              // (.pilot/pilot-link-e2e-tasks.md), so "all done" here is the same moment the
               // e2e task itself just finished. That story goes to status:qa for a
               // human to confirm (§7 "Phase 6 — Human QA") instead of straight to
-              // status:done — a type:tech parent (the only other type that can reach
+              // status:done, unless the project's workflow rules send it to status:done
+              // (featureDoneGoesTo) — a type:tech parent (the only other type that can reach
               // status:split; type:bug never does, pilot-link-ticket-tree.md "Three levels")
               // is unaffected, unchanged cascade.
-              if (parentLabels.includes('type:feature')) {
+              if (parentLabels.includes('type:feature') && featureDoneGoesTo === 'status:qa') {
                 core.info(`All sub-issues of #${parent.number} are done/wont-do; cascading status:qa (type:feature) to parent.`);
                 await swapToDone(parent.number, dryRun, 'status:qa');
               } else {

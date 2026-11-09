@@ -38,7 +38,7 @@ and **`level:`** (`epic` → `story` → `task`, never deeper). Where each type 
   optional), same as `type:tech`. Always `level:task` directly, never `level:story` —
   it never splits (`.pilot/pilot-link-ticket-tree.md` "Three levels").
 - `type:e2e` — a `level:task`'s own type, never a `level:story`'s or `level:epic`'s;
-  always exactly one per `type:feature` split (`.pilot/pilot-link-e2e-tasks.md`), reviewed by
+  always exactly one per `type:feature` split when the workflow has it (`.pilot/pilot-link-e2e-tasks.md`), reviewed by
   PM + tech lead, same set as `type:feature`. It changes which agent
   `/pilot-dev` calls in phase 3 (`pilot-e2e` instead of `pilot-dev`).
 - `type:poc` — a prototype of a feature, built with a human in `/pilot-proto` before any Discovery
@@ -89,7 +89,7 @@ compose. A ticket carries one `status:` at a time.
 - `status:wont-do` — decided not to build, issue closed. Set only before any spec or code exists (Discovery or Spec drafting, replacing `status:draft`, or Spec
   in place of splitting); from `status:dev-ready` on, killing it is a human call (`needs-human` with the reasoning). A `type:bug` never carries it: an invalid
   report is never created, and one invalid after creation goes `needs-human`.
-- `status:qa` — a `type:feature` `status:split` story whose every task is done, set by the merge workflow, unassigned: `/pilot-qa`'s pool. Never on a
+- `status:qa` — (only in a workflow with human QA, `python3 .pilot/pilot.py workflow show`) a `type:feature` `status:split` story whose every task is done, set by the merge workflow, unassigned: `/pilot-qa`'s pool. Never on a
   `type:tech` story or a task (so never on a `type:bug`).
 - `status:in-qa` — `pilot-qa` has claimed it.
 - `status:done` — closed: merged (a task, or an unsplit `type:tech` story), cascaded (a `status:split` story) or confirmed in phase 5 (a `type:feature`

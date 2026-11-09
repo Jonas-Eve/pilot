@@ -59,9 +59,9 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
    specific ticket was requested). Any other refusal → report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's, `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited") to pick the **default**
-   reviewer set; the architect is never part of either default:
-   - `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`
-   - `type:tech` or `type:bug` → `pilot-techlead` alone (no PM)
+   reviewer set; the architect is never part of a default: it is `rules.review[<type>]` of `python3 .pilot/pilot.py workflow show` (once per run):
+   - standard: `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`; `type:tech` or `type:bug` → `pilot-techlead` alone (no PM)
+   - a lean workflow: `pilot-techlead` alone for every type
    - Whatever the flags, check whether the PR already carries a submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true after a reclaim fix
      (`.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket"), never for a first round. Found → fetch the latest submitted review's full body
      (every point, marked `change` or `decision`) to pass to every reviewer in step 5. This also feeds `--only`.
