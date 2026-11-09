@@ -1,6 +1,6 @@
 # PILOT — adaptive workflow (design proposal)
 
-Status: **proposal, nothing implemented**. Human-only document: no skill or agent reads it, and it
+Status: **proposal; only the engine slice exists so far** (3.3.0: `pilot.py workflow`, a chain that is a function of a profile, `lean` defined but not `ready`; the skills, task docs, merge workflow and cockpit do not follow a profile yet). Human-only document: no skill or agent reads it, and it
 is not copied into consuming projects. Once validated, the contract moves into `assets/docs/` and
 this file is removed. Companion of `docs/roles-matrix.md` (who does what today) and
 `docs/modules-design.md` (the module switch this builds on).
@@ -155,7 +155,10 @@ computes the route.
 
 ## 10. Rollout
 
-1. Apply `lean` to `pilot` itself first, through PILOT (type:tech tickets, no new ticket types).
+0. Done (3.3.0): the contract engine takes a profile (`pilot.py workflow show|check|set`, `contract --profile`),
+   `standard` is unchanged, `lean` composes (`workflow check`) and is refused by `workflow set` until it is ready.
+1. Make `lean` ready: the agent-facing rules (no e2e task in a feature split, no `status:qa` stop), the
+   `pilot-status-on-merge` workflow, then `pilot-update` carrying them. Apply it to `pilot` itself first.
 2. Measure a few tickets (agent calls, objections, time) before generalising.
 3. Define `standard` and its signals with myAVI's real constraints (migration from PILOT 2.9.0:
    no `workflow` block means today's chain).
