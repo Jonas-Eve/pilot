@@ -360,6 +360,16 @@ var EN={
 "Spec · bug, signalement brut": "Spec · bug, raw report",
 "Spec · bug, ticket existant": "Spec · bug, existing ticket",
 "Spec · feature ou tech": "Spec · feature or tech",
+"Spec · feature": "Spec · feature",
+"Spec · tech": "Spec · tech",
+"Review · feature ou e2e": "Review · feature or e2e",
+"Review · tech ou bug": "Review · tech or bug",
+"l’architecte aussi si dépendances, plusieurs apps ou signal": "the architect too on dependencies, several apps or a signal",
+"Mode par défaut : auto (sans vous).": "Default mode: auto (without you).",
+"Mode par défaut : pair (avec vous).": "Default mode: pair (with you).",
+"Spec tech : le tech lead écrit, l’architecte valide.": "Tech spec: the tech lead writes, the architect validates.",
+"Spec tech : le tech lead seul ; l’architecte intervient sur dépendances, plusieurs apps ou signal.": "Tech spec: the tech lead alone; the architect steps in on dependencies, several apps or a signal.",
+"Un signal de risque que le projet déclare peut rendre un ticket pair seulement ; un ticket peut aussi porter son propre profil (label workflow:<profil>).": "A risk signal the project declares can make a ticket pair only; a ticket can also carry its own profile (workflow:<profile> label).",
 "Spec, Dev et Review": "Spec, Dev and Review",
 "Spécifier": "Specify",
 "Statuts": "Statuses",
@@ -529,6 +539,10 @@ function profileSummary(w){
     var kinds=['feature','e2e','tech','bug'], sets=kinds.map(function(k){return arr(r.review[k]).map(function(x){return tr(agentName(String(x).replace(/^pilot-/,'')));}).join(' + ');});
     out.push(tr('Relecture : ')+(sets.every(function(x){return x===sets[0];})?sets[0]+(sets[0].indexOf('+')<0?tr(' seul'):''):kinds.map(function(k,i){return k+' → '+sets[i];}).join(' ; '))+'.');
   }
+  if(r.default_mode==='auto'||r.default_mode==='pair')out.push(tr(r.default_mode==='auto'?'Mode par défaut : auto (sans vous).':'Mode par défaut : pair (avec vous).'));
+  var sa=r.spec&&r.spec.tech&&r.spec.tech.architect;
+  if(sa==='validates')out.push(tr('Spec tech : le tech lead écrit, l’architecte valide.'));
+  else if(sa==='on-signal')out.push(tr('Spec tech : le tech lead seul ; l’architecte intervient sur dépendances, plusieurs apps ou signal.'));
   return tr('Profil du projet : ')+w.profile+'. '+out.join(' ');
 }
 
@@ -1446,6 +1460,33 @@ var ROSTER=[
   {step:'Prototype (hors phase)',lead:['designer'],leadNote:'après le cadrage par le PM',val:['pm'],sum:['architect']},
   {step:'Design (hors phase)',lead:['designer'],val:[],sum:['pm','architect']}
 ];
+/* the rows follow the project's workflow (the rules the snapshot carries); a snapshot without one keeps the whole chain, as before */
+function rosterRows(){
+  var w=S.gh&&S.gh.workflow, r=w&&w.rules; if(!r)return ROSTER;
+  var on=function(k){return phasesOn().some(function(p){return p.key===k;});};
+  var rev=function(k){return arr(r.review&&r.review[k]).map(function(x){return String(x).replace(/^pilot-/,'');});};
+  var arch=r.spec&&r.spec.tech&&r.spec.tech.architect, rows=[];
+  if(on('discovery'))rows.push(ROSTER[0]);
+  if(on('spec')){
+    rows.push({step:'Spec · feature',lead:['architect','techlead'],val:['pm'],sum:['designer']});
+    rows.push({step:'Spec · tech',lead:['techlead'],leadNote:'l’architecte aussi si dépendances, plusieurs apps ou signal',val:arch==='validates'?['architect']:[],sum:['designer']});
+    rows.push(ROSTER[2],ROSTER[3]);
+  }
+  if(on('dev'))rows.push({step:'Dev',lead:['dev'],leadNote:r.e2e_task===false?undefined:'E2E pour une tâche e2e',val:[],sum:['techlead','architect','designer']});
+  if(on('review')){
+    var f=rev('feature'), t=rev('tech');
+    if(f.join()===t.join())rows.push({step:'Review',lead:t,val:[],sum:['architect']});
+    else rows.push({step:'Review · feature ou e2e',lead:f,val:[],sum:['architect']},{step:'Review · tech ou bug',lead:t,val:[],sum:['architect']});
+  }
+  if(on('qa'))rows.push(ROSTER[6]);
+  rows.push(ROSTER[7],ROSTER[8]);
+  return rows;
+}
+/* the personas a project's workflow uses: no human QA or e2e task, no QA or E2E persona */
+function agentsOn(){
+  var r=S.gh&&S.gh.workflow&&S.gh.workflow.rules;
+  return AGENTS.filter(function(a){return !r||!((a[0]==='qa'&&r.qa===false)||(a[0]==='e2e'&&r.e2e_task===false));});
+}
 function agentName(k){var a=AGENTS.filter(function(x){return x[0]===k;})[0];return a?a[1]:k;}
 function vHelp(){
   function names(ks,note){return ks.length?ks.map(agentName).join(' + ')+(note?' ('+note+')':''):'—';}
@@ -1453,12 +1494,13 @@ function vHelp(){
   return h('div',{class:'list'},
     h('div',{class:'pair'},h('span',{class:'note'},'Langue'),h('div',{class:'seg',role:'group','aria-label':'Langue',id:'langSeg'},['fr','en'].map(function(l){return h('button',{type:'button',lang:l,'aria-pressed':String(LANG===l),onclick:function(){setLang(l,true);}},l.toUpperCase());}))),
     steps&&S.gh&&S.gh.workflow?h('p',{class:'note',id:'profileNote'},profileSummary(S.gh.workflow)):null,
+    steps&&S.gh&&S.gh.workflow?h('p',{class:'note',id:'signalNote'},'Un signal de risque que le projet déclare peut rendre un ticket pair seulement ; un ticket peut aussi porter son propre profil (label workflow:<profil>).'):null,
     steps?h('p',{class:'note'},'À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.'):null,
     steps?h('div',{class:'ref'},h('table',{},
       h('thead',{},h('tr',{},['Step','Lead','Validateur','Convocable'].map(function(t){return h('th',{scope:'col'},t);}))),
-      h('tbody',{},ROSTER.map(function(r){
+      h('tbody',{},rosterRows().map(function(r){
         return h('tr',{},h('th',{scope:'row'},r.step),h('td',{},names(r.lead,r.leadNote)),h('td',{},names(r.val,r.valNote)),h('td',{},names(r.sum)));
-      })))):h('div',{class:'agents'},AGENTS.map(function(a){return h('div',{class:'row'},h('div',{class:'main'},h('div',{class:'t'},a[1]),h('p',{class:'note'},a[2])));})));
+      })))):h('div',{class:'agents'},agentsOn().map(function(a){return h('div',{class:'row'},h('div',{class:'main'},h('div',{class:'t'},a[1]),h('p',{class:'note'},a[2])));})));
 }
 var HELP_SUBS=[['agents','Agents'],['steps','Steps']];
 
