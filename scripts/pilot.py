@@ -30,6 +30,7 @@ dialogue stay with the skills. Requires the `gh` CLI and Python 3.
 """
 import argparse
 import datetime
+import fnmatch
 import json
 import math
 import os
@@ -89,10 +90,11 @@ DEFAULT_REVIEW = {"feature": ["pilot-pm", "pilot-techlead"], "e2e": ["pilot-pm",
                   "tech": ["pilot-techlead"], "bug": ["pilot-techlead"]}
 PROFILES = {
     "standard": {"drop_phases": (), "drop_external": (), "drop_statuses": (), "e2e_task": True, "review": None,
-                 "ready": True},
+                 "rank": 1, "default_mode": "pair", "spec_tech": {"architect": "validates"}, "ready": True},
     "lean": {"drop_phases": ("qa",), "drop_external": (("status:split", "status:qa"),),
              "drop_statuses": ("status:qa", "status:in-qa"), "e2e_task": False,
-             "review": {kind: ["pilot-techlead"] for kind in DEFAULT_REVIEW}, "ready": True},
+             "review": {kind: ["pilot-techlead"] for kind in DEFAULT_REVIEW},
+             "rank": 0, "default_mode": "auto", "spec_tech": {"architect": "on-signal"}, "ready": True},
 }
 
 
@@ -119,7 +121,8 @@ def profile_rules(profile=DEFAULT_PROFILE):
     review = meta["review"] or DEFAULT_REVIEW
     return {"qa": "qa" in ch["phases"], "e2e_task": meta["e2e_task"],
             "feature_done_goes_to": "status:qa" if ("status:split", "status:qa") in ch["external"] else "status:done",
-            "review": {kind: list(review[kind]) for kind in DEFAULT_REVIEW}}
+            "review": {kind: list(review[kind]) for kind in DEFAULT_REVIEW},
+            "default_mode": meta["default_mode"], "spec": {"tech": dict(meta["spec_tech"])}}
 
 
 def rules_problems(profile=DEFAULT_PROFILE):
@@ -128,6 +131,10 @@ def rules_problems(profile=DEFAULT_PROFILE):
     rules, problems = profile_rules(profile), []
     if rules["qa"] != (rules["feature_done_goes_to"] == "status:qa"):
         problems.append({"code": "qa-stop-without-qa-phase" if not rules["qa"] else "qa-phase-without-qa-stop"})
+    if rules["default_mode"] not in ("auto", "pair"):
+        problems.append({"code": "bad-default-mode", "mode": rules["default_mode"]})
+    if rules["spec"]["tech"].get("architect") not in ("validates", "on-signal"):
+        problems.append({"code": "bad-spec-rule", "architect": rules["spec"]["tech"].get("architect")})
     for kind, reviewers in rules["review"].items():
         if "pilot-techlead" not in reviewers:
             problems.append({"code": "review-without-techlead", "type": kind})
@@ -192,6 +199,9 @@ REQUIRED_LABELS = (
      "priority:P0", "priority:P1", "priority:P2", "needs-human", "on-hold", "can-resume"}
     | {f"status:{name}" for name in STATUSES}
 )
+# one per profile: required (by `doctor`) only once the project declares a `workflow`, so a project that has not adopted
+# profiles does not fail its preflight; the provisioning script creates them all
+WORKFLOW_LABELS = {f"workflow:{name}" for name in PROFILES}
 PRIORITY = {"priority:P0": 0, "priority:P1": 1, "priority:P2": 2}
 NO_PRIORITY = 9
 FLAGS = ("needs-human", "on-hold")
@@ -301,6 +311,155 @@ def set_workflow(name, path=STATE_PATH):
         result["warning"] = {"code": "dropped-statuses", "statuses": gone,
                              "hint": "no ticket should be at these statuses when the profile is switched: nothing claims them afterwards"}
     return result
+
+
+# ---- risk signals and one ticket's route -----------------------------------------------------------------------
+# A signal is a rule a script evaluates (labels, keywords in the title and body, paths), never an opinion. What it adds to
+# one ticket's roster: pair only, the architect validating or leading the Spec, extra reviewers, the designer, notes for
+# the agents, and a refusal of a lighter profile. Declared per project in `.pilot/state.json` (`workflow.signals`); there is
+# no default signal, so a project that declares none is never forced to anything.
+SIGNAL_ADDS = {"pair_only": bool, "forbid_lighter": bool, "designer": bool, "architect": str, "reviewers": list, "notes": list}
+ARCHITECT_ROLES = ("validates", "leads")
+WORKFLOW_LABEL = "workflow:"
+# a ticket's workflow label is part of its path: it is fixed before work starts and never changes once the ticket is in Dev
+WORKFLOW_FROZEN = ("status:split", "status:in-dev", "status:review-ready", "status:in-review", "status:changes-requested", "status:approved",
+                   "status:qa", "status:in-qa", "status:done")
+PATH_TOKEN_RE = re.compile(r"[\w.@-]+(?:/[\w.@*-]+)+")
+DEPENDENCY_RE = re.compile(r"\b(?:Depends on|Blocks) #\d+", re.IGNORECASE)
+
+
+def workflow_block(path=STATE_PATH):
+    """The `workflow` field of `.pilot/state.json` as it stands ({} when the file or the field is absent)."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return {}
+    block = data.get("workflow") if isinstance(data, dict) else None
+    return block if isinstance(block, dict) else {}
+
+
+def state_apps(path=STATE_PATH):
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return []
+    apps = data.get("apps") if isinstance(data, dict) else None
+    return [a["name"] for a in apps if isinstance(a, dict) and isinstance(a.get("name"), str)] if isinstance(apps, list) else []
+
+
+def signals_of(block):
+    return list(block["signals"]) if isinstance(block.get("signals"), list) else []
+
+
+def signal_problems(signals):
+    problems, seen = [], set()
+    for sig in signals:
+        sid = sig.get("id") if isinstance(sig, dict) else None
+        if not isinstance(sid, str) or not sid:
+            problems.append({"code": "signal-without-id"})
+            continue
+        if sid in seen:
+            problems.append({"code": "duplicate-signal-id", "signal": sid})
+        seen.add(sid)
+        match = sig.get("match") if isinstance(sig.get("match"), dict) else {}
+        if not any(isinstance(match.get(k), list) and match[k] and all(isinstance(x, str) for x in match[k])
+                   for k in ("labels", "keywords", "paths")):
+            problems.append({"code": "signal-without-match", "signal": sid})
+        adds = sig.get("adds") if isinstance(sig.get("adds"), dict) else {}
+        for key, value in adds.items():
+            if key not in SIGNAL_ADDS:
+                problems.append({"code": "unknown-addition", "signal": sid, "addition": key})
+            elif not isinstance(value, SIGNAL_ADDS[key]) or (key == "architect" and value not in ARCHITECT_ROLES) \
+                    or (key in ("reviewers", "notes") and not all(isinstance(x, str) for x in value)):
+                problems.append({"code": "bad-addition", "signal": sid, "addition": key})
+        for reviewer in adds.get("reviewers", []) if isinstance(adds.get("reviewers"), list) else []:
+            if reviewer not in REVIEWERS:
+                problems.append({"code": "unknown-reviewer", "signal": sid, "reviewer": reviewer})
+    return problems
+
+
+def signal_matches(signal, issue, paths=()):
+    """Whether a signal fires on a ticket (a normalized issue): any label, any keyword in the title and body, any path
+    (a glob against the paths given, e.g. a PR's changed files, and the paths the body names)."""
+    match = signal.get("match", {})
+    if any(label in issue["labels"] for label in match.get("labels", [])):
+        return True
+    text = f"{issue['title']}\n{issue['body']}".lower()
+    if any(word.lower() in text for word in match.get("keywords", [])):
+        return True
+    named = set(paths) | set(PATH_TOKEN_RE.findall(f"{issue['title']}\n{issue['body']}"))
+    return any(fnmatch.fnmatch(p, glob) for glob in match.get("paths", []) for p in named)
+
+
+def spec_route(issue, architect_addition, profile, apps, declared=True):
+    """Who leads the Spec of a ticket and whether the architect validates: a feature always has the architect lead, a bug
+    never has one, and a tech story follows its profile: the tech lead leads, the architect leads instead when the ticket
+    declares dependencies, names several apps or a signal says so, and validates when the profile or a signal asks. A
+    project that declares no workflow keeps the dialogue of both, as every project had before profiles."""
+    both, alone = ["pilot-architect", "pilot-techlead"], ["pilot-techlead"]
+    if not declared and "type:bug" not in issue["labels"]:
+        return {"architect": "leads", "leads": both, "triggers": []}
+    if "type:feature" in issue["labels"]:
+        return {"architect": "leads", "leads": both, "triggers": []}
+    if "type:bug" in issue["labels"]:
+        return {"architect": "absent", "leads": alone, "triggers": []}
+    text, triggers = f"{issue['title']}\n{issue['body']}", []
+    if DEPENDENCY_RE.search(text):
+        triggers.append("dependencies")
+    if sum(1 for app in apps if re.search(r"(?<![\w-])" + re.escape(app) + r"(?![\w-])", text, re.IGNORECASE)) >= 2:
+        triggers.append("several-apps")
+    if architect_addition == "leads":
+        triggers.append("signal")
+    if triggers:
+        return {"architect": "leads", "leads": both, "triggers": triggers}
+    asked = architect_addition == "validates" or PROFILES[profile]["spec_tech"]["architect"] == "validates"
+    return {"architect": "validates" if asked else "absent", "leads": alone, "triggers": []}
+
+
+def ticket_route(issue, path=STATE_PATH, paths=()):
+    """One ticket's route: its profile (the project's, or its own `workflow:<profile>` label when the project allows it),
+    the signals that fire, whether it is pair only, its mode, its reviewers, its Spec rule. A project without a `workflow`
+    block has the standard chain and no signal, whatever the labels say."""
+    declared = read_workflow(path)
+    block = workflow_block(path) if declared["source"] == "state" else {}
+    project, labels, warnings = declared["profile"], issue["labels"], []
+    labelled = sorted(l[len(WORKFLOW_LABEL):] for l in labels if l.startswith(WORKFLOW_LABEL))
+    profile, source = project, "project"
+    if labelled and not block:
+        warnings.append({"code": "workflow-label-ignored", "hint": "the project declares no workflow profile"})
+    elif labelled:
+        if len(labelled) > 1:
+            return {"ok": False, "reason": "several-workflow-labels", "labels": labelled}
+        if labelled[0] not in PROFILES:
+            return {"ok": False, "reason": "unknown-workflow-label", "label": labelled[0], "expected": list(PROFILES)}
+        allowed = {project} | {n for n in block.get("allow", []) if n in PROFILES} if isinstance(block.get("allow"), list) else {project}
+        if labelled[0] not in allowed:
+            return {"ok": False, "reason": "profile-not-allowed", "label": labelled[0], "allowed": sorted(allowed)}
+        profile, source = labelled[0], "label"
+    fired = [s for s in signals_of(block) if isinstance(s, dict) and signal_matches(s, issue, paths)] if block else []
+    adds = [s.get("adds", {}) for s in fired]
+    if PROFILES[profile]["rank"] < PROFILES[project]["rank"]:
+        if any(a.get("forbid_lighter") for a in adds):
+            return {"ok": False, "reason": "lighter-forbidden", "profile": profile, "project_profile": project,
+                    "signals": [s["id"] for s in fired]}
+        warnings.append({"code": "lighter-than-project", "hint": "a lighter profile than the project's needs a written reason on the ticket"})
+    rules = profile_rules(profile)
+    kind = next((k for k in DEFAULT_REVIEW if f"type:{k}" in labels), None)
+    review = list(rules["review"][kind]) if kind else []
+    for extra in (r for a in adds for r in a.get("reviewers", [])):
+        if kind and extra not in review:
+            review.append(extra)
+    architect = "leads" if any(a.get("architect") == "leads" for a in adds) else \
+        "validates" if any(a.get("architect") == "validates" for a in adds) else None
+    pair_only = any(a.get("pair_only") for a in adds)
+    return {"ok": True, "profile": profile, "source": source, "project_profile": project, "rules": rules,
+            "signals": [s["id"] for s in fired], "pair_only": pair_only,
+            "mode": "pair" if pair_only else rules["default_mode"], "review": review,
+            "spec": spec_route(issue, architect, profile, state_apps(path), declared["source"] == "state"),
+            "designer": any(a.get("designer") for a in adds), "notes": [n for a in adds for n in a.get("notes", [])],
+            "warnings": warnings, "inherit_labels": [f"{WORKFLOW_LABEL}{profile}"] if source == "label" else []}
 
 
 DEFAULT_LANGUAGE = "en"
@@ -523,10 +682,19 @@ class Refused(Exception):
 
 
 class Machine:
-    def __init__(self, gh, profile=None):
+    def __init__(self, gh, profile=None, state_path=STATE_PATH):
         self.gh = gh
-        self.profile = profile or read_profile()
+        self.state_path = state_path
+        self.profile = profile or read_profile(state_path)
         self._open = {}
+
+    def route_of(self, issue, paths=()):
+        return ticket_route(issue, self.state_path, paths)
+
+    def _pair_only(self, issue):
+        """The route of a ticket when it is pair only (an `--auto` run must leave it to a human), else None."""
+        route = self.route_of(issue)
+        return route if route.get("ok") and route["pair_only"] else None
 
     def _require_phase(self, phase):
         if phase not in chain(self.profile)["phases"]:
@@ -552,7 +720,7 @@ class Machine:
         return False
 
     # ---- pool ----------------------------------------------------------------------------
-    def pool(self, phase, limit, only=None):
+    def pool(self, phase, limit, only=None, auto=False):
         self._require_phase(phase)
         cfg = PHASES[phase]
         candidates, excluded = [], []
@@ -564,6 +732,8 @@ class Machine:
             for flag in FLAGS:
                 if flag in issue["labels"]:
                     return reject(issue, flag)
+            if auto and self._pair_only(issue):
+                return reject(issue, "pair-only", signals=self.route_of(issue)["signals"])
             deps = self.blocking_dependencies(issue)
             if deps:
                 return reject(issue, "depends-on-open", depends_on=deps)
@@ -617,10 +787,19 @@ class Machine:
                           if g.get("state") == "open"]
         return found
 
-    def resolve(self, phase, number, resume=False):
+    def resolve(self, phase, number, resume=False, auto=False):
         self._require_phase(phase)
-        cfg = PHASES[phase]
         raw = self.gh.get_issue(number)
+        result = self._resolve(phase, number, resume, auto, raw)
+        if auto and result.get("action") in ("claim-fresh", "reclaim", "resume-orphaned", "resume-cleared"):
+            route = self._pair_only(normalize(raw))
+            if route:  # a signal makes it pair only: an unattended run leaves it to a human
+                return {"action": "stop", "reason": "pair-only", "signals": route["signals"], "issue": number,
+                        "status": result.get("status")}
+        return result
+
+    def _resolve(self, phase, number, resume, auto, raw):
+        cfg = PHASES[phase]
         if raw is None:
             return {"action": "stop", "reason": "not-found", "issue": number}
         issue = normalize(raw)
@@ -638,7 +817,7 @@ class Machine:
             if kind in cfg["containers"]:
                 tree = self.open_tree(number)
                 if tree:
-                    found = self.pool(phase, 5, only=set(tree))
+                    found = self.pool(phase, 5, only=set(tree), auto=auto)
                     return {"action": "descend", "via": number, "pick": found["pick"],
                             "candidate_count": found["candidate_count"]}
                 if phase == "spec" and kind == "epic":
@@ -701,7 +880,8 @@ class Machine:
                       "the account can push (a session may still restrict writes)"
                       if perms.get("push") or perms.get("admin")
                       else "read-only access: claim/set/flag would be refused")
-                missing = sorted(REQUIRED_LABELS - self.gh.label_names())
+                needed = REQUIRED_LABELS | (WORKFLOW_LABELS if read_workflow(self.state_path)["source"] == "state" else set())
+                missing = sorted(needed - self.gh.label_names())
                 check("pilot-labels", not missing,
                       "all present" if not missing else
                       f"{len(missing)} missing (run /pilot-update): " + ", ".join(missing[:6])
@@ -754,6 +934,15 @@ class Machine:
                 row["a"] = t["assignees"][0]
             if t["number"] in prs:
                 row["r"] = prs[t["number"]]
+            route = self.route_of(t)
+            if route.get("ok"):
+                guard = {}
+                if route["pair_only"]:
+                    guard["p"], guard["s"] = 1, route["signals"]
+                if route["source"] == "label":
+                    guard["w"] = route["profile"]
+                if guard:
+                    row["g"] = guard  # pair only (and why), or its own workflow profile
             parent = str(raw.get("parent_issue_url") or "").rsplit("/", 1)[-1]
             if parent.isdigit():
                 row["p"] = int(parent)  # parent issue number: lets the dashboard nest sub-issues
@@ -768,7 +957,7 @@ class Machine:
         if modules is not None:
             doc["modules"] = modules  # the dashboard's tabs follow the modules a project has on
         doc["language"] = read_language()  # the dashboard opens in it (a reader can switch)
-        declared = read_workflow()
+        declared = read_workflow(self.state_path)
         if declared["source"] == "state":  # the chain this project runs: the dashboard shows its phases and its rules
             doc["workflow"] = {"profile": declared["profile"], "phases": sorted(chain(declared["profile"])["contracts"]),
                                "rules": profile_rules(declared["profile"])}
@@ -785,13 +974,16 @@ class Machine:
         body.update(extra or {})
         return normalize(self.gh.patch_issue(number, body))
 
-    def claim(self, phase, number, mode):
+    def claim(self, phase, number, mode, auto=False):
         self._require_phase(phase)
         cfg = PHASES[phase]
         raw = self.gh.get_issue(number)
         if raw is None:
             raise Refused({"claimed": False, "reason": "not-found", "issue": number})
         issue = normalize(raw)
+        if auto and self._pair_only(issue):
+            raise Refused({"claimed": False, "reason": "pair-only", "issue": number,
+                           "signals": self.route_of(issue)["signals"]})
         labels, status = set(issue["labels"]), status_of(issue["labels"])
         me = self.gh.me()
 
@@ -852,8 +1044,12 @@ class Machine:
             labels = {l for l in labels if not l.startswith("status:")}
             if name != "none":
                 labels.add(f"status:{name}")
+        workflow_before = {l for l in set(normalize(raw)["labels"]) if l.startswith(WORKFLOW_LABEL)}
         labels |= set(add)
         labels -= set(remove)
+        if {l for l in labels if l.startswith(WORKFLOW_LABEL)} != workflow_before and before in WORKFLOW_FROZEN:
+            raise Refused({"ok": False, "reason": "workflow-label-frozen", "issue": number, "status": before,
+                           "hint": "a ticket's workflow is fixed before Dev starts"})
         assignees = [self.gh.me()] if assign == "me" else [] if assign == "none" else None
         extra = {"state": "closed", "state_reason": "completed"} if close else None
         after = self._write(number, labels, assignees, extra)
@@ -2002,15 +2198,18 @@ def build_parser():
     p = sub.add_parser("pool")
     p.add_argument("phase", choices=[x for x in phases if x != "proto"])
     p.add_argument("--limit", type=int, default=5)
+    p.add_argument("--auto", action="store_true", help="an unattended run: leave out the tickets a signal makes pair only")
     p = sub.add_parser("resolve")
     p.add_argument("phase", choices=phases)
     p.add_argument("issue", type=int)
     p.add_argument("--resume", action="store_true")
+    p.add_argument("--auto", action="store_true", help="an unattended run: stop on a ticket a signal makes pair only")
     p = sub.add_parser("claim")
     p.add_argument("phase", choices=phases)
     p.add_argument("issue", type=int)
     p.add_argument("--mode", required=True,
                    choices=["fresh", "reclaim", "resume-orphaned", "resume-cleared", "rescope"])
+    p.add_argument("--auto", action="store_true", help="an unattended run: refuse a ticket a signal makes pair only")
     p = sub.add_parser("set")
     p.add_argument("issue", type=int)
     p.add_argument("--status", help="a status name (e.g. review-ready) or 'none'")
@@ -2069,6 +2268,8 @@ def build_parser():
     p = sub.add_parser("workflow", help="the project's workflow profile: show it, check that every profile composes, or set it")
     p.add_argument("action", choices=["show", "check", "set"])
     p.add_argument("name", nargs="?", choices=list(PROFILES))
+    p.add_argument("--ticket", type=int, help="show: one ticket's route (its profile, signals, mode, Spec rule); needs GitHub")
+    p.add_argument("--path", action="append", default=[], help="show --ticket: a changed file, for the path signals")
     p = sub.add_parser("wiki")
     p.add_argument("--dir", default=WIKI_DIR, help="the wiki directory (default: wiki)")
     ws = p.add_subparsers(dest="bundle_cmd", required=True)
@@ -2200,7 +2401,12 @@ def run_contract(args):
             "external": [list(t) for t in ch["external"]], "sinks": list(SINKS), "problems": problems}
 
 
-def run_workflow(args):
+def run_workflow(args, gh=None):
+    if args.action == "show" and getattr(args, "ticket", None):
+        raw = gh.get_issue(args.ticket)
+        if raw is None:
+            raise Refused({"ok": False, "reason": "not-found", "issue": args.ticket})
+        return {"issue": args.ticket, **ticket_route(normalize(raw), STATE_PATH, args.path)}
     if args.action == "set":
         if not args.name:
             raise Refused({"ok": False, "reason": "profile-name-required", "expected": list(PROFILES)})
@@ -2209,16 +2415,20 @@ def run_workflow(args):
         profiles = {name: {"ready": meta["ready"], "phases": sorted(chain(name)["contracts"]),
                            "rules": profile_rules(name), "problems": profile_problems(name)}
                     for name, meta in PROFILES.items()}
-        return {"ok": not any(p["problems"] for p in profiles.values()), "profiles": profiles}
+        signals = signal_problems(signals_of(workflow_block()))
+        return {"ok": not signals and not any(p["problems"] for p in profiles.values()), "profiles": profiles,
+                "signals": signals}
     current = read_workflow()
-    problems = profile_problems(current["profile"])
+    problems = profile_problems(current["profile"]) + signal_problems(signals_of(workflow_block()))
     return {"ok": not problems, **current, "ready": PROFILES[current["profile"]]["ready"],
             "phases": sorted(chain(current["profile"])["contracts"]), "rules": profile_rules(current["profile"]),
             "problems": problems}
 
 
 def needs_github(args):
-    if args.cmd in ("module", "contract", "workflow"):
+    if args.cmd == "workflow":
+        return bool(getattr(args, "ticket", None))
+    if args.cmd in ("module", "contract"):
         return False
     if args.cmd == "arch":
         return False
@@ -2239,16 +2449,16 @@ def run(args, gh):
     if args.cmd == "contract":
         return run_contract(args)
     if args.cmd == "workflow":
-        return run_workflow(args)
+        return run_workflow(args, gh)
     if args.cmd in ("wiki", "arch"):
         return run_bundle(args, gh)
     machine = Machine(gh)
     if args.cmd == "pool":
-        return {"phase": args.phase, **machine.pool(args.phase, args.limit)}
+        return {"phase": args.phase, **machine.pool(args.phase, args.limit, auto=args.auto)}
     if args.cmd == "resolve":
-        return machine.resolve(args.phase, args.issue, args.resume)
+        return machine.resolve(args.phase, args.issue, args.resume, args.auto)
     if args.cmd == "claim":
-        return machine.claim(args.phase, args.issue, args.mode)
+        return machine.claim(args.phase, args.issue, args.mode, args.auto)
     if args.cmd == "set":
         assign = "me" if args.assign_me else "none" if args.unassign else None
         return machine.set(args.issue, args.status, assign, args.add, args.remove, args.close, args.pr)

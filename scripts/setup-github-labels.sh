@@ -64,6 +64,8 @@ LABELS=(
   "needs-human|B60205|PILOT: a phase hit something only a human can decide; status: stays wherever it was"
   "on-hold|C2C2C2|PILOT: deliberately paused, not blocked on a question; excluded from every phase's candidate pools"
   "can-resume|0E8A16|PILOT: human-verified signal that an in-progress ticket is safe for the next sweep to pick up"
+  "workflow:standard|1D76DB|PILOT: this ticket runs the standard workflow; fixed before Dev, inherited by its tasks"
+  "workflow:lean|BFE5BF|PILOT: this ticket runs the lean workflow; fixed before Dev, inherited by its tasks"
 )
 
 echo "Setting up PILOT labels on ${1:-the current repo}..."

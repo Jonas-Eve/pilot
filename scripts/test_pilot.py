@@ -754,7 +754,7 @@ class LabelScriptTests(unittest.TestCase):
         path = os.path.join(os.path.dirname(__file__), "setup-github-labels.sh")
         with open(path, encoding="utf-8") as handle:
             in_script = set(re.findall(r'^  "([^|"]+)\|', handle.read(), re.M))
-        self.assertEqual(in_script, set(pilot.REQUIRED_LABELS))
+        self.assertEqual(in_script, set(pilot.REQUIRED_LABELS) | set(pilot.WORKFLOW_LABELS))
 
     def test_every_label_description_fits_github_limit(self):
         import os
@@ -762,7 +762,7 @@ class LabelScriptTests(unittest.TestCase):
         path = os.path.join(os.path.dirname(__file__), "setup-github-labels.sh")
         with open(path, encoding="utf-8") as handle:
             rows = re.findall(r'^  "([^|"]+)\|[0-9A-Fa-f]{6}\|(.*)"\s*$', handle.read(), re.M)
-        self.assertEqual(len(rows), len(pilot.REQUIRED_LABELS))
+        self.assertEqual(len(rows), len(pilot.REQUIRED_LABELS) + len(pilot.WORKFLOW_LABELS))
         for name, description in rows:
             self.assertLessEqual(len(description), 100, name)  # GitHub: "description is too long (maximum is 100 characters)"
 
@@ -1763,6 +1763,200 @@ class WorkflowRulesTests(unittest.TestCase):
         self.assertIn("feature_done_goes_to", text)
         self.assertIn("contents: read", text)
         self.assertIn("'status:qa'", text)  # the fallback when the rules cannot be read is today's behaviour
+
+
+class WorkflowRouteTests(unittest.TestCase):
+    """One ticket's route: its profile (the project's, or its own label), the risk signals that fire, the mode, the Spec rule."""
+
+    P0 = {"id": "priority-p0", "match": {"labels": ["priority:P0"]}, "adds": {"pair_only": True, "architect": "validates"}}  # a project's own signal
+
+    def state(self, workflow=None, apps=None):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        data = {"projectName": "p"}
+        if workflow is not None:
+            data["workflow"] = workflow
+        if apps:
+            data["apps"] = [{"name": a} for a in apps]
+        path = pathlib.Path(tmp.name) / "state.json"
+        path.write_text(json.dumps(data))
+        return str(path)
+
+    def norm(self, labels=(), title="t", body="", number=1):
+        return pilot.normalize(dict(issue(number, labels, body=body), title=title))
+
+    def route(self, labels=(), workflow=None, body="", title="t", apps=None, paths=()):
+        return pilot.ticket_route(self.norm(labels, title, body), self.state(workflow, apps), paths)
+
+    def test_rules_carry_the_default_mode_and_the_spec_rule(self):
+        std, lean = pilot.profile_rules("standard"), pilot.profile_rules("lean")
+        self.assertEqual((std["default_mode"], lean["default_mode"]), ("pair", "auto"))
+        self.assertEqual((std["spec"]["tech"]["architect"], lean["spec"]["tech"]["architect"]), ("validates", "on-signal"))
+
+    def test_signals_are_validated(self):
+        ok = {"id": "a", "match": {"labels": ["x"]}, "adds": {"pair_only": True, "architect": "leads", "reviewers": ["pilot-architect"]}}
+        self.assertEqual(pilot.signal_problems([ok]), [])
+        codes = lambda sig: {p["code"] for p in pilot.signal_problems(sig)}
+        self.assertIn("signal-without-id", codes([{"match": {"labels": ["x"]}, "adds": {}}]))
+        self.assertIn("duplicate-signal-id", codes([ok, ok]))
+        self.assertIn("signal-without-match", codes([{"id": "b", "match": {}, "adds": {}}]))
+        self.assertIn("unknown-addition", codes([{"id": "b", "match": {"labels": ["x"]}, "adds": {"fly": True}}]))
+        self.assertIn("bad-addition", codes([{"id": "b", "match": {"labels": ["x"]}, "adds": {"pair_only": "yes"}}]))
+        self.assertIn("bad-addition", codes([{"id": "b", "match": {"labels": ["x"]}, "adds": {"architect": "decides"}}]))
+        self.assertIn("unknown-reviewer", codes([{"id": "b", "match": {"labels": ["x"]}, "adds": {"reviewers": ["pilot-nobody"]}}]))
+
+    def test_a_signal_matches_a_label_a_keyword_or_a_path(self):
+        sig = lambda **m: {"id": "s", "match": m, "adds": {"pair_only": True}}
+        t = self.norm(["type:tech", "area:auth"], "Rotate the JWT secret", "touches `apps/backend-node/src/auth/jwt.ts` too")
+        self.assertTrue(pilot.signal_matches(sig(labels=["area:auth"]), t))
+        self.assertTrue(pilot.signal_matches(sig(keywords=["jwt"]), t))  # case-insensitive, title and body
+        self.assertFalse(pilot.signal_matches(sig(keywords=["billing"]), t))
+        self.assertTrue(pilot.signal_matches(sig(paths=["apps/backend-node/src/auth/*"]), t))  # a path named in the body
+        self.assertTrue(pilot.signal_matches(sig(paths=["scripts/*.py"]), t, ["scripts/pilot.py"]))  # a changed file
+        self.assertFalse(pilot.signal_matches(sig(paths=["docs/*"]), t))
+
+    def test_without_a_workflow_block_nothing_changes(self):
+        got = self.route(["type:tech", "priority:P0", "workflow:lean"])
+        self.assertEqual((got["profile"], got["source"], got["signals"], got["pair_only"], got["mode"]),
+                         ("standard", "project", [], False, "pair"))
+
+    def test_a_declared_workflow_gives_the_profile_mode_and_no_signal_unless_the_project_declares_one(self):
+        plain = self.route(["type:tech"], {"profile": "lean"})
+        self.assertEqual((plain["profile"], plain["mode"], plain["pair_only"]), ("lean", "auto", False))
+        p0_without = self.route(["type:tech", "priority:P0"], {"profile": "lean"})  # no default signal: a P0 ticket is not forced to pair
+        self.assertEqual((p0_without["signals"], p0_without["pair_only"], p0_without["mode"]), ([], False, "auto"))
+        p0 = self.route(["type:tech", "priority:P0"], {"profile": "lean", "signals": [self.P0]})
+        self.assertEqual((p0["signals"], p0["pair_only"], p0["mode"]), (["priority-p0"], True, "pair"))
+
+    def test_project_signals_add_their_guardrails(self):
+        wf = {"profile": "standard", "signals": [{"id": "identity", "match": {"keywords": ["jwt"]},
+              "adds": {"pair_only": True, "architect": "leads", "reviewers": ["pilot-architect"], "designer": True, "notes": ["identity rules apply"]}}]}
+        got = self.route(["type:feature"], wf, title="Rotate the JWT secret")
+        self.assertEqual(got["signals"], ["identity"])
+        self.assertEqual((got["pair_only"], got["designer"], got["notes"]), (True, True, ["identity rules apply"]))
+        self.assertEqual(got["review"], ["pilot-pm", "pilot-techlead", "pilot-architect"])
+        self.assertEqual(self.route(["type:tech"], wf, title="Rotate the JWT secret")["review"], ["pilot-techlead", "pilot-architect"])
+
+    def test_a_ticket_label_picks_another_allowed_profile(self):
+        got = self.route(["type:tech", "workflow:lean"], {"profile": "standard", "allow": ["lean"]})
+        self.assertEqual((got["profile"], got["source"], got["inherit_labels"]), ("lean", "label", ["workflow:lean"]))
+        self.assertEqual(got["warnings"][0]["code"], "lighter-than-project")
+        stricter = self.route(["type:tech", "workflow:standard"], {"profile": "lean", "allow": ["standard"]})
+        self.assertEqual((stricter["profile"], stricter["warnings"]), ("standard", []))
+        refused = self.route(["type:tech", "workflow:lean"], {"profile": "standard"})
+        self.assertEqual((refused["ok"], refused["reason"]), (False, "profile-not-allowed"))
+        self.assertEqual(self.route(["workflow:wild"], {"profile": "standard", "allow": ["lean"]})["reason"], "unknown-workflow-label")
+
+    def test_a_signal_can_forbid_a_lighter_profile(self):
+        wf = {"profile": "standard", "allow": ["lean"], "signals": [{"id": "a11y", "match": {"labels": ["area:front"]}, "adds": {"forbid_lighter": True}}]}
+        got = self.route(["type:feature", "area:front", "workflow:lean"], wf)
+        self.assertEqual((got["ok"], got["reason"], got["signals"]), (False, "lighter-forbidden", ["a11y"]))
+        self.assertTrue(self.route(["type:feature", "workflow:lean"], wf)["ok"])
+
+    def test_several_workflow_labels_are_refused(self):
+        got = self.route(["workflow:lean", "workflow:standard"], {"profile": "standard", "allow": ["lean"]})
+        self.assertEqual((got["ok"], got["reason"]), (False, "several-workflow-labels"))
+
+    def test_the_spec_route_of_a_tech_story(self):
+        std, lean = {"profile": "standard"}, {"profile": "lean"}
+        spec = lambda wf, labels=("type:tech", "level:story"), **kw: self.route(list(labels), wf, **kw)["spec"]
+        self.assertEqual((spec(std)["architect"], spec(std)["leads"]), ("validates", ["pilot-techlead"]))
+        self.assertEqual((spec(lean)["architect"], spec(lean)["leads"]), ("absent", ["pilot-techlead"]))
+        for wf in (std, lean):
+            dep = spec(wf, body="Depends on #12 first")
+            self.assertEqual((dep["architect"], dep["triggers"], dep["leads"]), ("leads", ["dependencies"], ["pilot-architect", "pilot-techlead"]))
+            apps = spec(wf, body="Changes backend-node and frontend together", apps=["backend-node", "frontend", "tenant-portal"])
+            self.assertEqual((apps["architect"], apps["triggers"]), ("leads", ["several-apps"]))
+            one = spec(wf, body="Only frontend", apps=["backend-node", "frontend"])
+            self.assertEqual(one["triggers"], [])
+        wf = {"profile": "lean", "signals": [{"id": "v", "match": {"keywords": ["secret"]}, "adds": {"architect": "validates"}}]}
+        self.assertEqual(spec(wf, title="rotate the secret")["architect"], "validates")
+        feature = spec(lean, labels=("type:feature", "level:story"))
+        self.assertEqual((feature["architect"], feature["leads"]), ("leads", ["pilot-architect", "pilot-techlead"]))
+        bug = spec(std, labels=("type:bug", "level:task"))
+        self.assertEqual((bug["architect"], bug["leads"]), ("absent", ["pilot-techlead"]))
+        legacy = spec(None)  # no workflow block: the dialogue of both, as before profiles
+        self.assertEqual((legacy["architect"], legacy["leads"]), ("leads", ["pilot-architect", "pilot-techlead"]))
+        self.assertEqual(spec(None, labels=("type:bug", "level:task"))["architect"], "absent")
+
+    def machine(self, issues, workflow, **kw):
+        return pilot.Machine(FakeGh(issues), state_path=self.state(workflow), **kw)
+
+    def test_a_pair_only_ticket_is_never_picked_by_an_auto_pool_or_resolved_or_claimed_in_auto(self):
+        issues = [issue(1, ["status:dev-ready", "type:tech", "priority:P0"]), issue(2, ["status:dev-ready", "type:tech", "priority:P1"])]
+        m = self.machine(issues, {"profile": "lean", "signals": [self.P0]})
+        self.assertEqual(m.pool("dev", 5)["pick"]["number"], 1)
+        got = m.pool("dev", 5, auto=True)
+        self.assertEqual(got["pick"]["number"], 2)
+        self.assertIn(("pair-only", 1), [(e["reason"], e["number"]) for e in got["excluded"]])
+        stop = m.resolve("dev", 1, auto=True)
+        self.assertEqual((stop["action"], stop["reason"], stop["signals"]), ("stop", "pair-only", ["priority-p0"]))
+        self.assertEqual(m.resolve("dev", 1)["action"], "claim-fresh")
+        self.assertEqual(m.resolve("dev", 2, auto=True)["action"], "claim-fresh")
+        with self.assertRaises(pilot.Refused) as refused:
+            m.claim("dev", 1, "fresh", auto=True)
+        self.assertEqual(refused.exception.payload["reason"], "pair-only")
+        self.assertEqual(m.claim("dev", 1, "fresh")["status"], "status:in-dev")
+
+    def test_an_auto_descent_into_an_epic_skips_a_pair_only_child(self):
+        issues = [issue(1, ["level:epic", "type:feature"]), issue(2, ["status:dev-ready", "type:tech", "priority:P0"]),
+                  issue(3, ["status:dev-ready", "type:tech", "priority:P1"])]
+        m = pilot.Machine(FakeGh(issues, subs={1: [2, 3]}), state_path=self.state({"profile": "lean", "signals": [self.P0]}))
+        self.assertEqual(m.resolve("dev", 1)["pick"]["number"], 2)
+        self.assertEqual(m.resolve("dev", 1, auto=True)["pick"]["number"], 3)
+
+    def test_a_project_without_a_workflow_block_keeps_auto_for_a_p0_ticket(self):
+        m = self.machine([issue(1, ["status:dev-ready", "type:tech", "priority:P0"])], None)
+        self.assertEqual(m.pool("dev", 5, auto=True)["pick"]["number"], 1)
+        self.assertEqual(m.resolve("dev", 1, auto=True)["action"], "claim-fresh")
+
+    def test_a_workflow_label_is_frozen_once_the_ticket_is_in_dev(self):
+        wf = {"profile": "standard", "allow": ["lean"]}
+        for status in ("status:split", "status:in-dev", "status:review-ready", "status:in-review", "status:changes-requested", "status:approved", "status:qa"):
+            m = self.machine([issue(1, [status, "type:tech"])], wf)
+            with self.assertRaises(pilot.Refused) as refused:
+                m.set(1, add=["workflow:lean"])
+            self.assertEqual(refused.exception.payload["reason"], "workflow-label-frozen", status)
+        m = self.machine([issue(2, ["status:in-dev", "type:tech", "workflow:lean"])], wf)
+        self.assertNotIn("warning", m.set(2, add=["needs-human"]))  # other labels stay free
+        m = self.machine([issue(3, ["status:backlog", "type:tech"])], wf)
+        self.assertIn("workflow:lean", m.set(3, add=["workflow:lean"])["labels"])
+
+    def test_cli_takes_auto_and_a_ticket_route(self):
+        parse = pilot.build_parser().parse_args
+        self.assertTrue(parse(["resolve", "dev", "5", "--auto"]).auto)
+        self.assertTrue(parse(["claim", "dev", "5", "--mode", "fresh", "--auto"]).auto)
+        self.assertTrue(parse(["pool", "dev", "--auto"]).auto)
+        self.assertEqual(parse(["workflow", "show", "--ticket", "5", "--path", "a/b.py"]).path, ["a/b.py"])
+        self.assertTrue(pilot.needs_github(parse(["workflow", "show", "--ticket", "5"])))
+        self.assertFalse(pilot.needs_github(parse(["workflow", "show"])))
+
+    def test_doctor_requires_the_workflow_labels_only_once_a_workflow_is_declared(self):
+        gh = FakeGh([])
+        gh.labels = set(pilot.REQUIRED_LABELS)
+        label_check = lambda state: next(c for c in pilot.Machine(gh, state_path=self.state(state)).doctor(modules={})["checks"]
+                                         if c["name"] == "pilot-labels")
+        self.assertTrue(label_check(None)["ok"])
+        declared = label_check({"profile": "lean"})
+        self.assertFalse(declared["ok"])
+        self.assertIn("workflow:lean", declared["detail"])
+        gh.labels = set(pilot.REQUIRED_LABELS) | set(pilot.WORKFLOW_LABELS)
+        self.assertTrue(label_check({"profile": "lean"})["ok"])
+
+    def test_the_workflow_labels_exist_for_every_profile(self):
+        for name in pilot.PROFILES:
+            self.assertIn(f"workflow:{name}", pilot.WORKFLOW_LABELS)
+        self.assertFalse(pilot.WORKFLOW_LABELS & pilot.REQUIRED_LABELS)  # not required of a project that declares no workflow
+
+    def test_the_snapshot_marks_a_ticket_that_is_pair_only_or_has_its_own_profile(self):
+        issues = [issue(1, ["status:backlog", "type:tech", "priority:P0"]), issue(2, ["status:backlog", "type:tech"]),
+                  issue(3, ["status:backlog", "type:tech", "workflow:lean"])]
+        rows = {r["n"]: r for r in self.machine(issues, {"profile": "standard", "allow": ["lean"], "signals": [self.P0]}).snapshot()["issues"]}
+        self.assertEqual(rows[1]["g"], {"p": 1, "s": ["priority-p0"]})
+        self.assertNotIn("g", rows[2])
+        self.assertEqual(rows[3]["g"], {"w": "lean"})
+        plain = {r["n"]: r for r in self.machine(issues, None).snapshot()["issues"]}
+        self.assertTrue(all("g" not in r for r in plain.values()))
 
 
 class ProcessReferencesTests(unittest.TestCase):
