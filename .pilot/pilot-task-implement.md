@@ -43,8 +43,8 @@ spec).
     applies here too, including for a rebase conflict.
 2. Read the ticket's spec, the architect's security/architecture decisions, any UI/UX
    description carried into it, and this
-   project's own coding standards/security conventions (`CLAUDE.md`, `README.md`, or
-   equivalent — e.g. architecture-layering, how identity is derived, what secrets/
+   project's own coding standards/security conventions (`CLAUDE.md`, or what it
+   points to — e.g. architecture-layering, how identity is derived, what secrets/
    headers gate internal calls, single- vs multi-tenant), if documented.
 3. Write tests first for behavioral changes — real TDD: for each behavior you add or
    change, write the test, run it, confirm it fails for the expected reason (not a

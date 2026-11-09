@@ -21,7 +21,7 @@ duplicating it.
    label to attach to (unlike later phases, `.pilot/pilot-process.md` §3 "needs-human — an
    orthogonal flag"). No human available → say you're unsure and stop, same as
    out-of-scope. No functional-scope doc at all → judge from the project's
-   README/CLAUDE.md and existing issues, leaning toward asking over guessing when
+   `CLAUDE.md` and existing issues, leaning toward asking over guessing when
    genuinely unclear.
 2. Decide whether the idea fits in **one** story or genuinely needs **several** — don't
    force a sprawling single story to avoid the extra step. If several:
@@ -45,8 +45,8 @@ duplicating it.
      you can't; either way, still add in prose anything a static image can't capture
      (interaction states, edge cases). Otherwise, describe it yourself in
      prose — layout, key elements, states, and flow — grounded in this project's own
-     design system/style guide if it has one (your own identity's habit of checking
-     `docs/`): reuse its components, patterns, and terminology instead of inventing a
+     design system/style guide if it has one (the one `/pilot-design` wrote, or what the
+     project's root `CLAUDE.md` points to): reuse its components, patterns, and terminology instead of inventing a
      look disconnected from the rest of the product. Don't reach for a design tool to
      produce a mockup; scoping and implementation shouldn't be left guessing either way.
    - Explicit out-of-scope notes for anything adjacent you're deliberately not including.
