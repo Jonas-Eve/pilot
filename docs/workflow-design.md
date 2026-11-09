@@ -1,6 +1,15 @@
 # PILOT — adaptive workflow (design proposal)
 
-Status: **proposal; the engine and `lean`'s first rules exist** (3.3.0: `pilot.py workflow`, a chain that is a function of a profile; 3.4.0: `lean` is ready for what it declares: no human QA, no e2e task in a feature split, the tech lead alone reviews, a finished feature story goes to `done`; the skills, task docs and the merge workflow read these rules from `pilot.py workflow show`). 3.5.0: the cockpit follows the profile (phases from the snapshot, a profile chip with the rules, the rules in the help page). Not yet: Spec's roster by profile, the default mode, risk signals, a profile for one ticket (section 4), and the launch buttons following the mode. Human-only document: no skill or agent reads it, and it
+Status: **proposal; the engine is built.** 3.3.0: `pilot.py workflow`, a chain that is a function of a profile.
+3.4.0: `lean` (no human QA, no e2e task in a feature split, the tech lead alone reviews, a finished feature goes to `done`), read by
+the skills, task docs and the merge workflow from `pilot.py workflow show`. 3.5.0: the cockpit shows the project's phases, a profile
+chip and the rules. 3.6.0: risk signals (`workflow.signals`, declared by the project, none by default), a route per ticket (`workflow show --ticket N`:
+its own `workflow:<profile>` label when allowed, the mode, the reviewers, the Spec rule), `--auto` refused by the engine on a pair-only
+ticket, a frozen workflow label, the Spec of a `type:tech` story by profile (the tech lead alone, the architect validating or
+leading), and the launch buttons following the default mode. Not yet: a project's own signals (myAVI's, pilot's), recording the mode
+of each run, and the measures it would feed.
+
+Human-only document: no skill or agent reads it, and it
 is not copied into consuming projects. Once validated, the contract moves into `assets/docs/` and
 this file is removed. Companion of `docs/roles-matrix.md` (who does what today) and
 `docs/modules-design.md` (the module switch this builds on).
@@ -47,8 +56,8 @@ Discovery: a story badly thought out there makes the rest of the chain wrong.
 
 A signal is a rule a script can evaluate (labels, paths touched, keywords in the ticket), never an
 agent's opinion. Each one carries the **additions** it makes to the roster of that ticket, rather
-than "raising one level". Examples, declared per project in `.pilot/state.json` with a default set
-in `pilot.py`:
+than "raising one level". Declared per project in `.pilot/state.json`; there is no default signal, so a
+project that declares none is never forced to anything. Examples of what a project may declare:
 
 | Signal | Additions |
 |---|---|
@@ -58,10 +67,10 @@ in `pilot.py`:
 | Public contract, security or data, conflict with an ADR or guideline, `priority:P0` | pair only, architect validates |
 | `needs-human` raised on the way | stops, a human decides (as today) |
 
-A ticket with a signal is pair-only (the cockpit's `pairOnly`). Keep the list short at first,
+A signal that adds `pair_only` makes its tickets pair-only: an unattended run (`--auto`) leaves them out or refuses them, and the cockpit hides their auto button (its `pairOnly`). Keep the list short at first,
 three or four signals, and grow it from what the measurements show.
 
-### A profile for one ticket (extension, not built)
+### A profile for one ticket (built, 3.6.0)
 
 A signal is the automatic way to give one ticket a different workflow; a label is the manual one.
 `workflow:standard` or `workflow:lean` on a ticket, resolved by one function,
@@ -83,8 +92,8 @@ logic). The cockpit would show the ticket's profile as a chip. Rules that keep i
    ticket asking for QA there only works toward a profile the project declared.
 
 Cost: two labels (`setup-github-labels.sh`, `doctor`, the label list), the resolver, a `--ticket`
-option on `workflow show`, the merge workflow reading the label. A minor version. To be built after
-`lean` has been lived on `pilot` itself.
+option on `workflow show`, the merge workflow reading the label. A minor version. Built in 3.6.0 with
+`workflow.allow` (the profiles a ticket may ask for) in `.pilot/state.json`.
 
 ## 5. What never changes, whatever the profile
 
@@ -163,8 +172,8 @@ computes the route.
 2. Decided: the state machine depends on the project's configuration (section 7). Still to
    confirm with `contract`, per profile: that `lean`'s path (no QA, no e2e task, a lighter Spec)
    composes without a new status.
-3. Signals: declared per project in `state.json` with a default set in `pilot.py` (as written
-   above); confirm the schema, and who may edit it.
+3. Signals: declared per project in `state.json`, none by default (decided: a default `priority:P0`
+   signal was removed because nobody had asked for it); confirm the schema, and who may edit it.
 4. Is the profile per project only, or can a monorepo set one per app?
 5. QA granularity: per story (today) or batched per epic or per release? 20 of myAVI's 25 open
    feature stories wait at `status:qa`; none has ever closed through QA, so the epics above them

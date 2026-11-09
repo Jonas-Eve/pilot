@@ -1119,6 +1119,47 @@ const STUB = (opts) => `
     await page.close();
   }
 
+  // ---- the launch buttons and chips follow the route the snapshot gives a ticket and the workflow's default mode ----
+  {
+    const modeRules = (mode) => ({ qa: true, e2e_task: true, feature_done_goes_to: 'status:qa', default_mode: mode,
+      review: { feature: ['pilot-pm', 'pilot-techlead'], e2e: ['pilot-pm', 'pilot-techlead'], tech: ['pilot-techlead'], bug: ['pilot-techlead'] } });
+    const wf = (mode) => ({ profile: mode === 'pair' ? 'standard' : 'lean', phases: ['dev', 'discovery', 'proto', 'qa', 'review', 'spec'], rules: modeRules(mode) });
+    const issues = [ticket(31, ['type:tech', 'status:dev-ready', 'priority:P1'], { t: 'Ticket ordinaire' }),
+                    ticket(32, ['type:tech', 'status:dev-ready', 'priority:P0'], { t: 'Ticket à signal', g: { p: 1, s: ['priority-p0'] } }),
+                    ticket(33, ['type:tech', 'status:dev-ready', 'priority:P1', 'workflow:lean'], { t: 'Ticket à profil propre', g: { w: 'lean' } })];
+    const snap = (w) => Object.assign({}, snapshot(issues, 120), w ? { workflow: w } : {});
+    const rowOf2 = (pg, n) => pg.locator('#view .row', { hasText: '#' + n + ' ' }).first();
+    const links = async (pg, n) => rowOf2(pg, n).locator('a.btn').evaluateAll((as) => as.map((a) => ({ cmd: decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0]), primary: a.classList.contains('primary') })));
+
+    let page = await open({ preload: [snap(wf('pair'))] });
+    let l = await links(page, 31);
+    check('mode: a workflow whose default is pair puts the pair button first, as the primary one',
+          l.length === 2 && l[0].cmd === '/pilot-dev 31' && l[0].primary && l[1].cmd === '/pilot-dev 31 --auto' && !l[1].primary, JSON.stringify(l));
+    l = await links(page, 32);
+    check('mode: a ticket a signal makes pair only has no auto button, and says why', l.length === 1 && l[0].cmd === '/pilot-dev 32' && l[0].primary
+          && (await rowOf2(page, 32).locator('.chip.warn[title="priority-p0"]').count()) === 1 && /pair seulement/.test(await rowOf2(page, 32).textContent()), JSON.stringify(l));
+    check('mode: a ticket with its own workflow profile shows it', /profil lean/.test(await rowOf2(page, 33).textContent()));
+    check('mode: an ordinary ticket shows neither chip', !/pair seulement|profil /.test(await rowOf2(page, 31).textContent()));
+    check('mode: no page errors', page.errors.length === 0, page.errors.join('|'));
+    await page.close();
+
+    page = await open({ preload: [snap(wf('auto'))] });
+    l = await links(page, 31);
+    check('mode: a workflow whose default is auto keeps the auto button first and primary',
+          l.length === 2 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary && l[1].cmd === '/pilot-dev 31' && !l[1].primary, JSON.stringify(l));
+    check('mode: pair only wins over an auto default', JSON.stringify((await links(page, 32)).map((x) => x.cmd)) === JSON.stringify(['/pilot-dev 32']));
+    await page.close();
+
+    page = await open({ preload: [snap(null)] });
+    l = await links(page, 31);
+    check('mode: without a workflow, the buttons are as before (auto first)', l.length === 2 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary, JSON.stringify(l));
+    await page.close();
+
+    page = await open({ preload: [snap(wf('pair'))], lang: 'en' });
+    check('mode: the chips are translated', /pair only/.test(await rowOf2(page, 32).textContent()) && /profile lean/.test(await rowOf2(page, 33).textContent()));
+    await page.close();
+  }
+
   // every tab and sub-tab fits a phone, in both themes, with no script error
   const ROUTES = ['file', 'ensemble', 'ensemble/discovery', 'ensemble/spec', 'ensemble/dev', 'ensemble/review', 'ensemble/qa',
     'prototypes/encours', 'prototypes/acceptes/alancer', 'prototypes/acceptes/encours', 'prototypes/acceptes/termines', 'prototypes/rejetes', 'proto/702',
