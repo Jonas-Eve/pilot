@@ -640,7 +640,7 @@ def normalize(raw):
     return {
         "number": raw["number"],
         "title": raw.get("title", ""),
-        "state": raw.get("state", "open"),
+        "state": str(raw.get("state", "open")).lower(),
         "labels": {(l["name"] if isinstance(l, dict) else l) for l in raw.get("labels", [])},
         "assignees": [a["login"] for a in raw.get("assignees", [])],
         "body": raw.get("body") or "",
@@ -723,7 +723,7 @@ class Machine:
     def pool(self, phase, limit, only=None, auto=False):
         self._require_phase(phase)
         cfg = PHASES[phase]
-        candidates, excluded = [], []
+        candidates, excluded, raws = [], [], {}
 
         def reject(issue, reason, **extra):
             excluded.append(public(issue, reason=reason, **extra))
@@ -740,7 +740,9 @@ class Machine:
             candidates.append(dict(issue, pool=pool))
 
         def raw_issues(label):
-            return [i for i in self.gh.issues_with_label(label) if only is None or i["number"] in only]
+            found = [i for i in self.gh.issues_with_label(label) if only is None or i["number"] in only]
+            raws.update({i["number"]: i for i in found})
+            return found
 
         for raw in raw_issues(cfg["fresh"]):
             issue = normalize(raw)
@@ -769,6 +771,9 @@ class Machine:
 
         shown = [public(c, pool=c["pool"], created_at=c["created_at"],
                         blocks_open_ticket=c.get("blocks")) for c in candidates]
+        if shown and only is None:  # the pick is resolved here, from what was listed: the caller acts on `action` at once
+            checked = self.resolve_raw(phase, shown[0]["number"], False, auto, raws[shown[0]["number"]])
+            shown[0] = {**shown[0], "action": checked["action"], **({"reason": checked["reason"]} if "reason" in checked else {})}
         return {"pick": shown[0] if shown else None, "candidates": shown[:limit],
                 "candidate_count": len(shown),
                 "excluded": sorted(excluded, key=lambda e: e["number"])}
@@ -789,7 +794,9 @@ class Machine:
 
     def resolve(self, phase, number, resume=False, auto=False):
         self._require_phase(phase)
-        raw = self.gh.get_issue(number)
+        return self.resolve_raw(phase, number, resume, auto, self.gh.get_issue(number))
+
+    def resolve_raw(self, phase, number, resume, auto, raw):
         result = self._resolve(phase, number, resume, auto, raw)
         if auto and result.get("action") in ("claim-fresh", "reclaim", "resume-orphaned", "resume-cleared"):
             route = self._pair_only(normalize(raw))

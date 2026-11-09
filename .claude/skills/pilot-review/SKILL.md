@@ -27,7 +27,7 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
    resumable `status:in-review` + `can-resume`; `needs-human`, `on-hold` and open "Depends on
    #N" excluded; priority, then "Blocks #M", then oldest; `status:changes-requested` tickets
    are never in it: a reclaim is another phase's pool, §4). `pick: null` → report nothing to do;
-   otherwise resolve `pick.number` the same way. Act on the returned `action`:
+   otherwise the pool has already resolved its pick: act on `pick.action`:
    - `manual` (`reason: pr-number`: a PR number was given) → find the ticket it closes
      (`mcp__github__pull_request_read`, its `Closes #N`) and resolve that ticket here instead.
    - `claim-fresh` → step 2 (mode `fresh`).

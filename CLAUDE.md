@@ -125,7 +125,7 @@ itself.
   the file already exists there.
 
 - `scripts/pilot.py` — PILOT's deterministic ticket mechanics as a CLI, and **the
-  reference for them**: `pool` (pools, `can-resume`, exclusions, priority/blocks/age order),
+  reference for them**: `pool` (pools, `can-resume`, exclusions, priority/blocks/age order; its `pick` already carries the `action` `resolve` would give, so a bare sweep needs no second call),
   `resolve` (classify an explicitly-given ticket: claim, resume, reclaim, re-scope, descend
   into an Epic, stop — and why), `claim` (assignee + status swap, re-read), `set`
   (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with its

@@ -134,6 +134,21 @@ class PoolTests(unittest.TestCase):
         self.assertEqual(got, [1])
         self.assertEqual(ex, {2: "assigned", 3: "needs-human", 4: "on-hold"})
 
+    def test_the_pick_carries_the_action_resolve_would_give(self):
+        m, _ = machine([issue(1, ["status:dev-ready"], created="2026-01-02T00:00:00Z"),
+                        issue(2, ["status:changes-requested", "priority:P0"])])
+        got = m.pool("dev", 5)
+        self.assertEqual((got["pick"]["number"], got["pick"]["action"]), (2, "reclaim"))
+        self.assertEqual(m.resolve("dev", 2)["action"], got["pick"]["action"])
+        self.assertNotIn("action", got["candidates"][1])  # only the pick is resolved
+        fresh, _ = machine([issue(3, ["status:dev-ready"])])
+        self.assertEqual(fresh.pool("dev", 5)["pick"]["action"], "claim-fresh")
+
+    def test_a_state_written_in_capitals_reads_as_open(self):
+        raw = issue(5, ["status:dev-ready"])
+        raw["state"] = "OPEN"
+        self.assertEqual(pilot.normalize(raw)["state"], "open")
+
     def test_dependency_gate_open_closed_unknown(self):
         got, ex = self.pick("dev", [
             issue(1, ["status:dev-ready"], body="Depends on #10"),
@@ -2188,3 +2203,44 @@ class DemoSnapshotTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GradeRunTests(unittest.TestCase):
+    """The mechanical grid of the engine comparison (scripts/grade_run.py)."""
+
+    def record(self, **over):
+        rec = {"arm": "engine", "ticket": {"number": 5, "state": "open", "labels": ["type:tech", "status:approved"]},
+               "pr": {"title": "feat(cli): x", "body": "## Summary\nCloses #5\n## Test plan", "merged": False, "reviews": ["APPROVED"],
+                      "commits": ["feat(cli): x"], "files": []},
+               "transitions": ["status:in-spec", "status:dev-ready", "status:in-dev", "status:review-ready", "status:in-review", "status:approved"],
+               "steps": [{"phase": "spec", "tokens": 10, "tool_uses": 2, "ms": 1500}, {"phase": "dev", "tokens": 5, "tool_uses": 1, "ms": 500}]}
+        rec.update(over)
+        return rec
+
+    def failed(self, rec):
+        grade_run = self.grade_run()
+        return [c["name"] for c in grade_run.orchestration(rec) if not c["ok"]]
+
+    def grade_run(self):
+        spec = importlib.util.spec_from_file_location("grade_run", os.path.join(os.path.dirname(os.path.abspath(__file__)), "grade_run.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_a_clean_run_passes_and_the_effort_adds_up(self):
+        grade_run = self.grade_run()
+        self.assertEqual(self.failed(self.record()), [])
+        self.assertEqual(grade_run.effort(self.record())["tokens"], 15)
+        self.assertEqual(grade_run.effort(self.record())["seconds"], 2.0)
+
+    def test_what_the_engine_must_never_do_is_caught(self):
+        rec = self.record(transitions=["status:in-dev", "status:dev-ready", "status:approved"])
+        self.assertEqual(self.failed(rec), ["statuses-in-chain-order", "every-working-status-passed"])
+        rec = self.record()
+        rec["ticket"]["labels"] = ["status:in-dev", "status:approved", "needs-human"]
+        self.assertIn("one-status-label", self.failed(rec))
+        self.assertIn("no-flag-left", self.failed(rec))
+        rec = self.record()
+        rec["pr"]["body"] = "no link"
+        self.assertEqual(self.failed(rec), ["pr-closes-the-ticket"])
+

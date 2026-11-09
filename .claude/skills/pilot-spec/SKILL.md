@@ -28,8 +28,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
      (fresh `status:backlog`, resumable `status:in-spec` + `can-resume`; `needs-human`,
      `on-hold` and open "Depends on #N" excluded; priority, then "Blocks #M", then oldest;
      what a scheduled cron Routine drives with `--auto`, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `pick: null`
-     → report nothing to do; otherwise resolve `pick.number` the same way. Act on the
-     returned `action`:
+     → report nothing to do; otherwise the pool has already resolved its pick: act on `pick.action`:
      - `claim-fresh` → an existing, open ticket: a `level:story` (`type:feature`/`type:tech`)
        being split/specced, or a `level:task` (always a standalone `type:bug`) just needing a
        spec. Read it (`mcp__github__issue_read`) plus its parent Epic (if linked) and anything
