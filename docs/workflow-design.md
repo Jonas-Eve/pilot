@@ -9,8 +9,8 @@ this file is removed. Companion of `docs/roles-matrix.md` (who does what today) 
 
 One workflow that is the least constraining, the safest and the fastest for a given project and a
 given ticket, instead of one fixed chain for everyone. Two projects drive it: `pilot` itself
-(maintainer = PM = user, mechanism changes, a framework) and a product such as myAVI Mobility
-(users with specific needs, real-world equipment data: accessibility and reliability matter).
+(maintainer = PM = user, mechanism changes, a framework) and myAVI Mobility (a multi-tenant product
+for people with disabilities, a proof of concept with strict identity and tenant-isolation rules).
 
 Today adaptation happens per call (`--auto`, `--with`, `--only`, `--multi`) and per module
 (on/off). The chain itself, its personas and its phases are the same everywhere, and nothing
@@ -20,30 +20,45 @@ records why a ticket took a given path.
 
 Put the constraint where the risk is, nowhere else. Three independent axes:
 
-1. **Project profile**: fixed at init in `.pilot/state.json`: which steps and personas by default.
-2. **Ticket risk**: objective signals that raise one ticket to a stricter profile.
+1. **Project profile**: fixed at init in `.pilot/state.json`: `lean` or `standard`, which steps and
+   personas by default.
+2. **Ticket risk**: objective signals, each carrying its own roster additions for that one ticket.
 3. **Interaction mode**: pair or auto. Exists today, unchanged.
 
-## 3. Profiles (hypothesis, to validate)
+## 3. Profiles
 
-| | `lean` (pilot) | `standard` | `strict` (product with accessibility needs) |
-|---|---|---|---|
-| Discovery | optional | PM + architect | PM + architect, designer summoned |
-| Spec | tech lead leads, architect validates on risk | architect + tech lead | + PM validates, designer summoned |
-| Dev | auto | pair | pair |
-| Review | tech lead alone | tech lead (+ PM for feature) | tech lead + PM + architect, accessibility check |
-| Human QA | none | features | features, accessibility cases |
-| Default mode | auto | pair | pair |
+Two, not three: what a third `strict` profile would have bought is expressed as risk signals
+(section 4), per ticket, instead of a per-project level that taxes every ticket.
+
+| | `lean` (pilot) | `standard` (myAVI) |
+|---|---|---|
+| Discovery | optional | PM + architect |
+| Spec | tech lead leads, architect validates on a signal | architect + tech lead (`type:tech`: tech lead leads, architect validates) |
+| Dev | auto | pair |
+| Review | tech lead alone | tech lead (+ PM for feature/e2e) |
+| Human QA | none | features |
+| Default mode | auto | pair |
 
 Discovery keeps the architect as contributor and validator in every profile that has a
 Discovery: a story badly thought out there makes the rest of the chain wrong.
 
 ## 4. Risk signals
 
-A ticket is raised one profile when any signal holds. Signals are mechanical (a script computes
-them), never an agent's opinion: a change to labels or statuses (for `pilot`), a public contract,
-security or data, a conflict with an ADR or guideline, `priority:P0`, a sensitive path touched,
-a `needs-human` raised on the way. A raised ticket is pair-only (the cockpit's `pairOnly`).
+A signal is a rule a script can evaluate (labels, paths touched, keywords in the ticket), never an
+agent's opinion. Each one carries the **additions** it makes to the roster of that ticket, rather
+than "raising one level". Examples, declared per project in `.pilot/state.json` with a default set
+in `pilot.py`:
+
+| Signal | Additions |
+|---|---|
+| Touches labels or statuses (`pilot`) | pair only, architect validates the spec |
+| Touches identity, JWT, tenant isolation, `X-Internal-Secret` (myAVI) | pair only, architect validates the spec and joins the review |
+| `type:feature` on the front (myAVI) | designer summoned in Spec, accessibility audit (RGAA) before review |
+| Public contract, security or data, conflict with an ADR or guideline, `priority:P0` | pair only, architect validates |
+| `needs-human` raised on the way | stops, a human decides (as today) |
+
+A ticket with a signal is pair-only (the cockpit's `pairOnly`). Keep the list short at first,
+three or four signals, and grow it from what the measurements show.
 
 ## 5. What never changes, whatever the profile
 
@@ -68,8 +83,8 @@ personas sit in the roster, never the vocabulary.
 - `pilot.py contract` checks that every path a profile allows composes (no status without a
   producer or a consumer); today it checks the single chain.
 - The roster becomes one table per profile instead of one fixed table.
-- `pilot.py snapshot` adds, per ticket, its **route**: effective profile, the signal that raised
-  it, the roster of its next step, whether auto is allowed.
+- `pilot.py snapshot` adds, per ticket, its **route**: effective profile, the signals that apply,
+  the roster of its next step, whether auto is allowed.
 - Probably a **major** version: a project acts differently.
 
 ## 8. The cockpit
@@ -81,14 +96,14 @@ computes the route.
 - **Banner**: active profile as a badge, linking to the roster table of that profile.
 - **Phases from data**: `PHASES` is no longer a constant; a phase absent from the profile is
   hidden or greyed.
-- **Route per ticket**: chips with the effective profile and why a ticket was raised, e.g.
-  "raised to standard: label change". Filter "raised tickets" and `needs-human` at a glance.
+- **Route per ticket**: chips with the effective profile and which signals added guardrails, e.g.
+  "pair only: label change". Filter "tickets with a signal" and `needs-human` at a glance.
 - **"My queue" follows the step's roles**: a ticket where the architect validates shows in the
   architect's queue only at validation time.
 - **Launch buttons**: the command text stays simple (`/pilot-spec 123`): the skill reads the
   profile in `state.json` and composes the roster, so the cockpit cannot drift from the skills.
   The cockpit varies only the mode and the options: which button is primary (auto for `lean`,
-  pair for `strict` or a raised ticket), auto hidden when the route is pair-only, and the
+  pair for `standard` or a ticket with a signal), auto hidden when the route is pair-only, and the
   Options panel (`WITHS`, `--only`, `--multi`, `--next`) read from the profile's roster instead
   of the hard-coded table.
 - **"i" help**: the active profile, what each mode does in it, and why a given ticket is
@@ -106,17 +121,20 @@ computes the route.
 
 ## 9. Open questions
 
-1. myAVI's non-negotiable risk: accessibility of journeys, reliability of equipment state, or
-   both. It sets what `strict` requires (the designer, an accessibility audit, which QA cases).
+1. myAVI's non-negotiable risk. Resolved from the repository (315 issues, 260 merged PRs; 51 % of
+   issues are `type:tech`, 74 of those 162 mention security, 121 tenants): identity and tenant
+   isolation first. Accessibility is already enforced mechanically in the front components and
+   their tests; the open gap is new screens and flows, covered by the `type:feature` signal above.
 2. Does the state machine admit a path that skips Spec's dialogue (`lean`) without a new status?
    `contract` should answer before any code.
-3. Where do risk signals live: `state.json` (per project) or a default set in `pilot.py`
-   overridden per project?
+3. Signals: declared per project in `state.json` with a default set in `pilot.py` (as written
+   above); confirm the schema, and who may edit it.
 4. Is the profile per project only, or can a monorepo set one per app?
 
 ## 10. Rollout
 
 1. Apply `lean` to `pilot` itself first, through PILOT (type:tech tickets, no new ticket types).
 2. Measure a few tickets (agent calls, objections, time) before generalising.
-3. Define `strict` with myAVI's real constraints, then `standard` as the default.
+3. Define `standard` and its signals with myAVI's real constraints (migration from PILOT 2.9.0:
+   no `workflow` block means today's chain).
 4. Cockpit changes on the demo artifact, then published with the release.
