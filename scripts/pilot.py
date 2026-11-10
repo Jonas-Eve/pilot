@@ -1457,6 +1457,12 @@ class Bundle:
 
     LIVE = ()  # statuses that are history, left out of a `--active` index and of a search
     ACTIVE_LEFT_OUT = ()  # types read on demand, never carried in a prompt: left out of a `--active` index too
+    ACTIVE_LEFT_OUT_STATUS = ()  # statuses not yet in force: left out of a `--active` index, found by search and show
+
+    def _left_out(self, entry):
+        """Whether a `--active` index (what a phase prompt carries) leaves an entry out."""
+        return (entry["status"] in self.LIVE or entry["status"] in self.ACTIVE_LEFT_OUT_STATUS
+                or entry["type"] in self.ACTIVE_LEFT_OUT)
     MAX_DESCRIPTION = 160  # characters: the line an index shows
     MAX_WORDS = 400  # words of prose in one entry: one concept per file, short enough to open without cost
     ROW = ("id", "path", "description", "status")
@@ -1483,7 +1489,7 @@ class Bundle:
         entries = self.parse()
         shown = [e for e in entries if (ticket is None or ticket in e["tickets"]) and self._under(e, under)
                  and self._scoped(e, app)
-                 and not (active and (e["status"] in self.LIVE or e["type"] in self.ACTIVE_LEFT_OUT))]
+                 and not (active and self._left_out(e))]
         rows = [self._brief(e) if active else self._view(e) for e in shown]
         return {"ok": True, "dir": self.root, "entries": rows,
                 "problems": sum(len(e["problems"]) for e in entries)}
@@ -1494,7 +1500,7 @@ class Bundle:
         under = (under or "").strip("/")
         counts, direct, known = {}, [], not under
         for e in self.parse():
-            if (active and (e["status"] in self.LIVE or e["type"] in self.ACTIVE_LEFT_OUT)) or not self._scoped(e, app):
+            if (active and self._left_out(e)) or not self._scoped(e, app):
                 continue
             folder = posixpath.dirname(e["path"])
             if under and not (folder == under or folder.startswith(under + "/")):
@@ -2093,6 +2099,7 @@ class Architecture(Bundle):
     DERIVED_NAMES = ()
     LIVE = ("deprecated", "superseded")
     ACTIVE_LEFT_OUT = ("Runbook",)
+    ACTIVE_LEFT_OUT_STATUS = ("proposed",)
 
     def _type_of(self, rel):
         parts = rel.split("/")

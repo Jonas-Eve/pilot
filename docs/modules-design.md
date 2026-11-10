@@ -80,6 +80,8 @@ a YAML frontmatter, an `index.md` per folder, so an agent reads the index and op
 - `runbooks/<id>.md` — how to operate the product (deploy, provision, onboard a client): procedures step by step, read on
   demand and never carried in a phase's prompt (`index --active` leaves them out). Added in 3.9.0 so that a project can retire its
   operating documents without losing a step.
+- Only an `accepted` entry is in force. Since 3.10.0 `index --active` (what dev, spec and review prompts carry) also leaves out
+  `proposed` entries, so a bulk import of documents as proposals does not grow every phase's context; `search` and `show` still find them.
 - Scaffolding the apps (`apps/<name>/`, pinned latest compatible versions) stays, as `--scaffold`.
 
 **Where an ADR sits.** The wiki says *what* the product does; the guidelines say *how* we build; an ADR
