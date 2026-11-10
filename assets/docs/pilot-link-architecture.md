@@ -29,7 +29,9 @@ When a product rule forced it, the ADR cites the wiki entry; a wiki entry never 
 **Statuses.** `pilot.status` is `proposed`, `accepted`, `deprecated` or `superseded` (OKF `status`: `draft`,
 `stable`, `deprecated`, `deprecated`). An accepted ADR is never edited: a later one supersedes it
 (`arch supersede <new> <old>` sets both sides). Create and change entries only with `python3 .pilot/pilot.py arch
-add|set|remove|supersede`, never by hand; the prose below the frontmatter is the only hand-edited part.
+add|set|remove|supersede`, never by hand; the prose below the frontmatter is the only hand-edited part. Only an
+`accepted` entry is in force: `index --active`, which a phase prompt carries, leaves out `proposed`, `deprecated` and
+`superseded` entries (`search` and `show` still find them).
 
 **Only a PR changes the architecture.** Changes go on a branch and reach `main` through a PR a human merges;
 nothing is committed to `main` directly. A PR that breaks a guideline is a `change`; one that needs to break it

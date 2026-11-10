@@ -1300,9 +1300,18 @@ class ArchitectureTests(unittest.TestCase):
         self.add("guidelines/layering.md", "accepted", description="Domain never imports adapters.")
         self.add("guidelines/old.md", "deprecated")
         rows = self.arch.index(active=True)["entries"]
-        self.assertEqual(sorted(r["id"] for r in rows), ["0002-b", "layering"])
+        self.assertEqual(sorted(r["id"] for r in rows), ["layering"])
         self.assertTrue(all(set(r) == {"id", "path", "description", "status"} for r in rows))
         self.assertEqual(len(self.arch.index()["entries"]), 4)
+
+    def test_a_proposed_entry_is_not_in_force_so_a_phase_prompt_does_not_carry_it(self):
+        self.add("guidelines/layering.md", "accepted", description="Domain never imports adapters.")
+        self.add("guidelines/draft.md", "proposed", description="A rule nobody accepted yet.")
+        self.add("adr/0001-x.md", "proposed", description="A decision still to take.")
+        self.assertEqual([r["id"] for r in self.arch.index(active=True)["entries"]], ["layering"])
+        self.assertEqual(sorted(r["id"] for r in self.arch.index()["entries"]), ["0001-x", "draft", "layering"])
+        self.assertIn("draft", [e["id"] for e in self.arch.search("nobody")["results"]])  # still found on demand
+        self.assertEqual(self.arch.show("draft")["status"], "proposed")
 
     def test_active_index_grows_one_row_per_entry_without_bodies(self):
         for n in range(30):
