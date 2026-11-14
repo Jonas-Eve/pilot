@@ -1,6 +1,6 @@
 ---
 name: pilot-init
-description: "One-time bootstrap of a project adopting PILOT: asks for the project name and a short functional vision, copies the skills, agents and canonical docs from github.com/Jonas-Eve/pilot, renders CLAUDE.md, README.md and PROJECT-FUNCTIONAL-SCOPE.md from templates, adds a default pull request template if none exists, provisions the GitHub labels, and enables the optional modules asked for (wiki, architecture, dashboard, design, proto) with the content language. Refuses to run twice. Use to start using PILOT in a project that has not run it."
+description: "One-time bootstrap of a project adopting PILOT: asks for the project name and a short functional vision, copies the skills, agents and canonical docs from github.com/Jonas-Eve/pilot, renders CLAUDE.md and README.md from templates, creates the wiki Vision entry when the wiki module is on, adds a default pull request template if none exists, provisions the GitHub labels, and enables the optional modules asked for (wiki, architecture, dashboard, design, proto) with the content language. Refuses to run twice. Use to start using PILOT in a project that has not run it."
 argument-hint: "[project name] [functional vision] [--modules wiki,architecture,dashboard,design,proto | --no-modules] [--language en|fr|…]"
 disable-model-invocation: true
 ---
