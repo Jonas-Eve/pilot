@@ -37,9 +37,9 @@ dialogue rather than one handing a finished draft to the other
   consuming project's `.claude/skills/`
   (see "Installing in a project" below), so all of them, `pilot-init`/`pilot-update`
   included, are ordinary project-local commands once installed.
-  - `/pilot-init` — one-time: name the project, write its functional vision, copy in
-    PILOT's own skills/agents/docs, generate `CLAUDE.md` / `README.md` /
-    `PROJECT-FUNCTIONAL-SCOPE.md`, and create the GitHub labels PILOT depends on.
+  - `/pilot-init` — one-time: name the project, write its vision, copy in
+    PILOT's own skills/agents/docs, generate `CLAUDE.md` / `README.md`, create the wiki's `Vision`
+    entry when the wiki module is on, and create the GitHub labels PILOT depends on.
   - `/pilot-update` — re-sync everything PILOT-owned (skills, agents,
     `.pilot/pilot-process.md`, its `.pilot/pilot-process-*.md` companion(s),
     `.pilot/pilot-link-*.md` cross-skill link doc(s), `.pilot/pilot-task-*.md` per-duty task

@@ -20,7 +20,9 @@ repairs); stop with its report if it fails.
 
 `python3 .pilot/pilot.py module list` tells whether the `wiki` module is on. Off, or `wiki/` missing: say so and
 propose turning it on (`python3 .pilot/pilot.py module enable wiki`, then `python3 .pilot/pilot.py wiki
-reindex`, which creates `wiki/` with its root `index.md`). On a yes, go on with what was asked; on a no, stop.
+reindex`, which creates `wiki/` with its root `index.md`; then ask the human for the product's vision, 2-5 sentences,
+and create it: `wiki add product/vision.md --type Vision --status implemented --title Vision --description "<one sentence>"
+--body "<the vision>"`, in the wiki's language). On a yes, go on with what was asked; on a no, stop.
 When the project has closed tickets or code to document, offer `--bootstrap` right after.
 
 ## Question (no flag)

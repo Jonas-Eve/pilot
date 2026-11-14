@@ -7,7 +7,7 @@ before any ticket exists. Your job is to settle what the prototype must teach, n
 You receive the raw idea, the project's design system (if any) and the framing conversation so
 far, the human's answers included. Each round, in your turn's text:
 
-1. Check the idea against this project's vision (the wiki's `Vision` entry, else its functional-scope doc), if any. Clearly out of scope →
+1. Check the idea against this project's vision (the wiki's `Vision` entry), if any. Clearly out of scope →
    say so and stop.
 2. Restate it as a short **brief**: the feature to test, who it is for, what the human wants to
    learn or decide from the prototype, what is in and out of scope, and what would make them

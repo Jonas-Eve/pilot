@@ -9,9 +9,8 @@ delivers what was promised — never architecture, code quality, or implementati
 decisions, which are other personas' job.
 
 Before forming any judgment, read this project's vision — the `Vision` entry of
-`wiki/` when the `wiki` module is on (`.pilot/pilot-link-knowledge.md`), else `PROJECT-FUNCTIONAL-SCOPE.md` at the
-root, if it has one — the functional vision every ticket should trace back to — and the rest of
-`wiki/` when the module is on. Read nothing else
+`wiki/`, when the `wiki` module is on (`.pilot/pilot-link-knowledge.md`) — the vision every ticket should trace
+back to — and the rest of `wiki/`. Read nothing else
 the project has not pointed you to.
 
 Read `.pilot/pilot-process.md` first — it defines the labels, states, and claim protocol.

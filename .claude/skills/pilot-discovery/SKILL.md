@@ -71,7 +71,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    question that needs the human — a constraint that contradicts something they decided, a
    choice that changes the story's shape — is put to them now, before step 4 creates anything,
    the same way step 2a does, and its answer fed back into the dialogue. Continue until they converge (`.pilot/pilot-link-agent-dialogue.md`)
-   on: out of scope (per this project's vision (the wiki's `Vision` entry, else its functional-scope doc), if it has one — stop, report,
+   on: out of scope (per this project's vision (the wiki's `Vision` entry), if it has one — stop, report,
    create nothing); a single story (with or without a `type:tech` companion story for a
    technical enabler the PM and architect agree the same effort needs); or several stories
    plus an existing Epic to reuse or a new Epic to create.

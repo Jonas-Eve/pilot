@@ -53,15 +53,14 @@ see `.claude/skills/pilot-update/SKILL.md`.
    `pilotInitialized` is `true`, **stop here** and report, verbatim in substance:
    > PILOT is already initialized for this project ("<projectName>", on
    > <pilotInitializedAt>). Nothing to do — `pilot-init` only runs once. To pick up
-   > PILOT's own file updates, use `/pilot-update`. To change the functional vision,
-   > edit `PROJECT-FUNCTIONAL-SCOPE.md` directly.
+   > PILOT's own file updates, use `/pilot-update`. To change the vision,
+   > edit the `Vision` entry of the wiki.
    Do not write, overwrite, or re-run anything else in that case.
 
 2. **Gather inputs.** Take the project name and functional vision from the arguments if
    given; otherwise ask the human. The functional vision should be a short paragraph
-   (2-5 sentences) — enough to seed `PROJECT-FUNCTIONAL-SCOPE.md`'s "Vision" section and
-   the one-line summary atop `CLAUDE.md`/`README.md`, not a full spec (the human fills in
-   "In scope"/"Out of scope" themselves later, as the product takes shape).
+   (2-5 sentences) — enough to seed the one-line summary atop `CLAUDE.md`/`README.md` and, with
+   the `wiki` module on, the wiki's `Vision` entry (step 9b), not a full spec.
    Also decide the optional **modules** (`.pilot/pilot-process.md` §8): `wiki` (the project's functional wiki), `architecture` (its apps, technical guidelines and decisions),
    `dashboard` (the team page), `design` and `proto` (the design system and prototypes, which need `dashboard`).
    `--modules <list>` or `--no-modules` if given, otherwise ask the human which to enable (recommending `wiki` and
@@ -69,8 +68,8 @@ see `.claude/skills/pilot-update/SKILL.md`.
    Every module can be turned on later, by its own skill. Also the **language** of the wiki and architecture text (`--language <code>`, e.g. `fr`; English by default, written to `language`);
    the framework itself stays English.
 
-3. **Check for pre-existing root docs.** If `CLAUDE.md`, `README.md`, or
-   `PROJECT-FUNCTIONAL-SCOPE.md` already exist at the project root (retrofitting PILOT
+3. **Check for pre-existing root docs.** If `CLAUDE.md` or `README.md`
+   already exist at the project root (retrofitting PILOT
    onto existing work, not a brand-new empty repo), do **not** silently overwrite them.
    Show the human a diff/summary of what the generated version would contain and ask
    whether to overwrite, or skip that file and let them merge the PILOT-relevant sections
@@ -84,8 +83,8 @@ see `.claude/skills/pilot-update/SKILL.md`.
 
 5. **Render templates.** For each of
    `$PILOT_SRC/assets/templates/CLAUDE.md.tmpl`,
-   `$PILOT_SRC/assets/templates/README.md.tmpl`, and
-   `$PILOT_SRC/assets/templates/PROJECT-FUNCTIONAL-SCOPE.md.tmpl`, substitute
+   and
+   `$PILOT_SRC/assets/templates/README.md.tmpl`, substitute
    `{{PROJECT_NAME}}` and `{{FUNCTIONAL_VISION}}` with the gathered values,
    `{{PILOT_INTRO_CLAUDE}}` / `{{PILOT_INTRO_README}}` with the verbatim contents of
    `$PILOT_SRC/assets/templates/pilot-intro-claude.md.tmpl` /
@@ -95,7 +94,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
    contents of `pilot-architecture-claude.md.tmpl`/`pilot-architecture-readme.md.tmpl`/`pilot-commands-claude.md.tmpl`/`pilot-commands-readme.md.tmpl` (each
    inside its own `<!-- PILOT:*:START -->`/`END` markers — keep those markers in the
    output; `/pilot-update` looks for them later). Write the result to the
-   project root (`CLAUDE.md`, `README.md`, `PROJECT-FUNCTIONAL-SCOPE.md`), respecting
+   project root (`CLAUDE.md`, `README.md`), respecting
    step 3's per-file decision.
 
 6. **Copy the process docs.** Copy `$PILOT_SRC/assets/docs/pilot-process.md` to
@@ -147,7 +146,9 @@ see `.claude/skills/pilot-update/SKILL.md`.
    command to run themselves later — don't block the rest of this skill on it.
 
 9b. **Create the wiki** (only when the wiki module is on). If the project has no `wiki/` yet, run
-    `python3 .pilot/pilot.py wiki reindex`: it creates `wiki/` with its root `index.md`. From here it is
+    `python3 .pilot/pilot.py wiki reindex`: it creates `wiki/` with its root `index.md`, then create the vision from
+    step 2's text: `python3 .pilot/pilot.py wiki add product/vision.md --type Vision --status implemented --title Vision
+    --description "<one sentence>" --body "<the vision>"` (in the wiki's language). From here it is
     project-owned: `/pilot-update` never touches it. When the project already has closed tickets or code to
     document, tell the human to run `/pilot-wiki --bootstrap` to fill it.
 

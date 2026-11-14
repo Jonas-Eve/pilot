@@ -25,7 +25,7 @@ from a scheduled sweep.
 2. **Read** the current document: `ArtifactData` `get` on `design/<owner>__<repo>` at
    `dashboardUrl`, keeping its version. Absent → creation (the whole document, or just
    `--section`). Present → everything outside the asked section stays as it is.
-3. **Sources.** The project's vision (the wiki's `Vision` entry, else `PROJECT-FUNCTIONAL-SCOPE.md`) and the brand, mockup, wireframe, UX or theme/token
+3. **Sources.** The project's vision (the wiki's `Vision` entry) and the brand, mockup, wireframe, UX or theme/token
    files the project's root `CLAUDE.md` points to; add whatever the human gives in the
    session (view an image, read a file).
 4. **Discuss.** Call `Agent` for `pilot-designer` with `.pilot/pilot-task-write-design-system.md`,
