@@ -9,9 +9,9 @@ Code on the web or the mobile app, so the distribution model here is deliberatel
 "clone this repo, copy its `.claude/skills/`/`.claude/agents/` into your project's own
 `.claude/`" — same paths on both sides, the same mechanism as any other project-local
 skill, which works identically on every surface. This repo is not itself an application,
-but it has a functional scope: the process and the tools it gives its users (maintainers of
-the projects that copy it, the humans driving a phase, the agents running one), described in
-`PROJECT-FUNCTIONAL-SCOPE.md`. The PM and designer personas read that file first.
+but it has a vision: the process and the tools it gives its users (maintainers of
+the projects that copy it, the humans driving a phase, the agents running one), in the `Vision`
+entry of its wiki (`wiki/product/vision.md`). The PM and designer personas read it first.
 
 The canonical, always-up-to-date spec for the process this repo implements lives at
 `assets/docs/pilot-process.md`. Read it before changing any skill, agent, or label —
@@ -38,9 +38,6 @@ when new persona-facing content belongs in one of these instead of the persona f
 itself.
 
 ## 2. STRUCTURE
-- `PROJECT-FUNCTIONAL-SCOPE.md` — this repo's own functional scope: the process and tools it gives
-  its users, read first by the PM and designer personas. Not copied into consuming projects:
-  `/pilot-init` renders each project's own from `assets/templates/PROJECT-FUNCTIONAL-SCOPE.md.tmpl`.
 - `.pilot/`, `.github/`, `wiki/`, `architecture/` — this repo runs PILOT on itself (`/pilot-init`, `workflow.profile`
   `lean`, modules `dashboard`, `wiki`, `architecture`). `.pilot/` and `.github/workflows/pilot-status-on-merge.yml` are
   verbatim copies of `assets/docs/`, `scripts/pilot.py` and `assets/github/`, PILOT-owned like in any project: never edited

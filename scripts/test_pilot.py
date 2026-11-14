@@ -1097,6 +1097,13 @@ class WikiTests(unittest.TestCase):
         report = self.lint(issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]), issue(3, ["status:done"], state="closed"))
         self.assertEqual(report, {"ok": True, "entries": 2, "findings": []})
 
+    def test_a_vision_entry_needs_no_ticket_and_lints_clean(self):
+        self.wiki.add("product/vision.md", "Vision", "What the product is, for whom and by which principles.", "implemented",
+                      body="A travel assistant for people with disabilities.", typ="Vision")
+        self.assertIn("type: Vision", self.text("product/vision.md"))
+        report = self.lint(issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]), issue(3, ["status:done"], state="closed"))
+        self.assertEqual(report, {"ok": True, "entries": 3, "findings": []})
+
     def test_lint_flags_duplicates_orphaned_promises_and_reopened_work(self):
         self.entry("elsewhere/search-sort.md", "proposed", [])
         self.wiki.reindex()

@@ -14,13 +14,13 @@ that's Spec's job (phase 2). Architecture is the architect's own contribution to
 dialogue, not something you draft yourself — fold in what it raises rather than
 duplicating it.
 
-1. Check this project's functional-scope doc, if any, to confirm the idea is in scope.
+1. Check this project's vision (the wiki's `Vision` entry), if any, to confirm the idea is in scope.
    Clearly out of scope → say so and stop, nothing created. Genuinely unsure (not clearly
    out) with a human live in this session → ask directly instead of declining — the one
    point in phase 1 where this applies, since no ticket exists yet for a `needs-human`
    label to attach to (unlike later phases, `.pilot/pilot-process.md` §3 "needs-human — an
    orthogonal flag"). No human available → say you're unsure and stop, same as
-   out-of-scope. No functional-scope doc at all → judge from the project's
+   out-of-scope. No vision at all → judge from the project's
    `CLAUDE.md` and existing issues, leaning toward asking over guessing when
    genuinely unclear.
 2. Decide whether the idea fits in **one** story or genuinely needs **several** — don't

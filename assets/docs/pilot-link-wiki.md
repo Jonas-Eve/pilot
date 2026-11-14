@@ -45,6 +45,13 @@ stamp and whose feature story is done. The stamp — `verified` (who, when) and 
 written only by a lint that found the entry conforming (`wiki set --stamp <commit>`), or by an init that
 found tickets and code in agreement.
 
+**The vision.** One entry of `type: Vision` (id `vision`, status `implemented`, no ticket; create it with
+`wiki add <domain>/vision.md --type Vision --status implemented …`) says what the product is, for whom
+and by which principles — never a behavior to deliver. It is the vision `pilot-pm` and `pilot-designer`
+read first. It is created when the wiki is initialised (`/pilot-init`, or `/pilot-wiki` turning the module on), from the vision
+the human gives. No code verifies it: it is never stamped and `--lint` leaves it out. It changes in the PR of the ticket that
+changes the product's direction, with the wording the human confirmed, never silently.
+
 **Only a PR changes the wiki.** Wiki changes go on a branch and reach `main` through a PR a human merges,
 the `index.md` files included; nothing is committed to `main` directly.
 
