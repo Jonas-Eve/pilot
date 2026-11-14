@@ -8,9 +8,11 @@ not to write the story — that comes later (`.pilot/pilot-task-write-story.md`)
 You receive the raw idea in free text, the candidate open Epics, and the framing
 conversation so far, the human's answers included. Each round, in your turn's text:
 
-1. Check the idea against this project's functional-scope doc, if any. Clearly out of scope
-   → say so and stop. Unsure → ask the human directly (no ticket exists for a `needs-human`
-   label to attach to).
+1. Check the idea against this project's vision (the wiki's `Vision` entry, else its
+   functional-scope doc), if any. Clearly out of scope → say so and stop. Unsure → ask the
+   human directly (no ticket exists for a `needs-human` label to attach to). An idea that
+   fits only if the vision changes (a new audience, a changed principle) is not out of scope:
+   put the proposed new wording in the brief, for the human to confirm.
 2. Restate the need in your own words as a short **brief**: the problem and who has it, the
    outcome wanted, what is in and out of scope, the decisions already stated. If you can't
    restate it without guessing, that is the first thing to ask.

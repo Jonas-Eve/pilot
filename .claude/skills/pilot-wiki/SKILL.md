@@ -34,7 +34,7 @@ When the project has closed tickets or code to document, offer `--bootstrap` rig
 
 1. `wiki lint`. Its findings (unreadable entry, duplicate id, orphaned promise, …) go in the
    report; fix none of them silently.
-2. Entries to verify: `implemented` ones (all, or `target`). Call `Agent` for `pilot-techlead`
+2. Entries to verify: `implemented` ones (all, or `target`), except the `Vision` entry (`type: Vision`), which no code verifies. Call `Agent` for `pilot-techlead`
    with `.pilot/pilot-task-wiki-lint.md`, `.pilot/pilot-link-wiki.md`, those entries' text and
    stamps, and `git rev-parse HEAD` — nothing else from this conversation.
 3. `ok` verdicts → `wiki set <id> --stamp <commit>`. `drift`/`unverifiable` keep their old stamp.

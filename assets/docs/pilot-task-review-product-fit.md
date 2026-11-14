@@ -27,6 +27,9 @@ review, even though its siblings are):
   story's acceptance criteria as product rules. An entry that drops, changes or contradicts a
   criterion, or states a product-visible rule the criteria never asked for, is a `change`; a
   criterion no entry states at all is a `change` too.
+- **Vision** (`type:feature` only, the `Vision` entry you read first): a PR whose
+  shipped behavior contradicts the vision, or makes a sentence of it untrue, without the PR
+  editing the entry, is a `change`.
 - **`type:e2e`** — review whether the test actually exercises the real, already-merged
   end-to-end flow it claims to (not a mocked-out subset), and whether, with its
   scenarios, it genuinely validates the story's acceptance criteria as a whole — the one
