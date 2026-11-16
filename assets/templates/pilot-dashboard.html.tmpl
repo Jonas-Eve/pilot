@@ -300,6 +300,7 @@ var EN={
 "Instantané · ": "Snapshot · ",
 "Interroger le wiki": "Query the wiki",
 "Tester en tant que": "Test as",
+"sans adresse, l’agent la cherche dans architecture/ et les runbooks, sinon vous la demande ; il teste dans un navigateur et ne clôt la story que si tous les cas passent": "without an address, the agent looks in architecture/ and the runbooks, else asks you; it tests in a browser and only closes the story when every case passes",
 "Pas encore livré : ce parcours se teste une fois implémenté.": "Not delivered yet: this flow can be tested once it is implemented.",
 "Ce que vous créez": "What you create",
 "Créer un persona ou un parcours": "Create a persona or a user flow",
@@ -590,7 +591,7 @@ function actionFor(t){
     case 'review-ready': return {kind:'run',cmd:'/pilot-review '+n,label:'Relire'};
     case 'in-review': return {kind:'run',cmd:'/pilot-review --resume '+n,pairOnly:true,label:'Reprendre'};
     case 'approved': return {kind:'merge',label:'Merger sur GitHub'};
-    case 'qa': return {kind:'run',cmd:'/pilot-qa '+n,pairOnly:true,label:'Tester'};
+    case 'qa': return {kind:'run',cmd:'/pilot-qa '+n,label:'Tester'};
     case 'in-qa': return {kind:'run',cmd:'/pilot-qa --resume '+n,pairOnly:true,label:'Reprendre'};
   }
   return {kind:'none'};
@@ -796,7 +797,9 @@ function foldCard(box,key,title){
 }
 /* what one ticket row can launch, given its chosen options: --next rides it through every phase via /pilot-auto,
    --multi N has N agents converge on the approach first (never on a resume, nor on QA) */
-function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false,w:{},only:{}});}
+function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false,w:{},only:{},url:''});}
+/* a QA row: --auto runs the cases in a browser against an address the human gives (or the agent finds); it is never chained (--next) and never takes --with */
+function isQaRun(a){return /^\/pilot-qa \d+$/.test(a.cmd||'');}
 /* personas a row can add with --with (the step's Summonable column, `.pilot/pilot-link-roster.md` "Roster") and, for a review, narrow to with --only; never on a resume or a container */
 var WITHS={'/pilot-spec':['designer'],'/pilot-dev':['techlead','architect','designer'],'/pilot-review':['architect'],'/pilot-qa':['designer']};
 var PERSONA_FR={techlead:'tech lead',architect:'architecte',designer:'designer',pm:'PM'};
@@ -812,11 +815,12 @@ function rowCmds(t,a,o){
   if(a.container)return {canAuto:true,multiOK:true,container:true,auto:a.cmd+(o.multi?' --multi '+o.multi:'')+(o.next?' --next':''),pair:null};
   var canAuto=a.kind==='run'&&!a.pairOnly&&!(t.g&&t.g.p), multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
   var mu=multiOK&&o.multi?' --multi '+o.multi:'';
-  var p=phaseCmd(a), withs=!p?[]:p==='/pilot-spec'&&lab(t,'type:')==='bug'?['architect']:WITHS[p], onlys=onlyList(t,a), only=picked(o.only,onlys), wl=o.next||only.length?[]:picked(o.w,withs);
+  var q=isQaRun(a), p=phaseCmd(a), withs=!p?[]:p==='/pilot-spec'&&lab(t,'type:')==='bug'?['architect']:WITHS[p], onlys=onlyList(t,a), only=picked(o.only,onlys), wl=o.next||only.length?[]:picked(o.w,withs);
   var wt=wl.length?' --with '+wl.join(','):'', ot=only.length?' --only '+only.join(','):'';
   if(only.length)canAuto=false; /* --only is never combined with --auto */
   return {canAuto:canAuto,multiOK:multiOK,withs:withs,onlys:onlys,
-    auto:canAuto?(o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu+wt):null,
+    qa:q,
+    auto:canAuto?(q?a.cmd+' --auto'+flowUrlArg(o.url):o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu+wt):null,
     pair:a.cmd+mu+wt+ot};
 }
 function protoOf(n){
@@ -835,7 +839,7 @@ function ticketRow(t,withLevel,depth){
         h('div',{class:'main'},
           h('div',{class:'t'},h('span',{class:'num'},'#'+t.n+' '),t.title),
           h('div',{class:'meta'},withLevel&&lab(t,'level:')?h('span',{class:'chip'},LEVEL_FR[lab(t,'level:')]||lab(t,'level:')):null,ticketChips(t),
-            rc.canAuto&&o.next?h('span',{class:'chip acc'},'enchaîné'):null,rc.multiOK&&o.multi?h('span',{class:'chip acc'},'multi '+o.multi):null,
+            rc.canAuto&&o.next&&!rc.qa?h('span',{class:'chip acc'},'enchaîné'):null,rc.multiOK&&o.multi?h('span',{class:'chip acc'},'multi '+o.multi):null,
             t.assignee?h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee):null,
             t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
             h('span',{class:'note'},ago(t.updated)),
@@ -851,7 +855,10 @@ function ticketRow(t,withLevel,depth){
           protoOf(t.n)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+protoOf(t.n);}},'Voir le proto'):null,
           kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
-          rc.canAuto?h('div',{class:'grp'},
+          rc.qa&&rc.canAuto?h('div',{class:'grp'},h('label',{for:'qaUrl-'+t.n,class:'note'},'Adresse de l’environnement (facultatif)'),
+            h('input',{id:'qaUrl-'+t.n,type:'url',placeholder:'https://…',value:o.url,oninput:function(e){o.url=e.target.value;var id=e.target.id,at=e.target.selectionStart;render();var el=document.getElementById(id);if(el){el.focus();try{el.setSelectionRange(at,at);}catch(x){}}}}),
+            h('span',{class:'note'},'sans adresse, l’agent la cherche dans architecture/ et les runbooks, sinon vous la demande ; il teste dans un navigateur et ne clôt la story que si tous les cas passent')):null,
+          rc.canAuto&&!rc.qa?h('div',{class:'grp'},
             h('button',{class:'tog',type:'button','aria-pressed':String(o.next),onclick:function(){set('next',!o.next);}},'Enchaîner (--next)'),
             h('span',{class:'note'},rc.container?'traite ce qui est prêt dans cette arborescence, ticket après ticket, jusqu’à la fin ou un blocage':'suit ce ticket dans toutes les phases suivantes, jusqu’à la fin ou un blocage')):null,
           rc.multiOK?h('div',{class:'grp'},h('span',{class:'note'},'Multi'),multiSeg(o.multi,function(m){set('multi',m);},'Multi'),

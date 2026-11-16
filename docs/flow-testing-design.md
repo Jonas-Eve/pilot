@@ -42,6 +42,11 @@ After each run `pilot.py flow doc` builds a `flowRuns` document (the flow, when,
 writes it to the dashboard, and the flow's row shows: *jamais joué*, or the result (passé / partiel / échec), when, each persona with its result, and *à rejouer* as soon as the flow or a persona that played has changed since. The page
 only reads this document: it never writes the wiki, and a dashboard published before the `flowRuns` rule needs `/pilot-update` to receive it.
 
+## A flow shares the wiki's life cycle
+
+That is why flows live in the wiki: a story that creates or changes a journey lists it as one of its entries, Spec moves it to `specified`, and the Dev PR whose task completes it (every other task it lists is closed) moves it to
+`implemented`, with no step of its own. Its text then differs from the last run's hash, so the dashboard shows it *à rejouer*.
+
 ## The report
 
 The chat reply is the immediate answer; the durable one is a private Artifact per flow (found by its title, updated at the same address), with the latest run first and the earlier runs below it so regressions
