@@ -486,6 +486,9 @@ var EN={
 "Ajouter une règle": "Add a rule",
 "Vérifier la référence": "Check the reference",
 "Vérifier": "Check",
+"Remplacer": "Replace",
+"Retirer": "Remove",
+"Déprécier": "Deprecate",
 "Navigateur": "Browser",
 "l’agent teste dans un navigateur": "the agent tests in a browser, without you",
 "l’agent travaille seul": "the agent works alone, without dialogue with you",
@@ -1519,6 +1522,16 @@ function archGroups(){
   var keys=Object.keys(ARCH_GROUPS).filter(function(g){return n[g];}).concat(Object.keys(n).filter(function(g){return g.indexOf('app:')===0;}).sort());
   return keys.map(function(g){return [g,archLabel(g),n[g]];});
 }
+/* what a person can ask of an entry, as a command written for Claude Code: only a PR changes the architecture */
+function archActions(e){
+  var id=str(e.id,80); if(!FLOW_ID.test(id))return null;
+  var adr=/(^|\/)adr\//.test(str(e.path,200)), acts=[];
+  if(archIsRef(e)||/(^|\/|-)overview\.md$/.test(str(e.path,200)))acts.push(openLink('/pilot-architecture --verify '+id,'Vérifier'));
+  if(e.status==='proposed'||(e.status==='accepted'&&!adr))acts.push(openLink('/pilot-architecture --edit '+id+' ','Modifier'));
+  if(e.status==='accepted'&&adr)acts.push(openLink('/pilot-architecture --adr "remplace '+id+' : "','Remplacer'));
+  if(e.status==='proposed'||e.status==='accepted')acts.push(openLink('/pilot-architecture --deprecate '+id,e.status==='proposed'?'Retirer':'Déprécier'));
+  return acts.length?h('div',{class:'refresh'},acts):null;
+}
 function archEntry(e){
   var chips=[h('span',{class:'chip '+(ARCH_CLS[e.status]||'')},ARCH_FR[e.status]||str(e.status,40))];
   if(archIsRef(e))chips.push(e.verifiedAt?h('span',{class:'chip ok'},'vérifié '+ago(e.verifiedAt)):h('span',{class:'chip warn'},'non vérifié'));
@@ -1529,7 +1542,7 @@ function archEntry(e){
   var text=str(e.text,1600);
   return drow(h('div',{class:'t'},str(e.title,160)),e.description?h('p',{class:'note'},str(e.description,300)):null,h('div',{class:'meta'},chips),
     text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null,
-    archIsRef(e)&&FLOW_ID.test(str(e.id,80))?h('div',{class:'refresh'},openLink('/pilot-architecture --verify '+str(e.id,80),'Vérifier')):null);
+    archActions(e));
 }
 function vArch(){
   var a=S.arch;

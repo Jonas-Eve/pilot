@@ -401,7 +401,10 @@ const STUB = (opts) => `
   { const REF = { kind: 'architecture', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
       { id: 'layering', title: 'Layering', description: 'Domain never imports adapters.', path: 'guidelines/layering.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Domain never imports adapters.' },
       { id: 'data-model', title: 'Data model', description: 'The tables.', path: 'reference/data-model.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', verifiedAt: iso(120), text: 'Table catalog.' },
-      { id: 'stack', title: 'Stack', description: 'Versions.', path: 'apps/web/reference/stack.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Node 22.' } ] };
+      { id: 'stack', title: 'Stack', description: 'Versions.', path: 'apps/web/reference/stack.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Node 22.' },
+      { id: '0002-store', title: 'Store', description: 'Stored.', path: 'adr/0002-store.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Stored.' },
+      { id: '0003-draft', title: 'Draft', description: 'Idea.', path: 'adr/0003-draft.md', status: 'proposed', tickets: [], supersedes: '', supersededBy: '', text: 'Idea.' },
+      { id: '0001-old', title: 'Old', description: 'Old.', path: 'adr/0001-old.md', status: 'superseded', tickets: [], supersedes: '', supersededBy: '0002-store', text: 'Old.' } ] };
     const pg = await open({ preload: [BASE], architecture: [REF] });
     await pg.goto(FILE + '#architecture'); await pg.waitForTimeout(350);
     const v = await text(pg, '#view');
@@ -410,6 +413,11 @@ const STUB = (opts) => `
     check('architecture: a button adds a rule, one checks the reference', cmdsOf.includes('/pilot-architecture --guideline') && cmdsOf.includes('/pilot-architecture --verify') && /Ajouter une règle/.test(v) && /Vérifier la référence/.test(v), JSON.stringify(cmdsOf));
     check('architecture: each reference entry has its own check, a rule has none', cmdsOf.includes('/pilot-architecture --verify data-model') && cmdsOf.includes('/pilot-architecture --verify stack') && !cmdsOf.some((c) => /--verify layering/.test(c)), JSON.stringify(cmdsOf));
     check('architecture: a reference entry says whether it was checked, a rule does not', (v.match(/non vérifié/g) || []).length === 1 && (v.match(/vérifié il y a/g) || []).length === 1 && /Référence/.test(v), v);
+    const has = (c) => cmdsOf.some((x) => x.trim() === c);
+    check('architecture: a rule can be edited and deprecated', has('/pilot-architecture --edit layering') && has('/pilot-architecture --deprecate layering'), JSON.stringify(cmdsOf));
+    check('architecture: an accepted ADR is replaced, never edited', cmdsOf.some((x) => x.startsWith('/pilot-architecture --adr "remplace 0002-store :')) && !has('/pilot-architecture --edit 0002-store') && has('/pilot-architecture --deprecate 0002-store'), JSON.stringify(cmdsOf));
+    check('architecture: a proposed ADR can be edited or removed, a superseded one is history', has('/pilot-architecture --edit 0003-draft') && has('/pilot-architecture --deprecate 0003-draft') && !cmdsOf.some((x) => /0001-old/.test(x)), JSON.stringify(cmdsOf));
+    check('architecture: a proposed entry offers Retirer, an accepted one Déprécier', /Retirer/.test(v) && /Déprécier/.test(v));
     check('architecture reference: no page errors', pg.errors.length === 0, pg.errors.join('|'));
     await pg.close(); }
 
