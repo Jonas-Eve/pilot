@@ -23,7 +23,7 @@ particular and stop as soon as you have what the task needs:
 
 **What you read.** Where the bundle is silent, say it is not covered; do not fill the gap from the code. A
 `proposed` or `specified` entry is a promise, not behavior; a `deprecated` or `superseded` one is history, read only
-to follow `supersededBy`. When the bundle and the code disagree, the bundle is right and a human arbitrates.
+to follow `supersededBy`. When the bundle and the code disagree, the bundle is right and a human arbitrates, except a reference entry of `architecture/` (it states what the code is, so either may be wrong, and a human arbitrates the same way).
 
 **Language.** The text of an entry (title, description, prose) is in the project's language: `language` in `.pilot/state.json`, English when absent (`python3
 .pilot/pilot.py module list` prints it). Translate what you write rather than mixing; keys, statuses, ids, file and folder names stay English whatever the language. `lint` warns about an

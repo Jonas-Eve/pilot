@@ -58,9 +58,29 @@ const STUB = (opts) => `
     const page = await browser.newPage({ viewport: { width: 400, height: 900 } });
     page.errors = []; page.on('pageerror', e => page.errors.push(String(e)));
     if (opts.lang !== null) await page.addInitScript(`try{localStorage.setItem('cp.lang',${JSON.stringify(opts.lang || 'fr')})}catch(e){}`);
+    await page.addInitScript(`try{localStorage.setItem('cp.role',${JSON.stringify(opts.role || 'tous')})}catch(e){}`);
     await page.addInitScript(STUB(opts));
     await page.goto(file); await page.waitForTimeout(350);
     return page;
+  };
+  // the launch button follows the row's Auto (QA: Navigateur) option: read both commands by flipping it, then put it back
+  const modeHrefs = async (pg, n) => {
+    const row = pg.locator('#view .row', { hasText: '#' + n + ' ' }).first();
+    const href = async () => decodeURIComponent((await row.locator('a.btn').first().getAttribute('href')).split('?q=')[1].split('&repo=')[0]);
+    if (!(await row.locator('button:has-text("Options")').count())) return row.locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
+    const wasOpen = (await row.locator('.opts').count()) > 0;
+    if (!wasOpen) await row.locator('button:has-text("Options")').click();
+    const tog = row.locator('.opts .tog', { hasText: /^(Auto|Navigateur)$/ });
+    const cur = await href();
+    let out;
+    if (!(await tog.count())) out = [null, cur];
+    else {
+      const pressed = (await tog.getAttribute('aria-pressed')) === 'true';
+      await tog.click(); const other = await href(); await tog.click();
+      out = pressed ? [cur, other] : [other, cur];
+    }
+    if (!wasOpen) await row.locator('button:has-text("Options")').click();
+    return out.filter((x) => x !== null);
   };
   const text = (page, sel) => page.textContent(sel);
   const tab = async (page, name) => { await page.click(`nav >> text=${name}`); await page.waitForTimeout(150); return text(page, '#view'); };
@@ -168,12 +188,13 @@ const STUB = (opts) => `
   const base = 'https://claude.ai/code/new?q=';
   const repoParam = '&repo=' + encodeURIComponent(REPO);
   const find = (cmd) => links.find((l) => l.href === base + encodeURIComponent(cmd) + repoParam);
-  check('auto-capable ticket: open links for auto and pair', find('/pilot-dev 99 --auto') && find('/pilot-dev 99'), JSON.stringify(links));
-  check('QA ticket: open links for the browser run and pair', find('/pilot-qa 50 --browser') && find('/pilot-qa 50'), JSON.stringify(links));
-  check('QA resume: open links for the browser run and pair too', find('/pilot-qa --resume 51 --browser') && find('/pilot-qa --resume 51'), JSON.stringify(links));
+  const both = async (n) => JSON.stringify(await modeHrefs(page, n));
+  check('auto-capable ticket: one launch button, auto and pair behind the Auto option', (await both(99)) === JSON.stringify(['/pilot-dev 99 --auto', '/pilot-dev 99']), await both(99));
+  check('QA ticket: the browser run is the Navigateur option, pair the default', (await both(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), await both(50));
+  check('QA resume: the browser run and pair too', (await both(51)) === JSON.stringify(['/pilot-qa --resume 51 --browser', '/pilot-qa --resume 51']), await both(51));
   check('links open in a new tab without opener', links.length >= 3 && links.every((l) => l.target === '_blank' && /noopener/.test(l.rel)), JSON.stringify(links));
   check('the command and the repository are URL-encoded (documented claude.ai/code/new?q=&repo= form)', links.every((l) => !/ /.test(l.href)) && links.every((l) => l.href.endsWith(repoParam)) && links.every((l) => l.href.startsWith(base)));
-  check('copy buttons stay as a fallback', /Copier auto/.test(await text(page, '#view')) && /Copier pair/.test(await text(page, '#view')));
+  check('one copy button per row stays as a fallback', (await page.$$eval('#view .row button', (b) => b.filter((x) => x.textContent === 'Copier').length)) === (await rows(page)));
   await page.screenshot({ path: path.join(TMP, 'links.png') });
   await page.close();
 
@@ -185,7 +206,7 @@ const STUB = (opts) => `
   await page.close();
 
   // ---- new request: Discovery / tech Spec / bug Spec from scratch ----
-  page = await open({ preload: [BASE] });
+  page = await open({ preload: [BASE], role: 'tech' });
   check('new request card is folded by default, behind a chevron', (await page.getAttribute('#ideaToggle', 'aria-expanded')) === 'false' && (await page.$eval('#ideaBody', (e) => e.hidden)));
   await page.click('#ideaToggle');
   check('the chevron opens it', (await page.getAttribute('#ideaToggle', 'aria-expanded')) === 'true' && !(await page.$eval('#ideaBody', (e) => e.hidden)));
@@ -202,6 +223,8 @@ const STUB = (opts) => `
   let o = await ideaOpen();
   check('tech role defaults to the tech Spec command, link carries command and repo',
         o.href === encBase + encodeURIComponent('/pilot-spec --tech Mon besoin') + encRepo && o.disabled === null && o.target === '_blank' && /noopener/.test(o.rel), JSON.stringify(o));
+  check('tech role offers only the tech need and the bug', JSON.stringify(await page.$$eval('#kindSeg button', (b) => b.map((x) => x.textContent))) === JSON.stringify(['Besoin technique', 'Bug']));
+  await page.click('#roleSeg >> text=Tous');
   await page.click('#kindSeg >> text=Idée produit');
   check('product idea -> /pilot-discovery', (await ideaOpen()).href === encBase + encodeURIComponent('/pilot-discovery Mon besoin') + encRepo && /^\/pilot-discovery Mon besoin$/.test(await text(page, '#ideaCmd')));
   await page.click('#kindSeg >> text=Bug');
@@ -277,7 +300,7 @@ const STUB = (opts) => `
   page = await open({ preload: [OPT_SNAP] });
   await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
   const rowOf = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' });
-  const rowHrefs = (n) => rowOf(n).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
+  const rowHrefs = (n) => modeHrefs(page, n);
   const optBtn = (n) => rowOf(n).locator('button:has-text("Options")');
   check('options are folded by default: no panel, a chevron button on auto-capable rows only',
         (await page.$$('#view .opts')).length === 0 && (await optBtn(99).count()) === 1 && (await optBtn(70).count()) === 1 &&
@@ -288,9 +311,9 @@ const STUB = (opts) => `
   check('the other rows stay folded', (await rowOf(70).locator('.opts').count()) === 0);
   check('default commands unchanged', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto', '/pilot-dev 99']), JSON.stringify(await rowHrefs(99)));
   await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
-  check('--next: auto rides the ticket through /pilot-auto, pair unchanged', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-auto 99 --next', '/pilot-dev 99']), JSON.stringify(await rowHrefs(99)));
+  check('--next: the launch button rides the ticket through /pilot-auto', (await rowOf(99).locator('a.btn').first().getAttribute('href')).includes(encodeURIComponent('/pilot-auto 99 --next')));
   await panel99().locator('.seg button', { hasText: /^3$/ }).click(); await page.waitForTimeout(100);
-  check('--next + multi 3: /pilot-auto 99 --multi 3 --next, pair gets --multi 3', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-auto 99 --multi 3 --next', '/pilot-dev 99 --multi 3']), JSON.stringify(await rowHrefs(99)));
+  check('--next + multi 3: /pilot-auto 99 --multi 3 --next', (await rowOf(99).locator('a.btn').first().getAttribute('href')).includes(encodeURIComponent('/pilot-auto 99 --multi 3 --next')));
   check('active options shown as chips and in the command line', /enchaîné/.test(await rowOf(99).textContent()) && /multi 3/.test(await rowOf(99).textContent()) && /\/pilot-auto 99 --multi 3 --next/.test(await rowOf(99).locator('.cmd').textContent()));
   await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
   check('multi without --next: /pilot-dev 99 --auto --multi 3', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto --multi 3', '/pilot-dev 99 --multi 3']), JSON.stringify(await rowHrefs(99)));
@@ -305,7 +328,7 @@ const STUB = (opts) => `
   await panel99().locator('.tog', { hasText: 'designer' }).click(); await panel99().locator('.tog', { hasText: 'tech lead' }).click(); await page.waitForTimeout(100);
   check('dev row: --with adds the chosen personas, auto and pair alike', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto --multi 3 --with techlead,designer', '/pilot-dev 99 --multi 3 --with techlead,designer']), JSON.stringify(await rowHrefs(99)));
   await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
-  check('--next hides --with and drops it from the commands', (await panel99().locator('text=Avec').count()) === 0 && JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-auto 99 --multi 3 --next', '/pilot-dev 99 --multi 3']), JSON.stringify(await rowHrefs(99)));
+  check('--next hides --with and drops it from the commands', (await panel99().locator('text=Avec').count()) === 0 && (await rowOf(99).locator('a.btn').first().getAttribute('href')).includes(encodeURIComponent('/pilot-auto 99 --multi 3 --next')));
   await panel99().locator('text=Enchaîner').click(); await optBtn(99).click(); await page.waitForTimeout(100);
   const panel70 = () => rowOf(70).locator('.opts');
   await panel70().locator('.tog', { hasText: 'PM' }).click(); await page.waitForTimeout(100);
@@ -313,7 +336,7 @@ const STUB = (opts) => `
   await panel70().locator('.tog', { hasText: 'PM' }).click(); await panel70().locator('.grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
   check('review row: --with architect', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --auto --multi 2 --with architect', '/pilot-review 70 --multi 2 --with architect']), JSON.stringify(await rowHrefs(70)));
   await optBtn(50).click(); await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await page.waitForTimeout(100);
-  check('QA row: --with designer applies to the pair command only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --with designer', '/pilot-qa 50 --browser']), JSON.stringify(await rowHrefs(50)));
+  check('QA row: --with designer applies to the pair command only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50 --with designer']), JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await optBtn(50).click(); await page.waitForTimeout(100);
   await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
   check('spec row of a bug offers the architect, not the designer; a tech story offers the designer',
@@ -322,14 +345,14 @@ const STUB = (opts) => `
   await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
   check('bug spec: /pilot-spec 80 --auto --with architect', JSON.stringify(await rowHrefs(80)) === JSON.stringify(['/pilot-spec 80 --auto --with architect', '/pilot-spec 80 --with architect']), JSON.stringify(await rowHrefs(80)));
   await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
-  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
+  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
   await optBtn(50).click(); await page.waitForTimeout(100);
   check('QA row options: an environment address, no --next', (await rowOf(50).locator('.opts #qaUrl-50').count()) === 1 && (await rowOf(50).locator('.opts .tog', { hasText: 'Enchaîner' }).count()) === 0);
   await rowOf(50).locator('#qaUrl-50').fill('https://staging.example.com'); await page.waitForTimeout(150);
   check('QA row: the address goes to the auto command only, and typing keeps the focus',
-        JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser --url https://staging.example.com']) && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'qaUrl-50', JSON.stringify(await rowHrefs(50)));
+        (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'qaUrl-50' && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser --url https://staging.example.com', '/pilot-qa 50']), JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('#qaUrl-50').fill('javascript:alert(1)'); await page.waitForTimeout(150);
-  check('QA row: anything but an http(s) address is dropped', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser']), JSON.stringify(await rowHrefs(50)));
+  check('QA row: anything but an http(s) address is dropped', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('#qaUrl-50').fill(''); await optBtn(50).click(); await page.waitForTimeout(100);
   check('row options: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'options.png') });
@@ -360,6 +383,67 @@ const STUB = (opts) => `
   await page.screenshot({ path: path.join(TMP, 'batch.png') });
   await page.close();
 
+  // ---- the role shows only what matters to it ----
+  const tabNames = (pg) => pg.$$eval('#tabs a', (as) => as.map((x) => x.textContent.replace(/\s*\(\d+\)$/, '')));
+  page = await open({ preload: [BASE], role: 'produit' });
+  check('product role: no Activité nor Architecture tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Design', 'Wiki']), JSON.stringify(await tabNames(page)));
+  check('product role: no batch card, no tech need request', await page.$eval('#batch', (e) => e.hidden));
+  await tab(page, 'Vue d’ensemble');
+  check('product role: overview shows only Discovery and QA humaine', JSON.stringify(await page.$$eval('#view .col header strong', (e) => e.map((x) => x.textContent))) === JSON.stringify(['1 · Discovery', '5 · QA humaine']));
+  await page.close();
+  page = await open({ preload: [BASE], role: 'tech' });
+  check('tech role: no Prototypes, Design nor Wiki tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Recherche', 'Activité', 'Architecture']), JSON.stringify(await tabNames(page)));
+  await page.goto(FILE + '#design'); await page.waitForTimeout(200);
+  check('tech role: a hidden tab falls back to the queue', /Ma file/.test(await text(page, '#view')));
+  await page.close();
+
+  // ---- architecture: reference entries are checked against the code, rules and decisions are not ----
+  { const REF = { kind: 'architecture', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
+      { id: 'layering', title: 'Layering', description: 'Domain never imports adapters.', path: 'guidelines/layering.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Domain never imports adapters.' },
+      { id: 'data-model', title: 'Data model', description: 'The tables.', path: 'reference/data-model.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', verifiedAt: iso(120), text: 'Table catalog.' },
+      { id: 'stack', title: 'Stack', description: 'Versions.', path: 'apps/web/reference/stack.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Node 22.' },
+      { id: 'overview', title: 'Overview', description: 'Apps.', path: 'overview.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'One CLI.' },
+      { id: '0002-store', title: 'Store', description: 'Stored.', path: 'adr/0002-store.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Stored.' },
+      { id: '0003-draft', title: 'Draft', description: 'Idea.', path: 'adr/0003-draft.md', status: 'proposed', tickets: [], supersedes: '', supersededBy: '', text: 'Idea.' },
+      { id: '0001-old', title: 'Old', description: 'Old.', path: 'adr/0001-old.md', status: 'superseded', tickets: [], supersedes: '', supersededBy: '0002-store', text: 'Old.' } ] };
+    const pg = await open({ preload: [BASE], architecture: [REF] });
+    await pg.goto(FILE + '#architecture'); await pg.waitForTimeout(350);
+    const v = await text(pg, '#view');
+    const refLinks = await hrefs(pg, '#view .refresh a.btn');
+    const cmdsOf = refLinks.map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]));
+    check('architecture: a button adds a rule, one checks the reference', cmdsOf.includes('/pilot-architecture --guideline') && cmdsOf.includes('/pilot-architecture --verify') && /Ajouter une règle/.test(v) && /Vérifier la référence/.test(v), JSON.stringify(cmdsOf));
+    check('architecture: each reference entry has its own check, a rule has none', cmdsOf.includes('/pilot-architecture --verify data-model') && cmdsOf.includes('/pilot-architecture --verify stack') && !cmdsOf.some((c) => /--verify layering/.test(c)), JSON.stringify(cmdsOf));
+    check('architecture: a reference entry says whether it was checked, a rule does not', (v.match(/non vérifié/g) || []).length === 1 && (v.match(/vérifié il y a/g) || []).length === 1 && /Référence/.test(v), v);
+    const has = (c) => cmdsOf.some((x) => x.trim() === c);
+    check('architecture: a rule can be edited and deprecated', has('/pilot-architecture --edit layering') && has('/pilot-architecture --deprecate layering'), JSON.stringify(cmdsOf));
+    check('architecture: an accepted ADR is replaced, never edited', cmdsOf.some((x) => x.startsWith('/pilot-architecture --adr "remplace 0002-store :')) && !has('/pilot-architecture --edit 0002-store') && has('/pilot-architecture --deprecate 0002-store'), JSON.stringify(cmdsOf));
+    check('architecture: a proposed ADR can be edited or removed, a superseded one is history', has('/pilot-architecture --edit 0003-draft') && has('/pilot-architecture --deprecate 0003-draft') && !cmdsOf.some((x) => /0001-old/.test(x)), JSON.stringify(cmdsOf));
+    check('architecture: the overview is checked and edited, never deprecated', has('/pilot-architecture --verify overview') && has('/pilot-architecture --edit overview') && !has('/pilot-architecture --deprecate overview'), JSON.stringify(cmdsOf));
+    check('architecture: a proposed entry offers Retirer, an accepted one Déprécier', /Retirer/.test(v) && /Déprécier/.test(v));
+    check('architecture reference: no page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.close(); }
+
+  // ---- Auto is an option like the others: it switches what the row launches and copies ----
+  page = await open({ preload: [snapshot([ticket(99, ['type:tech', 'status:dev-ready'])])], role: 'tech' });
+  await page.evaluate(() => { window.__clip = []; navigator.clipboard.writeText = (t) => { window.__clip.push(t); return Promise.resolve(); }; });
+  const launch = () => page.$eval('#view .row a.btn', (a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0]));
+  check('one launch button, pair by default', (await page.$$('#view .row a.btn')).length === 1 && (await launch()) === '/pilot-dev 99');
+  await page.click('#view .row >> text=Options');
+  check('Auto is a toggle in Options, off by default', (await page.getAttribute('#view .row .opts .tog:text-is("Auto")', 'aria-pressed')) === 'false');
+  await page.click('#view .row .opts .tog:text-is("Auto")');
+  await page.click('#view .row button:text-is("Copier")');
+  check('Auto on: the button and Copier use the auto command', (await launch()) === '/pilot-dev 99 --auto' && JSON.stringify(await page.evaluate(() => window.__clip)) === JSON.stringify(['/pilot-dev 99 --auto']), await launch());
+  await page.close();
+
+  // ---- the queue opens with what is waiting ----
+  const tally = (pg) => pg.$$eval('#view .tally .tile', (t) => t.map((x) => x.textContent));
+  page = await open({ preload: [snapshot([ticket(1, ['type:tech', 'status:backlog']), ticket(2, ['type:tech', 'status:dev-ready']), ticket(3, ['type:tech', 'status:dev-ready', 'needs-human']), ticket(4, ['type:feature', 'status:qa'])])], role: 'tech' });
+  check('tech queue summary: blocked first, then Spec, Dev, Review counters', JSON.stringify(await tally(page)) === JSON.stringify(['1bloqués', '1à spécifier', '1à coder', '0à relire', '0à merger']), JSON.stringify(await tally(page)));
+  await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
+  check('product queue summary follows the role', JSON.stringify(await tally(page)) === JSON.stringify(['0à cadrer', '1à tester']), JSON.stringify(await tally(page)));
+  check('a fresh snapshot shows no connector chip, a compact banner', !(await page.$('#conn .chip')) && !!(await page.$('#banner .banner.compact')));
+  await page.close();
+
   // ---- new request: --multi for a product idea only ----
   page = await open({ preload: [BASE] });
   await page.click('#ideaToggle'); await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
@@ -369,7 +453,7 @@ const STUB = (opts) => `
   check('product idea + multi: /pilot-discovery <idea> --multi 3', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3' && (await page.$eval('#ideaOpen', (a) => a.getAttribute('href'))).includes(encodeURIComponent('/pilot-discovery Mon idée --multi 3')), await text(page, '#ideaCmd'));
   await page.click('#ideaWithSeg >> text=Designer');
   check('product idea + designer: --with designer after --multi', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3 --with designer', await text(page, '#ideaCmd'));
-  await page.click('#kindSeg >> text=Besoin technique');
+  await page.click('#roleSeg >> text=Tous'); await page.click('#kindSeg >> text=Besoin technique');
   check('tech need + designer: --with designer, no --multi', (await text(page, '#ideaCmd')) === '/pilot-spec --tech Mon idée --with designer', await text(page, '#ideaCmd'));
   await page.click('#kindSeg >> text=Bug');
   check('bug report: the designer is summonable too, no --multi', !(await page.$eval('#ideaWithWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée --with designer', await text(page, '#ideaCmd'));
@@ -397,12 +481,12 @@ const STUB = (opts) => `
   const kidNames = () => page.$$eval('#view .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()));
   check('opening lists the open sub-issues, most urgent first', JSON.stringify(await kidNames()) === JSON.stringify(['#11 Story A', '#12 Story B']), JSON.stringify(await kidNames()));
   const kidCmds = (sel) => page.locator(sel).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
-  check('each sub-issue can be launched on its own (/pilot-spec 11 auto + pair, /pilot-qa 12)',
-        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(1) > .acts')) === JSON.stringify(['/pilot-spec 11 --auto', '/pilot-spec 11']) &&
-        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(2) > .acts')) === JSON.stringify(['/pilot-qa 12', '/pilot-qa 12 --browser']), JSON.stringify(await kidCmds('#view .kids > .row > .acts')));
+  check('each sub-issue can be launched on its own (/pilot-spec 11, /pilot-qa 12)',
+        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(1) > .acts')) === JSON.stringify(['/pilot-spec 11']) &&
+        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(2) > .acts')) === JSON.stringify(['/pilot-qa 12']), JSON.stringify(await kidCmds('#view .kids > .row > .acts')));
   await page.locator('#view .kids > .row:nth-child(1) > .acts button:has-text("Sous-tickets")').click(); await page.waitForTimeout(100);
   check('nesting goes one level further (story -> tasks), blocked task flagged', JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))) === JSON.stringify(['#14 Tâche bloquée de A', '#13 Tâche de A']), JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))));
-  check('a task is launchable (/pilot-dev 13 --auto) and has no sub-tickets chevron', (await kidCmds('#view .kids .kids > .row:has-text("#13 ") > .acts')).includes('/pilot-dev 13 --auto') && (await page.locator('#view .kids .kids button:has-text("Sous-tickets")').count()) === 0);
+  check('a task is launchable (/pilot-dev 13) and has no sub-tickets chevron', (await kidCmds('#view .kids .kids > .row:has-text("#13 ") > .acts')).includes('/pilot-dev 13') && (await page.locator('#view .kids .kids button:has-text("Sous-tickets")').count()) === 0);
   await page.evaluate((e) => window.__push('events', 'live5', e), ev({ n: 13, title: 'Tâche de A', labels: ['type:tech', 'level:task', 'status:in-dev'], assignees: [] }));
   await page.waitForTimeout(250);
   check('a live update keeps the nesting and moves the sub-ticket (dev-ready -> in-dev)',
@@ -567,7 +651,7 @@ const STUB = (opts) => `
     ticket(8, ['type:tech', 'status:changes-requested', 'priority:P2'], { t: 'Corrections demandées' }),
     ticket(9, ['type:tech', 'status:in-dev', 'priority:P2'], { t: 'Ancien verdict, assigné', a: 'carol' }),
   ], 120);
-  page = await open({ preload: [ASSIGN_SNAP] });
+  page = await open({ preload: [ASSIGN_SNAP], role: 'tech' });
   const fileNums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
   const setOf2 = (...a) => JSON.stringify(a.sort());
   check('default scope "Tous": the role\'s tickets, assigned or not', JSON.stringify(await fileNums()) === setOf2('#1', '#2', '#3', '#4', '#7', '#8', '#9'), JSON.stringify(await fileNums()));
@@ -1086,6 +1170,38 @@ const STUB = (opts) => `
   await page.close();
   }
 
+  // ---- wiki: what happened at a flow's last run, and what a person can ask of each entry ----
+  { const run = { kind: 'flowRun', repo: REPO, flow: 'find-a-place', at: iso(48), hash: 'x', result: 'failed', bugs: [99], report: 'https://claude.ai/artifact/abc',
+      personas: [{ id: 'marie-senior', hash: 'y', result: 'passed', steps: { passed: 6, failed: 0, untestable: 0 } }, { id: 'paul-aidant', hash: 'z', result: 'failed', steps: { passed: 4, failed: 2, untestable: 1 } }] };
+    let pg = await open({ preload: [BASE], wiki: [WIKI_FLOWS], flowRuns: [run] });
+    await pg.goto(FILE + '#wiki/user-flow'); await pg.waitForTimeout(350);
+    const lr = await text(pg, '#view .lastrun');
+    check('last run: when, each persona with its steps, the ticket created with its title, the report', /Dernier lancement/.test(lr) && /Joué il y a 48 min/.test(lr) && /6 passées · 0 échouées · 0 non testables/.test(lr) && /4 passées · 2 échouées · 1 non testables/.test(lr) && /Ticket créé : #99 Ticket de l instantane/.test(lr) && /Rapport/.test(lr), lr);
+    check('last run: open when something failed', await pg.$eval('#view .lastrun', (d) => d.open));
+    await pg.evaluate((d) => window.__push('flowRuns', 'f0', d), Object.assign({}, run, { result: 'passed', bugs: [] })); await pg.waitForTimeout(250);
+    check('last run: closed when it passed, and says no ticket was created', !(await pg.$eval('#view .lastrun', (d) => d.open)) && /Aucun ticket créé/.test(await pg.$eval('#view .lastrun', (d) => d.textContent)));
+    const cmdsHere = async () => (await hrefs(pg, '#view .row a.btn')).map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]).trim());
+    let c = await cmdsHere();
+    check('wiki: a flow can be edited and deprecated through /pilot-flow', c.includes('/pilot-flow --edit find-a-place') && c.includes('/pilot-flow --deprecate find-a-place'), JSON.stringify(c));
+    await pg.goto(FILE + '#wiki/persona'); await pg.waitForTimeout(300);
+    c = await cmdsHere();
+    check('wiki: a persona is edited and deprecated through /pilot-flow, never checked against the code', c.includes('/pilot-flow --edit marie-senior') && c.includes('/pilot-flow --deprecate marie-senior') && !c.some((x) => /--lint marie-senior/.test(x)), JSON.stringify(c));
+    check('wiki entries: no page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.close(); }
+  { const DOC = { kind: 'wiki', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
+      { id: 'filter-a11y', type: 'Behavior', title: 'Filter', description: 'Filters.', path: 'search/filter-a11y.md', status: 'implemented', derived: '', tickets: [], verifiedAt: '', text: 'Filters.' },
+      { id: 'saved-places', type: 'Behavior', title: 'Saved', description: 'Saved.', path: 'search/saved-places.md', status: 'proposed', derived: '', tickets: [], verifiedAt: '', text: 'Saved.' },
+      { id: 'vision', type: 'Vision', title: 'Vision', description: 'Why.', path: 'product/vision.md', status: 'implemented', derived: '', tickets: [], verifiedAt: '', text: 'Why.' },
+      { id: 'planned', type: 'Behavior', title: 'Planned', description: 'Planned.', path: 'search/planned.md', status: 'specified', derived: '', tickets: [], verifiedAt: '', text: 'Planned.' } ] };
+    const pg = await open({ preload: [BASE], wiki: [DOC] });
+    await pg.goto(FILE + '#wiki'); await pg.waitForTimeout(350);
+    const c = (await hrefs(pg, '#view .row a.btn')).map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]).trim());
+    check('wiki: an implemented behavior is checked, edited, never retired from here', c.includes('/pilot-wiki --lint filter-a11y') && c.includes('/pilot-wiki --edit filter-a11y') && !c.some((x) => /--deprecate filter-a11y/.test(x)), JSON.stringify(c));
+    check('wiki: a proposed behavior can be edited or removed, not checked against the code', c.includes('/pilot-wiki --edit saved-places') && c.includes('/pilot-wiki --deprecate saved-places') && !c.some((x) => /--lint saved-places/.test(x)), JSON.stringify(c));
+    check('wiki: the vision has no action from here', !c.some((x) => /vision/.test(x)), JSON.stringify(c));
+    check('wiki: a specified behavior is only edited', c.includes('/pilot-wiki --edit planned') && !c.some((x) => /--(lint|deprecate) planned/.test(x)), JSON.stringify(c));
+    await pg.close(); }
+
   // ---- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ----
   const ARCH = { kind: 'architecture', repo: REPO, at: iso(20), total: 7, truncated: false, entries: [
     { id: 'overview', title: 'Overview', description: 'The apps and how they relate.', path: 'overview.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'One CLI <img src=x onerror="window.__pwn=1">.' },
@@ -1252,8 +1368,8 @@ const STUB = (opts) => `
 
     let page = await open({ preload: [snap(wf('pair'))] });
     let l = await links(page, 31);
-    check('mode: a workflow whose default is pair puts the pair button first, as the primary one',
-          l.length === 2 && l[0].cmd === '/pilot-dev 31' && l[0].primary && l[1].cmd === '/pilot-dev 31 --auto' && !l[1].primary, JSON.stringify(l));
+    check('mode: a workflow whose default is pair launches pair, Auto is off in Options',
+          l.length === 1 && l[0].cmd === '/pilot-dev 31' && l[0].primary && JSON.stringify(await modeHrefs(page, 31)) === JSON.stringify(['/pilot-dev 31 --auto', '/pilot-dev 31']), JSON.stringify(l));
     l = await links(page, 32);
     check('mode: a ticket a signal makes pair only has no auto button, and says why', l.length === 1 && l[0].cmd === '/pilot-dev 32' && l[0].primary
           && (await rowOf2(page, 32).locator('.chip.warn[title="priority-p0"]').count()) === 1 && /pair seulement/.test(await rowOf2(page, 32).textContent()), JSON.stringify(l));
@@ -1264,14 +1380,14 @@ const STUB = (opts) => `
 
     page = await open({ preload: [snap(wf('auto'))] });
     l = await links(page, 31);
-    check('mode: a workflow whose default is auto keeps the auto button first and primary',
-          l.length === 2 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary && l[1].cmd === '/pilot-dev 31' && !l[1].primary, JSON.stringify(l));
+    check('mode: a workflow whose default is auto launches auto, one button',
+          l.length === 1 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary, JSON.stringify(l));
     check('mode: pair only wins over an auto default', JSON.stringify((await links(page, 32)).map((x) => x.cmd)) === JSON.stringify(['/pilot-dev 32']));
     await page.close();
 
     page = await open({ preload: [snap(null)] });
     l = await links(page, 31);
-    check('mode: without a workflow, the buttons are as before (auto first)', l.length === 2 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary, JSON.stringify(l));
+    check('mode: without a workflow, pair is the default', l.length === 1 && l[0].cmd === '/pilot-dev 31' && l[0].primary, JSON.stringify(l));
     await page.close();
 
     page = await open({ preload: [snap(wf('pair'))], lang: 'en' });

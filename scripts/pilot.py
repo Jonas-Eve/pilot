@@ -2012,21 +2012,23 @@ ARCH_OKF_STATUS = {"proposed": "draft", "accepted": "stable", "deprecated": "dep
 
 
 class Architecture(Bundle):
-    """The architecture module's bundle: `architecture/overview.md`, `guidelines/<id>.md`, `adr/<NNNN-title>.md` and
-    `runbooks/<id>.md` (how to operate: deploy, onboard; read on demand, never carried in a prompt).
+    """The architecture module's bundle: `architecture/overview.md`, `guidelines/<id>.md` (rules to respect),
+    `reference/<id>.md` (how the code is built today: stack and versions, data model, structure; checked against the
+    code by `--verify`, a human arbitrating each divergence), `adr/<NNNN-title>.md` (why a choice was made) and `runbooks/<id>.md`
+    (how to operate: deploy, onboard; read on demand, never carried in a prompt).
     Same OKF files, same frontmatter writer, same indexes as the wiki; its own statuses (an ADR is accepted, then
     deprecated or superseded by a later one, and never edited in between), no ticket-driven checks."""
     TITLE = "Architecture"
     ABSENT = "architecture-absent"
     ABSENT_HINT = "run /pilot-architecture (it turns the architecture module on and creates architecture/)"
-    PATH_HINT = ("overview.md, guidelines/<id>.md, adr/<NNNN-title>.md or runbooks/<id>.md; for one app of a monorepo, the same under "
+    PATH_HINT = ("overview.md, guidelines/<id>.md, reference/<id>.md, adr/<NNNN-title>.md or runbooks/<id>.md; for one app of a monorepo, the same under "
                  "apps/<app>/ with its overview named <app>-overview.md (an id is unique across the whole bundle)")
 
     @staticmethod
     def _layout_ok(parts, app=None):
         if len(parts) == 1:
             return parts[0] == ("overview.md" if app is None else f"{app}-overview.md")
-        return len(parts) == 2 and parts[0] in ("guidelines", "adr", "runbooks")
+        return len(parts) == 2 and parts[0] in ("guidelines", "reference", "adr", "runbooks")
 
     def _path_ok(self, rel):
         parts = rel.split("/")
@@ -2119,6 +2121,8 @@ class Architecture(Bundle):
             return "ADR"
         if "runbooks" in parts[:-1]:
             return "Runbook"
+        if "reference" in parts[:-1]:
+            return "Reference"
         return "Architecture" if stem == "overview" or stem.endswith("-overview") else self.DEFAULT_TYPE
 
     def show(self, entry_id, gh=None):
@@ -2136,7 +2140,7 @@ class Architecture(Bundle):
             fm = e["fm"]["pilot"] if isinstance(e.get("fm"), dict) and isinstance(e["fm"].get("pilot"), dict) else {}
             rows.append({"id": e["id"], "title": e["title"], "description": e["description"], "path": e["path"],
                          "status": e["status"], "tickets": e["tickets"], "supersedes": str(fm.get("supersedes") or ""),
-                         "supersededBy": str(fm.get("supersededBy") or ""), "text": e["text"]})
+                         "supersededBy": str(fm.get("supersededBy") or ""), "verifiedAt": e["verifiedAt"], "text": e["text"]})
         doc = {"kind": "architecture", "repo": repo, "at": now_iso(), "total": len(rows), "truncated": False,
                "entries": rows}
         return self._fit(doc, rows)
@@ -2356,7 +2360,7 @@ def build_parser():
     w = ws.add_parser("show", help="one entry's text; an ADR also its supersession")
     w.add_argument("id")
     ws.add_parser("lint", help="mechanical checks, no judgment")
-    w = ws.add_parser("add", help="create an entry file (overview.md, guidelines/<id>.md, adr/<NNNN-title>.md or runbooks/<id>.md)")
+    w = ws.add_parser("add", help="create an entry file (overview.md, guidelines/<id>.md, reference/<id>.md, adr/<NNNN-title>.md or runbooks/<id>.md)")
     w.add_argument("path")
     w.add_argument("--title", required=True)
     w.add_argument("--description", required=True, help="one sentence, shown in the index")

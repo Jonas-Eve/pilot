@@ -21,7 +21,7 @@ Legend: **L** lead · **V** validator (gets the deliverable only, one verdict) �
 | QA | — | — | — | — | L: `human-qa` | S |
 | Proto | L: `frame-proto`; V: `check-proto` | S | — | — | — | L: `build-proto` |
 | Design | S | S | — | — | — | L: `write-design-system` |
-| Modules | `wiki-entries` | `architecture-bootstrap`, `architecture-adr` | `wiki-lint`, `wiki-bootstrap` | — | — | — |
+| Modules | `wiki-entries`, `wiki-edit` | `architecture-bootstrap`, `architecture-adr`, `architecture-guideline`, `architecture-edit` | `wiki-lint`, `wiki-bootstrap`, `architecture-verify` | — | — | — |
 
 Each persona keeps one identity across its duties: PM = product value, architect = soundness,
 security and consistency, tech lead = feasibility and conformance against the real code, dev/e2e =

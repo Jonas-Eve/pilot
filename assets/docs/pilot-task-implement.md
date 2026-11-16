@@ -110,6 +110,9 @@ spec).
    with `needs-human`. In the same PR, an entry this change completes — every other ticket it lists
    with `level` `task` is closed (`python3 .pilot/pilot.py wiki status <id>`) — moves to
    `implemented`: `wiki set <id> --status implemented`. Any other entry stays as it is.
+6b. **Architecture reference** (only when the prompt carries the architecture index): a change to a fact a
+   `reference` entry states (a dependency version, a table, a folder, a command) updates that entry in the same PR
+   (`arch show <id>`, edit the text, `arch set <id> --clear-stamp`). A rule or an ADR is never edited here.
 7. Update any docs or service-level README/CLAUDE.md (or equivalent) the change
    affects, per this project's own documentation-maintenance convention, if it has
    one.

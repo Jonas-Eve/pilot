@@ -35,7 +35,8 @@ Prose.
 its frontmatter only with `wiki set`, remove a `proposed` one with `wiki remove` — never by hand: the script
 keeps the OKF `status` in step with `pilot.status` and the folder `index.md` files current (`wiki reindex`),
 and leaves any other key as it is. The prose below the frontmatter is edited by hand when an entry's behavior
-changes.
+changes. A pure correction (wording, precision) keeps the entry's status and tickets and goes through
+`/pilot-wiki --edit`; a change of behavior goes back through `/pilot-discovery`, never an edit. A stamped entry whose text changed has its stamp cleared (`wiki set --clear-stamp`).
 
 **Statuses.** `pilot.status` is `proposed` (validated in Discovery), `specified` (validated in Spec),
 `implemented` (merged in code) or `deprecated`; the OKF `status` is `draft`, `draft`, `stable`, `deprecated`

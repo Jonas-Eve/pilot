@@ -68,6 +68,13 @@ nav.tabs.sub a{padding:6px 12px;font-size:13px}
 .row .num{font-family:var(--mono);color:var(--muted)}
 .row .acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
 .row input[type=checkbox]{width:18px;height:18px}
+.tally{display:flex;flex-wrap:wrap;gap:8px}
+.tile{display:flex;align-items:baseline;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.tile strong{font-size:18px;font-variant-numeric:tabular-nums}
+.tile span{color:var(--muted);font-size:13px}
+.tile.zero strong{color:var(--muted);font-weight:400}
+.tile.warn{border-color:var(--warn);background:var(--warn-soft)} .tile.warn strong,.tile.warn span{color:var(--warn)}
+.banner.compact{padding:4px 10px;font-size:12px;color:var(--muted);border-left-width:1px;background:transparent}
 .cmd{font-family:var(--mono);font-size:12px;color:var(--muted)}
 .foldcard{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface)} .foldcard summary{cursor:pointer;font-weight:600} .foldcard .cmd{overflow-wrap:anywhere}
 .batch{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--accent-soft);border-radius:10px;padding:10px 14px}
@@ -259,9 +266,7 @@ var EN={
 "Copie impossible : sélectionnez la commande": "Copy failed: select the command",
 "Copier": "Copy",
 "Copier ": "Copy ",
-"Copier auto": "Copy auto",
 "Copier la commande": "Copy the command",
-"Copier pair": "Copy pair",
 "Copié": "Copied",
 "Corriger": "Fix",
 "Couleurs": "Colors",
@@ -301,7 +306,6 @@ var EN={
 "Interroger le wiki": "Query the wiki",
 "Tester en tant que": "Test as",
 "Ouvrir (navigateur)": "Open (browser)",
-"Copier navigateur": "Copy browser",
 "sans adresse, l’agent la cherche dans architecture/ et les runbooks, sinon vous la demande ; il teste dans un navigateur et ne clôt la story que si tous les cas passent": "without an address, the agent looks in architecture/ and the runbooks, else asks you; it tests in a browser and only closes the story when every case passes",
 "Pas encore livré : ce parcours se teste une fois implémenté.": "Not delivered yet: this flow can be tested once it is implemented.",
 "Ce que vous créez": "What you create",
@@ -476,6 +480,32 @@ var EN={
 "tâche": "task",
 "vérifié ": "verified ",
 "« Ouvrir » lance une session Claude Code sur ": "“Open” starts a Claude Code session on ",
+"Auto : l’agent travaille seul. Pair : vous dialoguez avec lui.": "Auto: the agent works alone. Pair: you dialogue with it.",
+"à décider": "to decide",
+"Référence": "Reference",
+"Ajouter une règle": "Add a rule",
+"Vérifier la référence": "Check the reference",
+"Vérifier": "Check",
+"Remplacer": "Replace",
+"Retirer": "Remove",
+"Déprécier": "Deprecate",
+" passées · ": " passed · ",
+" échouées · ": " failed · ",
+" non testables": " untestable",
+"Dernier lancement": "Last run",
+"Joué ": "Played ",
+"Ticket créé : ": "Ticket created: ",
+"Aucun ticket créé.": "No ticket created.",
+"Rapport": "Report",
+"Navigateur": "Browser",
+"l’agent teste dans un navigateur": "the agent tests in a browser, without you",
+"l’agent travaille seul": "the agent works alone, without dialogue with you",
+"prototypes à décider": "prototypes to decide",
+"à cadrer": "to frame",
+"à coder": "to code",
+"à merger": "to merge",
+"à faire": "to do",
+"bloqués": "blocked",
 "À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.": "At each step, the lead opens the discussion with you. When done, the validator joins and checks the deliverable alone. A summonable agent is requested from the start with --with, or during the discussion, and you can dismiss one at any time.",
 "À lancer": "To launch",
 "À partir d’une idée": "From an idea",
@@ -631,7 +661,13 @@ function cur(){
 }
 /* a tab of an optional module shows only when the project has that module on; a snapshot without the field shows them all */
 var TAB_MODULE={prototypes:'proto',design:'design',wiki:'wiki',architecture:'architecture'};
-function tabOn(tab){var m=S.gh&&S.gh.modules; return !TAB_MODULE[tab]||!m||m[TAB_MODULE[tab]]===true;}
+function moduleOn(tab){var m=S.gh&&S.gh.modules; return !TAB_MODULE[tab]||!m||m[TAB_MODULE[tab]]===true;}
+/* a role sees only the tabs and requests that matter to it; "tous" keeps everything */
+var ROLE_TABS={produit:['file','ensemble','prototypes','wiki','design','recherche'],tech:['file','ensemble','activite','architecture','recherche']};
+var ROLE_KINDS={produit:['produit','bug'],tech:['tech','bug']};
+function roleShows(tab){var r=ROLE_TABS[S.role]; return !r||r.indexOf(tab)>-1;}
+function tabOn(tab){return moduleOn(tab)&&roleShows(tab);}
+function phasesView(){return phasesOn().filter(function(p){return S.role==='tous'||p.role===S.role;});}
 function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.at);}
 
 /* ---------- snapshots (db): written by Claude from GitHub, read by everyone ---------- */
@@ -831,8 +867,10 @@ function protoOf(n){
 }
 function ticketRow(t,withLevel,depth){
   if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
-  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), pairFirst=rc.qa||!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='pair'); /* the project's workflow makes pair the default: its button leads; a QA row always leads with pair, the browser run is never the default */
-  var autoBtn=rc.canAuto?openLink(rc.auto,rc.qa?'Ouvrir (navigateur)':'Ouvrir (auto)',!pairFirst):null, pairBtn=rc.pair?openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto||pairFirst):null;
+  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), autoDefault=!rc.qa&&!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='auto'); /* pair leads, as in the skills; auto only when the project's workflow makes it the default (never for QA) */
+  /* one launch button; auto (a browser run for QA) is an option like the others, off unless the project's workflow defaults to auto */
+  var useAuto=rc.canAuto&&(!rc.pair||(o.next&&!rc.qa)||(o.auto==null?autoDefault:o.auto)), main=useAuto?rc.auto:rc.pair;
+  var openBtn=openLink(main,useAuto?(rc.qa?'Ouvrir (navigateur)':'Ouvrir (auto)'):(rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair'),true);
   var hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
   var kids=depth<3?kidsOf(t.n):[];
@@ -845,18 +883,19 @@ function ticketRow(t,withLevel,depth){
             t.assignee?h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee):null,
             t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
             h('span',{class:'note'},ago(t.updated)),
-            a.kind==='run'?h('span',{class:'cmd'},(rc.auto||rc.pair)+(rc.canAuto?'':'  (pair)')):null)),
+            a.kind==='run'&&o.open?h('span',{class:'cmd'},main+(rc.canAuto?'':'  (pair)')):null)),
         h('div',{class:'acts'},
           a.kind==='run'?[
-            pairFirst?pairBtn:autoBtn, pairFirst?autoBtn:pairBtn,
-            rc.canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.auto,e.target);}},rc.qa?'Copier navigateur':'Copier auto'):null,
-            rc.pair?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.pair,e.target);}},rc.canAuto?'Copier pair':'Copier'):null,
+            openBtn,
+            h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(main,e.target);}},'Copier'),
             hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
           t.r?h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r):null,
           protoOf(t.n)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+protoOf(t.n);}},'Voir le proto'):null,
           kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
+          rc.canAuto&&rc.pair?h('div',{class:'grp'},h('button',{class:'tog',type:'button','aria-pressed':String(useAuto),onclick:function(){if(useAuto)o.next=false;set('auto',!useAuto);}},rc.qa?'Navigateur':'Auto'),
+            h('span',{class:'note'},rc.qa?'l’agent teste dans un navigateur':'l’agent travaille seul')):null,
           rc.qa&&rc.canAuto?h('div',{class:'grp'},h('label',{for:'qaUrl-'+t.n,class:'note'},'Adresse de l’environnement (facultatif)'),
             h('input',{id:'qaUrl-'+t.n,type:'url',placeholder:'https://…',value:o.url,oninput:function(e){o.url=e.target.value;var id=e.target.id,at=e.target.selectionStart;render();var el=document.getElementById(id);if(el){el.focus();try{el.setSelectionRange(at,at);}catch(x){}}}}),
             h('span',{class:'note'},'sans adresse, l’agent la cherche dans architecture/ et les runbooks, sinon vous la demande ; il teste dans un navigateur et ne clôt la story que si tous les cas passent')):null,
@@ -874,6 +913,28 @@ function ticketRow(t,withLevel,depth){
         kids.length&&o.kids?h('div',{class:'kids'},kids.map(function(c){return ticketRow(c,true,depth+1);})):null);
 }
 
+/* what is waiting, by role: a few counters instead of reading the whole queue; blocked tickets first */
+var TALLY=[
+  {phase:'discovery',label:'à cadrer',statuses:['draft']},
+  {phase:'qa',label:'à tester',statuses:['qa','in-qa']},
+  {phase:'spec',label:'à spécifier',statuses:['backlog']},
+  {phase:'dev',label:'à coder',statuses:['dev-ready','changes-requested']},
+  {phase:'review',label:'à relire',statuses:['review-ready']},
+  {phase:'review',label:'à merger',statuses:['approved']}
+];
+function vTally(){
+  var all=tickets(), on=phasesView().map(function(p){return p.key;}), tiles=[];
+  var blocked=all.filter(function(t){var p=phaseOf(t.status);return p&&on.indexOf(p.key)>-1&&has(t,'needs-human');}).length;
+  if(blocked)tiles.push({n:blocked,label:'bloqués',cls:' warn'});
+  if(S.role!=='tech'&&tabOn('prototypes')){var pn=protoCounts().encours; if(pn)tiles.push({n:pn,label:'prototypes à décider',cls:''});}
+  TALLY.forEach(function(x){
+    if(on.indexOf(x.phase)<0)return;
+    var n=all.filter(function(t){return x.statuses.indexOf(t.status)>-1&&!has(t,'needs-human')&&!has(t,'on-hold');}).length;
+    tiles.push({n:n,label:x.label,cls:''});
+  });
+  return h('div',{class:'tally',role:'list','aria-label':'Ce qui attend'},tiles.map(function(x){
+    return h('div',{class:'tile'+x.cls+(x.n?'':' zero'),role:'listitem'},h('strong',{},String(x.n)),h('span',{},x.label));}));
+}
 var SCOPES=[['prendre','À prendre'],['moi','Assignés à moi'],['tous','Tous']];
 function vFile(){
   /* a prototype is product work while it is being built, waiting for a decision, or accepted and not yet taken up by a Discovery */
@@ -892,8 +953,9 @@ function vFile(){
     return h('button',{type:'button','aria-pressed':String(S.scope===c[0]),onclick:function(){S.scope=c[0];S.page=0;store('cp.scope',c[0]);render();}},c[1]);}));
   return h('div',{class:'list'},
     h('h2',{},'Ma file · '+(S.scope==='moi'?'assignés à '+(S.me?'@'+S.me:'moi')+' · ':S.scope==='prendre'?'à prendre · ':'')+roleTxt+' · '+mine.length),
+    vTally(),
     scopeSeg,
-    h('p',{class:'note'},'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'),
+    h('p',{class:'note',title:'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'},'Auto : l’agent travaille seul. Pair : vous dialoguez avec lui.'),
     pager(mine.length),
     shown.length?shown.map(function(t){return ticketRow(t);}):h('div',{class:'empty'},
       S.scope==='moi'&&!S.me?'Indiquez votre identifiant GitHub (en haut de la page) pour voir les tickets qui vous sont assignés.':
@@ -1006,9 +1068,9 @@ function phaseItems(p){
   return tickets().filter(function(t){return p.statuses.indexOf(t.status)>-1;}).sort(function(a,b){
     return p.statuses.indexOf(a.status)-p.statuses.indexOf(b.status)||byUrgency(a,b);});
 }
-function ovSubs(){return [['tableau','Tableau']].concat(phasesOn().map(function(p){return [p.key,p.name];}));}
+function ovSubs(){return [['tableau','Tableau']].concat(phasesView().map(function(p){return [p.key,p.name];}));}
 function subItems(tab){
-  if(tab==='ensemble')return ovSubs().map(function(s){var p=phasesOn().filter(function(q){return q.key===s[0];})[0];return [s[0],s[1],p?phaseItems(p).length:null];});
+  if(tab==='ensemble')return ovSubs().map(function(s){var p=phasesView().filter(function(q){return q.key===s[0];})[0];return [s[0],s[1],p?phaseItems(p).length:null];});
   if(tab==='design'){
     var d=S.design; if(!d)return [];
     var ty=d.type||{}, sp=d.space||{};
@@ -1042,12 +1104,12 @@ function vPhase(p){
 }
 function vOverview(){
   var all=tickets();
-  var cols=phasesOn().map(function(p){
+  var cols=phasesView().map(function(p){
     var items=all.filter(function(t){return p.statuses.indexOf(t.status)>-1;}).sort(byUrgency);
     var open=!!S.expanded[p.key], shown=open?items:items.slice(0,COL_LIMIT);
     return h('section',{class:'col','aria-label':p.name},
       h('header',{},h('strong',{},p.n+' · '+p.name),h('span',{class:'chip'},items.length)),
-      h('span',{class:'own'},p.role==='produit'?'Produit':'Tech'),
+      S.role==='tous'?h('span',{class:'own'},p.role==='produit'?'Produit':'Tech'):null,
       shown.length?shown.map(function(t){
         return h('div',{class:'card'+(has(t,'needs-human')?' flag':'')},
           h('div',{class:'t'},h('span',{class:'num mono'},'#'+t.n+' '),t.title),
@@ -1069,7 +1131,8 @@ var KINDS=[
   {key:'bug',label:'Bug',prefix:'/pilot-spec --bug ',hint:'Spec : l’architecte qualifie le défaut, puis crée le ticket.'}
 ];
 var ideaKind=null; /* null: follow the role */
-function kindNow(){var key=ideaKind||(S.role==='tech'?'tech':'produit');return KINDS.filter(function(k){return k.key===key;})[0];}
+function kindsNow(){var ok=ROLE_KINDS[S.role]; return ok?KINDS.filter(function(k){return ok.indexOf(k.key)>-1;}):KINDS;}
+function kindNow(){var ks=kindsNow(), key=ideaKind||(S.role==='tech'?'tech':'produit');return ks.filter(function(k){return k.key===key;})[0]||ks[0];}
 function ideaText(){var el=document.getElementById('ideaText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
 function buildIdea(){
   var box=document.getElementById('idea');
@@ -1089,7 +1152,7 @@ function buildIdea(){
 function ideaFull(k,text){return k.prefix+text+(k.key==='produit'&&S.ideaMulti?' --multi '+S.ideaMulti:'')+(S.ideaDesigner?' --with designer':'');}
 function updateIdea(){
   var k=kindNow(), text=ideaText(), seg=document.getElementById('kindSeg'), open=document.getElementById('ideaOpen');
-  seg.replaceChildren.apply(seg,KINDS.map(function(x){
+  seg.replaceChildren.apply(seg,kindsNow().map(function(x){
     return h('button',{type:'button','aria-pressed':String(x.key===k.key),onclick:function(){ideaKind=x.key;updateIdea();}},x.label);}));
   document.getElementById('ideaHint').textContent=tr(k.hint+' La commande est écrite, pas envoyée.');
   document.getElementById('ideaCmd').textContent=ideaFull(k,text||'…');
@@ -1404,6 +1467,30 @@ function flowStatus(e){
   if(ART_RE.test(str(r.report,200)))out.push(h('a',{class:'chip',href:r.report,target:'_blank',rel:'noopener'},'rapport'));
   return out;
 }
+/* what a flow's last run did: when, each persona's steps, the tickets it created (their titles come from the snapshot), the report */
+function flowSteps(p){var x=p&&p.steps; if(!x||typeof x!=='object')return null; var n=function(k){return Math.max(0,Math.floor(Number(x[k]))||0);}; return n('passed')+' passées · '+n('failed')+' échouées · '+n('untestable')+' non testables';}
+function flowLastRun(e){
+  var r=S.flowRuns[e.id]; if(!r)return null;
+  var lines=[h('li',{},'Joué '+ago(r.at)+' · '+str(r.at,10))];
+  arr(r.personas).slice(0,12).forEach(function(p){var pe=wikiById(str(p.id,80)), st=flowSteps(p), pr=FLOW_RES[p.result]||['',''];
+    lines.push(h('li',{},(pe?str(pe.title,40):str(p.id,40))+' · '+tr(pr[0]||str(p.result,20))+(st?' — '+st:'')));});
+  var bugs=arr(r.bugs).map(function(n){return Math.floor(Number(n));}).filter(function(n){return n>0;}).slice(0,10);
+  if(bugs.length)bugs.forEach(function(n){var t=tickets().filter(function(x){return x.n===n;})[0];
+    lines.push(h('li',{},'Ticket créé : ',h('a',{href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n+(t?' '+t.title:''))));});
+  else lines.push(h('li',{},'Aucun ticket créé.'));
+  if(ART_RE.test(str(r.report,200)))lines.push(h('li',{},h('a',{href:r.report,target:'_blank',rel:'noopener'},'Rapport')));
+  return h('details',{class:'lastrun',open:r.result==='passed'?null:true},h('summary',{class:'note'},'Dernier lancement'),h('ul',{},lines));
+}
+/* what a person can ask of an entry, as a command written for Claude Code: only a PR changes the wiki */
+function wikiActions(e){
+  var id=str(e.id,80); if(!FLOW_ID.test(id)||e.status==='deprecated')return null;
+  var k=wikiKind(e), pf=(k==='Persona'||k==='UserFlow'), acts=[];
+  if(e.status==='implemented'&&!runChecked(e)&&k!=='Vision')acts.push(openLink('/pilot-wiki --lint '+id,'Vérifier'));
+  if(k!=='Vision')acts.push(openLink((pf?'/pilot-flow':'/pilot-wiki')+' --edit '+id+' ','Modifier'));
+  if(pf)acts.push(openLink('/pilot-flow --deprecate '+id,'Déprécier'));
+  else if(e.status==='proposed')acts.push(openLink('/pilot-wiki --deprecate '+id,'Retirer'));
+  return acts.length?h('div',{class:'refresh'},acts):null;
+}
 function wikiEntry(e){
   var chips=[h('span',{class:'chip '+(WIKI_CLS[e.status]||'')},WIKI_FR[e.status]||str(e.status,40))];
   if(WIKI_DERIVED_FR[e.derived])chips.push(h('span',{class:'chip acc'},WIKI_DERIVED_FR[e.derived]));
@@ -1415,6 +1502,8 @@ function wikiEntry(e){
   var text=str(e.text,1600);
   return drow(h('div',{class:'t'},str(e.title,160)),e.description?h('p',{class:'note'},str(e.description,300)):null,h('div',{class:'meta'},chips),
     text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null,
+    wikiKind(e)==='UserFlow'?flowLastRun(e):null,
+    wikiActions(e),
     (wikiKind(e)==='UserFlow'||wikiKind(e)==='Persona')?flowLauncher(e):null);
 }
 /* creating a persona or a user flow: the command is written, then run in Claude Code (only a PR changes the wiki) */
@@ -1456,7 +1545,9 @@ function vWiki(){
 /* ---------- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ---------- */
 var ARCH_FR={proposed:'proposé',accepted:'accepté',deprecated:'déprécié',superseded:'remplacé'};
 var ARCH_CLS={proposed:'',accepted:'ok',deprecated:'warn',superseded:'warn'};
-var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',adr:'Décisions',runbooks:'Procédures'};
+var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',reference:'Référence',adr:'Décisions',runbooks:'Procédures'};
+/* a reference entry states what the code is today: it is checked against the code (`--verify`), a rule or a decision is not */
+function archIsRef(e){return /(^|\/)reference\//.test(str(e.path,200));}
 function archEntries(){return S.arch&&Array.isArray(S.arch.entries)?S.arch.entries.slice(0,2000):[];}
 function archGroup(e){var p=str(e.path,200).split('/'); if(p[0]==='apps'&&p.length>2)return 'app:'+str(p[1],60); return p.length>1&&ARCH_GROUPS[p[0]]?p[0]:'overview';}
 function archLabel(g){return g.indexOf('app:')===0?'App '+g.slice(4):ARCH_GROUPS[g]||g;}
@@ -1465,15 +1556,27 @@ function archGroups(){
   var keys=Object.keys(ARCH_GROUPS).filter(function(g){return n[g];}).concat(Object.keys(n).filter(function(g){return g.indexOf('app:')===0;}).sort());
   return keys.map(function(g){return [g,archLabel(g),n[g]];});
 }
+/* what a person can ask of an entry, as a command written for Claude Code: only a PR changes the architecture */
+function archActions(e){
+  var id=str(e.id,80); if(!FLOW_ID.test(id))return null;
+  var adr=/(^|\/)adr\//.test(str(e.path,200)), acts=[];
+  if(archIsRef(e)||/(^|\/|-)overview\.md$/.test(str(e.path,200)))acts.push(openLink('/pilot-architecture --verify '+id,'Vérifier'));
+  if(e.status==='proposed'||(e.status==='accepted'&&!adr))acts.push(openLink('/pilot-architecture --edit '+id+' ','Modifier'));
+  if(e.status==='accepted'&&adr)acts.push(openLink('/pilot-architecture --adr "remplace '+id+' : "','Remplacer'));
+  if((e.status==='proposed'||e.status==='accepted')&&str(e.path,200)!=='overview.md')acts.push(openLink('/pilot-architecture --deprecate '+id,e.status==='proposed'?'Retirer':'Déprécier'));
+  return acts.length?h('div',{class:'refresh'},acts):null;
+}
 function archEntry(e){
   var chips=[h('span',{class:'chip '+(ARCH_CLS[e.status]||'')},ARCH_FR[e.status]||str(e.status,40))];
+  if(archIsRef(e))chips.push(e.verifiedAt?h('span',{class:'chip ok'},'vérifié '+ago(e.verifiedAt)):h('span',{class:'chip warn'},'non vérifié'));
   if(e.supersedes)chips.push(h('span',{class:'chip'},'remplace '+str(e.supersedes,80)));
   if(e.supersededBy)chips.push(h('span',{class:'chip warn'},'remplacé par '+str(e.supersededBy,80)));
   (Array.isArray(e.tickets)?e.tickets.slice(0,20):[]).forEach(function(n){n=Math.floor(Number(n));
     if(n>0)chips.push(h('a',{class:'chip',href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n));});
   var text=str(e.text,1600);
   return drow(h('div',{class:'t'},str(e.title,160)),e.description?h('p',{class:'note'},str(e.description,300)):null,h('div',{class:'meta'},chips),
-    text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null);
+    text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null,
+    archActions(e));
 }
 function vArch(){
   var a=S.arch;
@@ -1482,7 +1585,7 @@ function vArch(){
   shown.forEach(function(e){counts[e.status]=(counts[e.status]||0)+1; var k=archGroup(e); if(!by[k]){by[k]=[];pages.push(k);} by[k].push(e);});
   var sum=Object.keys(ARCH_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+ARCH_CLS[k]},counts[k]+' '+ARCH_FR[k]);});
   return h('div',{class:'list'},h('h2',{},'Architecture · mis à jour '+ago(a.at)+(a.truncated?' · textes raccourcis':'')),
-    h('div',{class:'refresh'},openLink('/pilot-architecture','Interroger l’architecture',true),openLink('/pilot-architecture --adr','Consigner une décision')),
+    h('div',{class:'refresh'},openLink('/pilot-architecture','Interroger l’architecture',true),openLink('/pilot-architecture --guideline','Ajouter une règle'),openLink('/pilot-architecture --adr','Consigner une décision'),archEntries().some(archIsRef)?openLink('/pilot-architecture --verify','Vérifier la référence'):null),
     sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
     pages.length?archGroups().map(function(g){return g[0];}).filter(function(k){return by[k];}).map(function(k){return h('section',{class:'list','aria-label':archLabel(k)},h('h2',{},archLabel(k)),by[k].map(archEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
 }
@@ -1496,7 +1599,7 @@ function renderBanner(){
   if(g.state==='live'){
     var hours=(Date.now()-new Date(g.at).getTime())/3600e3;
     var applied=Object.keys(S.events).filter(function(k){return String(S.events[k].at)>String(g.at);}).length;
-    n=h('div',{class:'banner '+(hours>24?'sample':'live')},
+    n=h('div',{class:'banner '+(hours>24?'sample':'live compact')},
       h('p',{},h('strong',{},S.repo),' · '+tickets().length+' tickets ouverts · instantané pris '+ago(g.at)+
         (applied?' · '+applied+' changement'+(applied>1?'s':'')+' appliqué'+(applied>1?'s':'')+' depuis':'')+
         (g.truncated?' · liste tronquée ('+g.total+' au total)':'')+'.'),
@@ -1514,7 +1617,7 @@ function renderBanner(){
 }
 function renderConn(){
   var g=S.gh, chips=[], age=g.at?(Date.now()-new Date(g.at).getTime())/3600e3:null;
-  if(g.state==='live')chips.push(h('span',{class:'chip '+(age>24?'warn':'ok')},h('span',{class:'dot'}),'Instantané · '+ago(g.at)));
+  if(g.state==='live'){if(age>24)chips.push(h('span',{class:'chip warn'},h('span',{class:'dot'}),'Instantané · '+ago(g.at)));} /* a fresh snapshot is already said by the banner */
   else chips.push(h('span',{class:'chip '+(g.state==='loading'||g.state==='init'?'':'warn')},h('span',{class:'dot'}),'Instantané · '+(g.state==='loading'||g.state==='init'?'lecture…':'absent')));
   var alive=S.activity.filter(isAlive).length;
   if(alive)chips.push(h('span',{class:'chip ok'},h('span',{class:'dot'}),'Sessions · '+alive+' en cours'));
@@ -1539,15 +1642,15 @@ function render(){
   var H=!!S.viewHelp; /* the reference page replaces everything under the tabs */
   var hl=document.getElementById('helpLink'); if(H)hl.setAttribute('aria-current','page'); else hl.removeAttribute('aria-current');
   document.getElementById('idea').hidden=H||S.tab!=='file';updateIdea();
-  document.getElementById('batch').hidden=H||S.tab!=='file';
+  document.getElementById('batch').hidden=H||S.tab!=='file'||S.role==='produit'; /* the sweeps are Spec, Dev and Review: no auto mode for product work */
   document.getElementById('search').hidden=H||S.tab!=='recherche';updateSearch();
   document.getElementById('designEdit').hidden=H||S.tab!=='design';updateDesign();
   document.getElementById('protoNew').hidden=H||S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
   document.getElementById('banner').hidden=H||S.tab==='design'||S.tab==='wiki'||S.tab==='architecture'||(S.tab==='prototypes'&&!!S.viewProto);
-  if(S.tab==='ensemble'&&S.sub.ensemble!=='tableau'&&!phasesOn().some(function(p){return p.key===S.sub.ensemble;}))S.sub.ensemble='tableau'; /* a phase this project does not run */
+  if(S.tab==='ensemble'&&S.sub.ensemble!=='tableau'&&!phasesView().some(function(p){return p.key===S.sub.ensemble;}))S.sub.ensemble='tableau'; /* a phase this project does not run */
   var pc=document.getElementById('profileChip'), wf=S.gh&&S.gh.workflow;
   pc.hidden=!wf; if(wf){pc.textContent=tr('Profil')+' '+wf.profile; pc.title=profileSummary(wf);}
-  var items=subItems(S.tab), ph=phasesOn().filter(function(p){return p.key===S.sub.ensemble;})[0];
+  var items=subItems(S.tab), ph=phasesView().filter(function(p){return p.key===S.sub.ensemble;})[0];
   if(H)subnav('aide',HELP_SUBS,S.sub.aide);
   else if(items.length&&!(S.tab==='prototypes'&&S.viewProto))subnav(S.tab,items,S.sub[S.tab]); else subnav('',[],'');
   if(!H&&S.tab==='prototypes'&&!S.viewProto&&S.sub.prototypes==='acceptes')subnav('prototypes',protoSubItems(),S.sub3,'subtabs2','prototypes/acceptes'); else subnav('',[],'','subtabs2');

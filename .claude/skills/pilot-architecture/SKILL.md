@@ -1,7 +1,7 @@
 ---
 name: pilot-architecture
-description: "The project's architecture (architecture/ at the project root, .pilot/pilot-link-architecture.md): overview of the apps, the technical guidelines AIs and developers must respect, and the architecture decision records (ADR: why a choice was made). No flag, or a question in free text → answers from it with citations (path, status), and says when it does not cover it. --adr \"<decision>\" → drafts an ADR with the architect and a human, one PR; an ADR that replaces an accepted one supersedes it. --bootstrap → drafts overview and guidelines from the existing apps/ and CLAUDE.md, one PR. --scaffold → creates the apps' skeletons (apps/<name>/, latest compatible versions) and the overview. --lint → mechanical checks. Never merges a PR, never claims a ticket. When the architecture module is off it proposes to turn it on first. Use to ask how the project is built and why, to record a decision, or to set the architecture up."
-argument-hint: "[<question>] | --adr \"<decision>\" | --bootstrap | --scaffold [<free-text apps and tech>] | --lint"
+description: "The project's architecture (architecture/ at the project root, .pilot/pilot-link-architecture.md): overview of the apps, the technical guidelines AIs and developers must respect, the reference of how the code is built today (stack and versions, data model, structure), and the architecture decision records (ADR: why a choice was made). No flag, or a question in free text → answers from it with citations (path, status), and says when it does not cover it. --guideline \"<rule>\" → drafts one rule with the architect and a human, one PR. --adr \"<decision>\" → drafts an ADR, one PR; one that replaces an accepted ADR supersedes it. --edit <id> \"<change>\" → rewrites an entry, one PR (an accepted ADR is replaced, never edited). --deprecate <id> → deprecates an entry or removes a proposed one, one PR. --verify [<id>] → checks the reference entries against the code, stamps those that hold, a human arbitrates each divergence, one PR. --bootstrap → drafts overview, guidelines and reference from the existing apps/, docs and code, one PR. --scaffold → creates the apps' skeletons and the overview. --lint → mechanical checks. Never merges a PR, never claims a ticket. When the module is off it proposes to turn it on first. Use to ask how the project is built and why, to add a rule, to record a decision, or to set the architecture up."
+argument-hint: "[<question>] | --guideline \"<rule>\" | --adr \"<decision>\" | --edit <id> \"<change>\" | --deprecate <id> | --verify [<id>] | --bootstrap | --scaffold [<free-text apps and tech>] | --lint"
 ---
 
 # PILOT architecture — `pilot-architecture`
@@ -30,10 +30,55 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
    `superseded` one is history, point at its successor. Where the architecture is silent, say it is not
    covered; do not fill the gap from the code.
 
+## `--guideline "<rule>"`
+
+1. Check it is a rule, not a fact or a reason (`.pilot/pilot-link-architecture.md`): a fact (a version, a table) is a
+   `reference` entry (`--verify` keeps those true), a reason for a choice is an ADR (`--adr`); say which and stop.
+2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-guideline.md`,
+   `.pilot/pilot-link-architecture.md`, the rule, `.pilot/pilot-link-knowledge.md` (the architect reads the entries that bear on it itself), the project's language (`pilot.py module list`) and the
+   relevant code — nothing else from this conversation. Validate the returned JSON; fix or call again.
+3. Show the draft, its `conflicts` and `questions` to the human, who edits and validates it (pair); `--auto` is not offered: a rule is a
+   human's. A `questions` entry asking for a reason offers `--adr` after this run.
+4. `arch add guidelines/<slug>.md … --status accepted` (`apps/<app>/guidelines/<slug>.md` when only one app is concerned), the ADR it names written as a
+   line `Why: adr/<id>` at the end of the body. Branch `architecture/guideline-<slug>`, commit, push, open one PR.
+
+## `--edit <id> "<change>"`
+
+1. `arch show <id>`. An `accepted` ADR is never edited: say so and point at `--adr` (a new ADR that supersedes it), then stop. A `deprecated` or
+   `superseded` entry is history: say so and stop. Anything else goes on.
+2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-edit.md`,
+   `.pilot/pilot-link-architecture.md`, the entry (kind, title, description, text, stamp), the change, `.pilot/pilot-link-knowledge.md` (the architect reads the entries that bear on it itself), the entry's language and the
+   relevant code — nothing else from this conversation. Validate the returned JSON; fix or call again.
+3. Show the result, its `conflicts` and `questions` to the human, who edits and validates it (pair); `--auto` is not offered: an entry is a
+   human's.
+4. Write the text under the frontmatter (the only hand-edited part), `arch set <id> --title … --description …` when they changed, and, when the entry was
+   stamped, `arch set <id> --clear-stamp`: a changed `reference` entry or overview is offered `--verify <id>` after this run. Branch `architecture/edit-<id>`, commit, push, open one PR.
+
+## `--deprecate <id>`
+
+1. `arch show <id>`. The root `overview.md` is never deprecated (edit it with `--edit`); an app's own overview only when the app is gone. Tell the human which entries cite it (`backlinks`), and, for an ADR, that `--adr` is the way when a new decision replaces it.
+2. The human confirms (pair); `--auto` is not offered.
+3. A `proposed` entry is removed (`arch remove <id>`); an `accepted` one becomes `deprecated` (`arch set <id> --status deprecated`); another status: say so and stop.
+   Branch `architecture/deprecate-<id>`, commit, push, open one PR.
+
+## `--verify [<id>]`
+
+Checks the `reference` entries (all, or `<id>`) and the overview against the code.
+1. `arch lint`; its findings go in the report.
+2. Call `Agent` for `pilot-techlead` with `.pilot/pilot-task-architecture-verify.md`, `.pilot/pilot-link-architecture.md`, those entries' text and
+   stamps, and `git rev-parse HEAD` — nothing else from this conversation.
+3. `ok` verdicts → `arch set <id> --stamp <commit>`. `unverifiable` keeps the old stamp.
+4. Each `drift` goes to the human with the agent's evidence and its three outcomes (`.pilot/pilot-link-architecture.md`): propose the exact
+   `/pilot-spec --bug "<description>"` when the code is wrong; edit the entry in this run's branch with the `corrections` when the human confirms it is stale or
+   wrong (`arch set <id> --clear-stamp`, then `--stamp` on the corrected text); point at `/pilot-spec --tech` when the code must change on purpose.
+   `--auto`: decide nothing, list every drift under "To arbitrate" in the PR and leave it unstamped.
+   A fact in `undocumented` the human wants becomes a new `reference/<id>.md` (`arch add … --status accepted --stamp <commit>`).
+5. Changes → branch `architecture/verify-<YYYY-MM-DD>`, commit, push, open one PR. Nothing to change → no PR.
+
 ## `--adr "<decision>"`
 
 1. Check the decision meets the bar (`.pilot/pilot-link-architecture.md`: it outlives a ticket and someone could
-   be tempted to reverse it); otherwise say it belongs in a guideline or a ticket and stop.
+   be tempted to reverse it); otherwise say it belongs in a guideline (a rule), a `reference` entry (a fact) or a ticket and stop.
 2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-adr.md`,
    `.pilot/pilot-link-architecture.md`, the decision, `.pilot/pilot-link-knowledge.md` (the architect reads the entries that bear on it itself), the project's language (`pilot.py module list`) and the
    relevant code — nothing else from this conversation. Validate the returned JSON; fix or call again.
@@ -51,8 +96,8 @@ For a project that already has apps and documents.
    (`placeholder`, `pointer`, `filled` with the project's own content, `absent`). Nothing to gather → say so and propose `--scaffold`.
 2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-bootstrap.md`, `.pilot/pilot-link-architecture.md`, the project's language (`pilot.py module list`), the inventory and
    `git rev-parse HEAD`; it opens only the documents it classifies as architecture or decision. Validate the returned JSON (paths `overview.md`,
-   `guidelines/<id>.md`, `runbooks/<id>.md` or the same under `apps/<app>/`, ids in `[a-z0-9-]+`, a one-sentence `description` and a `source` each); fix or call again.
-3. The human confirms or edits each guideline; write them with `arch add … --status accepted`. A `decision` document becomes an ADR only once the human gives
+   `guidelines/<id>.md`, `reference/<id>.md`, `runbooks/<id>.md` or the same under `apps/<app>/`, ids in `[a-z0-9-]+`, a one-sentence `description` and a `source` each); fix or call again.
+3. The human confirms or edits each guideline; write them with `arch add … --status accepted`. A `reference` entry is written the same way with `--stamp <commit>`, the architect having read it in the code. A `decision` document becomes an ADR only once the human gives
    the reasoning (`--adr`); a `functional` document is listed for `/pilot-wiki --bootstrap`, not converted here.
 4. Blocks: a `placeholder` block of `CLAUDE.md`/`README.md` is replaced by the canonical pointer (`pilot-architecture-*.md.tmpl`, `pilot-commands-*.md.tmpl`);
    a `filled` one too, once the human agrees, since its content is now in `architecture/`.

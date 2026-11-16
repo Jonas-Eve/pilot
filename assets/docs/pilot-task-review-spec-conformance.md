@@ -21,7 +21,7 @@ an entry and leaves it `specified`) is a `change`. An entry the code cannot sati
 **Architecture** (only when the prompt carries the architecture index): open the entries that bear on the PR
 (`arch show <id>`) and run `python3 .pilot/pilot.py arch lint` on the PR's branch when it changes `architecture/` — a
 finding is a `change`. Code that breaks a guideline or contradicts an accepted ADR is a `change`; code that
-needs to break one is a `decision`. A PR that edits an accepted ADR instead of superseding it is a `change`.
+needs to break one is a `decision`. A PR that edits an accepted ADR instead of superseding it is a `change`. A PR that changes a fact a `reference` entry states (a version, a table, a folder, a command) without updating that entry is a `change`.
 
 Then review the shipped PR for two separate things, giving each its own attention rather
 than letting the first crowd out the second:

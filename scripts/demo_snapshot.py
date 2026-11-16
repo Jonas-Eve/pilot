@@ -113,7 +113,7 @@ def flow_run_document():
     Marie passed, Paul could not finish one step; Paul's persona entry has changed since."""
     rows = {e["id"]: e for e in wiki_document()["entries"]}
     return {"kind": "flowRun", "repo": REPO, "flow": "trouver-un-lieu", "at": iso(48), "hash": rows["trouver-un-lieu"]["hash"],
-            "result": "partial", "bugs": [], "report": "",
+            "result": "partial", "bugs": [401], "report": "",
             "personas": [{"id": "marie-senior", "hash": rows["marie-senior"]["hash"], "result": "passed", "steps": {"passed": 2, "failed": 0, "untestable": 0}},
                          {"id": "paul-aidant", "hash": "0123456789ab", "result": "partial", "steps": {"passed": 1, "failed": 0, "untestable": 1}}]}
 
@@ -169,12 +169,14 @@ body.big{font-size:22px}button{min-height:48px;padding:0 18px;border:0;border-ra
 
 def architecture_document():
     """The `architecture/Jonas-Eve__pilot` document `pilot.py arch snapshot` would have written."""
-    def entry(eid, title, path, status, tickets, text, supersedes="", superseded_by=""):
+    def entry(eid, title, path, status, tickets, text, supersedes="", superseded_by="", verified=""):
         return {"id": eid, "title": title, "description": text.split(".")[0] + ".", "path": path, "status": status,
-                "tickets": tickets, "supersedes": supersedes, "supersededBy": superseded_by, "text": text}
+                "tickets": tickets, "supersedes": supersedes, "supersededBy": superseded_by, "verifiedAt": verified, "text": text}
     entries = [
         entry("overview", "Vue d'ensemble", "overview.md", "accepted", [], "Une application en ligne de commande, sans service distant."),
         entry("layering", "Couches", "guidelines/layering.md", "accepted", [], "Le domaine n'importe jamais les adaptateurs."),
+        entry("data-model", "Modèle de données", "reference/data-model.md", "accepted", [], "Table catalogue(id, nom, version) et table etapes(id, catalogue_id, rang).", verified=iso(180)),
+        entry("stack", "Pile technique", "reference/stack.md", "accepted", [], "Node 22, TypeScript 5.6, Vitest 2."),
         entry("0001-compute", "Catalogue calculé", "adr/0001-compute.md", "superseded", [5], "Le catalogue est recalculé à chaque appel.", "", "0002-store"),
         entry("0002-store", "Catalogue stocké", "adr/0002-store.md", "accepted", [12], "Le catalogue est stocké, pas calculé.", "0001-compute"),
         entry("web-overview", "Application web", "apps/web/web-overview.md", "accepted", [], "L'interface web, en React."),

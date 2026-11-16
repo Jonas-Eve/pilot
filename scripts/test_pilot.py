@@ -1295,6 +1295,23 @@ class ArchitectureTests(unittest.TestCase):
         outline = self.arch.outline("", active=True)
         self.assertNotIn("runbooks", [f["path"].strip("/") for f in outline.get("folders", [])])
 
+    def test_a_reference_entry_is_carried_in_force_and_stamped_against_the_code(self):
+        self.add("guidelines/layering.md", "accepted")
+        self.add("reference/data-model.md", "accepted", description="The tables and their relations.")
+        self.add("apps/web/reference/stack.md", "accepted", description="Framework and versions of the web app.")
+        self.assertIn("type: Reference", self.text("reference/data-model.md"))
+        self.assertIn("type: Reference", self.text("apps/web/reference/stack.md"))
+        in_force = sorted(e["id"] for e in self.arch.index(active=True)["entries"])
+        self.assertEqual(in_force, ["data-model", "layering", "stack"])  # unlike a runbook, a phase prompt lists it
+        self.arch.set("data-model", stamp="abc1234")
+        shown = self.arch.show("data-model")
+        self.assertTrue(shown["verifiedAt"])
+        self.assertEqual(shown["verifiedCommit"], "abc1234")
+        rows = {r["id"]: r for r in self.arch.snapshot("o/r")["entries"]}
+        self.assertTrue(rows["data-model"]["verifiedAt"])
+        self.assertEqual(rows["layering"]["verifiedAt"], "")
+        self.assertEqual(self.codes(), [])
+
     def test_add_refuses_a_path_outside_the_layout(self):
         for bad in ("notes.md", "wiki/x.md", "adr/sub/x.md"):
             with self.assertRaises(pilot.Refused) as ctx:
@@ -2095,14 +2112,21 @@ class ProcessReferencesTests(unittest.TestCase):
         self.assertEqual(bad, [])
 
     def test_skill_descriptions_stay_short(self):
-        """Every skill's description sits in the context of every session of a consuming project, invoked or not: the
-        mechanics belong in the body, which is loaded only when the skill runs."""
-        sizes = {}
+        """A description sits in the context of every session of a consuming project, invoked or not: the mechanics
+        belong in the body, which is loaded only when the skill runs. A skill with `disable-model-invocation: true` is
+        launched by its command only and its description is not carried, so only the others count towards the total;
+        `pilot-auto` runs review, dev and spec through the Skill tool, so those three must stay model-invocable."""
+        sizes, carried = {}, {}
         for f in (self.ROOT / ".claude/skills").glob("*/SKILL.md"):
-            m = re.search(r"^description: (.*)$", f.read_text(), re.M)
+            text = f.read_text()
+            m = re.search(r"^description: (.*)$", text, re.M)
             sizes[f.parent.name] = len(m.group(1).encode())
+            if not re.search(r"^disable-model-invocation: true$", text, re.M):
+                carried[f.parent.name] = sizes[f.parent.name]
         self.assertEqual({k: v for k, v in sizes.items() if v > 1500}, {})
-        self.assertLess(sum(sizes.values()), 12_000)
+        self.assertLess(sum(carried.values()), 8_000)
+        for name in ("pilot-review", "pilot-dev", "pilot-spec"):
+            self.assertIn(name, carried)
 
     def test_the_generic_file_stays_small(self):
         size = (self.ROOT / "assets/docs/pilot-process.md").stat().st_size
