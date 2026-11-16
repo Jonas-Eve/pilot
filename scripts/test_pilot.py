@@ -1124,6 +1124,7 @@ class WikiTests(unittest.TestCase):
         self.assertEqual((first["id"], first["path"], first["display"], first["tickets"], first["description"]),
                          ("search-filter", "search/search-filter.md", "specified · in-dev", [12, 15], "The user can filter results."))
         self.assertEqual(first["text"], "The user can filter results.")
+        self.assertEqual(first["type"], "Behavior")  # the dashboard tells persona and user-flow entries apart by it
         self.assertEqual((second["id"], second["verifiedAt"], second["text"]), ("search-sort", "2026-01-01T00:00:00Z", ""))
 
     def test_snapshot_shortens_then_drops_text_to_fit_a_database_document(self):
@@ -1963,6 +1964,22 @@ class WorkflowRouteTests(unittest.TestCase):
         self.assertEqual(refused.exception.payload["reason"], "pair-only")
         self.assertEqual(m.claim("dev", 1, "fresh")["status"], "status:in-dev")
 
+    def test_a_pair_only_story_is_left_out_of_a_browser_qa_run(self):  # the skill passes the script's own --auto for it
+        issues = [issue(1, ["status:qa", "type:feature", "level:story", "priority:P0"]),
+                  issue(2, ["status:qa", "type:feature", "level:story", "priority:P1"])]
+        m = self.machine(issues, {"profile": "standard", "signals": [self.P0]})
+        self.assertEqual(m.pool("qa", 5)["pick"]["number"], 1)
+        self.assertEqual(m.pool("qa", 5, auto=True)["pick"]["number"], 2)
+        self.assertEqual(m.resolve("qa", 1, auto=True)["reason"], "pair-only")
+        with self.assertRaises(pilot.Refused):
+            m.claim("qa", 1, "fresh", auto=True)
+        self.assertEqual(m.claim("qa", 2, "fresh", auto=True)["status"], "status:in-qa")
+
+    def test_the_wiki_module_owns_the_flow_skill_and_a_user_flow_may_run_longer(self):
+        self.assertIn("pilot-flow", pilot.MODULES["wiki"]["skills"])
+        wiki = pilot.Wiki(root="/nonexistent")
+        self.assertGreater(wiki._max_words({"type": "UserFlow"}), wiki._max_words({"type": "Persona"}))
+
     def test_an_auto_descent_into_an_epic_skips_a_pair_only_child(self):
         issues = [issue(1, ["level:epic", "type:feature"]), issue(2, ["status:dev-ready", "type:tech", "priority:P0"]),
                   issue(3, ["status:dev-ready", "type:tech", "priority:P1"])]
@@ -2195,7 +2212,7 @@ class DemoSnapshotTests(unittest.TestCase):
         doc = self.demo.wiki_document()
         self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "Jonas-Eve/pilot", len(doc["entries"]), False))
         self.assertLessEqual(len(json.dumps(doc, ensure_ascii=False).encode()), pilot.WIKI_SNAPSHOT_MAX_BYTES)
-        keys = {"id", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "text"}
+        keys = {"id", "type", "hash", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "text"}
         for row in doc["entries"]:
             self.assertEqual(set(row), keys)
             self.assertIn(row["status"], pilot.WIKI_STATUSES)
@@ -2231,6 +2248,83 @@ class DemoSnapshotTests(unittest.TestCase):
     def test_live_documents(self):
         docs = self.demo.live_documents()
         self.assertEqual({d["kind"] for d in docs.values()}, {"activity", "ticket"})
+
+
+class FlowRunDocTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.wiki = pilot.Wiki(root=self.tmp.name)
+        for pid in ("marie", "paul"):
+            self.wiki.add(f"persona/{pid}.md", pid.title(), "A user.", "implemented", body="Low vision.", typ="Persona")
+        self.wiki.add("user-flow/find.md", "Find a place", "Search.", "implemented", body="Personas: marie, paul", typ="UserFlow")
+        self.wiki.add("search/sort.md", "Sort", "Sorted.", "implemented")
+
+    @staticmethod
+    def run_of(pid, *results, session="started"):
+        return {"persona": pid, "session": session, "steps": [{"n": i + 1, "result": r} for i, r in enumerate(results)]}
+
+    def doc(self, *runs, bugs=(), flow="find"):
+        data = {"flow": flow, "personas": list(runs), "report": {"bugs": [{"ticket": b} for b in bugs]}, "reportUrl": "https://claude.ai/artifact/x"}
+        return pilot.flow_run_doc(self.wiki, "o/r", data)
+
+    def test_the_result_is_the_worst_of_the_personas(self):
+        ok, untestable = self.run_of("marie", "passed", "passed"), self.run_of("paul", "passed", "untestable")
+        bad = self.run_of("paul", "passed", "failed")
+        self.assertEqual(self.doc(ok)["result"], "passed")
+        self.assertEqual(self.doc(ok, untestable)["result"], "partial")
+        self.assertEqual(self.doc(untestable, bad)["result"], "failed")
+        self.assertEqual(self.doc(self.run_of("marie", "passed", "untestable", session="started"), self.run_of("paul", session="not-started"))["result"], "partial")
+
+    def test_the_document_names_each_persona_with_its_result_steps_and_the_bugs(self):
+        doc = self.doc(self.run_of("marie", "passed", "failed"), self.run_of("paul", "passed", "passed"), bugs=(7, 9))
+        self.assertEqual((doc["kind"], doc["repo"], doc["flow"], doc["bugs"], doc["report"]), ("flowRun", "o/r", "find", [7, 9], "https://claude.ai/artifact/x"))
+        marie, paul = doc["personas"]
+        self.assertEqual((marie["id"], marie["result"], marie["steps"]), ("marie", "failed", {"passed": 1, "failed": 1, "untestable": 0}))
+        self.assertEqual((paul["id"], paul["result"]), ("paul", "passed"))
+
+    def test_hashes_follow_the_text_of_the_flow_and_of_each_persona_and_match_the_snapshot(self):
+        before = self.doc(self.run_of("marie", "passed"))
+        rows = {r["id"]: r for r in self.wiki.snapshot(FakeGh([]))["entries"]}
+        self.assertEqual((before["hash"], before["personas"][0]["hash"]), (rows["find"]["hash"], rows["marie"]["hash"]))
+        path = os.path.join(self.tmp.name, "persona", "marie.md")
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace("Low vision.", "Blind."))
+        after = self.doc(self.run_of("marie", "passed"))
+        self.assertEqual(after["hash"], before["hash"])
+        self.assertNotEqual(after["personas"][0]["hash"], before["personas"][0]["hash"])
+
+    def test_a_run_that_played_no_step_writes_nothing_and_a_sloppy_ticket_number_does_not_crash(self):
+        with self.assertRaises(pilot.Refused) as refused:
+            self.doc(self.run_of("marie", session="not-started"), self.run_of("paul", "untestable"))
+        self.assertEqual(refused.exception.payload["reason"], "nothing-run")
+        doc = self.doc(self.run_of("marie", "passed"), bugs=("#12", "x", 0, 5))
+        self.assertEqual(doc["bugs"], [12, 5])
+        for bad in ("nope", [1], {"flow": "find", "personas": ["marie"]}):
+            with self.assertRaises(pilot.Refused):
+                pilot.flow_run_doc(self.wiki, "o/r", bad)
+
+    def test_the_cli_add_takes_the_type_from_the_folder_and_show_reports_it(self):
+        parse = pilot.build_parser().parse_args
+        self.assertIsNone(parse(["wiki", "add", "user-flow/x.md", "--title", "T", "--description", "D", "--status", "implemented"]).type)
+        self.wiki.add("user-flow/x.md", "T", "D", "implemented", typ=None)
+        self.assertEqual(self.wiki.show("x", FakeGh([]))["type"], "UserFlow")
+
+    def test_the_folder_sets_the_type_of_a_new_entry(self):
+        self.wiki.add("persona/zoe.md", "Zoe", "A user.", "implemented")
+        self.wiki.add("user-flow/buy.md", "Buy", "A journey.", "proposed", tickets=[3])
+        self.wiki.add("top-level.md", "Top", "A rule.", "implemented")
+        kinds = {e["id"]: e["type"] for e in self.wiki.parse()}
+        self.assertEqual((kinds["zoe"], kinds["buy"], kinds["top-level"], kinds["sort"]), ("Persona", "UserFlow", "Behavior", "Behavior"))
+
+    def test_it_refuses_what_is_not_a_flow_or_a_persona_or_has_no_run(self):
+        for flow, runs, reason in (("nope", [self.run_of("marie", "passed")], "not-a-user-flow"), ("sort", [self.run_of("marie", "passed")], "not-a-user-flow"),
+                                   ("find", [self.run_of("sort", "passed")], "not-a-persona"), ("find", [], "no-persona-run")):
+            with self.assertRaises(pilot.Refused) as refused:
+                self.doc(*runs, flow=flow)
+            self.assertEqual(refused.exception.payload["reason"], reason)
 
 
 if __name__ == "__main__":

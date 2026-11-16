@@ -28,12 +28,13 @@ const ticket = (n, labels, extra = {}) => ({ n, t: `Ticket ${n}`, l: labels, u: 
 const STUB = (opts) => `
 (() => {
   const OPTS = ${JSON.stringify(opts)};
-  const data = { snapshots: {}, events: {}, activity: {}, design: {}, wiki: {}, architecture: {}, protos: {}, protoHtml: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [], wiki: [], architecture: [], protos: [], protoHtml: [] };
+  const data = { snapshots: {}, events: {}, activity: {}, design: {}, wiki: {}, flowRuns: {}, architecture: {}, protos: {}, protoHtml: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [], wiki: [], flowRuns: [], architecture: [], protos: [], protoHtml: [] };
   (OPTS.preload || []).forEach(d => { data.snapshots[d.repo.replace('/', '__')] = d; });
   (OPTS.events || []).forEach((d, k) => { data.events['e' + k] = d; });
   (OPTS.activity || []).forEach((d, k) => { data.activity['a' + k] = d; });
   (OPTS.design || []).forEach((d, k) => { data.design['d' + k] = d; });
   (OPTS.wiki || []).forEach((d, k) => { data.wiki['w' + k] = d; });
+  (OPTS.flowRuns || []).forEach((d, k) => { data.flowRuns['f' + k] = d; });
   (OPTS.architecture || []).forEach((d, k) => { data.architecture['r' + k] = d; });
   (OPTS.protos || []).forEach((d) => { data.protos['p' + d.n] = d; });
   (OPTS.protoHtml || []).forEach((d) => { data.protoHtml[d.n + '-' + d.k] = d; });
@@ -160,7 +161,7 @@ const STUB = (opts) => `
 
   // ---- open in Claude Code: links with the command typed in ----
   const hrefs = (page, sel) => page.$$eval(sel, (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel, text: a.textContent.trim() })));
-  const QA_SNAP = snapshot([ticket(99, ['type:tech', 'status:dev-ready', 'priority:P1']), ticket(50, ['type:feature', 'status:qa', 'priority:P1'])], 120);
+  const QA_SNAP = snapshot([ticket(99, ['type:tech', 'status:dev-ready', 'priority:P1']), ticket(50, ['type:feature', 'status:qa', 'priority:P1']), ticket(51, ['type:feature', 'status:in-qa', 'can-resume', 'priority:P2'])], 120);
   page = await open({ preload: [QA_SNAP] });
   await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
   const links = await hrefs(page, '#view .row a.btn');
@@ -168,7 +169,8 @@ const STUB = (opts) => `
   const repoParam = '&repo=' + encodeURIComponent(REPO);
   const find = (cmd) => links.find((l) => l.href === base + encodeURIComponent(cmd) + repoParam);
   check('auto-capable ticket: open links for auto and pair', find('/pilot-dev 99 --auto') && find('/pilot-dev 99'), JSON.stringify(links));
-  check('pair-only ticket (QA): a single open link, no --auto', find('/pilot-qa 50') && !links.some((l) => /pilot-qa%2050%20--auto/.test(l.href)), JSON.stringify(links));
+  check('QA ticket: open links for the browser run and pair', find('/pilot-qa 50 --browser') && find('/pilot-qa 50'), JSON.stringify(links));
+  check('QA resume: open links for the browser run and pair too', find('/pilot-qa --resume 51 --browser') && find('/pilot-qa --resume 51'), JSON.stringify(links));
   check('links open in a new tab without opener', links.length >= 3 && links.every((l) => l.target === '_blank' && /noopener/.test(l.rel)), JSON.stringify(links));
   check('the command and the repository are URL-encoded (documented claude.ai/code/new?q=&repo= form)', links.every((l) => !/ /.test(l.href)) && links.every((l) => l.href.endsWith(repoParam)) && links.every((l) => l.href.startsWith(base)));
   check('copy buttons stay as a fallback', /Copier auto/.test(await text(page, '#view')) && /Copier pair/.test(await text(page, '#view')));
@@ -311,7 +313,7 @@ const STUB = (opts) => `
   await panel70().locator('.tog', { hasText: 'PM' }).click(); await panel70().locator('.grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
   check('review row: --with architect', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --auto --multi 2 --with architect', '/pilot-review 70 --multi 2 --with architect']), JSON.stringify(await rowHrefs(70)));
   await optBtn(50).click(); await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await page.waitForTimeout(100);
-  check('QA row: --with designer, pair only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --with designer']), JSON.stringify(await rowHrefs(50)));
+  check('QA row: --with designer applies to the pair command only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --with designer', '/pilot-qa 50 --browser']), JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await optBtn(50).click(); await page.waitForTimeout(100);
   await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
   check('spec row of a bug offers the architect, not the designer; a tech story offers the designer',
@@ -320,7 +322,15 @@ const STUB = (opts) => `
   await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
   check('bug spec: /pilot-spec 80 --auto --with architect', JSON.stringify(await rowHrefs(80)) === JSON.stringify(['/pilot-spec 80 --auto --with architect', '/pilot-spec 80 --with architect']), JSON.stringify(await rowHrefs(80)));
   await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
-  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
+  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
+  await optBtn(50).click(); await page.waitForTimeout(100);
+  check('QA row options: an environment address, no --next', (await rowOf(50).locator('.opts #qaUrl-50').count()) === 1 && (await rowOf(50).locator('.opts .tog', { hasText: 'Enchaîner' }).count()) === 0);
+  await rowOf(50).locator('#qaUrl-50').fill('https://staging.example.com'); await page.waitForTimeout(150);
+  check('QA row: the address goes to the auto command only, and typing keeps the focus',
+        JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser --url https://staging.example.com']) && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'qaUrl-50', JSON.stringify(await rowHrefs(50)));
+  await rowOf(50).locator('#qaUrl-50').fill('javascript:alert(1)'); await page.waitForTimeout(150);
+  check('QA row: anything but an http(s) address is dropped', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser']), JSON.stringify(await rowHrefs(50)));
+  await rowOf(50).locator('#qaUrl-50').fill(''); await optBtn(50).click(); await page.waitForTimeout(100);
   check('row options: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'options.png') });
   await page.close();
@@ -389,7 +399,7 @@ const STUB = (opts) => `
   const kidCmds = (sel) => page.locator(sel).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
   check('each sub-issue can be launched on its own (/pilot-spec 11 auto + pair, /pilot-qa 12)',
         JSON.stringify(await kidCmds('#view .kids > .row:nth-child(1) > .acts')) === JSON.stringify(['/pilot-spec 11 --auto', '/pilot-spec 11']) &&
-        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(2) > .acts')) === JSON.stringify(['/pilot-qa 12']), JSON.stringify(await kidCmds('#view .kids > .row > .acts')));
+        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(2) > .acts')) === JSON.stringify(['/pilot-qa 12', '/pilot-qa 12 --browser']), JSON.stringify(await kidCmds('#view .kids > .row > .acts')));
   await page.locator('#view .kids > .row:nth-child(1) > .acts button:has-text("Sous-tickets")').click(); await page.waitForTimeout(100);
   check('nesting goes one level further (story -> tasks), blocked task flagged', JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))) === JSON.stringify(['#14 Tâche bloquée de A', '#13 Tâche de A']), JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))));
   check('a task is launchable (/pilot-dev 13 --auto) and has no sub-tickets chevron', (await kidCmds('#view .kids .kids > .row:has-text("#13 ") > .acts')).includes('/pilot-dev 13 --auto') && (await page.locator('#view .kids .kids button:has-text("Sous-tickets")').count()) === 0);
@@ -971,7 +981,7 @@ const STUB = (opts) => `
   check('wiki summary: one chip per status', /2 implémenté/.test(wv) && /1 spécifié/.test(wv) && /1 déprécié/.test(wv), wv);
   check('wiki entry chips: stamp, never verified, in-flight status, ticket link',
         /vérifié il y a|vérifié /.test(wv) && /non vérifié/.test(wv) && /en review/.test(wv) && (await page.$eval('#view a[href$="/issues/12"]', (a) => a.getAttribute('href'))) === 'https://github.com/' + REPO + '/issues/12');
-  check('wiki: HTML in an entry stays text', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && (await page.$eval('#view details', (d) => d.textContent)).includes('<img src=x'));
+  check('wiki: HTML in an entry stays text', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && (await page.$eval('#view .row details', (d) => d.textContent)).includes('<img src=x'));
   await page.click('#subtabs >> text=search'); await page.waitForTimeout(150);
   const wf = await text(page, '#view');
   check('wiki sub-tab: shows only that domain, the address follows', /Search places by name/.test(wf) && /sorted by distance/.test(wf) && !/Default output/.test(wf) && (await page.evaluate(() => location.hash)) === '#wiki/search', wf);
@@ -995,6 +1005,84 @@ const STUB = (opts) => `
     }
   }
   check('wiki tab fits a 400px phone, light and dark', wwide.length === 0 && page.errors.length === 0, wwide.join(', ') + ' ' + page.errors.join(' | '));
+  await page.close();
+  }
+
+  // ---- persona / user-flow entries: a launcher that writes the /pilot-flow command ----
+  const WIKI_FLOWS = { kind: 'wiki', repo: REPO, at: iso(5), total: 3, truncated: false, entries: [
+    { id: 'marie-senior', type: 'Persona', title: 'Marie', description: 'Senior.', path: 'persona/marie-senior.md', status: 'implemented', tickets: [], text: 'Senior.' },
+    { id: 'paul-aidant', type: 'Persona', title: 'Paul', description: 'Carer.', path: 'persona/paul-aidant.md', status: 'implemented', tickets: [], text: 'Carer.' },
+    { id: 'find-a-place', type: 'UserFlow', title: 'Find a place', description: 'Search.', path: 'user-flow/find-a-place.md', status: 'implemented', tickets: [], text: 'Goal.\nPersonas: marie-senior\n1. Open the search -> a field.' }] };
+  { let page = await open({ preload: [BASE], wiki: [WIKI_FLOWS] });
+  await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(400);
+  const cmdOf = async () => page.$eval('#view .flow-launch + .cmd', (e) => e.textContent);
+  const hrefOf = async () => page.$eval('#view .flow-launch + .cmd + .refresh a', (a) => a.getAttribute('href'));
+  check('flow launcher: the personas the flow lists are pre-picked, the command is written',
+        (await cmdOf()) === '/pilot-flow find-a-place --as marie-senior' && decodeURIComponent(await hrefOf()).includes('/pilot-flow find-a-place --as marie-senior'), await cmdOf());
+  await page.click('#view .flow-launch .tog:nth-of-type(2)'); await page.waitForTimeout(100);
+  check('flow launcher: picking a second persona adds it', (await cmdOf()) === '/pilot-flow find-a-place --as marie-senior,paul-aidant', await cmdOf());
+  await page.fill('#flowUrl-find-a-place', 'https://staging.example.com'); await page.waitForTimeout(100);
+  check('flow launcher: an environment address is passed as --url', (await cmdOf()).endsWith(' --url https://staging.example.com'), await cmdOf());
+  await page.fill('#flowUrl-find-a-place', 'javascript:alert(1)'); await page.waitForTimeout(100);
+  check('flow launcher: anything but an http(s) address is dropped', !/--url/.test(await cmdOf()), await cmdOf());
+  await page.click('#view .flow-launch .tog:nth-of-type(1)'); await page.click('#view .flow-launch .tog:nth-of-type(2)'); await page.waitForTimeout(100);
+  check('flow launcher: no persona picked, no link', (await page.$eval('#view .flow-launch + .cmd + .refresh a', (a) => a.getAttribute('aria-disabled') === 'true' && !a.hasAttribute('href'))), await cmdOf());
+  await page.goto(FILE + '#wiki/persona'); await page.waitForTimeout(300);
+  const pcmds = await page.$$eval('#view .flow-launch + .cmd', (a) => a.map((x) => x.textContent));
+  check('persona launcher: the flow is chosen, the persona is the one of the entry', pcmds.length === 2 && pcmds.every((c) => c.startsWith('/pilot-flow find-a-place --as ')) && pcmds[0].endsWith('--as marie-senior') && pcmds[1].endsWith('--as paul-aidant'), pcmds.join(' | '));
+  await page.evaluate((d) => window.__push('wiki', 'w9', d), Object.assign({}, WIKI_FLOWS, { entries: WIKI_FLOWS.entries.map((e) => (e.type === 'UserFlow' ? Object.assign({}, e, { status: 'proposed' }) : e)) })); await page.waitForTimeout(250);
+  await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(300);
+  check('flow launcher: a flow that is not implemented yet has no launcher, only a note', (await page.$('#view .flow-launch')) === null && /Pas encore livré/.test(await text(page, '#view')));
+  check('flow launcher: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+  }
+
+  // ---- a user flow's state since it was last played, and the creation card ----
+  { const hashes = { flow: 'aaaaaaaaaaaa', marie: 'bbbbbbbbbbbb', paul: 'cccccccccccc' };
+  const withHash = Object.assign({}, WIKI_FLOWS, { entries: WIKI_FLOWS.entries.map((e) => Object.assign({}, e, { hash: { 'find-a-place': hashes.flow, 'marie-senior': hashes.marie, 'paul-aidant': hashes.paul }[e.id] })) });
+  const run = (over) => Object.assign({ kind: 'flowRun', repo: REPO, flow: 'find-a-place', at: iso(48), hash: hashes.flow, result: 'partial', bugs: [7], report: 'https://claude.ai/artifact/abc',
+    personas: [{ id: 'marie-senior', hash: hashes.marie, result: 'passed' }, { id: 'paul-aidant', hash: hashes.paul, result: 'partial' }] }, over || {});
+  let page = await open({ preload: [BASE], wiki: [withHash] });
+  await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(350);
+  const chipsOf = async () => page.$$eval('#view .row .meta .chip', (c) => c.map((x) => x.textContent));
+  check('flow status: a flow never played says so', (await chipsOf()).includes('jamais joué'), (await chipsOf()).join('|'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run()); await page.waitForTimeout(250);
+  let c = await chipsOf();
+  check('flow status: the result, when, who played with each result, the bug and the report',
+        c.includes('partiel') && c.some((x) => /^joué il y a/.test(x)) && c.includes('Marie · passé') && c.includes('Paul · partiel') && c.includes('#7') && c.includes('rapport') && !c.includes('jamais joué') && !c.includes('à rejouer'), c.join('|'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ hash: 'zzzzzzzzzzzz' })); await page.waitForTimeout(250);
+  check('flow status: a flow changed since the run is to replay', (await chipsOf()).includes('à rejouer'), (await chipsOf()).join('|'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ personas: [{ id: 'marie-senior', hash: 'zzzzzzzzzzzz', result: 'passed' }] })); await page.waitForTimeout(250);
+  check('flow status: a persona changed since the run makes it to replay too', (await chipsOf()).includes('à rejouer'), (await chipsOf()).join('|'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f1', d), run({ repo: 'o/other', result: 'failed' })); await page.waitForTimeout(200);
+  check('flow status: another repo\'s run is not shown', !(await chipsOf()).includes('échec'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ bugs: ['x', -1, 0], report: 'javascript:alert(1)' })); await page.waitForTimeout(250);
+  check('flow status: a bad bug number or report address is dropped', !(await chipsOf()).some((x) => /^#/.test(x) || x === 'rapport'), (await chipsOf()).join('|'));
+  { const en = await open({ preload: [BASE], wiki: [withHash], flowRuns: [run()], lang: 'en' });
+  await en.goto(FILE + '#wiki/user-flow'); await en.waitForTimeout(350);
+  const ec = await en.$$eval('#view .row .meta .chip', (x) => x.map((y) => y.textContent));
+  check('flow status: in English the chips are English, the persona chips too', ec.includes('partial') && ec.some((x) => /^played /.test(x)) && ec.includes('Marie · passed') && ec.includes('Paul · partial') && ec.includes('report') && !ec.some((x) => /passé|partiel|joué|rapport/.test(x)), ec.join('|'));
+  await en.close(); }
+  check('persona and flow rows are never flagged "non vérifié"', !(await chipsOf()).includes('non vérifié'), (await chipsOf()).join('|'));
+  await page.goto(FILE + '#wiki'); await page.waitForTimeout(300);
+  check('creation card: it writes the command for a persona, then for a flow, and is disabled while the text is empty',
+        (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona'
+        && (await page.$eval('#view .foldcard a.btn.primary', (a) => a.getAttribute('aria-disabled') === 'true' && !a.hasAttribute('href'))));
+  await page.click('#view .foldcard summary'); await page.fill('#flowNewText', 'Marie, 74 ans,\n malvoyante'); await page.waitForTimeout(100);
+  check('creation card: the text becomes one line of the command, the link opens it', (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona Marie, 74 ans, malvoyante'
+        && decodeURIComponent(await page.$eval('#view .foldcard a.btn.primary', (a) => a.getAttribute('href'))).includes('/pilot-flow --new persona Marie, 74 ans, malvoyante'));
+  await page.click('#view .foldcard .seg button:nth-of-type(2)'); await page.waitForTimeout(100);
+  check('creation card: choosing the flow changes the command', (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)).startsWith('/pilot-flow --new flow '));
+  await page.fill('#flowNewText', 'Une description'); await page.click('#view .foldcard .seg button:nth-of-type(1)');
+  await page.evaluate((d) => window.__push('flowRuns', 'f5', d), run({ flow: 'other-flow' })); await page.waitForTimeout(300);
+  check('creation card: a re-render (a new document arrives) keeps the text, the kind and the open card',
+        (await page.$eval('#flowNewText', (e) => e.value)) === 'Une description' && (await page.$eval('#view .foldcard', (d) => d.open)) && (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona Une description');
+  await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(300);
+  await page.fill('#flowUrl-find-a-place', 'https://staging.example.com'); await page.click('#view .flow-launch .tog:nth-of-type(2)');
+  await page.evaluate((d) => window.__push('flowRuns', 'f6', d), run({ flow: 'another-flow' })); await page.waitForTimeout(300);
+  check('flow launcher: a re-render keeps the picked personas and the address', (await page.$eval('#flowUrl-find-a-place', (e) => e.value)) === 'https://staging.example.com'
+        && (await page.$eval('#view .flow-launch + .cmd', (e) => e.textContent)) === '/pilot-flow find-a-place --as marie-senior,paul-aidant --url https://staging.example.com', await page.$eval('#view .flow-launch + .cmd', (e) => e.textContent));
+  check('flow status and creation card: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
   }
 

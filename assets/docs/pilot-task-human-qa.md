@@ -15,7 +15,7 @@ nobody has yet confirmed it behaves as intended for a real user.
    to *execute*, not a restatement of the acceptance criteria.
    When the prompt carries wiki entries, each statement of an entry is a case of its own: they are
    what the product promises, and a case that fails against one is a real failure of the story.
-2. **Present the plan to the human and wait** — no `--auto`, nothing to do here without
+2. **Present the plan to the human and wait** (pair; `--browser` below) — nothing to do here without
    them. Go case by case rather than dumping the whole plan for one verdict: have them run
    a case, report what happened, move to the next — this surfaces exactly which case
    failed, if any, instead of one pass/fail over the whole feature.
@@ -43,12 +43,20 @@ nobody has yet confirmed it behaves as intended for a real user.
      new ticket(s), clear the assignee, move it back to `status:qa`. Takes priority over a
      same-pass "not actually a bug" failure — report those too, but don't set
      `status:done` while a real bug is open.
-   - **A failure still unresolved** (nobody answered on the spot — rare, since
-     `/pilot-qa` is always pair) → leave `needs-human` and its comment exactly as posted,
+   - **A failure still unresolved** (nobody answered on the spot — rare in pair) → leave `needs-human` and its comment exactly as posted,
      hand it back to the skill as-is; `status:in-qa` stays and a human resolves it later,
      same as any other `needs-human` ticket.
    These can combine in the same pass — handle each independently.
-4. If mid-session the human raises something that isn't a pass/fail on a planned case — a
+4. **`--browser`** (the prompt carries the environment URL): there is no human, so step 2 becomes executing the plan yourself in a browser, case by case, against that URL only. Record for each case
+   what you did and what you observed, and one of: `passed`, `failed`, `untestable` (needs a real device, a screen reader, a judgment on the experience, a credential or data the project does not
+   document — say which). When the prompt carries a test log (a resume), the plan is that log's: do not restart it, keep every `passed` case as it stands, run the cases left, and treat an `untestable` one as still untestable unless the recorded resolution says how to test it. Never mark a case `passed` on a guess, and never test anything beyond the plan. Write no credential, token or personal data you meet into a result, and read the test account from `PILOT_ACCOUNT_QA_USER`/`_PASSWORD` or the file the prompt names, never printing it. Return, besides the results, a coverage list: every acceptance criterion with the cases that cover it (a criterion no case covers is a gap you name, not something to skip). Then step 3 changes:
+   - **Every case `passed` and every criterion covered by a passed case** → approve.
+   - **A `failed` case that is plainly a defect** → a `type:bug` and the unclaim, as in step 3.
+   - **A `failed` case you cannot call a defect** (a product question, an edge nobody settled), **an `untestable` case, or an uncovered criterion** → no approval: add `needs-human` with a comment naming those cases and
+     why, immediately, and leave `status:in-qa`. A human clears it and `/pilot-qa --resume` tests what is left. If a real defect is originated in the same pass it takes precedence: unclaim as in step 3, name these cases
+     in the unclaim comment and add no `needs-human` (the next run plans afresh).
+   Return the per-case results; the skill writes them to the test-log comment.
+5. If mid-session the human raises something that isn't a pass/fail on a planned case — a
    different observation, a scope question — use judgment: fold it in as an additional
    case if testable now, or note it in your final report if out of scope. Don't let it
    derail the cases you already planned.

@@ -16,7 +16,7 @@ Five phases, each with its own Claude Code skill and agent persona:
 | 2. Spec | `/pilot-spec` | Architect + Tech Lead, in dialogue | Splits an already-formalized story into dev-sized tasks (mandatory for feature, judgment call for tech) and writes each resulting ticket's technical spec, in one continuous pass — or, given no ticket at all, first originates a standalone technical need or a bug report (the one shared bug-creation mechanism) |
 | 3. Dev | `/pilot-dev` | Senior Dev, or the e2e persona for the end-to-end-test task | Code + an open pull request |
 | 4. Review | `/pilot-review` | Tech Lead + PM by default (feature/e2e) or Tech Lead alone (tech/bug) — Architect optional in either set | A submitted GitHub PR review (approve/request changes) — merges too, only with `--merge` |
-| 5. Human QA (feature stories only) | `/pilot-qa` | QA persona, paired with a human | A human-confirmed done, once every task has merged |
+| 5. Human QA (feature stories only) | `/pilot-qa` | QA persona, paired with a human (or `--browser`: the agent tests in a browser) | A confirmed done, once every task has merged |
 
 A `type:feature` idea always goes through Discovery first; a purely
 technical need (CI, security, deployment, migrations, optimization) with no product
@@ -25,8 +25,8 @@ explicit or auto-detected) — there's no separate ticket-creation path for eith
 no single command that runs all five phases end to end — each phase is driven on its own,
 one at a time — and each also runs bare, with no argument at all, which is what lets a
 scheduled cron Routine drive a phase on a timer instead of a human typing it each time.
-`/pilot-discovery` and `/pilot-qa` always run paired with a human (no Routine for either,
-though `--resume` picks a paused session back up); `/pilot-spec`
+`/pilot-discovery` always runs paired with a human (no Routine, though `--resume` picks a paused
+session back up), and so does `/pilot-qa` unless given `--browser --url <URL>` (a browser run); `/pilot-spec`
 and `/pilot-dev` default to that same pair mode too, so their Routine's
 prompt adds `--auto` to run unattended.
 A GitHub label state machine (`status:draft` → `status:backlog` → `in-spec` → `dev-ready`
@@ -56,4 +56,4 @@ quickstart, and the rest of that doc for the state machine and claim protocol in
 
 Two project commands sit beside the phases: `/pilot-proto` builds a prototype of a feature with the PM and the
 designer to decide whether to build it (an accepted one starts a Discovery with `--from-proto`), and `/pilot-design`
-writes the project's design system and brand charter. Both are shown in the dashboard.
+writes the project's design system and brand charter. Both are shown in the dashboard. `/pilot-flow` tests a user flow of the wiki as one or several user personas in a browser, on demand.

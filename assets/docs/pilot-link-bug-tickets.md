@@ -2,7 +2,7 @@
 
 Injected whole by `.claude/skills/pilot-spec/SKILL.md` (both when a human invokes its
 no-ticket `--bug` entry directly, and for a prerequisite bug the architect discovers
-mid-Spec), `pilot-dev/SKILL.md`, and `pilot-qa/SKILL.md` — the phase-specific delta
+mid-Spec), `pilot-dev/SKILL.md`, `pilot-qa/SKILL.md` and `pilot-flow/SKILL.md` — the phase-specific delta
 (whether the discovering ticket needs unclaiming, and how) lives in each duty's own task
 doc instead, never here. See `.pilot/pilot-process.md` §3/§4 for the generic labels and
 claim protocol, and `.pilot/pilot-link-ticket-tree.md` for the ticket types, this builds on.

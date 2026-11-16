@@ -52,6 +52,11 @@ read first. It is created when the wiki is initialised (`/pilot-init`, or `/pilo
 the human gives. No code verifies it: it is never stamped and `--lint` leaves it out. It changes in the PR of the ticket that
 changes the product's direction, with the wording the human confirmed, never silently.
 
+**Personas and user flows.** Two folders are not functional domains: `wiki/persona/` (`type: Persona`, one end user's profile: who they are, their constraints, their test account's label) and `wiki/user-flow/`
+(`type: UserFlow`, one journey: its goal, the personas it is for, numbered steps each with the expected outcome), tested by `/pilot-flow`. They are never stamped (a run of the flow, not the code, is what checks one), and `--lint`
+and `--bootstrap` leave them out. Neither is ever removed (`wiki remove` only deletes a `proposed` entry): a retired one is `wiki set <id> --status deprecated`. A persona is written by a human or `/pilot-flow --new persona`, `implemented`, no ticket, never by a story. A flow written by hand (or `/pilot-flow --new flow`) is `implemented`
+with no ticket; one a story creates or changes follows the story's entries (`proposed`, `specified`, and `implemented` by the Dev PR that completes it, like any entry: `.pilot/pilot-task-implement.md` step 6a; the story as its ticket), and `/pilot-flow` runs only an `implemented` one.
+
 **Only a PR changes the wiki.** Wiki changes go on a branch and reach `main` through a PR a human merges,
 the `index.md` files included; nothing is committed to `main` directly.
 

@@ -10,6 +10,7 @@ Timestamps are relative to now, so re-run it to refresh the demo. Stdlib only.
 """
 import argparse
 import datetime
+import hashlib
 import json
 import os
 
@@ -102,6 +103,21 @@ def live_documents():
     }
 
 
+def flow_documents():
+    """The `flowRuns` documents, one per user flow that has been played."""
+    return {"flowrun-trouver-un-lieu": flow_run_document()}
+
+
+def flow_run_document():
+    """What `pilot.py flow doc` would have written after Marie and Paul played the demo flow two days ago:
+    Marie passed, Paul could not finish one step; Paul's persona entry has changed since."""
+    rows = {e["id"]: e for e in wiki_document()["entries"]}
+    return {"kind": "flowRun", "repo": REPO, "flow": "trouver-un-lieu", "at": iso(48), "hash": rows["trouver-un-lieu"]["hash"],
+            "result": "partial", "bugs": [], "report": "",
+            "personas": [{"id": "marie-senior", "hash": rows["marie-senior"]["hash"], "result": "passed", "steps": {"passed": 2, "failed": 0, "untestable": 0}},
+                         {"id": "paul-aidant", "hash": "0123456789ab", "result": "partial", "steps": {"passed": 1, "failed": 0, "untestable": 1}}]}
+
+
 def design_document():
     """The `design/Jonas-Eve__pilot` document a /pilot-design session would have written."""
     return {
@@ -169,9 +185,9 @@ def architecture_document():
 
 def wiki_document():
     """The `wiki/Jonas-Eve__pilot` document `pilot.py wiki snapshot` would have written."""
-    def entry(eid, title, path, status, derived, tickets, verified, text):
+    def entry(eid, title, path, status, derived, tickets, verified, text, typ="Behavior"):
         shown = status + (" · " + derived if derived else "")
-        return {"id": eid, "title": title, "description": text.split(".")[0] + ".", "path": path, "status": status,
+        return {"id": eid, "type": typ, "hash": hashlib.sha256((title + "\n" + text).encode("utf-8")).hexdigest()[:12], "title": title, "description": text.split(".")[0] + ".", "path": path, "status": status,
                 "derived": derived, "display": shown, "tickets": tickets,
                 "verifiedAt": iso(verified) if verified else "", "text": text}
     entries = [
@@ -185,6 +201,12 @@ def wiki_document():
               "Une distance de 1000 m ou plus est affichée en kilomètres avec une décimale."),
         entry("csv-export", "Exporter le résultat en CSV", "export/csv-export.md", "proposed", "", [4], 0,
               "Une option affiche le résultat en CSV avec une ligne d'en-tête."),
+        entry("marie-senior", "Marie, 74 ans, malvoyante", "persona/marie-senior.md", "implemented", "", [], 0,
+              "Elle utilise son téléphone avec un zoom à 200 %. Compte de test : marie.", "Persona"),
+        entry("paul-aidant", "Paul, aidant de sa mère", "persona/paul-aidant.md", "implemented", "", [], 0,
+              "Il prépare les trajets de sa mère depuis son ordinateur. Compte de test : paul.", "Persona"),
+        entry("trouver-un-lieu", "Trouver un lieu accessible", "user-flow/trouver-un-lieu.md", "implemented", "", [], 0,
+              "Objectif : trouver un lieu de plain-pied près de soi.\nPersonas : marie-senior, paul-aidant\n1. Ouvrir la recherche → le champ est visible.\n2. Filtrer sur l'accès de plain-pied → la liste se réduit.", "UserFlow"),
     ]
     return {"kind": "wiki", "repo": REPO, "at": iso(3), "total": len(entries), "truncated": False, "entries": entries}
 
@@ -248,7 +270,7 @@ def main():
         for name, doc in proto_documents().items():
             with open(os.path.join(args.dir, name + ".json"), "w", encoding="utf-8") as fh:
                 json.dump(doc, fh, ensure_ascii=False)
-        for name, doc in live_documents().items():
+        for name, doc in list(live_documents().items()) + list(flow_documents().items()):
             with open(os.path.join(args.dir, name + ".json"), "w", encoding="utf-8") as fh:
                 json.dump(doc, fh, ensure_ascii=False)
 

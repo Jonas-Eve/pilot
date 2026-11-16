@@ -69,6 +69,7 @@ nav.tabs.sub a{padding:6px 12px;font-size:13px}
 .row .acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
 .row input[type=checkbox]{width:18px;height:18px}
 .cmd{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.foldcard{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface)} .foldcard summary{cursor:pointer;font-weight:600} .foldcard .cmd{overflow-wrap:anywhere}
 .batch{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--accent-soft);border-radius:10px;padding:10px 14px}
 .batch input{width:64px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 8px}
 .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;align-items:start}
@@ -298,6 +299,30 @@ var EN={
 "Instantané ancien : relancez la mise à jour depuis une session du projet.": "Old snapshot: run the update again from a project session.",
 "Instantané · ": "Snapshot · ",
 "Interroger le wiki": "Query the wiki",
+"Tester en tant que": "Test as",
+"Ouvrir (navigateur)": "Open (browser)",
+"Copier navigateur": "Copy browser",
+"sans adresse, l’agent la cherche dans architecture/ et les runbooks, sinon vous la demande ; il teste dans un navigateur et ne clôt la story que si tous les cas passent": "without an address, the agent looks in architecture/ and the runbooks, else asks you; it tests in a browser and only closes the story when every case passes",
+"Pas encore livré : ce parcours se teste une fois implémenté.": "Not delivered yet: this flow can be tested once it is implemented.",
+"Ce que vous créez": "What you create",
+"Créer un persona ou un parcours": "Create a persona or a user flow",
+"Parcours (user flow)": "User flow",
+"Décrivez le persona : qui est cette personne, ses contraintes, comment elle utilise le produit. Le designer le rédige avec vous.": "Describe the persona: who this person is, their constraints, how they use the product. The designer writes it with you.",
+"Décrivez le parcours : l’objectif et les personas concernés. Le QA propose les étapes avec vous.": "Describe the flow: the goal and the personas concerned. QA proposes the steps with you.",
+"Ex. : Marie, 74 ans, malvoyante, utilise son téléphone avec un zoom à 200 %": "E.g. Marie, 74, low vision, uses her phone at 200 % zoom",
+"Ex. : trouver un lieu accessible de plain-pied près de soi": "E.g. find a step-free place near you",
+"jamais joué": "never played",
+"joué ": "played ",
+"passé": "passed",
+"partiel": "partial",
+"échec": "failed",
+"à rejouer": "to replay",
+"rapport": "report",
+"Parcours à tester": "Flow to test",
+"Adresse de l’environnement (facultatif)": "Environment address (optional)",
+"Choisissez au moins un persona.": "Pick at least one persona.",
+"Aucun persona : ajoutez-en dans wiki/persona/.": "No persona: add some under wiki/persona/.",
+"Aucun user flow : ajoutez-en dans wiki/user-flow/.": "No user flow: add some under wiki/user-flow/.",
 "Interroger l’architecture": "Query the architecture",
 "La base ne répond pas pour le moment.": "The database is not responding for now.",
 "La base partagée n’est pas disponible dans cette vue.": "The shared database is not available in this view.",
@@ -568,8 +593,8 @@ function actionFor(t){
     case 'review-ready': return {kind:'run',cmd:'/pilot-review '+n,label:'Relire'};
     case 'in-review': return {kind:'run',cmd:'/pilot-review --resume '+n,pairOnly:true,label:'Reprendre'};
     case 'approved': return {kind:'merge',label:'Merger sur GitHub'};
-    case 'qa': return {kind:'run',cmd:'/pilot-qa '+n,pairOnly:true,label:'Tester'};
-    case 'in-qa': return {kind:'run',cmd:'/pilot-qa --resume '+n,pairOnly:true,label:'Reprendre'};
+    case 'qa': return {kind:'run',cmd:'/pilot-qa '+n,label:'Tester'};
+    case 'in-qa': return {kind:'run',cmd:'/pilot-qa --resume '+n,label:'Reprendre'};
   }
   return {kind:'none'};
 }
@@ -594,7 +619,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'agents',ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'agents',ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -664,6 +689,10 @@ function watchLive(){
   /* a dashboard published before the design tab has no rule for this collection: ignore the error */
   try{S.db.collection('design').onSnapshot(function(snap){
     S.design=null; snap.docs.forEach(function(d){var v=d.data(); if(v&&v.kind==='design'&&v.repo&&snapId(v.repo)===snapId(S.repo))S.design=v;}); render();
+  },function(){});}catch(e){}
+  /* the last run of each user flow (written by /pilot-flow): a dashboard published before it has no rule for this collection */
+  try{S.db.collection('flowRuns').onSnapshot(function(snap){
+    S.flowRuns={}; snap.docs.forEach(function(d){var v=d.data(); if(v&&v.kind==='flowRun'&&v.repo&&snapId(v.repo)===snapId(S.repo)&&FLOW_ID.test(String(v.flow)))S.flowRuns[v.flow]=v;}); render();
   },function(){});}catch(e){}
   /* same for the wiki tab: a dashboard published before it has no rule for this collection */
   try{S.db.collection('wiki').onSnapshot(function(snap){
@@ -770,7 +799,9 @@ function foldCard(box,key,title){
 }
 /* what one ticket row can launch, given its chosen options: --next rides it through every phase via /pilot-auto,
    --multi N has N agents converge on the approach first (never on a resume, nor on QA) */
-function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false,w:{},only:{}});}
+function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false,w:{},only:{},url:''});}
+/* a QA row: --browser runs the cases in a browser against an address the human gives (or the agent finds); it is never chained (--next) and never takes --with */
+function isQaRun(a){return /^\/pilot-qa (--resume )?\d+$/.test(a.cmd||'');}
 /* personas a row can add with --with (the step's Summonable column, `.pilot/pilot-link-roster.md` "Roster") and, for a review, narrow to with --only; never on a resume or a container */
 var WITHS={'/pilot-spec':['designer'],'/pilot-dev':['techlead','architect','designer'],'/pilot-review':['architect'],'/pilot-qa':['designer']};
 var PERSONA_FR={techlead:'tech lead',architect:'architecte',designer:'designer',pm:'PM'};
@@ -786,11 +817,12 @@ function rowCmds(t,a,o){
   if(a.container)return {canAuto:true,multiOK:true,container:true,auto:a.cmd+(o.multi?' --multi '+o.multi:'')+(o.next?' --next':''),pair:null};
   var canAuto=a.kind==='run'&&!a.pairOnly&&!(t.g&&t.g.p), multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
   var mu=multiOK&&o.multi?' --multi '+o.multi:'';
-  var p=phaseCmd(a), withs=!p?[]:p==='/pilot-spec'&&lab(t,'type:')==='bug'?['architect']:WITHS[p], onlys=onlyList(t,a), only=picked(o.only,onlys), wl=o.next||only.length?[]:picked(o.w,withs);
+  var q=isQaRun(a), p=phaseCmd(a), withs=!p?[]:p==='/pilot-spec'&&lab(t,'type:')==='bug'?['architect']:WITHS[p], onlys=onlyList(t,a), only=picked(o.only,onlys), wl=o.next||only.length?[]:picked(o.w,withs);
   var wt=wl.length?' --with '+wl.join(','):'', ot=only.length?' --only '+only.join(','):'';
   if(only.length)canAuto=false; /* --only is never combined with --auto */
   return {canAuto:canAuto,multiOK:multiOK,withs:withs,onlys:onlys,
-    auto:canAuto?(o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu+wt):null,
+    qa:q,
+    auto:canAuto?(q?a.cmd+' --browser'+flowUrlArg(o.url):o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu+wt):null,
     pair:a.cmd+mu+wt+ot};
 }
 function protoOf(n){
@@ -799,8 +831,8 @@ function protoOf(n){
 }
 function ticketRow(t,withLevel,depth){
   if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
-  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), pairFirst=!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='pair'); /* the project's workflow makes pair the default: its button leads */
-  var autoBtn=rc.canAuto?openLink(rc.auto,'Ouvrir (auto)',!pairFirst):null, pairBtn=rc.pair?openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto||pairFirst):null;
+  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), pairFirst=rc.qa||!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='pair'); /* the project's workflow makes pair the default: its button leads; a QA row always leads with pair, the browser run is never the default */
+  var autoBtn=rc.canAuto?openLink(rc.auto,rc.qa?'Ouvrir (navigateur)':'Ouvrir (auto)',!pairFirst):null, pairBtn=rc.pair?openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto||pairFirst):null;
   var hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
   var kids=depth<3?kidsOf(t.n):[];
@@ -809,7 +841,7 @@ function ticketRow(t,withLevel,depth){
         h('div',{class:'main'},
           h('div',{class:'t'},h('span',{class:'num'},'#'+t.n+' '),t.title),
           h('div',{class:'meta'},withLevel&&lab(t,'level:')?h('span',{class:'chip'},LEVEL_FR[lab(t,'level:')]||lab(t,'level:')):null,ticketChips(t),
-            rc.canAuto&&o.next?h('span',{class:'chip acc'},'enchaîné'):null,rc.multiOK&&o.multi?h('span',{class:'chip acc'},'multi '+o.multi):null,
+            rc.canAuto&&o.next&&!rc.qa?h('span',{class:'chip acc'},'enchaîné'):null,rc.multiOK&&o.multi?h('span',{class:'chip acc'},'multi '+o.multi):null,
             t.assignee?h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee):null,
             t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
             h('span',{class:'note'},ago(t.updated)),
@@ -817,7 +849,7 @@ function ticketRow(t,withLevel,depth){
         h('div',{class:'acts'},
           a.kind==='run'?[
             pairFirst?pairBtn:autoBtn, pairFirst?autoBtn:pairBtn,
-            rc.canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.auto,e.target);}},'Copier auto'):null,
+            rc.canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.auto,e.target);}},rc.qa?'Copier navigateur':'Copier auto'):null,
             rc.pair?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.pair,e.target);}},rc.canAuto?'Copier pair':'Copier'):null,
             hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
@@ -825,7 +857,10 @@ function ticketRow(t,withLevel,depth){
           protoOf(t.n)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+protoOf(t.n);}},'Voir le proto'):null,
           kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
-          rc.canAuto?h('div',{class:'grp'},
+          rc.qa&&rc.canAuto?h('div',{class:'grp'},h('label',{for:'qaUrl-'+t.n,class:'note'},'Adresse de l’environnement (facultatif)'),
+            h('input',{id:'qaUrl-'+t.n,type:'url',placeholder:'https://…',value:o.url,oninput:function(e){o.url=e.target.value;var id=e.target.id,at=e.target.selectionStart;render();var el=document.getElementById(id);if(el){el.focus();try{el.setSelectionRange(at,at);}catch(x){}}}}),
+            h('span',{class:'note'},'sans adresse, l’agent la cherche dans architecture/ et les runbooks, sinon vous la demande ; il teste dans un navigateur et ne clôt la story que si tous les cas passent')):null,
+          rc.canAuto&&!rc.qa?h('div',{class:'grp'},
             h('button',{class:'tog',type:'button','aria-pressed':String(o.next),onclick:function(){set('next',!o.next);}},'Enchaîner (--next)'),
             h('span',{class:'note'},rc.container?'traite ce qui est prêt dans cette arborescence, ticket après ticket, jusqu’à la fin ou un blocage':'suit ce ticket dans toutes les phases suivantes, jusqu’à la fin ou un blocage')):null,
           rc.multiOK?h('div',{class:'grp'},h('span',{class:'note'},'Multi'),multiSeg(o.multi,function(m){set('multi',m);},'Multi'),
@@ -1315,16 +1350,95 @@ function wikiDomains(){
   wikiEntries().forEach(function(e){var d=wikiDomain(e); if(n[d]==null){n[d]=0;order.push(d);} n[d]++;});
   return order.sort().map(function(d){return [d,d,n[d]];});
 }
+/* persona / user-flow entries: a launcher that writes the /pilot-flow command (written, not sent) */
+var FLOW_ID=/^[a-z0-9-]+$/, FLOW_KIND={persona:'Persona','user-flow':'UserFlow'};
+function wikiKind(e){return e.type||FLOW_KIND[wikiDomain(e)]||'';}
+function wikiByKind(k){return wikiEntries().filter(function(e){return wikiKind(e)===k&&FLOW_ID.test(str(e.id,80));});}
+function flowPersonaIds(e){var m=/^\s*Personas?\s*:\s*(.+)$/im.exec(str(e.text,1600)); return m?(m[1].match(/[a-z0-9-]+/g)||[]):[];}
+function flowUrlArg(v){v=str(v,300).trim(); return /^https?:\/\/\S+$/.test(v)?' --url '+v:'';}
+function flowLauncher(e){
+  var isFlow=wikiKind(e)==='UserFlow', box=h('div',{class:'filters flow-launch'}), id=str(e.id,80);
+  if(!FLOW_ID.test(id))return null;
+  if(isFlow&&e.status!=='implemented')return h('p',{class:'note'},'Pas encore livré : ce parcours se teste une fois implémenté.');
+  var others=wikiByKind(isFlow?'Persona':'UserFlow');
+  if(!others.length)return h('p',{class:'note'},isFlow?'Aucun persona : ajoutez-en dans wiki/persona/.':'Aucun user flow : ajoutez-en dans wiki/user-flow/.');
+  var picked=S.fl.picked[id]||(S.fl.picked[id]={}), flow=id, cmd=h('div',{class:'cmd'}), go=h('a',{class:'btn primary',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
+      url=h('input',{id:'flowUrl-'+id,type:'url',placeholder:'https://…',value:S.fl.url[id]||''}), sel=null, togs=[];
+  function personas(){return isFlow?others.filter(function(o){return picked[o.id]===true;}).map(function(o){return o.id;}):[id];}
+  function update(){
+    var ps=personas(), ok=ps.length>0, c='/pilot-flow '+flow+' --as '+ps.join(',')+flowUrlArg(url.value);
+    cmd.textContent=ok?c:tr('Choisissez au moins un persona.');
+    if(ok){go.setAttribute('href',claudeCodeUrl(c));go.removeAttribute('aria-disabled');}else{go.removeAttribute('href');go.setAttribute('aria-disabled','true');}
+    togs.forEach(function(t){t[0].setAttribute('aria-pressed',String(!!picked[t[1]]));});
+  }
+  if(isFlow){
+    if(!S.fl.picked[id].__set){var pre=flowPersonaIds(e); others.forEach(function(o){picked[o.id]=pre.indexOf(o.id)>-1;}); if(others.length===1)picked[others[0].id]=true; picked.__set=true;}
+    box.append(h('span',{class:'note'},'Tester en tant que'));
+    others.forEach(function(o){var b=h('button',{class:'tog',type:'button','aria-pressed':'false',onclick:function(){picked[o.id]=!picked[o.id];update();}},str(o.title,60));togs.push([b,o.id]);box.append(b);});
+  }else{
+    var mine=others.filter(function(f){return flowPersonaIds(f).indexOf(id)>-1;}); flow=(mine[0]||others[0]).id;
+    if(S.fl.pick[id]&&others.some(function(f){return f.id===S.fl.pick[id];}))flow=S.fl.pick[id];
+    sel=h('select',{id:'flowPick-'+id,onchange:function(){flow=sel.value;S.fl.pick[id]=flow;update();}},others.map(function(f){return h('option',{value:f.id},str(f.title,80));}));
+    sel.value=flow;
+    box.append(h('label',{for:'flowPick-'+id,class:'note'},'Parcours à tester'),sel);
+  }
+  box.append(h('label',{for:'flowUrl-'+id,class:'note'},'Adresse de l’environnement (facultatif)'),url);
+  url.addEventListener('input',function(){S.fl.url[id]=url.value;update();}); update();
+  return h('div',{},box,cmd,h('div',{class:'refresh'},go));
+}
+var FLOW_RES={passed:['passé','ok'],partial:['partiel','warn'],failed:['échec','crit']};
+/* a persona or a user flow is checked by running it, not against the code: it is never "non vérifié" */
+function runChecked(e){var k=wikiKind(e);return k==='Persona'||k==='UserFlow';}
+function wikiById(id){return wikiEntries().filter(function(e){return e.id===id;})[0];}
+/* the state of a user flow since it was last played: the result, who played, and whether the flow or a persona changed since */
+function flowStatus(e){
+  var r=S.flowRuns[e.id], out=[];
+  if(!r)return [h('span',{class:'chip'},'jamais joué')];
+  var res=FLOW_RES[r.result]||['','']; out.push(h('span',{class:'chip '+res[1]},res[0]||str(r.result,20)),h('span',{class:'chip'},'joué '+ago(r.at)));
+  arr(r.personas).slice(0,12).forEach(function(p){var pe=wikiById(str(p.id,80)), pr=FLOW_RES[p.result]||['',''];
+    out.push(h('span',{class:'chip '+pr[1]},(pe?str(pe.title,40):str(p.id,40))+' · '+tr(pr[0]||str(p.result,20))));});
+  var stale=!!e.hash&&r.hash!==e.hash;
+  arr(r.personas).forEach(function(p){var pe=wikiById(str(p.id,80)); if(pe&&pe.hash&&p.hash&&pe.hash!==p.hash)stale=true;});
+  if(stale)out.push(h('span',{class:'chip acc'},'à rejouer'));
+  arr(r.bugs).slice(0,10).forEach(function(n){n=Math.floor(Number(n)); if(n>0)out.push(h('a',{class:'chip crit',href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n));});
+  if(ART_RE.test(str(r.report,200)))out.push(h('a',{class:'chip',href:r.report,target:'_blank',rel:'noopener'},'rapport'));
+  return out;
+}
 function wikiEntry(e){
   var chips=[h('span',{class:'chip '+(WIKI_CLS[e.status]||'')},WIKI_FR[e.status]||str(e.status,40))];
   if(WIKI_DERIVED_FR[e.derived])chips.push(h('span',{class:'chip acc'},WIKI_DERIVED_FR[e.derived]));
   if(e.verifiedAt)chips.push(h('span',{class:'chip ok'},'vérifié '+ago(e.verifiedAt)));
-  else if(e.status==='implemented')chips.push(h('span',{class:'chip warn'},'non vérifié'));
+  else if(e.status==='implemented'&&!runChecked(e))chips.push(h('span',{class:'chip warn'},'non vérifié'));
   (Array.isArray(e.tickets)?e.tickets.slice(0,20):[]).forEach(function(n){n=Math.floor(Number(n));
     if(n>0)chips.push(h('a',{class:'chip',href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n));});
+  if(wikiKind(e)==='UserFlow')chips=chips.concat(flowStatus(e));
   var text=str(e.text,1600);
   return drow(h('div',{class:'t'},str(e.title,160)),e.description?h('p',{class:'note'},str(e.description,300)):null,h('div',{class:'meta'},chips),
-    text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null);
+    text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null,
+    (wikiKind(e)==='UserFlow'||wikiKind(e)==='Persona')?flowLauncher(e):null);
+}
+/* creating a persona or a user flow: the command is written, then run in Claude Code (only a PR changes the wiki) */
+function flowNewCard(){
+  var kind=S.fl.newKind, ta=h('textarea',{id:'flowNewText',rows:3,maxlength:1500}), cmd=h('div',{class:'cmd'}),
+      go=h('a',{class:'btn primary',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'), bp=h('button',{type:'button'},'Persona'), bf=h('button',{type:'button'},'Parcours (user flow)'),
+      lbl=h('label',{for:'flowNewText',class:'note'});
+  function text(){return ta.value.replace(/\s*\n\s*/g,' ').trim();}
+  function update(){
+    var t=text(), c='/pilot-flow --new '+kind+(t?' '+t:'');
+    bp.setAttribute('aria-pressed',String(kind==='persona')); bf.setAttribute('aria-pressed',String(kind==='flow'));
+    lbl.textContent=tr(kind==='persona'?'Décrivez le persona : qui est cette personne, ses contraintes, comment elle utilise le produit. Le designer le rédige avec vous.':'Décrivez le parcours : l’objectif et les personas concernés. Le QA propose les étapes avec vous.');
+    ta.setAttribute('placeholder',tr(kind==='persona'?'Ex. : Marie, 74 ans, malvoyante, utilise son téléphone avec un zoom à 200 %':'Ex. : trouver un lieu accessible de plain-pied près de soi'));
+    cmd.textContent=c;
+    if(t){go.setAttribute('href',claudeCodeUrl(c));go.removeAttribute('aria-disabled');}else{go.removeAttribute('href');go.setAttribute('aria-disabled','true');}
+  }
+  ta.value=S.fl.newText;
+  bp.addEventListener('click',function(){kind=S.fl.newKind='persona';update();}); bf.addEventListener('click',function(){kind=S.fl.newKind='flow';update();}); ta.addEventListener('input',function(){S.fl.newText=ta.value;update();});
+  var card=h('details',{class:'foldcard',open:S.fl.newOpen?true:null},h('summary',{},'Créer un persona ou un parcours'),
+    h('div',{class:'seg',role:'group','aria-label':'Ce que vous créez'},bp,bf),lbl,ta,
+    h('p',{class:'note'},'La commande est écrite, pas envoyée.'),cmd,
+    h('div',{class:'refresh'},go,h('button',{class:'btn ghost',type:'button',onclick:function(e){if(text())copyCmd(cmd.textContent,e.target);}},'Copier la commande')));
+  card.addEventListener('toggle',function(){S.fl.newOpen=card.open?1:0;});
+  update(); return card;
 }
 function vWiki(){
   var w=S.wiki;
@@ -1334,6 +1448,7 @@ function vWiki(){
   var sum=Object.keys(WIKI_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+WIKI_CLS[k]},counts[k]+' '+WIKI_FR[k]);});
   return h('div',{class:'list'},h('h2',{},'Wiki · mis à jour '+ago(w.at)+(w.truncated?' · textes raccourcis':'')),
     h('div',{class:'refresh'},openLink('/pilot-wiki','Interroger le wiki',true),openLink('/pilot-wiki --lint','Vérifier le wiki')),
+    flowNewCard(),
     sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
     pages.length?pages.map(function(k){return h('section',{class:'list','aria-label':k},h('h2',{},k),by[k].map(wikiEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
 }

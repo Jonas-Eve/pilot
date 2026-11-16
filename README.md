@@ -54,6 +54,8 @@ dialogue rather than one handing a finished draft to the other
   - `/pilot-proto` — build a prototype of a feature with the PM and the designer, in a live discussion, to decide
     whether to build it; an accepted one starts a Discovery (`/pilot-discovery --from-proto`). Shown in the
     dashboard's "Prototypes" tab.
+  - `/pilot-flow <flow> [--as <persona,...>] [--url <URL>]` — test a user flow of the wiki (`wiki/user-flow/`) as one or several user personas (`wiki/persona/`), each in its own isolated
+    browser session and test account, on demand only; a defect becomes a `type:bug`, friction and non-bugs go in a report kept as one Artifact per flow. Claims no ticket. `--new persona|flow <description>` drafts a persona (designer) or a flow (QA) with you and opens one wiki PR. The dashboard's Wiki tab launches a run from a flow (pick the personas) or a persona (pick the flow), creates personas and flows, and shows each flow's last run, who played it and whether it must be replayed.
   - `/pilot-wiki` — the project's wiki (`wiki/`, an optional module switched on by `/pilot-init` or by `/pilot-wiki`), the source of truth for what the product does: ask it a
     question, `--lint` it against the code (a human arbitrates each divergence), or `--bootstrap` it from the
     closed tickets and the code — see `.claude/skills/pilot-wiki/SKILL.md`.
@@ -85,7 +87,7 @@ dialogue rather than one handing a finished draft to the other
     chain until nothing's left, `needs-human`, it closes, or it looks orphaned — given an
     issue number, that ticket; given none, whichever candidate the first sweep pass
     claims. Not a phase itself, and never invokes
-    `/pilot-discovery`/`/pilot-qa` (pair-only).
+    `/pilot-discovery` (pair-only) or `/pilot-qa` (pair, or its own `--browser --url <URL>`).
     Lets one scheduled Routine drive the whole pipeline, or several Routines split it by
     cadence, or a human/Routine hand it one ticket without knowing which phase it's in —
     see `.claude/skills/pilot-auto/SKILL.md`.
@@ -99,8 +101,8 @@ dialogue rather than one handing a finished draft to the other
 - **Agents** (`.claude/agents/`): the seven personas the phase skills delegate to —
   `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 3's
   persona for an end-to-end-test task, `type:e2e`, instead of `pilot-dev`), and
-  `pilot-qa` (phase 5's persona, a human-paired manual QA gate for every `type:feature`
-  story once its tasks are all done), and `pilot-designer` (leads `/pilot-design`, never a phase or a validation — summoned
+  `pilot-qa` (phase 5's persona, a manual QA gate for every `type:feature`
+  story once its tasks are all done, paired with a human or, with `--auto`, run in a browser), and `pilot-designer` (leads `/pilot-design`, never a phase or a validation — summoned
   into a phase's discussion, or added with `--with`, to advise on usage and accessibility). Each file is just that persona's identity — its
   duty instructions (how it scopes, how it reviews, ...) live in `pilot-task-<duty>.md`
   instead, below.

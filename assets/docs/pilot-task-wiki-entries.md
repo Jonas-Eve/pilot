@@ -23,8 +23,12 @@ target status, and the project's functional domains (the folders of `wiki/`).
    saying it replaces it, return it under `conflicts` with the question to put to a human, and
    write nothing for that entry.
 
-5. **Never write the `Vision` entry.** A story that contradicts it or needs it changed is a
+5. **Never write the `Vision` entry**, nor anything in `persona/` (not a functional domain). A story that contradicts one of them or needs it changed is a
    `conflicts` item for the human, not an `update`.
+6. **A user flow, only when the story creates or changes a journey** that chains at least two behaviors or screens (a single rule is a behavior, not a flow). Read `user-flow/` and `persona/` yourself first. An existing
+   flow that covers the journey is an `update` of that id, never a second one; otherwise an `add` at `user-flow/<id>.md`. Its body has a `Personas: <id>, <id>` line (only ids that exist: none fits → a `conflicts` item
+   naming the persona to create with `/pilot-flow --new persona`, never an invented id), a `Start:` line when it does not begin at the home page, the goal, then numbered steps, each `do → expect`, the expectation taken from
+   an entry of this story or an existing one. At target `proposed` the steps stay high level (one line each, what the user does and sees); at `specified` each is one action and one outcome a browser can check. At most 800 words.
 
 Return one JSON object, nothing else:
 
