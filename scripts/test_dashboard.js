@@ -161,7 +161,7 @@ const STUB = (opts) => `
 
   // ---- open in Claude Code: links with the command typed in ----
   const hrefs = (page, sel) => page.$$eval(sel, (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel, text: a.textContent.trim() })));
-  const QA_SNAP = snapshot([ticket(99, ['type:tech', 'status:dev-ready', 'priority:P1']), ticket(50, ['type:feature', 'status:qa', 'priority:P1'])], 120);
+  const QA_SNAP = snapshot([ticket(99, ['type:tech', 'status:dev-ready', 'priority:P1']), ticket(50, ['type:feature', 'status:qa', 'priority:P1']), ticket(51, ['type:feature', 'status:in-qa', 'can-resume', 'priority:P2'])], 120);
   page = await open({ preload: [QA_SNAP] });
   await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
   const links = await hrefs(page, '#view .row a.btn');
@@ -170,6 +170,7 @@ const STUB = (opts) => `
   const find = (cmd) => links.find((l) => l.href === base + encodeURIComponent(cmd) + repoParam);
   check('auto-capable ticket: open links for auto and pair', find('/pilot-dev 99 --auto') && find('/pilot-dev 99'), JSON.stringify(links));
   check('QA ticket: open links for auto (browser run) and pair', find('/pilot-qa 50 --auto') && find('/pilot-qa 50'), JSON.stringify(links));
+  check('QA resume: open links for auto and pair too', find('/pilot-qa --resume 51 --auto') && find('/pilot-qa --resume 51'), JSON.stringify(links));
   check('links open in a new tab without opener', links.length >= 3 && links.every((l) => l.target === '_blank' && /noopener/.test(l.rel)), JSON.stringify(links));
   check('the command and the repository are URL-encoded (documented claude.ai/code/new?q=&repo= form)', links.every((l) => !/ /.test(l.href)) && links.every((l) => l.href.endsWith(repoParam)) && links.every((l) => l.href.startsWith(base)));
   check('copy buttons stay as a fallback', /Copier auto/.test(await text(page, '#view')) && /Copier pair/.test(await text(page, '#view')));

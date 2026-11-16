@@ -1,7 +1,7 @@
 ---
 name: pilot-qa
-description: "Phase 5 of PILOT: human QA for a type:feature story at status:qa (every task merged, the e2e one included). Builds a manual test plan from the acceptance criteria and the merged tasks, walks a human through it live and reports: a full pass sets status:done; a genuine defect becomes a type:bug ticket and the story goes back to status:qa; an unclassifiable failure gets the needs-human flow. Pair by default; --auto --url <URL> runs the cases itself in a browser and closes the story only if every case was tested and passed, else leaves it to a human. --resume <issue>, --with designer; bare, it picks the next status:qa or can-resume ticket. Use once a story's tasks have all merged."
-argument-hint: "<issue number, optional — picks the next fresh status:qa or resumable status:in-qa ticket if omitted> [--with designer] [--auto [--url <environment URL>]] | --resume <issue number>"
+description: "Phase 5 of PILOT: human QA for a type:feature story at status:qa (every task merged, the e2e one included). Builds a manual test plan from the acceptance criteria and the merged tasks, walks a human through it live and reports: a full pass sets status:done; a genuine defect becomes a type:bug ticket and the story goes back to status:qa; an unclassifiable failure gets the needs-human flow. Pair by default; --auto --url <URL> runs the cases itself in a browser and closes the story only if every case was tested and passed, else leaves it to a human. --resume <issue> [--auto] continues a ticket from its test log, --with designer; bare, it picks the next status:qa or can-resume ticket. Use once a story's tasks have all merged."
+argument-hint: "<issue number, optional — picks the next fresh status:qa or resumable status:in-qa ticket if omitted> [--with designer] [--auto [--url <environment URL>]] | --resume <issue number> [--auto [--url <environment URL>]]"
 disable-model-invocation: true
 ---
 
@@ -23,7 +23,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    priority, then "Blocks #M", then oldest). `pick: null` → report nothing to do; otherwise
    the pool has already resolved its pick: act on `pick.action` (pair unless `--auto` is given, never the ticket's `mode`; with `--auto` the pool, `resolve` and `claim` take `--auto` too,
    `.pilot/pilot-process.md` §4 "Interaction modes"; `--auto` and `--resume` never combine):
-   - `claim-fresh` → step 2 (mode `fresh`). Under `--auto` it is the only action that goes on: `resume-orphaned`, `resume-cleared` and `ask-resume` are reported and stop (finishing a ticket a session left, or a human cleared, is a pair run: `/pilot-qa --resume <issue>`), so an unattended run never retests what a human is waiting on.
+   - `claim-fresh` → step 2 (mode `fresh`). Under `--auto`, `resume-cleared` (a human cleared `needs-human` and set `can-resume`) and `resume-orphaned` (only with `--resume`, a human's explicit call that the claim is orphaned) go on as in pair, from the test log (step 5); `ask-resume` still stops and asks for `--resume`.
    - `resume-orphaned` (`--resume`: a session left mid-pair) or `resume-cleared`
      (`can-resume`: a human cleared `needs-human`) → step 2 (mode of the same name), then
      read the ticket and thread to reconstruct which cases were already confirmed (and, for
@@ -59,7 +59,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    doc covers the phase-5-specific delta itself), along with that context (and `.pilot/pilot-link-knowledge.md` and `.pilot/pilot-link-wiki.md`
    in full when the wiki module is enabled). The agent
    returns a manual test plan: concrete cases and how to test each.
-5. **`--auto`:** the agent runs every case itself and returns one result per case and a coverage list (each acceptance criterion with the cases that cover it); write both as the one test-log comment (below, never collapsed) and go to step 6. **Pair:** walk the human through it: show the plan, then go case by
+5. **`--auto`:** after a resume the agent is given the test log and the resolution comment: it retests nothing already `passed`, and a case the log marks `untestable` stays so unless the resolution says how to test it. The agent runs every case itself and returns one result per case and a coverage list (each acceptance criterion with the cases that cover it); write both as the one test-log comment (below, never collapsed) and go to step 6. **Pair:** walk the human through it: show the plan, then go case by
    case — ask them to run one, report what happened, feed that back to the agent, move to
    the next — until every case is reported. Keep one running comment updated in place
    (`mcp__github__update_issue_comment` — create it once, append each case's result to it)

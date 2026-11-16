@@ -592,7 +592,7 @@ function actionFor(t){
     case 'in-review': return {kind:'run',cmd:'/pilot-review --resume '+n,pairOnly:true,label:'Reprendre'};
     case 'approved': return {kind:'merge',label:'Merger sur GitHub'};
     case 'qa': return {kind:'run',cmd:'/pilot-qa '+n,label:'Tester'};
-    case 'in-qa': return {kind:'run',cmd:'/pilot-qa --resume '+n,pairOnly:true,label:'Reprendre'};
+    case 'in-qa': return {kind:'run',cmd:'/pilot-qa --resume '+n,label:'Reprendre'};
   }
   return {kind:'none'};
 }
@@ -799,7 +799,7 @@ function foldCard(box,key,title){
    --multi N has N agents converge on the approach first (never on a resume, nor on QA) */
 function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false,w:{},only:{},url:''});}
 /* a QA row: --auto runs the cases in a browser against an address the human gives (or the agent finds); it is never chained (--next) and never takes --with */
-function isQaRun(a){return /^\/pilot-qa \d+$/.test(a.cmd||'');}
+function isQaRun(a){return /^\/pilot-qa (--resume )?\d+$/.test(a.cmd||'');}
 /* personas a row can add with --with (the step's Summonable column, `.pilot/pilot-link-roster.md` "Roster") and, for a review, narrow to with --only; never on a resume or a container */
 var WITHS={'/pilot-spec':['designer'],'/pilot-dev':['techlead','architect','designer'],'/pilot-review':['architect'],'/pilot-qa':['designer']};
 var PERSONA_FR={techlead:'tech lead',architect:'architecte',designer:'designer',pm:'PM'};
