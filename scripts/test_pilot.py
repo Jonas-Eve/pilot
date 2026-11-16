@@ -1964,7 +1964,7 @@ class WorkflowRouteTests(unittest.TestCase):
         self.assertEqual(refused.exception.payload["reason"], "pair-only")
         self.assertEqual(m.claim("dev", 1, "fresh")["status"], "status:in-dev")
 
-    def test_a_pair_only_story_is_left_out_of_an_auto_qa_run(self):
+    def test_a_pair_only_story_is_left_out_of_a_browser_qa_run(self):  # the skill passes the script's own --auto for it
         issues = [issue(1, ["status:qa", "type:feature", "level:story", "priority:P0"]),
                   issue(2, ["status:qa", "type:feature", "level:story", "priority:P1"])]
         m = self.machine(issues, {"profile": "standard", "signals": [self.P0]})

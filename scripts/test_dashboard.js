@@ -313,7 +313,7 @@ const STUB = (opts) => `
   await panel70().locator('.tog', { hasText: 'PM' }).click(); await panel70().locator('.grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
   check('review row: --with architect', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --auto --multi 2 --with architect', '/pilot-review 70 --multi 2 --with architect']), JSON.stringify(await rowHrefs(70)));
   await optBtn(50).click(); await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await page.waitForTimeout(100);
-  check('QA row: --with designer applies to the pair command only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50 --with designer']), JSON.stringify(await rowHrefs(50)));
+  check('QA row: --with designer applies to the pair command only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --with designer', '/pilot-qa 50 --browser']), JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await optBtn(50).click(); await page.waitForTimeout(100);
   await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
   check('spec row of a bug offers the architect, not the designer; a tech story offers the designer',
@@ -322,14 +322,14 @@ const STUB = (opts) => `
   await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
   check('bug spec: /pilot-spec 80 --auto --with architect', JSON.stringify(await rowHrefs(80)) === JSON.stringify(['/pilot-spec 80 --auto --with architect', '/pilot-spec 80 --with architect']), JSON.stringify(await rowHrefs(80)));
   await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
-  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
+  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
   await optBtn(50).click(); await page.waitForTimeout(100);
   check('QA row options: an environment address, no --next', (await rowOf(50).locator('.opts #qaUrl-50').count()) === 1 && (await rowOf(50).locator('.opts .tog', { hasText: 'Enchaîner' }).count()) === 0);
   await rowOf(50).locator('#qaUrl-50').fill('https://staging.example.com'); await page.waitForTimeout(150);
   check('QA row: the address goes to the auto command only, and typing keeps the focus',
-        JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser --url https://staging.example.com', '/pilot-qa 50']) && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'qaUrl-50', JSON.stringify(await rowHrefs(50)));
+        JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser --url https://staging.example.com']) && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'qaUrl-50', JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('#qaUrl-50').fill('javascript:alert(1)'); await page.waitForTimeout(150);
-  check('QA row: anything but an http(s) address is dropped', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify(await rowHrefs(50)));
+  check('QA row: anything but an http(s) address is dropped', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser']), JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('#qaUrl-50').fill(''); await optBtn(50).click(); await page.waitForTimeout(100);
   check('row options: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'options.png') });
@@ -399,7 +399,7 @@ const STUB = (opts) => `
   const kidCmds = (sel) => page.locator(sel).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
   check('each sub-issue can be launched on its own (/pilot-spec 11 auto + pair, /pilot-qa 12)',
         JSON.stringify(await kidCmds('#view .kids > .row:nth-child(1) > .acts')) === JSON.stringify(['/pilot-spec 11 --auto', '/pilot-spec 11']) &&
-        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(2) > .acts')) === JSON.stringify(['/pilot-qa 12 --browser', '/pilot-qa 12']), JSON.stringify(await kidCmds('#view .kids > .row > .acts')));
+        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(2) > .acts')) === JSON.stringify(['/pilot-qa 12', '/pilot-qa 12 --browser']), JSON.stringify(await kidCmds('#view .kids > .row > .acts')));
   await page.locator('#view .kids > .row:nth-child(1) > .acts button:has-text("Sous-tickets")').click(); await page.waitForTimeout(100);
   check('nesting goes one level further (story -> tasks), blocked task flagged', JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))) === JSON.stringify(['#14 Tâche bloquée de A', '#13 Tâche de A']), JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))));
   check('a task is launchable (/pilot-dev 13 --auto) and has no sub-tickets chevron', (await kidCmds('#view .kids .kids > .row:has-text("#13 ") > .acts')).includes('/pilot-dev 13 --auto') && (await page.locator('#view .kids .kids button:has-text("Sous-tickets")').count()) === 0);

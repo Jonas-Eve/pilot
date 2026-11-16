@@ -831,7 +831,7 @@ function protoOf(n){
 }
 function ticketRow(t,withLevel,depth){
   if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
-  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), pairFirst=!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='pair'); /* the project's workflow makes pair the default: its button leads */
+  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), pairFirst=rc.qa||!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='pair'); /* the project's workflow makes pair the default: its button leads; a QA row always leads with pair, the browser run is never the default */
   var autoBtn=rc.canAuto?openLink(rc.auto,rc.qa?'Ouvrir (navigateur)':'Ouvrir (auto)',!pairFirst):null, pairBtn=rc.pair?openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto||pairFirst):null;
   var hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
