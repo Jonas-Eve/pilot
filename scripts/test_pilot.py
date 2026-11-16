@@ -2212,7 +2212,7 @@ class DemoSnapshotTests(unittest.TestCase):
         doc = self.demo.wiki_document()
         self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "Jonas-Eve/pilot", len(doc["entries"]), False))
         self.assertLessEqual(len(json.dumps(doc, ensure_ascii=False).encode()), pilot.WIKI_SNAPSHOT_MAX_BYTES)
-        keys = {"id", "type", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "text"}
+        keys = {"id", "type", "hash", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "text"}
         for row in doc["entries"]:
             self.assertEqual(set(row), keys)
             self.assertIn(row["status"], pilot.WIKI_STATUSES)
@@ -2248,6 +2248,60 @@ class DemoSnapshotTests(unittest.TestCase):
     def test_live_documents(self):
         docs = self.demo.live_documents()
         self.assertEqual({d["kind"] for d in docs.values()}, {"activity", "ticket"})
+
+
+class FlowRunDocTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.wiki = pilot.Wiki(root=self.tmp.name)
+        for pid in ("marie", "paul"):
+            self.wiki.add(f"persona/{pid}.md", pid.title(), "A user.", "implemented", body="Low vision.", typ="Persona")
+        self.wiki.add("user-flow/find.md", "Find a place", "Search.", "implemented", body="Personas: marie, paul", typ="UserFlow")
+        self.wiki.add("search/sort.md", "Sort", "Sorted.", "implemented")
+
+    @staticmethod
+    def run_of(pid, *results, session="started"):
+        return {"persona": pid, "session": session, "steps": [{"n": i + 1, "result": r} for i, r in enumerate(results)]}
+
+    def doc(self, *runs, bugs=(), flow="find"):
+        data = {"flow": flow, "personas": list(runs), "report": {"bugs": [{"ticket": b} for b in bugs]}, "reportUrl": "https://claude.ai/artifact/x"}
+        return pilot.flow_run_doc(self.wiki, "o/r", data)
+
+    def test_the_result_is_the_worst_of_the_personas(self):
+        ok, untestable = self.run_of("marie", "passed", "passed"), self.run_of("paul", "passed", "untestable")
+        bad = self.run_of("paul", "passed", "failed")
+        self.assertEqual(self.doc(ok)["result"], "passed")
+        self.assertEqual(self.doc(ok, untestable)["result"], "partial")
+        self.assertEqual(self.doc(untestable, bad)["result"], "failed")
+        self.assertEqual(self.doc(self.run_of("marie", session="not-started"))["result"], "partial")
+
+    def test_the_document_names_each_persona_with_its_result_steps_and_the_bugs(self):
+        doc = self.doc(self.run_of("marie", "passed", "failed"), self.run_of("paul", "passed", "passed"), bugs=(7, 9))
+        self.assertEqual((doc["kind"], doc["repo"], doc["flow"], doc["bugs"], doc["report"]), ("flowRun", "o/r", "find", [7, 9], "https://claude.ai/artifact/x"))
+        marie, paul = doc["personas"]
+        self.assertEqual((marie["id"], marie["result"], marie["steps"]), ("marie", "failed", {"passed": 1, "failed": 1, "untestable": 0}))
+        self.assertEqual((paul["id"], paul["result"]), ("paul", "passed"))
+
+    def test_hashes_follow_the_text_of_the_flow_and_of_each_persona_and_match_the_snapshot(self):
+        before = self.doc(self.run_of("marie", "passed"))
+        rows = {r["id"]: r for r in self.wiki.snapshot(FakeGh([]))["entries"]}
+        self.assertEqual((before["hash"], before["personas"][0]["hash"]), (rows["find"]["hash"], rows["marie"]["hash"]))
+        path = os.path.join(self.tmp.name, "persona", "marie.md")
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace("Low vision.", "Blind."))
+        after = self.doc(self.run_of("marie", "passed"))
+        self.assertEqual(after["hash"], before["hash"])
+        self.assertNotEqual(after["personas"][0]["hash"], before["personas"][0]["hash"])
+
+    def test_it_refuses_what_is_not_a_flow_or_a_persona_or_has_no_run(self):
+        for flow, runs, reason in (("nope", [self.run_of("marie", "passed")], "not-a-user-flow"), ("sort", [self.run_of("marie", "passed")], "not-a-user-flow"),
+                                   ("find", [self.run_of("sort", "passed")], "not-a-persona"), ("find", [], "no-persona-run")):
+            with self.assertRaises(pilot.Refused) as refused:
+                self.doc(*runs, flow=flow)
+            self.assertEqual(refused.exception.payload["reason"], reason)
 
 
 if __name__ == "__main__":

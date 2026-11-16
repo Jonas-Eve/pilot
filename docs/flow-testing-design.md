@@ -33,6 +33,15 @@ The Wiki tab shows a launcher under each `user-flow/` and `persona/` entry. On a
 Either way the page writes `/pilot-flow <flow> --as <personas> [--url <URL>]` and opens it in Claude Code, like the other buttons: written, not sent. Only an http(s) address is passed on. The snapshot carries each
 entry's `type` (a dashboard published before that falls back to the folder name), and the flow's persona list is read from its `Personas:` line.
 
+## Creating them, and the state of a flow
+
+The dashboard's Wiki tab has a card to create a persona or a user flow: it writes `/pilot-flow --new persona|flow <description>` and opens it in Claude Code. The designer drafts a persona, `pilot-qa` a flow (its steps grounded in the
+wiki's behaviors, what the wiki does not say listed as gaps), both with the human live, and the result is one wiki PR a human merges.
+
+After each run `pilot.py flow doc` builds a `flowRuns` document (the flow, when, each persona with its result, the bugs, the report's address, and a short hash of the text of the flow and of every persona that played). The skill
+writes it to the dashboard, and the flow's row shows: *jamais joué*, or the result (passé / partiel / échec), when, each persona with its result, and *à rejouer* as soon as the flow or a persona that played has changed since. The page
+only reads this document: it never writes the wiki, and a dashboard published before the `flowRuns` rule needs `/pilot-update` to receive it.
+
 ## The report
 
 The chat reply is the immediate answer; the durable one is a private Artifact per flow (found by its title, updated at the same address), with the latest run first and the earlier runs below it so regressions
@@ -40,5 +49,4 @@ show. It holds what no ticket keeps: the persona × step table, the friction, th
 
 ## Not done yet
 
-Writing personas and flows is by hand today. A drafting mode (`/pilot-flow --draft`, from the wiki's behaviors and the vision, with a human) and flows where two personas interact (a carer and the person they assist) are
-the natural next steps.
+Flows where two personas interact (a carer and the person they assist), and running several flows for one persona in one command.

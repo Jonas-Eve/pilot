@@ -1,14 +1,14 @@
 ---
 name: pilot-flow
-description: "Tests one user flow of the project's wiki (wiki/user-flow/) as one or several user personas (wiki/persona/), in a browser against an environment URL, on demand only. Each persona runs in its own isolated browser session with its own test account, in parallel when isolation holds; each step is passed, failed or untestable, with the friction that persona meets. A defect becomes a type:bug ticket (never duplicated across personas); friction and non-bugs go in a report kept as one private Artifact per flow, a new run added to its history. Claims no ticket, sets no status, never --auto. Use to check a journey end to end the way a given kind of user lives it."
-argument-hint: "<user-flow id> [--as <persona id>[,<persona id>...]] [--url <environment URL>]"
+description: "Tests one user flow of the project's wiki (wiki/user-flow/) as one or several user personas (wiki/persona/), in a browser against an environment URL, on demand only. --new persona|flow drafts a new persona or user flow with a human and opens one wiki PR. Each persona runs in its own isolated browser session with its own test account, in parallel when isolation holds; each step is passed, failed or untestable, with the friction that persona meets. A defect becomes a type:bug ticket (never duplicated across personas); friction and non-bugs go in a report kept as one private Artifact per flow, a new run added to its history. The dashboard shows each flow's last run and who played it. Claims no ticket, sets no status, never --auto. Use to check a journey end to end the way a given kind of user lives it."
+argument-hint: "<user-flow id> [--as <persona id>[,<persona id>...]] [--url <environment URL>] | --new persona|flow <description>"
 disable-model-invocation: true
 ---
 
 # PILOT — user flow test
 
 Read `.pilot/pilot-link-knowledge.md` (reading the wiki), `.pilot/pilot-link-wiki.md` and `.pilot/pilot-process.md` first. Not one of the five phases: no ticket is claimed, no label changes, no `--auto`, no Routine —
-a human launches it. The agent is `pilot-qa` (`.pilot/pilot-task-flow-run.md` runs one persona through the flow, `.pilot/pilot-task-flow-report.md` consolidates).
+a human launches it. Two modes: a flow id runs it (below), `--new persona|flow <description>` drafts an entry (last section). The agent of a run is `pilot-qa` (`.pilot/pilot-task-flow-run.md` runs one persona through the flow, `.pilot/pilot-task-flow-report.md` consolidates).
 
 ## Steps
 
@@ -32,3 +32,18 @@ a human launches it. The agent is `pilot-qa` (`.pilot/pilot-task-flow-run.md` ru
    Its latest run comes first, with the date, the URL tested, the personas (account labels, never credentials), the table, the tickets (linked), the non-bugs, the friction and the steps not run; the earlier runs stay below,
    newest first, so two runs can be compared. Never share it; the human decides. No `Artifact` tool, or a refusal → say so and give the report in the reply only.
    Nothing is written to the wiki: a flow is never stamped by a run.
+7. **Dashboard** (best-effort; skipped silently when `.pilot/state.json` has no `dashboardUrl`, `modules.dashboard` is `false` or `ArtifactData` — `ToolSearch` loads it — is unavailable): write the personas' runs, the consolidation and the report's
+   address (`reportUrl`) as `{"flow": …, "personas": […], "report": …, "reportUrl": …}` to a temporary file, `python3 .pilot/pilot.py flow doc --in <file> --out <doc file>`, then `ArtifactData` `set` on the dashboard's
+   `flowRuns` collection, id `<owner>__<repo>__<flow id>` (`get` it first and pass `if_version` if it exists), `file_path` that document. Never read the dashboard back, never retry; mention a failure in the report only.
+
+## `--new persona|flow <description>`
+
+Pair only: a human is live. The `wiki` module is on, else say so and stop; preflight as above. A persona is drafted by `pilot-designer` (`.pilot/pilot-task-draft-persona.md`), a flow by `pilot-qa` (`.pilot/pilot-task-draft-flow.md`).
+
+1. Read what exists, per `.pilot/pilot-link-knowledge.md`: the vision (`wiki show vision`), `wiki index --under persona`, `wiki index --under user-flow`, and for a flow `wiki search` on the description with `wiki show` of the few behaviors it
+   touches. A persona or flow that already covers the description → say so and ask whether to revise it instead.
+2. `Agent` call with the task doc, `.pilot/pilot-link-wiki.md` in full, the project's language (`pilot.py module list`), the description and what step 1 read (for a flow, every persona's id, title and description). It returns the draft and its
+   questions (the JSON its task doc defines). Show both to the human, feed their answers back to a new call with the conversation as text, and repeat until they approve; each turn re-reads nothing else.
+3. Check the approved draft: the id is `[a-z0-9-]+` and unused; a flow lists only existing persona ids (a missing one → offer `--new persona` first and stop here); no credential or secret anywhere in the text.
+4. `python3 .pilot/pilot.py wiki add persona/<id>.md --type Persona --status implemented --title … --description … --body …` (a flow: `user-flow/<id>.md`, `--type UserFlow`). Branch `wiki/persona-<id>` or `wiki/flow-<id>`, commit, push, open one PR
+   and report it. Never merge it: only a PR changes the wiki, a human merges it.

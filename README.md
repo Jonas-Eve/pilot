@@ -55,7 +55,7 @@ dialogue rather than one handing a finished draft to the other
     whether to build it; an accepted one starts a Discovery (`/pilot-discovery --from-proto`). Shown in the
     dashboard's "Prototypes" tab.
   - `/pilot-flow <flow> [--as <persona,...>] [--url <URL>]` — test a user flow of the wiki (`wiki/user-flow/`) as one or several user personas (`wiki/persona/`), each in its own isolated
-    browser session and test account, on demand only; a defect becomes a `type:bug`, friction and non-bugs go in a report kept as one Artifact per flow. Claims no ticket. The dashboard's Wiki tab launches it from a flow (pick the personas) or from a persona (pick the flow).
+    browser session and test account, on demand only; a defect becomes a `type:bug`, friction and non-bugs go in a report kept as one Artifact per flow. Claims no ticket. `--new persona|flow <description>` drafts a persona (designer) or a flow (QA) with you and opens one wiki PR. The dashboard's Wiki tab launches a run from a flow (pick the personas) or a persona (pick the flow), creates personas and flows, and shows each flow's last run, who played it and whether it must be replayed.
   - `/pilot-wiki` — the project's wiki (`wiki/`, an optional module switched on by `/pilot-init` or by `/pilot-wiki`), the source of truth for what the product does: ask it a
     question, `--lint` it against the code (a human arbitrates each divergence), or `--bootstrap` it from the
     closed tickets and the code — see `.claude/skills/pilot-wiki/SKILL.md`.

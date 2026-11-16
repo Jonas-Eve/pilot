@@ -1,7 +1,7 @@
 # PILOT link — the roster of a discussion
 
 Read by every skill that runs or can summon a discussion between personas: `pilot-discovery`, `pilot-spec`, `pilot-dev`, `pilot-review`,
-`pilot-qa`, `pilot-design`, `pilot-proto` and `pilot-auto`. The turn-taking of Discovery and Spec is `.pilot/pilot-link-agent-dialogue.md`.
+`pilot-qa`, `pilot-design`, `pilot-proto`, `pilot-flow` and `pilot-auto`. The turn-taking of Discovery and Spec is `.pilot/pilot-link-agent-dialogue.md`.
 
 ## Roster: who is in the discussion
 
@@ -19,6 +19,8 @@ leads, an optional validator, and personas the human may summon:
 | QA | `pilot-qa` | — | `pilot-designer` |
 | Proto (`/pilot-proto`, not a phase) | `pilot-designer`, after `pilot-pm` has framed the idea alone with the human | `pilot-pm` | `pilot-architect` |
 | Design (`/pilot-design`, not a phase) | `pilot-designer` | — | `pilot-pm`, `pilot-architect` |
+| Persona (`/pilot-flow --new persona`, not a phase) | `pilot-designer` | — | — |
+| User flow (`/pilot-flow --new flow`, not a phase) | `pilot-qa` | — | — |
 
 - **Lead.** The skill opens the discussion with the lead(s). `--with <persona>[,...]`
   (any phase skill) adds personas from that step's Summonable column from the start; any

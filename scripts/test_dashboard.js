@@ -28,12 +28,13 @@ const ticket = (n, labels, extra = {}) => ({ n, t: `Ticket ${n}`, l: labels, u: 
 const STUB = (opts) => `
 (() => {
   const OPTS = ${JSON.stringify(opts)};
-  const data = { snapshots: {}, events: {}, activity: {}, design: {}, wiki: {}, architecture: {}, protos: {}, protoHtml: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [], wiki: [], architecture: [], protos: [], protoHtml: [] };
+  const data = { snapshots: {}, events: {}, activity: {}, design: {}, wiki: {}, flowRuns: {}, architecture: {}, protos: {}, protoHtml: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [], wiki: [], flowRuns: [], architecture: [], protos: [], protoHtml: [] };
   (OPTS.preload || []).forEach(d => { data.snapshots[d.repo.replace('/', '__')] = d; });
   (OPTS.events || []).forEach((d, k) => { data.events['e' + k] = d; });
   (OPTS.activity || []).forEach((d, k) => { data.activity['a' + k] = d; });
   (OPTS.design || []).forEach((d, k) => { data.design['d' + k] = d; });
   (OPTS.wiki || []).forEach((d, k) => { data.wiki['w' + k] = d; });
+  (OPTS.flowRuns || []).forEach((d, k) => { data.flowRuns['f' + k] = d; });
   (OPTS.architecture || []).forEach((d, k) => { data.architecture['r' + k] = d; });
   (OPTS.protos || []).forEach((d) => { data.protos['p' + d.n] = d; });
   (OPTS.protoHtml || []).forEach((d) => { data.protoHtml[d.n + '-' + d.k] = d; });
@@ -971,7 +972,7 @@ const STUB = (opts) => `
   check('wiki summary: one chip per status', /2 implémenté/.test(wv) && /1 spécifié/.test(wv) && /1 déprécié/.test(wv), wv);
   check('wiki entry chips: stamp, never verified, in-flight status, ticket link',
         /vérifié il y a|vérifié /.test(wv) && /non vérifié/.test(wv) && /en review/.test(wv) && (await page.$eval('#view a[href$="/issues/12"]', (a) => a.getAttribute('href'))) === 'https://github.com/' + REPO + '/issues/12');
-  check('wiki: HTML in an entry stays text', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && (await page.$eval('#view details', (d) => d.textContent)).includes('<img src=x'));
+  check('wiki: HTML in an entry stays text', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && (await page.$eval('#view .row details', (d) => d.textContent)).includes('<img src=x'));
   await page.click('#subtabs >> text=search'); await page.waitForTimeout(150);
   const wf = await text(page, '#view');
   check('wiki sub-tab: shows only that domain, the address follows', /Search places by name/.test(wf) && /sorted by distance/.test(wf) && !/Default output/.test(wf) && (await page.evaluate(() => location.hash)) === '#wiki/search', wf);
@@ -1005,7 +1006,7 @@ const STUB = (opts) => `
     { id: 'find-a-place', type: 'UserFlow', title: 'Find a place', description: 'Search.', path: 'user-flow/find-a-place.md', status: 'implemented', tickets: [], text: 'Goal.\nPersonas: marie-senior\n1. Open the search -> a field.' }] };
   { let page = await open({ preload: [BASE], wiki: [WIKI_FLOWS] });
   await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(400);
-  const cmdOf = async () => page.$eval('#view .cmd', (e) => e.textContent);
+  const cmdOf = async () => page.$eval('#view .flow-launch + .cmd', (e) => e.textContent);
   const hrefOf = async () => page.$eval('#view .flow-launch + .cmd + .refresh a', (a) => a.getAttribute('href'));
   check('flow launcher: the personas the flow lists are pre-picked, the command is written',
         (await cmdOf()) === '/pilot-flow find-a-place --as marie-senior' && decodeURIComponent(await hrefOf()).includes('/pilot-flow find-a-place --as marie-senior'), await cmdOf());
@@ -1018,9 +1019,43 @@ const STUB = (opts) => `
   await page.click('#view .flow-launch .tog:nth-of-type(1)'); await page.click('#view .flow-launch .tog:nth-of-type(2)'); await page.waitForTimeout(100);
   check('flow launcher: no persona picked, no link', (await page.$eval('#view .flow-launch + .cmd + .refresh a', (a) => a.getAttribute('aria-disabled') === 'true' && !a.hasAttribute('href'))), await cmdOf());
   await page.goto(FILE + '#wiki/persona'); await page.waitForTimeout(300);
-  const pcmds = await page.$$eval('#view .cmd', (a) => a.map((x) => x.textContent));
+  const pcmds = await page.$$eval('#view .flow-launch + .cmd', (a) => a.map((x) => x.textContent));
   check('persona launcher: the flow is chosen, the persona is the one of the entry', pcmds.length === 2 && pcmds.every((c) => c.startsWith('/pilot-flow find-a-place --as ')) && pcmds[0].endsWith('--as marie-senior') && pcmds[1].endsWith('--as paul-aidant'), pcmds.join(' | '));
   check('flow launcher: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+  }
+
+  // ---- a user flow's state since it was last played, and the creation card ----
+  { const hashes = { flow: 'aaaaaaaaaaaa', marie: 'bbbbbbbbbbbb', paul: 'cccccccccccc' };
+  const withHash = Object.assign({}, WIKI_FLOWS, { entries: WIKI_FLOWS.entries.map((e) => Object.assign({}, e, { hash: { 'find-a-place': hashes.flow, 'marie-senior': hashes.marie, 'paul-aidant': hashes.paul }[e.id] })) });
+  const run = (over) => Object.assign({ kind: 'flowRun', repo: REPO, flow: 'find-a-place', at: iso(48), hash: hashes.flow, result: 'partial', bugs: [7], report: 'https://claude.ai/artifact/abc',
+    personas: [{ id: 'marie-senior', hash: hashes.marie, result: 'passed' }, { id: 'paul-aidant', hash: hashes.paul, result: 'partial' }] }, over || {});
+  let page = await open({ preload: [BASE], wiki: [withHash] });
+  await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(350);
+  const chipsOf = async () => page.$$eval('#view .row .meta .chip', (c) => c.map((x) => x.textContent));
+  check('flow status: a flow never played says so', (await chipsOf()).includes('jamais joué'), (await chipsOf()).join('|'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run()); await page.waitForTimeout(250);
+  let c = await chipsOf();
+  check('flow status: the result, when, who played with each result, the bug and the report',
+        c.includes('partiel') && c.some((x) => /^joué il y a/.test(x)) && c.includes('Marie · passé') && c.includes('Paul · partiel') && c.includes('#7') && c.includes('rapport') && !c.includes('jamais joué') && !c.includes('à rejouer'), c.join('|'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ hash: 'zzzzzzzzzzzz' })); await page.waitForTimeout(250);
+  check('flow status: a flow changed since the run is to replay', (await chipsOf()).includes('à rejouer'), (await chipsOf()).join('|'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ personas: [{ id: 'marie-senior', hash: 'zzzzzzzzzzzz', result: 'passed' }] })); await page.waitForTimeout(250);
+  check('flow status: a persona changed since the run makes it to replay too', (await chipsOf()).includes('à rejouer'), (await chipsOf()).join('|'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f1', d), run({ repo: 'o/other', result: 'failed' })); await page.waitForTimeout(200);
+  check('flow status: another repo\'s run is not shown', !(await chipsOf()).includes('échec'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ bugs: ['x', -1, 0], report: 'javascript:alert(1)' })); await page.waitForTimeout(250);
+  check('flow status: a bad bug number or report address is dropped', !(await chipsOf()).some((x) => /^#/.test(x) || x === 'rapport'), (await chipsOf()).join('|'));
+  await page.goto(FILE + '#wiki'); await page.waitForTimeout(300);
+  check('creation card: it writes the command for a persona, then for a flow, and is disabled while the text is empty',
+        (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona'
+        && (await page.$eval('#view .foldcard a.btn.primary', (a) => a.getAttribute('aria-disabled') === 'true' && !a.hasAttribute('href'))));
+  await page.click('#view .foldcard summary'); await page.fill('#flowNewText', 'Marie, 74 ans,\n malvoyante'); await page.waitForTimeout(100);
+  check('creation card: the text becomes one line of the command, the link opens it', (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona Marie, 74 ans, malvoyante'
+        && decodeURIComponent(await page.$eval('#view .foldcard a.btn.primary', (a) => a.getAttribute('href'))).includes('/pilot-flow --new persona Marie, 74 ans, malvoyante'));
+  await page.click('#view .foldcard .seg button:nth-of-type(2)'); await page.waitForTimeout(100);
+  check('creation card: choosing the flow changes the command', (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)).startsWith('/pilot-flow --new flow '));
+  check('flow status and creation card: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
   }
 

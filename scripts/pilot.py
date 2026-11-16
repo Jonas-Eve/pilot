@@ -14,6 +14,7 @@
   pilot.py workflow show|check|set [PROFILE]   # the project's workflow profile: the chain it runs, and the check that every profile composes
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
+  pilot.py flow    doc --in FILE [--out FILE]   # the dashboard's `flowRuns` document of a run of a user flow (no GitHub)
   pilot.py arch    index [--active] [--app A] [--under D] [--depth 1]|search|describe|next-number|inventory|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
@@ -31,6 +32,7 @@ dialogue stay with the skills. Requires the `gh` CLI and Python 3.
 import argparse
 import datetime
 import fnmatch
+import hashlib
 import json
 import math
 import os
@@ -664,6 +666,11 @@ def public(issue, **extra):
            "status": status_of(issue["labels"]), "priority": prio}
     out.update(extra)
     return out
+
+
+def entry_hash(entry):
+    """What a flow run remembers of an entry: a short hash of its title and prose, so a later change is seen."""
+    return hashlib.sha256((entry["title"] + "\n" + entry["text"]).encode("utf-8")).hexdigest()[:12]
 
 
 def now_iso():
@@ -1820,7 +1827,7 @@ class Bundle:
         cache, rows = {}, []
         for e in self._managed(self.parse()):
             d = self.derive(e, gh, cache)
-            rows.append({"id": e["id"], "type": e["type"], "title": e["title"], "description": e["description"], "path": e["path"],
+            rows.append({"id": e["id"], "type": e["type"], "hash": entry_hash(e), "title": e["title"], "description": e["description"], "path": e["path"],
                          "status": e["status"], "derived": d["derived"], "display": d["display"],
                          "tickets": e["tickets"], "verifiedAt": e["verifiedAt"], "text": e["text"]})
         doc = {"kind": "wiki", "repo": gh.repo, "at": now_iso(), "total": len(rows), "truncated": False, "entries": rows}
@@ -2259,6 +2266,11 @@ def build_parser():
     p = sub.add_parser("doctor")
     p.add_argument("--verbose", action="store_true", help="list every check, not only failures")
     p.add_argument("--no-wiki", action="store_true", help="skip the wiki check (/pilot-wiki repairing a missing wiki/)")
+    p = sub.add_parser("flow")
+    p.add_argument("action", choices=["doc"], help="doc: the dashboard's `flowRuns` document of a run of a user flow")
+    p.add_argument("--in", dest="input", required=True, metavar="FILE", help='{"flow": ID, "personas": [each persona run], "report": the consolidation, "reportUrl": …}')
+    p.add_argument("--out", help="write the document to this file and print only a summary")
+    p.add_argument("--dir", default=WIKI_DIR, help="the wiki folder")
     p = sub.add_parser("module")
     p.add_argument("action", choices=["list", "enable", "disable"])
     p.add_argument("name", nargs="?", choices=list(MODULES))
@@ -2448,11 +2460,59 @@ def run_workflow(args, gh=None):
 def needs_github(args):
     if args.cmd == "workflow":
         return bool(getattr(args, "ticket", None))
-    if args.cmd in ("module", "contract"):
+    if args.cmd in ("module", "contract", "flow"):
         return False
     if args.cmd == "arch":
         return False
     return args.cmd != "wiki" or args.bundle_cmd in ("show", "status", "lint", "snapshot")
+
+
+FLOW_RESULTS = ("passed", "partial", "failed")
+
+
+def persona_result(run):
+    """One persona's run: `failed` if a step failed, `partial` if a step was untestable or the session did not start."""
+    steps = run.get("steps") or []
+    if any(x.get("result") == "failed" for x in steps):
+        return "failed"
+    if run.get("session") == "not-started" or not steps or any(x.get("result") != "passed" for x in steps):
+        return "partial"
+    return "passed"
+
+
+def flow_run_doc(wiki, repo, data):
+    """The `flowRuns` document of a run: what the dashboard shows on the flow (when it was played, by which personas,
+    with what result) and what lets it see the flow or a persona changed since. No GitHub call, no judgment."""
+    by_id = {e["id"]: e for e in wiki.parse()}
+    flow = by_id.get(data.get("flow"))
+    if flow is None or flow["type"] != "UserFlow":
+        raise Refused({"ok": False, "reason": "not-a-user-flow", "id": data.get("flow")})
+    personas = []
+    for run in data.get("personas") or []:
+        entry = by_id.get(run.get("persona"))
+        if entry is None or entry["type"] != "Persona":
+            raise Refused({"ok": False, "reason": "not-a-persona", "id": run.get("persona")})
+        steps = run.get("steps") or []
+        personas.append({"id": entry["id"], "hash": entry_hash(entry), "result": persona_result(run),
+                         "steps": {k: sum(1 for x in steps if x.get("result") == k) for k in ("passed", "failed", "untestable")}})
+    if not personas:
+        raise Refused({"ok": False, "reason": "no-persona-run"})
+    results = [x["result"] for x in personas]
+    bugs = [int(b["ticket"]) for b in ((data.get("report") or {}).get("bugs") or []) if int(b.get("ticket") or 0) > 0]
+    return {"kind": "flowRun", "repo": repo, "flow": flow["id"], "at": now_iso(), "hash": entry_hash(flow),
+            "result": next(r for r in ("failed", "partial", "passed") if r in results),
+            "personas": personas, "bugs": bugs, "report": str(data.get("reportUrl") or "")}
+
+
+def run_flow(args):
+    with open(args.input, encoding="utf-8") as handle:
+        data = json.load(handle)
+    doc = flow_run_doc(Wiki(args.dir), args.repo or resolve_repo(), data)
+    if not args.out:
+        return doc
+    with open(args.out, "w", encoding="utf-8") as handle:
+        json.dump(doc, handle, ensure_ascii=False, separators=(",", ":"))
+    return {"ok": True, "file": args.out, "flow": doc["flow"], "result": doc["result"]}
 
 
 def run_module(args):
@@ -2468,6 +2528,8 @@ def run(args, gh):
         return run_module(args)
     if args.cmd == "contract":
         return run_contract(args)
+    if args.cmd == "flow":
+        return run_flow(args)
     if args.cmd == "workflow":
         return run_workflow(args, gh)
     if args.cmd in ("wiki", "arch"):
