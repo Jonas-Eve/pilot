@@ -174,7 +174,7 @@ const STUB = (opts) => `
   check('QA resume: open links for the browser run and pair too', find('/pilot-qa --resume 51 --browser') && find('/pilot-qa --resume 51'), JSON.stringify(links));
   check('links open in a new tab without opener', links.length >= 3 && links.every((l) => l.target === '_blank' && /noopener/.test(l.rel)), JSON.stringify(links));
   check('the command and the repository are URL-encoded (documented claude.ai/code/new?q=&repo= form)', links.every((l) => !/ /.test(l.href)) && links.every((l) => l.href.endsWith(repoParam)) && links.every((l) => l.href.startsWith(base)));
-  check('copy buttons stay as a fallback', /Copier auto/.test(await text(page, '#view')) && /Copier pair/.test(await text(page, '#view')));
+  check('one copy button per row stays as a fallback', (await page.$$eval('#view .row button', (b) => b.filter((x) => x.textContent === 'Copier').length)) === (await rows(page)));
   await page.screenshot({ path: path.join(TMP, 'links.png') });
   await page.close();
 
@@ -375,6 +375,15 @@ const STUB = (opts) => `
   check('tech role: no Prototypes, Design nor Wiki tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Recherche', 'Activité', 'Architecture']), JSON.stringify(await tabNames(page)));
   await page.goto(FILE + '#design'); await page.waitForTimeout(200);
   check('tech role: a hidden tab falls back to the queue', /Ma file/.test(await text(page, '#view')));
+  await page.close();
+
+  // ---- the queue opens with what is waiting ----
+  const tally = (pg) => pg.$$eval('#view .tally .tile', (t) => t.map((x) => x.textContent));
+  page = await open({ preload: [snapshot([ticket(1, ['type:tech', 'status:backlog']), ticket(2, ['type:tech', 'status:dev-ready']), ticket(3, ['type:tech', 'status:dev-ready', 'needs-human']), ticket(4, ['type:feature', 'status:qa'])])], role: 'tech' });
+  check('tech queue summary: blocked first, then Spec, Dev, Review counters', JSON.stringify(await tally(page)) === JSON.stringify(['1bloqués', '1à spécifier', '1à coder', '0à relire', '0à merger']), JSON.stringify(await tally(page)));
+  await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
+  check('product queue summary follows the role', JSON.stringify(await tally(page)) === JSON.stringify(['0à cadrer', '1à tester']), JSON.stringify(await tally(page)));
+  check('a fresh snapshot shows no connector chip, a compact banner', !(await page.$('#conn .chip')) && !!(await page.$('#banner .banner.compact')));
   await page.close();
 
   // ---- new request: --multi for a product idea only ----

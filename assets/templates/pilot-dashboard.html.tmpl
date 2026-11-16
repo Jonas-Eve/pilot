@@ -68,6 +68,13 @@ nav.tabs.sub a{padding:6px 12px;font-size:13px}
 .row .num{font-family:var(--mono);color:var(--muted)}
 .row .acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
 .row input[type=checkbox]{width:18px;height:18px}
+.tally{display:flex;flex-wrap:wrap;gap:8px}
+.tile{display:flex;align-items:baseline;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.tile strong{font-size:18px;font-variant-numeric:tabular-nums}
+.tile span{color:var(--muted);font-size:13px}
+.tile.zero strong{color:var(--muted);font-weight:400}
+.tile.warn{border-color:var(--warn);background:var(--warn-soft)} .tile.warn strong,.tile.warn span{color:var(--warn)}
+.banner.compact{padding:4px 10px;font-size:12px;color:var(--muted);border-left-width:1px;background:transparent}
 .cmd{font-family:var(--mono);font-size:12px;color:var(--muted)}
 .foldcard{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface)} .foldcard summary{cursor:pointer;font-weight:600} .foldcard .cmd{overflow-wrap:anywhere}
 .batch{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--accent-soft);border-radius:10px;padding:10px 14px}
@@ -259,9 +266,7 @@ var EN={
 "Copie impossible : sélectionnez la commande": "Copy failed: select the command",
 "Copier": "Copy",
 "Copier ": "Copy ",
-"Copier auto": "Copy auto",
 "Copier la commande": "Copy the command",
-"Copier pair": "Copy pair",
 "Copié": "Copied",
 "Corriger": "Fix",
 "Couleurs": "Colors",
@@ -301,7 +306,6 @@ var EN={
 "Interroger le wiki": "Query the wiki",
 "Tester en tant que": "Test as",
 "Ouvrir (navigateur)": "Open (browser)",
-"Copier navigateur": "Copy browser",
 "sans adresse, l’agent la cherche dans architecture/ et les runbooks, sinon vous la demande ; il teste dans un navigateur et ne clôt la story que si tous les cas passent": "without an address, the agent looks in architecture/ and the runbooks, else asks you; it tests in a browser and only closes the story when every case passes",
 "Pas encore livré : ce parcours se teste une fois implémenté.": "Not delivered yet: this flow can be tested once it is implemented.",
 "Ce que vous créez": "What you create",
@@ -476,6 +480,14 @@ var EN={
 "tâche": "task",
 "vérifié ": "verified ",
 "« Ouvrir » lance une session Claude Code sur ": "“Open” starts a Claude Code session on ",
+"Auto : l’agent travaille seul. Pair : vous dialoguez avec lui.": "Auto: the agent works alone. Pair: you dialogue with it.",
+"à décider": "to decide",
+"prototypes à décider": "prototypes to decide",
+"à cadrer": "to frame",
+"à coder": "to code",
+"à merger": "to merge",
+"à faire": "to do",
+"bloqués": "blocked",
 "À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.": "At each step, the lead opens the discussion with you. When done, the validator joins and checks the deliverable alone. A summonable agent is requested from the start with --with, or during the discussion, and you can dismiss one at any time.",
 "À lancer": "To launch",
 "À partir d’une idée": "From an idea",
@@ -851,12 +863,11 @@ function ticketRow(t,withLevel,depth){
             t.assignee?h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee):null,
             t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
             h('span',{class:'note'},ago(t.updated)),
-            a.kind==='run'?h('span',{class:'cmd'},(rc.auto||rc.pair)+(rc.canAuto?'':'  (pair)')):null)),
+            a.kind==='run'&&o.open?h('span',{class:'cmd'},(rc.auto||rc.pair)+(rc.canAuto?'':'  (pair)')):null)),
         h('div',{class:'acts'},
           a.kind==='run'?[
             pairFirst?pairBtn:autoBtn, pairFirst?autoBtn:pairBtn,
-            rc.canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.auto,e.target);}},rc.qa?'Copier navigateur':'Copier auto'):null,
-            rc.pair?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.pair,e.target);}},rc.canAuto?'Copier pair':'Copier'):null,
+            h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(pairFirst&&rc.pair?rc.pair:(rc.auto||rc.pair),e.target);}},'Copier'),
             hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
           t.r?h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r):null,
@@ -880,6 +891,28 @@ function ticketRow(t,withLevel,depth){
         kids.length&&o.kids?h('div',{class:'kids'},kids.map(function(c){return ticketRow(c,true,depth+1);})):null);
 }
 
+/* what is waiting, by role: a few counters instead of reading the whole queue; blocked tickets first */
+var TALLY=[
+  {phase:'discovery',label:'à cadrer',statuses:['draft']},
+  {phase:'qa',label:'à tester',statuses:['qa','in-qa']},
+  {phase:'spec',label:'à spécifier',statuses:['backlog']},
+  {phase:'dev',label:'à coder',statuses:['dev-ready','changes-requested']},
+  {phase:'review',label:'à relire',statuses:['review-ready']},
+  {phase:'review',label:'à merger',statuses:['approved']}
+];
+function vTally(){
+  var all=tickets(), on=phasesView().map(function(p){return p.key;}), tiles=[];
+  var blocked=all.filter(function(t){var p=phaseOf(t.status);return p&&on.indexOf(p.key)>-1&&has(t,'needs-human');}).length;
+  if(blocked)tiles.push({n:blocked,label:'bloqués',cls:' warn'});
+  if(S.role!=='tech'&&tabOn('prototypes')){var pn=protoCounts().encours; if(pn)tiles.push({n:pn,label:'prototypes à décider',cls:''});}
+  TALLY.forEach(function(x){
+    if(on.indexOf(x.phase)<0)return;
+    var n=all.filter(function(t){return x.statuses.indexOf(t.status)>-1&&!has(t,'needs-human')&&!has(t,'on-hold');}).length;
+    tiles.push({n:n,label:x.label,cls:''});
+  });
+  return h('div',{class:'tally',role:'list','aria-label':'Ce qui attend'},tiles.map(function(x){
+    return h('div',{class:'tile'+x.cls+(x.n?'':' zero'),role:'listitem'},h('strong',{},String(x.n)),h('span',{},x.label));}));
+}
 var SCOPES=[['prendre','À prendre'],['moi','Assignés à moi'],['tous','Tous']];
 function vFile(){
   /* a prototype is product work while it is being built, waiting for a decision, or accepted and not yet taken up by a Discovery */
@@ -898,8 +931,9 @@ function vFile(){
     return h('button',{type:'button','aria-pressed':String(S.scope===c[0]),onclick:function(){S.scope=c[0];S.page=0;store('cp.scope',c[0]);render();}},c[1]);}));
   return h('div',{class:'list'},
     h('h2',{},'Ma file · '+(S.scope==='moi'?'assignés à '+(S.me?'@'+S.me:'moi')+' · ':S.scope==='prendre'?'à prendre · ':'')+roleTxt+' · '+mine.length),
+    vTally(),
     scopeSeg,
-    h('p',{class:'note'},'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'),
+    h('p',{class:'note',title:'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'},'Auto : l’agent travaille seul. Pair : vous dialoguez avec lui.'),
     pager(mine.length),
     shown.length?shown.map(function(t){return ticketRow(t);}):h('div',{class:'empty'},
       S.scope==='moi'&&!S.me?'Indiquez votre identifiant GitHub (en haut de la page) pour voir les tickets qui vous sont assignés.':
@@ -1503,7 +1537,7 @@ function renderBanner(){
   if(g.state==='live'){
     var hours=(Date.now()-new Date(g.at).getTime())/3600e3;
     var applied=Object.keys(S.events).filter(function(k){return String(S.events[k].at)>String(g.at);}).length;
-    n=h('div',{class:'banner '+(hours>24?'sample':'live')},
+    n=h('div',{class:'banner '+(hours>24?'sample':'live compact')},
       h('p',{},h('strong',{},S.repo),' · '+tickets().length+' tickets ouverts · instantané pris '+ago(g.at)+
         (applied?' · '+applied+' changement'+(applied>1?'s':'')+' appliqué'+(applied>1?'s':'')+' depuis':'')+
         (g.truncated?' · liste tronquée ('+g.total+' au total)':'')+'.'),
@@ -1521,7 +1555,7 @@ function renderBanner(){
 }
 function renderConn(){
   var g=S.gh, chips=[], age=g.at?(Date.now()-new Date(g.at).getTime())/3600e3:null;
-  if(g.state==='live')chips.push(h('span',{class:'chip '+(age>24?'warn':'ok')},h('span',{class:'dot'}),'Instantané · '+ago(g.at)));
+  if(g.state==='live'){if(age>24)chips.push(h('span',{class:'chip warn'},h('span',{class:'dot'}),'Instantané · '+ago(g.at)));} /* a fresh snapshot is already said by the banner */
   else chips.push(h('span',{class:'chip '+(g.state==='loading'||g.state==='init'?'':'warn')},h('span',{class:'dot'}),'Instantané · '+(g.state==='loading'||g.state==='init'?'lecture…':'absent')));
   var alive=S.activity.filter(isAlive).length;
   if(alive)chips.push(h('span',{class:'chip ok'},h('span',{class:'dot'}),'Sessions · '+alive+' en cours'));
