@@ -300,6 +300,7 @@ var EN={
 "Instantané · ": "Snapshot · ",
 "Interroger le wiki": "Query the wiki",
 "Tester en tant que": "Test as",
+"Pas encore livré : ce parcours se teste une fois implémenté.": "Not delivered yet: this flow can be tested once it is implemented.",
 "Ce que vous créez": "What you create",
 "Créer un persona ou un parcours": "Create a persona or a user flow",
 "Parcours (user flow)": "User flow",
@@ -1349,6 +1350,7 @@ function flowUrlArg(v){v=str(v,300).trim(); return /^https?:\/\/\S+$/.test(v)?' 
 function flowLauncher(e){
   var isFlow=wikiKind(e)==='UserFlow', box=h('div',{class:'filters flow-launch'}), id=str(e.id,80);
   if(!FLOW_ID.test(id))return null;
+  if(isFlow&&e.status!=='implemented')return h('p',{class:'note'},'Pas encore livré : ce parcours se teste une fois implémenté.');
   var others=wikiByKind(isFlow?'Persona':'UserFlow');
   if(!others.length)return h('p',{class:'note'},isFlow?'Aucun persona : ajoutez-en dans wiki/persona/.':'Aucun user flow : ajoutez-en dans wiki/user-flow/.');
   var picked={}, flow=id, cmd=h('div',{class:'cmd'}), go=h('a',{class:'btn primary',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),

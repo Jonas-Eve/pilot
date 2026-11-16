@@ -2001,6 +2001,10 @@ class Bundle:
 
 class Wiki(Bundle):
     """The functional wiki: statuses proposed / specified / implemented / deprecated, derived from tickets."""
+    FOLDER_TYPES = {"persona": "Persona", "user-flow": "UserFlow"}
+
+    def _type_of(self, rel):
+        return self.FOLDER_TYPES.get(rel.split("/")[0], self.DEFAULT_TYPE) if "/" in rel else self.DEFAULT_TYPE
 
 
 ARCH_STATUSES = ("proposed", "accepted", "deprecated", "superseded")

@@ -13,7 +13,7 @@ a human launches it. Two modes: a flow id runs it (below), `--new persona|flow <
 ## Steps
 
 0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation; `ok: false` or an error → report it and stop.
-1. **Inputs.** The `wiki` module must be on (`python3 .pilot/pilot.py module list`; off → say so and stop). `python3 .pilot/pilot.py wiki show <flow id>` must be an entry of `type: UserFlow` (else say what it is, or
+1. **Inputs.** The `wiki` module must be on (`python3 .pilot/pilot.py module list`; off → say so and stop). `python3 .pilot/pilot.py wiki show <flow id>` must be an entry of `type: UserFlow` with `status: implemented` (a `proposed` or `specified` one is a promise not built yet: say so and stop; else say what it is, or
    that it does not exist, and stop). Personas: `--as`, else the ones the flow lists; none → ask the human. Each must be an entry of `type: Persona` (`wiki show`), else stop and name it.
 2. **Prerequisites**, before any session starts (a failure → report it and stop, nothing has changed):
    - A browser the agent can drive: a browser tool of the session, else Playwright/Chromium through `Bash`.
@@ -45,5 +45,5 @@ Pair only: a human is live. The `wiki` module is on, else say so and stop; prefl
 2. `Agent` call with the task doc, `.pilot/pilot-link-wiki.md` in full, the project's language (`pilot.py module list`), the description and what step 1 read (for a flow, every persona's id, title and description). It returns the draft and its
    questions (the JSON its task doc defines). Show both to the human, feed their answers back to a new call with the conversation as text, and repeat until they approve; each turn re-reads nothing else.
 3. Check the approved draft: the id is `[a-z0-9-]+` and unused; a flow lists only existing persona ids (a missing one → offer `--new persona` first and stop here); no credential or secret anywhere in the text.
-4. `python3 .pilot/pilot.py wiki add persona/<id>.md --type Persona --status implemented --title … --description … --body …` (a flow: `user-flow/<id>.md`, `--type UserFlow`). Branch `wiki/persona-<id>` or `wiki/flow-<id>`, commit, push, open one PR
+4. `python3 .pilot/pilot.py wiki add persona/<id>.md --status implemented --title … --description … --body …` (a flow: `user-flow/<id>.md`; the folder sets the type). Branch `wiki/persona-<id>` or `wiki/flow-<id>`, commit, push, open one PR
    and report it. Never merge it: only a PR changes the wiki, a human merges it.

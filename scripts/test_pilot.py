@@ -2296,6 +2296,13 @@ class FlowRunDocTests(unittest.TestCase):
         self.assertEqual(after["hash"], before["hash"])
         self.assertNotEqual(after["personas"][0]["hash"], before["personas"][0]["hash"])
 
+    def test_the_folder_sets_the_type_of_a_new_entry(self):
+        self.wiki.add("persona/zoe.md", "Zoe", "A user.", "implemented")
+        self.wiki.add("user-flow/buy.md", "Buy", "A journey.", "proposed", tickets=[3])
+        self.wiki.add("top-level.md", "Top", "A rule.", "implemented")
+        kinds = {e["id"]: e["type"] for e in self.wiki.parse()}
+        self.assertEqual((kinds["zoe"], kinds["buy"], kinds["top-level"], kinds["sort"]), ("Persona", "UserFlow", "Behavior", "Behavior"))
+
     def test_it_refuses_what_is_not_a_flow_or_a_persona_or_has_no_run(self):
         for flow, runs, reason in (("nope", [self.run_of("marie", "passed")], "not-a-user-flow"), ("sort", [self.run_of("marie", "passed")], "not-a-user-flow"),
                                    ("find", [self.run_of("sort", "passed")], "not-a-persona"), ("find", [], "no-persona-run")):

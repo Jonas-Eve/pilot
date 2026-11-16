@@ -1021,6 +1021,9 @@ const STUB = (opts) => `
   await page.goto(FILE + '#wiki/persona'); await page.waitForTimeout(300);
   const pcmds = await page.$$eval('#view .flow-launch + .cmd', (a) => a.map((x) => x.textContent));
   check('persona launcher: the flow is chosen, the persona is the one of the entry', pcmds.length === 2 && pcmds.every((c) => c.startsWith('/pilot-flow find-a-place --as ')) && pcmds[0].endsWith('--as marie-senior') && pcmds[1].endsWith('--as paul-aidant'), pcmds.join(' | '));
+  await page.evaluate((d) => window.__push('wiki', 'w9', d), Object.assign({}, WIKI_FLOWS, { entries: WIKI_FLOWS.entries.map((e) => (e.type === 'UserFlow' ? Object.assign({}, e, { status: 'proposed' }) : e)) })); await page.waitForTimeout(250);
+  await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(300);
+  check('flow launcher: a flow that is not implemented yet has no launcher, only a note', (await page.$('#view .flow-launch')) === null && /Pas encore livré/.test(await text(page, '#view')));
   check('flow launcher: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
   }

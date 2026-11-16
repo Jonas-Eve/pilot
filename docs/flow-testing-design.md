@@ -16,8 +16,8 @@ or given by the human at run time.
 `wiki/user-flow/<id>.md` — `type: UserFlow`, same status. The prose gives the journey's goal, a `Personas:` line (ids), where it starts, then numbered steps, each `do → expect`.
 
 ```
-wiki add persona/marie-senior.md --type Persona --status implemented --title "Marie, 74, low vision" --description "Senior, uses the phone at 200 % zoom, wary of forms." --body "…"
-wiki add user-flow/book-assisted-trip.md --type UserFlow --status implemented --title "Book an assisted trip" --description "From search to confirmation with assistance requested." --body "…"
+wiki add persona/marie-senior.md --status implemented --title "Marie, 74, low vision" --description "Senior, uses the phone at 200 % zoom, wary of forms." --body "…"
+wiki add user-flow/book-assisted-trip.md --status implemented --title "Book an assisted trip" --description "From search to confirmation with assistance requested." --body "…"
 ```
 
 `persona/` and `user-flow/` are not functional domains: `/pilot-wiki --lint` and `--bootstrap` and the entries a story writes leave them out (`assets/docs/pilot-link-wiki.md`). A flow is up to 800 words, a persona 400.
