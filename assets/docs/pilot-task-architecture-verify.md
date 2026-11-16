@@ -13,7 +13,8 @@ trusting names. Return one verdict per entry:
 
 - `ok` — every statement holds as written.
 - `drift` — a statement is wrong, missing or out of date. Give each wrong statement and the exact fact the code shows,
-  so the entry can be corrected without another reading. The code is right.
+  so the human can decide without another reading. Say, with the reason, whether the entry reads as stale or wrong
+  or the code as a defect; the human decides.
 - `unverifiable` — you cannot establish it (needs a service you cannot reach). Never `ok` by default.
 
 Each verdict cites its evidence as `path:line` (and the command you ran). Separately, list facts you met that no

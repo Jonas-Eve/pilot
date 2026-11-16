@@ -2,9 +2,8 @@
 
 Read by `pilot-architecture` and by the persona calls it makes (`pilot-task-architecture-bootstrap.md`,
 `pilot-task-architecture-adr.md`), when the project's `architecture` module is enabled. It is the project's
-source of truth for how the product is built and why. **A guideline or an ADR is a rule: when the code disagrees,
-the entry is right** and a human arbitrates, never silently. **A reference entry states what the code is today: when
-the code disagrees, the code is right** and the entry is corrected.
+source of truth for how the product is built and why: **when an entry and the code disagree, a human arbitrates,
+never silently** (below), whichever of the two is wrong.
 
 **Where and what.** An OKF bundle (Open Knowledge Format) under `architecture/` at the project root
 (project-owned, never touched by `/pilot-update`), read like the wiki through the commands of
@@ -36,9 +35,14 @@ is enforced there and the guideline points to it. When a product rule forced an 
 entry never carries the reasoning.
 
 **Reference entries stay true.** `/pilot-architecture --verify` checks them against the code at a commit and stamps
-the ones that hold (`arch set <id> --stamp <commit>`); one that does not is corrected to what the code does, after
-the human has seen the difference. A PR that changes what a reference entry states updates the entry in the same PR,
-and clears its stamp (`--clear-stamp`).
+the ones that hold (`arch set <id> --stamp <commit>`). A PR that changes what a reference entry states updates the
+entry in the same PR, and clears its stamp (`--clear-stamp`).
+
+**A divergence between a reference entry and the code** is resolved by a human, one of: the code is wrong (a
+`type:bug` ticket, `/pilot-spec --bug "<description>"`, entry untouched); the entry is wrong or out of date (it is
+corrected in the same PR once the human confirms); the code must change on purpose (a `/pilot-spec --tech` ticket,
+entry untouched). An entry never stamped has not been checked against anything: a divergence on it is first read as
+a wrong or stale entry, with the reason.
 
 **Statuses.** `pilot.status` is `proposed`, `accepted`, `deprecated` or `superseded` (OKF `status`: `draft`,
 `stable`, `deprecated`, `deprecated`). An accepted ADR is never edited: a later one supersedes it
