@@ -998,6 +998,32 @@ const STUB = (opts) => `
   await page.close();
   }
 
+  // ---- persona / user-flow entries: a launcher that writes the /pilot-flow command ----
+  const WIKI_FLOWS = { kind: 'wiki', repo: REPO, at: iso(5), total: 3, truncated: false, entries: [
+    { id: 'marie-senior', type: 'Persona', title: 'Marie', description: 'Senior.', path: 'persona/marie-senior.md', status: 'implemented', tickets: [], text: 'Senior.' },
+    { id: 'paul-aidant', type: 'Persona', title: 'Paul', description: 'Carer.', path: 'persona/paul-aidant.md', status: 'implemented', tickets: [], text: 'Carer.' },
+    { id: 'find-a-place', type: 'UserFlow', title: 'Find a place', description: 'Search.', path: 'user-flow/find-a-place.md', status: 'implemented', tickets: [], text: 'Goal.\nPersonas: marie-senior\n1. Open the search -> a field.' }] };
+  { let page = await open({ preload: [BASE], wiki: [WIKI_FLOWS] });
+  await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(400);
+  const cmdOf = async () => page.$eval('#view .cmd', (e) => e.textContent);
+  const hrefOf = async () => page.$eval('#view .flow-launch + .cmd + .refresh a', (a) => a.getAttribute('href'));
+  check('flow launcher: the personas the flow lists are pre-picked, the command is written',
+        (await cmdOf()) === '/pilot-flow find-a-place --as marie-senior' && decodeURIComponent(await hrefOf()).includes('/pilot-flow find-a-place --as marie-senior'), await cmdOf());
+  await page.click('#view .flow-launch .tog:nth-of-type(2)'); await page.waitForTimeout(100);
+  check('flow launcher: picking a second persona adds it', (await cmdOf()) === '/pilot-flow find-a-place --as marie-senior,paul-aidant', await cmdOf());
+  await page.fill('#flowUrl-find-a-place', 'https://staging.example.com'); await page.waitForTimeout(100);
+  check('flow launcher: an environment address is passed as --url', (await cmdOf()).endsWith(' --url https://staging.example.com'), await cmdOf());
+  await page.fill('#flowUrl-find-a-place', 'javascript:alert(1)'); await page.waitForTimeout(100);
+  check('flow launcher: anything but an http(s) address is dropped', !/--url/.test(await cmdOf()), await cmdOf());
+  await page.click('#view .flow-launch .tog:nth-of-type(1)'); await page.click('#view .flow-launch .tog:nth-of-type(2)'); await page.waitForTimeout(100);
+  check('flow launcher: no persona picked, no link', (await page.$eval('#view .flow-launch + .cmd + .refresh a', (a) => a.getAttribute('aria-disabled') === 'true' && !a.hasAttribute('href'))), await cmdOf());
+  await page.goto(FILE + '#wiki/persona'); await page.waitForTimeout(300);
+  const pcmds = await page.$$eval('#view .cmd', (a) => a.map((x) => x.textContent));
+  check('persona launcher: the flow is chosen, the persona is the one of the entry', pcmds.length === 2 && pcmds.every((c) => c.startsWith('/pilot-flow find-a-place --as ')) && pcmds[0].endsWith('--as marie-senior') && pcmds[1].endsWith('--as paul-aidant'), pcmds.join(' | '));
+  check('flow launcher: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+  }
+
   // ---- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ----
   const ARCH = { kind: 'architecture', repo: REPO, at: iso(20), total: 7, truncated: false, entries: [
     { id: 'overview', title: 'Overview', description: 'The apps and how they relate.', path: 'overview.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'One CLI <img src=x onerror="window.__pwn=1">.' },

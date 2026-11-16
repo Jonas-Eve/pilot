@@ -1820,7 +1820,7 @@ class Bundle:
         cache, rows = {}, []
         for e in self._managed(self.parse()):
             d = self.derive(e, gh, cache)
-            rows.append({"id": e["id"], "title": e["title"], "description": e["description"], "path": e["path"],
+            rows.append({"id": e["id"], "type": e["type"], "title": e["title"], "description": e["description"], "path": e["path"],
                          "status": e["status"], "derived": d["derived"], "display": d["display"],
                          "tickets": e["tickets"], "verifiedAt": e["verifiedAt"], "text": e["text"]})
         doc = {"kind": "wiki", "repo": gh.repo, "at": now_iso(), "total": len(rows), "truncated": False, "entries": rows}

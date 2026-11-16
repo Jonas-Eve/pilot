@@ -169,9 +169,9 @@ def architecture_document():
 
 def wiki_document():
     """The `wiki/Jonas-Eve__pilot` document `pilot.py wiki snapshot` would have written."""
-    def entry(eid, title, path, status, derived, tickets, verified, text):
+    def entry(eid, title, path, status, derived, tickets, verified, text, typ="Behavior"):
         shown = status + (" · " + derived if derived else "")
-        return {"id": eid, "title": title, "description": text.split(".")[0] + ".", "path": path, "status": status,
+        return {"id": eid, "type": typ, "title": title, "description": text.split(".")[0] + ".", "path": path, "status": status,
                 "derived": derived, "display": shown, "tickets": tickets,
                 "verifiedAt": iso(verified) if verified else "", "text": text}
     entries = [
@@ -185,6 +185,12 @@ def wiki_document():
               "Une distance de 1000 m ou plus est affichée en kilomètres avec une décimale."),
         entry("csv-export", "Exporter le résultat en CSV", "export/csv-export.md", "proposed", "", [4], 0,
               "Une option affiche le résultat en CSV avec une ligne d'en-tête."),
+        entry("marie-senior", "Marie, 74 ans, malvoyante", "persona/marie-senior.md", "implemented", "", [], 0,
+              "Elle utilise son téléphone avec un zoom à 200 %. Compte de test : marie.", "Persona"),
+        entry("paul-aidant", "Paul, aidant de sa mère", "persona/paul-aidant.md", "implemented", "", [], 0,
+              "Il prépare les trajets de sa mère depuis son ordinateur. Compte de test : paul.", "Persona"),
+        entry("trouver-un-lieu", "Trouver un lieu accessible", "user-flow/trouver-un-lieu.md", "implemented", "", [], 0,
+              "Objectif : trouver un lieu de plain-pied près de soi.\nPersonas : marie-senior, paul-aidant\n1. Ouvrir la recherche → le champ est visible.\n2. Filtrer sur l'accès de plain-pied → la liste se réduit.", "UserFlow"),
     ]
     return {"kind": "wiki", "repo": REPO, "at": iso(3), "total": len(entries), "truncated": False, "entries": entries}
 

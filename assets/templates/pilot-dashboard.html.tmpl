@@ -298,6 +298,12 @@ var EN={
 "Instantané ancien : relancez la mise à jour depuis une session du projet.": "Old snapshot: run the update again from a project session.",
 "Instantané · ": "Snapshot · ",
 "Interroger le wiki": "Query the wiki",
+"Tester en tant que": "Test as",
+"Parcours à tester": "Flow to test",
+"Adresse de l’environnement (facultatif)": "Environment address (optional)",
+"Choisissez au moins un persona.": "Pick at least one persona.",
+"Aucun persona : ajoutez-en dans wiki/persona/.": "No persona: add some under wiki/persona/.",
+"Aucun user flow : ajoutez-en dans wiki/user-flow/.": "No user flow: add some under wiki/user-flow/.",
 "Interroger l’architecture": "Query the architecture",
 "La base ne répond pas pour le moment.": "The database is not responding for now.",
 "La base partagée n’est pas disponible dans cette vue.": "The shared database is not available in this view.",
@@ -1315,6 +1321,41 @@ function wikiDomains(){
   wikiEntries().forEach(function(e){var d=wikiDomain(e); if(n[d]==null){n[d]=0;order.push(d);} n[d]++;});
   return order.sort().map(function(d){return [d,d,n[d]];});
 }
+/* persona / user-flow entries: a launcher that writes the /pilot-flow command (written, not sent) */
+var FLOW_ID=/^[a-z0-9-]+$/, FLOW_KIND={persona:'Persona','user-flow':'UserFlow'};
+function wikiKind(e){return e.type||FLOW_KIND[wikiDomain(e)]||'';}
+function wikiByKind(k){return wikiEntries().filter(function(e){return wikiKind(e)===k&&FLOW_ID.test(str(e.id,80));});}
+function flowPersonaIds(e){var m=/^\s*Personas?\s*:\s*(.+)$/im.exec(str(e.text,1600)); return m?(m[1].match(/[a-z0-9-]+/g)||[]):[];}
+function flowUrlArg(v){v=str(v,300).trim(); return /^https?:\/\/\S+$/.test(v)?' --url '+v:'';}
+function flowLauncher(e){
+  var isFlow=wikiKind(e)==='UserFlow', box=h('div',{class:'filters flow-launch'}), id=str(e.id,80);
+  if(!FLOW_ID.test(id))return null;
+  var others=wikiByKind(isFlow?'Persona':'UserFlow');
+  if(!others.length)return h('p',{class:'note'},isFlow?'Aucun persona : ajoutez-en dans wiki/persona/.':'Aucun user flow : ajoutez-en dans wiki/user-flow/.');
+  var picked={}, flow=id, cmd=h('div',{class:'cmd'}), go=h('a',{class:'btn primary',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
+      url=h('input',{id:'flowUrl-'+id,type:'url',placeholder:'https://…'}), sel=null, togs=[];
+  function personas(){return isFlow?others.filter(function(o){return picked[o.id];}).map(function(o){return o.id;}):[id];}
+  function update(){
+    var ps=personas(), ok=ps.length>0, c='/pilot-flow '+flow+' --as '+ps.join(',')+flowUrlArg(url.value);
+    cmd.textContent=ok?c:tr('Choisissez au moins un persona.');
+    if(ok){go.setAttribute('href',claudeCodeUrl(c));go.removeAttribute('aria-disabled');}else{go.removeAttribute('href');go.setAttribute('aria-disabled','true');}
+    togs.forEach(function(t){t[0].setAttribute('aria-pressed',String(!!picked[t[1]]));});
+  }
+  if(isFlow){
+    var pre=flowPersonaIds(e); others.forEach(function(o){picked[o.id]=pre.indexOf(o.id)>-1;});
+    if(!personas().length&&others.length===1)picked[others[0].id]=true;
+    box.append(h('span',{class:'note'},'Tester en tant que'));
+    others.forEach(function(o){var b=h('button',{class:'tog',type:'button','aria-pressed':'false',onclick:function(){picked[o.id]=!picked[o.id];update();}},str(o.title,60));togs.push([b,o.id]);box.append(b);});
+  }else{
+    var mine=others.filter(function(f){return flowPersonaIds(f).indexOf(id)>-1;}); flow=(mine[0]||others[0]).id;
+    sel=h('select',{id:'flowPick-'+id,onchange:function(){flow=sel.value;update();}},others.map(function(f){return h('option',{value:f.id},str(f.title,80));}));
+    sel.value=flow;
+    box.append(h('label',{for:'flowPick-'+id,class:'note'},'Parcours à tester'),sel);
+  }
+  box.append(h('label',{for:'flowUrl-'+id,class:'note'},'Adresse de l’environnement (facultatif)'),url);
+  url.addEventListener('input',update); update();
+  return h('div',{},box,cmd,h('div',{class:'refresh'},go));
+}
 function wikiEntry(e){
   var chips=[h('span',{class:'chip '+(WIKI_CLS[e.status]||'')},WIKI_FR[e.status]||str(e.status,40))];
   if(WIKI_DERIVED_FR[e.derived])chips.push(h('span',{class:'chip acc'},WIKI_DERIVED_FR[e.derived]));
@@ -1324,7 +1365,8 @@ function wikiEntry(e){
     if(n>0)chips.push(h('a',{class:'chip',href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n));});
   var text=str(e.text,1600);
   return drow(h('div',{class:'t'},str(e.title,160)),e.description?h('p',{class:'note'},str(e.description,300)):null,h('div',{class:'meta'},chips),
-    text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null);
+    text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null,
+    (wikiKind(e)==='UserFlow'||wikiKind(e)==='Persona')?flowLauncher(e):null);
 }
 function vWiki(){
   var w=S.wiki;

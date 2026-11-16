@@ -27,6 +27,12 @@ wiki add user-flow/book-assisted-trip.md --type UserFlow --status implemented --
 Two tabs of one browser share cookies, so two accounts cannot run side by side in them. Each persona gets its own browser context (Playwright `browser.newContext()`), which is why the runs go in parallel only when that
 isolation is available; with a single shared profile they run one after the other.
 
+## Launching from the dashboard
+
+The Wiki tab shows a launcher under each `user-flow/` and `persona/` entry. On a flow: the personas it lists are pre-picked, pick others or fewer, optionally give an environment address; on a persona: choose the flow.
+Either way the page writes `/pilot-flow <flow> --as <personas> [--url <URL>]` and opens it in Claude Code, like the other buttons: written, not sent. Only an http(s) address is passed on. The snapshot carries each
+entry's `type` (a dashboard published before that falls back to the folder name), and the flow's persona list is read from its `Personas:` line.
+
 ## The report
 
 The chat reply is the immediate answer; the durable one is a private Artifact per flow (found by its title, updated at the same address), with the latest run first and the earlier runs below it so regressions

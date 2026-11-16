@@ -1124,6 +1124,7 @@ class WikiTests(unittest.TestCase):
         self.assertEqual((first["id"], first["path"], first["display"], first["tickets"], first["description"]),
                          ("search-filter", "search/search-filter.md", "specified · in-dev", [12, 15], "The user can filter results."))
         self.assertEqual(first["text"], "The user can filter results.")
+        self.assertEqual(first["type"], "Behavior")  # the dashboard tells persona and user-flow entries apart by it
         self.assertEqual((second["id"], second["verifiedAt"], second["text"]), ("search-sort", "2026-01-01T00:00:00Z", ""))
 
     def test_snapshot_shortens_then_drops_text_to_fit_a_database_document(self):
@@ -2211,7 +2212,7 @@ class DemoSnapshotTests(unittest.TestCase):
         doc = self.demo.wiki_document()
         self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "Jonas-Eve/pilot", len(doc["entries"]), False))
         self.assertLessEqual(len(json.dumps(doc, ensure_ascii=False).encode()), pilot.WIKI_SNAPSHOT_MAX_BYTES)
-        keys = {"id", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "text"}
+        keys = {"id", "type", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "text"}
         for row in doc["entries"]:
             self.assertEqual(set(row), keys)
             self.assertIn(row["status"], pilot.WIKI_STATUSES)
