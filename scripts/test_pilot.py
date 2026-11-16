@@ -2112,14 +2112,21 @@ class ProcessReferencesTests(unittest.TestCase):
         self.assertEqual(bad, [])
 
     def test_skill_descriptions_stay_short(self):
-        """Every skill's description sits in the context of every session of a consuming project, invoked or not: the
-        mechanics belong in the body, which is loaded only when the skill runs."""
-        sizes = {}
+        """A description sits in the context of every session of a consuming project, invoked or not: the mechanics
+        belong in the body, which is loaded only when the skill runs. A skill with `disable-model-invocation: true` is
+        launched by its command only and its description is not carried, so only the others count towards the total;
+        `pilot-auto` runs review, dev and spec through the Skill tool, so those three must stay model-invocable."""
+        sizes, carried = {}, {}
         for f in (self.ROOT / ".claude/skills").glob("*/SKILL.md"):
-            m = re.search(r"^description: (.*)$", f.read_text(), re.M)
+            text = f.read_text()
+            m = re.search(r"^description: (.*)$", text, re.M)
             sizes[f.parent.name] = len(m.group(1).encode())
+            if not re.search(r"^disable-model-invocation: true$", text, re.M):
+                carried[f.parent.name] = sizes[f.parent.name]
         self.assertEqual({k: v for k, v in sizes.items() if v > 1500}, {})
-        self.assertLess(sum(sizes.values()), 12_000)
+        self.assertLess(sum(carried.values()), 8_000)
+        for name in ("pilot-review", "pilot-dev", "pilot-spec"):
+            self.assertIn(name, carried)
 
     def test_the_generic_file_stays_small(self):
         size = (self.ROOT / "assets/docs/pilot-process.md").stat().st_size
