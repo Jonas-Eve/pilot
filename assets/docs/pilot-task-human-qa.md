@@ -49,11 +49,12 @@ nobody has yet confirmed it behaves as intended for a real user.
    These can combine in the same pass — handle each independently.
 4. **`--auto`** (the prompt carries the environment URL): there is no human, so step 2 becomes executing the plan yourself in a browser, case by case, against that URL only. Record for each case
    what you did and what you observed, and one of: `passed`, `failed`, `untestable` (needs a real device, a screen reader, a judgment on the experience, a credential or data the project does not
-   document — say which). Never mark a case `passed` on a guess, and never test anything beyond the plan. Then step 3 changes:
-   - **Every case `passed`** → approve.
+   document — say which). Never mark a case `passed` on a guess, and never test anything beyond the plan. Write no credential, token or personal data you meet into a result, and read the test account from `PILOT_ACCOUNT_QA_USER`/`_PASSWORD` or the file the prompt names, never printing it. Return, besides the results, a coverage list: every acceptance criterion with the cases that cover it (a criterion no case covers is a gap you name, not something to skip). Then step 3 changes:
+   - **Every case `passed` and every criterion covered by a passed case** → approve.
    - **A `failed` case that is plainly a defect** → a `type:bug` and the unclaim, as in step 3.
-   - **A `failed` case you cannot call a defect** (a product question, an edge nobody settled), **or any `untestable` case** → no approval: add `needs-human` with a comment naming those cases and
-     why, immediately, and leave `status:in-qa`. A human clears it and `/pilot-qa --resume` tests what is left.
+   - **A `failed` case you cannot call a defect** (a product question, an edge nobody settled), **an `untestable` case, or an uncovered criterion** → no approval: add `needs-human` with a comment naming those cases and
+     why, immediately, and leave `status:in-qa`. A human clears it and `/pilot-qa --resume` tests what is left. If a real defect is originated in the same pass it takes precedence: unclaim as in step 3, name these cases
+     in the unclaim comment and add no `needs-human` (the next run plans afresh).
    Return the per-case results; the skill writes them to the test-log comment.
 5. If mid-session the human raises something that isn't a pass/fail on a planned case — a
    different observation, a scope question — use judgment: fold it in as an additional

@@ -23,7 +23,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    priority, then "Blocks #M", then oldest). `pick: null` → report nothing to do; otherwise
    the pool has already resolved its pick: act on `pick.action` (pair unless `--auto` is given, never the ticket's `mode`; with `--auto` the pool, `resolve` and `claim` take `--auto` too,
    `.pilot/pilot-process.md` §4 "Interaction modes"; `--auto` and `--resume` never combine):
-   - `claim-fresh` → step 2 (mode `fresh`).
+   - `claim-fresh` → step 2 (mode `fresh`). Under `--auto` it is the only action that goes on: `resume-orphaned`, `resume-cleared` and `ask-resume` are reported and stop (finishing a ticket a session left, or a human cleared, is a pair run: `/pilot-qa --resume <issue>`), so an unattended run never retests what a human is waiting on.
    - `resume-orphaned` (`--resume`: a session left mid-pair) or `resume-cleared`
      (`can-resume`: a human cleared `needs-human`) → step 2 (mode of the same name), then
      read the ticket and thread to reconstruct which cases were already confirmed (and, for
@@ -42,7 +42,8 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    - A browser the agent can drive: a browser tool of the session, else Playwright/Chromium through `Bash`.
    - The environment URL: `--url`, else the one the project documents — when the `architecture` module is enabled, `python3 .pilot/pilot.py arch search "<environment URL staging>"` and the
      runbooks' entries (`arch show`). Nothing found → ask the human for it (`/pilot-qa --auto --url <URL>`) and stop; never guess a URL, never test a production environment unless that URL was given.
-   - Credentials or test data a case needs are never invented either: a case that needs one the project does not document is untestable (step 4).
+   - The story's test account, if a case needs a login: the environment variables `PILOT_ACCOUNT_QA_USER` and `PILOT_ACCOUNT_QA_PASSWORD`, checked with `[ -n "${VAR:-}" ]` and never printed; else the human may give them, which you write to a
+     mode-600 file in the session's scratchpad (deleted when the run ends) and pass its path, never the values, to the agent. Never invented: a case needing a login with none is untestable (step 4). Credentials, tokens and personal data seen in the environment never go into the test log.
 2. **Claim** it: `python3 .pilot/pilot.py claim qa <issue> --mode <mode>` (the mode named in
    step 1; add `--auto` in `--auto` runs) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-qa`, re-read to confirm). Any refusal (`lost-race`, `not-claimable`, …) →
@@ -58,7 +59,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    doc covers the phase-5-specific delta itself), along with that context (and `.pilot/pilot-link-knowledge.md` and `.pilot/pilot-link-wiki.md`
    in full when the wiki module is enabled). The agent
    returns a manual test plan: concrete cases and how to test each.
-5. **`--auto`:** the agent runs every case itself and returns one result per case; write them as the one test-log comment (below, never collapsed) and go to step 6. **Pair:** walk the human through it: show the plan, then go case by
+5. **`--auto`:** the agent runs every case itself and returns one result per case and a coverage list (each acceptance criterion with the cases that cover it); write both as the one test-log comment (below, never collapsed) and go to step 6. **Pair:** walk the human through it: show the plan, then go case by
    case — ask them to run one, report what happened, feed that back to the agent, move to
    the next — until every case is reported. Keep one running comment updated in place
    (`mcp__github__update_issue_comment` — create it once, append each case's result to it)
@@ -71,7 +72,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    artifact.
 6. Apply the agent's verdict:
    - **Approved** (every case confirmed, or every failure resolved to "not actually a
-     bug"; in `--auto`, only when every case was tested and passed — a single untested case, a failure not classified as a bug, or an unsure result is never an approval): `python3 .pilot/pilot.py set <issue> --status done --close` — the one
+     bug"; in `--auto`, only when every case was tested and passed and every acceptance criterion of the story has at least one passed case in the coverage list — a single untested case, an uncovered criterion, a failure not classified as a bug, or an unsure result is never an approval): `python3 .pilot/pilot.py set <issue> --status done --close` — the one
      phase that sets `status:done` directly, since there's no PR merge here for
      `.github/workflows/pilot-status-on-merge.yml` to react to, and nothing to cascade (a
      `type:feature` story is never itself a task of another `status:split` parent).
@@ -93,8 +94,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
      Should be rare — the human who can answer is normally right there in step 5, in
      which case the agent posts the resolution and clears the flag itself in the same
      turn, and you'll see the approved/bug outcome instead.
-   - **`--auto`, some case untestable by the agent** (needs a real device, a screen reader, a judgment on the experience, a credential the project does not document) with no failure to
-     classify: the agent applied `needs-human` with a comment naming those cases and why; `status:in-qa` stays, the test log holds the tested ones. A human clears the flag and `/pilot-qa --resume`
+   - **`--auto`, some case untestable by the agent** (needs a real device, a screen reader, a judgment on the experience, a credential the project does not document) with no real bug originated in the same pass (a bug takes precedence: the untestable cases are only named in its unclaim comment, no `needs-human`, and the next run plans afresh): the agent applied `needs-human` with a comment naming those cases and why; `status:in-qa` stays, the test log holds the tested ones. A human clears the flag and `/pilot-qa --resume`
      (pair) tests only what is left (step 1's `resume-cleared`).
    These can land in the same pass — apply what applies; each is independent
    (`.pilot/pilot-process.md` §3).

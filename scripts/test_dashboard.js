@@ -1049,6 +1049,12 @@ const STUB = (opts) => `
   check('flow status: another repo\'s run is not shown', !(await chipsOf()).includes('échec'));
   await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ bugs: ['x', -1, 0], report: 'javascript:alert(1)' })); await page.waitForTimeout(250);
   check('flow status: a bad bug number or report address is dropped', !(await chipsOf()).some((x) => /^#/.test(x) || x === 'rapport'), (await chipsOf()).join('|'));
+  { const en = await open({ preload: [BASE], wiki: [withHash], flowRuns: [run()], lang: 'en' });
+  await en.goto(FILE + '#wiki/user-flow'); await en.waitForTimeout(350);
+  const ec = await en.$$eval('#view .row .meta .chip', (x) => x.map((y) => y.textContent));
+  check('flow status: in English the chips are English, the persona chips too', ec.includes('partial') && ec.some((x) => /^played /.test(x)) && ec.includes('Marie · passed') && ec.includes('Paul · partial') && ec.includes('report') && !ec.some((x) => /passé|partiel|joué|rapport/.test(x)), ec.join('|'));
+  await en.close(); }
+  check('persona and flow rows are never flagged "non vérifié"', !(await chipsOf()).includes('non vérifié'), (await chipsOf()).join('|'));
   await page.goto(FILE + '#wiki'); await page.waitForTimeout(300);
   check('creation card: it writes the command for a persona, then for a flow, and is disabled while the text is empty',
         (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona'
@@ -1058,6 +1064,15 @@ const STUB = (opts) => `
         && decodeURIComponent(await page.$eval('#view .foldcard a.btn.primary', (a) => a.getAttribute('href'))).includes('/pilot-flow --new persona Marie, 74 ans, malvoyante'));
   await page.click('#view .foldcard .seg button:nth-of-type(2)'); await page.waitForTimeout(100);
   check('creation card: choosing the flow changes the command', (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)).startsWith('/pilot-flow --new flow '));
+  await page.fill('#flowNewText', 'Une description'); await page.click('#view .foldcard .seg button:nth-of-type(1)');
+  await page.evaluate((d) => window.__push('flowRuns', 'f5', d), run({ flow: 'other-flow' })); await page.waitForTimeout(300);
+  check('creation card: a re-render (a new document arrives) keeps the text, the kind and the open card',
+        (await page.$eval('#flowNewText', (e) => e.value)) === 'Une description' && (await page.$eval('#view .foldcard', (d) => d.open)) && (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona Une description');
+  await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(300);
+  await page.fill('#flowUrl-find-a-place', 'https://staging.example.com'); await page.click('#view .flow-launch .tog:nth-of-type(2)');
+  await page.evaluate((d) => window.__push('flowRuns', 'f6', d), run({ flow: 'another-flow' })); await page.waitForTimeout(300);
+  check('flow launcher: a re-render keeps the picked personas and the address', (await page.$eval('#flowUrl-find-a-place', (e) => e.value)) === 'https://staging.example.com'
+        && (await page.$eval('#view .flow-launch + .cmd', (e) => e.textContent)) === '/pilot-flow find-a-place --as marie-senior,paul-aidant --url https://staging.example.com', await page.$eval('#view .flow-launch + .cmd', (e) => e.textContent));
   check('flow status and creation card: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
   }

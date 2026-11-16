@@ -12,6 +12,8 @@ You receive a user flow and the results of each persona's run (the JSON of `.pil
 3. **Friction** is never a ticket. Keep each one with its persona and step, merged when several personas met the same one.
 4. A persona whose session did not start, and every `untestable` step, are reported as such, never counted as passed.
 
+The tickets you originate and everything you return carry no credential, token or personal data, whatever the persona runs recorded.
+
 You never write application code, claim or label a ticket, or write to the wiki.
 
 Return one JSON object, nothing else:

@@ -2274,7 +2274,7 @@ class FlowRunDocTests(unittest.TestCase):
         self.assertEqual(self.doc(ok)["result"], "passed")
         self.assertEqual(self.doc(ok, untestable)["result"], "partial")
         self.assertEqual(self.doc(untestable, bad)["result"], "failed")
-        self.assertEqual(self.doc(self.run_of("marie", session="not-started"))["result"], "partial")
+        self.assertEqual(self.doc(self.run_of("marie", "passed", "untestable", session="started"), self.run_of("paul", session="not-started"))["result"], "partial")
 
     def test_the_document_names_each_persona_with_its_result_steps_and_the_bugs(self):
         doc = self.doc(self.run_of("marie", "passed", "failed"), self.run_of("paul", "passed", "passed"), bugs=(7, 9))
@@ -2295,6 +2295,22 @@ class FlowRunDocTests(unittest.TestCase):
         after = self.doc(self.run_of("marie", "passed"))
         self.assertEqual(after["hash"], before["hash"])
         self.assertNotEqual(after["personas"][0]["hash"], before["personas"][0]["hash"])
+
+    def test_a_run_that_played_no_step_writes_nothing_and_a_sloppy_ticket_number_does_not_crash(self):
+        with self.assertRaises(pilot.Refused) as refused:
+            self.doc(self.run_of("marie", session="not-started"), self.run_of("paul", "untestable"))
+        self.assertEqual(refused.exception.payload["reason"], "nothing-run")
+        doc = self.doc(self.run_of("marie", "passed"), bugs=("#12", "x", 0, 5))
+        self.assertEqual(doc["bugs"], [12, 5])
+        for bad in ("nope", [1], {"flow": "find", "personas": ["marie"]}):
+            with self.assertRaises(pilot.Refused):
+                pilot.flow_run_doc(self.wiki, "o/r", bad)
+
+    def test_the_cli_add_takes_the_type_from_the_folder_and_show_reports_it(self):
+        parse = pilot.build_parser().parse_args
+        self.assertIsNone(parse(["wiki", "add", "user-flow/x.md", "--title", "T", "--description", "D", "--status", "implemented"]).type)
+        self.wiki.add("user-flow/x.md", "T", "D", "implemented", typ=None)
+        self.assertEqual(self.wiki.show("x", FakeGh([]))["type"], "UserFlow")
 
     def test_the_folder_sets_the_type_of_a_new_entry(self):
         self.wiki.add("persona/zoe.md", "Zoe", "A user.", "implemented")

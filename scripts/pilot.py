@@ -1774,7 +1774,7 @@ class Bundle:
 
     def show(self, entry_id, gh):
         entry = self._find(entry_id)
-        return {"ok": True, **self._view(entry), "text": entry["text"], "derived": self.derive(entry, gh, {}),
+        return {"ok": True, **self._view(entry), "type": entry["type"], "text": entry["text"], "derived": self.derive(entry, gh, {}),
                 **self._related(entry, self.parse())}
 
     def lint(self, gh):
@@ -2326,7 +2326,7 @@ def build_parser():
     w.add_argument("--title", required=True)
     w.add_argument("--description", required=True, help="one sentence, shown in the index")
     w.add_argument("--status", required=True, choices=list(WIKI_STATUSES))
-    w.add_argument("--type", default=WIKI_DEFAULT_TYPE)
+    w.add_argument("--type", default=None, help="default: set by the folder (persona/, user-flow/), else Behavior")
     w.add_argument("--ticket", type=int, action="append", default=[])
     w.add_argument("--body", default="")
     w = ws.add_parser("set", help="rewrite an entry's frontmatter (the only writer of it)")
@@ -2487,12 +2487,16 @@ def persona_result(run):
 def flow_run_doc(wiki, repo, data):
     """The `flowRuns` document of a run: what the dashboard shows on the flow (when it was played, by which personas,
     with what result) and what lets it see the flow or a persona changed since. No GitHub call, no judgment."""
+    if not isinstance(data, dict):
+        raise Refused({"ok": False, "reason": "bad-input", "hint": "the input is one JSON object"})
     by_id = {e["id"]: e for e in wiki.parse()}
     flow = by_id.get(data.get("flow"))
     if flow is None or flow["type"] != "UserFlow":
         raise Refused({"ok": False, "reason": "not-a-user-flow", "id": data.get("flow")})
     personas = []
     for run in data.get("personas") or []:
+        if not isinstance(run, dict):
+            raise Refused({"ok": False, "reason": "bad-input", "hint": "each persona run is a JSON object"})
         entry = by_id.get(run.get("persona"))
         if entry is None or entry["type"] != "Persona":
             raise Refused({"ok": False, "reason": "not-a-persona", "id": run.get("persona")})
@@ -2501,8 +2505,17 @@ def flow_run_doc(wiki, repo, data):
                          "steps": {k: sum(1 for x in steps if x.get("result") == k) for k in ("passed", "failed", "untestable")}})
     if not personas:
         raise Refused({"ok": False, "reason": "no-persona-run"})
+    if not any(x["steps"]["passed"] + x["steps"]["failed"] for x in personas):
+        raise Refused({"ok": False, "reason": "nothing-run", "hint": "no step was played: the flow's last result is kept"})
     results = [x["result"] for x in personas]
-    bugs = [int(b["ticket"]) for b in ((data.get("report") or {}).get("bugs") or []) if int(b.get("ticket") or 0) > 0]
+    bugs = []
+    for b in (data.get("report") or {}).get("bugs") or []:
+        try:
+            n = int(str(b.get("ticket") if isinstance(b, dict) else b).lstrip("#"))
+        except ValueError:
+            continue
+        if n > 0:
+            bugs.append(n)
     return {"kind": "flowRun", "repo": repo, "flow": flow["id"], "at": now_iso(), "hash": entry_hash(flow),
             "result": next(r for r in ("failed", "partial", "passed") if r in results),
             "personas": personas, "bugs": bugs, "report": str(data.get("reportUrl") or "")}
