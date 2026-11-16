@@ -58,6 +58,7 @@ const STUB = (opts) => `
     const page = await browser.newPage({ viewport: { width: 400, height: 900 } });
     page.errors = []; page.on('pageerror', e => page.errors.push(String(e)));
     if (opts.lang !== null) await page.addInitScript(`try{localStorage.setItem('cp.lang',${JSON.stringify(opts.lang || 'fr')})}catch(e){}`);
+    await page.addInitScript(`try{localStorage.setItem('cp.role',${JSON.stringify(opts.role || 'tous')})}catch(e){}`);
     await page.addInitScript(STUB(opts));
     await page.goto(file); await page.waitForTimeout(350);
     return page;
@@ -185,7 +186,7 @@ const STUB = (opts) => `
   await page.close();
 
   // ---- new request: Discovery / tech Spec / bug Spec from scratch ----
-  page = await open({ preload: [BASE] });
+  page = await open({ preload: [BASE], role: 'tech' });
   check('new request card is folded by default, behind a chevron', (await page.getAttribute('#ideaToggle', 'aria-expanded')) === 'false' && (await page.$eval('#ideaBody', (e) => e.hidden)));
   await page.click('#ideaToggle');
   check('the chevron opens it', (await page.getAttribute('#ideaToggle', 'aria-expanded')) === 'true' && !(await page.$eval('#ideaBody', (e) => e.hidden)));
@@ -202,6 +203,8 @@ const STUB = (opts) => `
   let o = await ideaOpen();
   check('tech role defaults to the tech Spec command, link carries command and repo',
         o.href === encBase + encodeURIComponent('/pilot-spec --tech Mon besoin') + encRepo && o.disabled === null && o.target === '_blank' && /noopener/.test(o.rel), JSON.stringify(o));
+  check('tech role offers only the tech need and the bug', JSON.stringify(await page.$$eval('#kindSeg button', (b) => b.map((x) => x.textContent))) === JSON.stringify(['Besoin technique', 'Bug']));
+  await page.click('#roleSeg >> text=Tous');
   await page.click('#kindSeg >> text=Idée produit');
   check('product idea -> /pilot-discovery', (await ideaOpen()).href === encBase + encodeURIComponent('/pilot-discovery Mon besoin') + encRepo && /^\/pilot-discovery Mon besoin$/.test(await text(page, '#ideaCmd')));
   await page.click('#kindSeg >> text=Bug');
@@ -360,6 +363,20 @@ const STUB = (opts) => `
   await page.screenshot({ path: path.join(TMP, 'batch.png') });
   await page.close();
 
+  // ---- the role shows only what matters to it ----
+  const tabNames = (pg) => pg.$$eval('#tabs a', (as) => as.map((x) => x.textContent.replace(/\s*\(\d+\)$/, '')));
+  page = await open({ preload: [BASE], role: 'produit' });
+  check('product role: no Activité nor Architecture tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Design', 'Wiki']), JSON.stringify(await tabNames(page)));
+  check('product role: no batch card, no tech need request', await page.$eval('#batch', (e) => e.hidden));
+  await tab(page, 'Vue d’ensemble');
+  check('product role: overview shows only Discovery and QA humaine', JSON.stringify(await page.$$eval('#view .col header strong', (e) => e.map((x) => x.textContent))) === JSON.stringify(['1 · Discovery', '5 · QA humaine']));
+  await page.close();
+  page = await open({ preload: [BASE], role: 'tech' });
+  check('tech role: no Prototypes, Design nor Wiki tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Recherche', 'Activité', 'Architecture']), JSON.stringify(await tabNames(page)));
+  await page.goto(FILE + '#design'); await page.waitForTimeout(200);
+  check('tech role: a hidden tab falls back to the queue', /Ma file/.test(await text(page, '#view')));
+  await page.close();
+
   // ---- new request: --multi for a product idea only ----
   page = await open({ preload: [BASE] });
   await page.click('#ideaToggle'); await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
@@ -369,7 +386,7 @@ const STUB = (opts) => `
   check('product idea + multi: /pilot-discovery <idea> --multi 3', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3' && (await page.$eval('#ideaOpen', (a) => a.getAttribute('href'))).includes(encodeURIComponent('/pilot-discovery Mon idée --multi 3')), await text(page, '#ideaCmd'));
   await page.click('#ideaWithSeg >> text=Designer');
   check('product idea + designer: --with designer after --multi', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3 --with designer', await text(page, '#ideaCmd'));
-  await page.click('#kindSeg >> text=Besoin technique');
+  await page.click('#roleSeg >> text=Tous'); await page.click('#kindSeg >> text=Besoin technique');
   check('tech need + designer: --with designer, no --multi', (await text(page, '#ideaCmd')) === '/pilot-spec --tech Mon idée --with designer', await text(page, '#ideaCmd'));
   await page.click('#kindSeg >> text=Bug');
   check('bug report: the designer is summonable too, no --multi', !(await page.$eval('#ideaWithWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée --with designer', await text(page, '#ideaCmd'));
@@ -567,7 +584,7 @@ const STUB = (opts) => `
     ticket(8, ['type:tech', 'status:changes-requested', 'priority:P2'], { t: 'Corrections demandées' }),
     ticket(9, ['type:tech', 'status:in-dev', 'priority:P2'], { t: 'Ancien verdict, assigné', a: 'carol' }),
   ], 120);
-  page = await open({ preload: [ASSIGN_SNAP] });
+  page = await open({ preload: [ASSIGN_SNAP], role: 'tech' });
   const fileNums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
   const setOf2 = (...a) => JSON.stringify(a.sort());
   check('default scope "Tous": the role\'s tickets, assigned or not', JSON.stringify(await fileNums()) === setOf2('#1', '#2', '#3', '#4', '#7', '#8', '#9'), JSON.stringify(await fileNums()));

@@ -631,7 +631,13 @@ function cur(){
 }
 /* a tab of an optional module shows only when the project has that module on; a snapshot without the field shows them all */
 var TAB_MODULE={prototypes:'proto',design:'design',wiki:'wiki',architecture:'architecture'};
-function tabOn(tab){var m=S.gh&&S.gh.modules; return !TAB_MODULE[tab]||!m||m[TAB_MODULE[tab]]===true;}
+function moduleOn(tab){var m=S.gh&&S.gh.modules; return !TAB_MODULE[tab]||!m||m[TAB_MODULE[tab]]===true;}
+/* a role sees only the tabs and requests that matter to it; "tous" keeps everything */
+var ROLE_TABS={produit:['file','ensemble','prototypes','wiki','design','recherche'],tech:['file','ensemble','activite','architecture','recherche']};
+var ROLE_KINDS={produit:['produit','bug'],tech:['tech','bug']};
+function roleShows(tab){var r=ROLE_TABS[S.role]; return !r||r.indexOf(tab)>-1;}
+function tabOn(tab){return moduleOn(tab)&&roleShows(tab);}
+function phasesView(){return phasesOn().filter(function(p){return S.role==='tous'||p.role===S.role;});}
 function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.at);}
 
 /* ---------- snapshots (db): written by Claude from GitHub, read by everyone ---------- */
@@ -1006,9 +1012,9 @@ function phaseItems(p){
   return tickets().filter(function(t){return p.statuses.indexOf(t.status)>-1;}).sort(function(a,b){
     return p.statuses.indexOf(a.status)-p.statuses.indexOf(b.status)||byUrgency(a,b);});
 }
-function ovSubs(){return [['tableau','Tableau']].concat(phasesOn().map(function(p){return [p.key,p.name];}));}
+function ovSubs(){return [['tableau','Tableau']].concat(phasesView().map(function(p){return [p.key,p.name];}));}
 function subItems(tab){
-  if(tab==='ensemble')return ovSubs().map(function(s){var p=phasesOn().filter(function(q){return q.key===s[0];})[0];return [s[0],s[1],p?phaseItems(p).length:null];});
+  if(tab==='ensemble')return ovSubs().map(function(s){var p=phasesView().filter(function(q){return q.key===s[0];})[0];return [s[0],s[1],p?phaseItems(p).length:null];});
   if(tab==='design'){
     var d=S.design; if(!d)return [];
     var ty=d.type||{}, sp=d.space||{};
@@ -1042,12 +1048,12 @@ function vPhase(p){
 }
 function vOverview(){
   var all=tickets();
-  var cols=phasesOn().map(function(p){
+  var cols=phasesView().map(function(p){
     var items=all.filter(function(t){return p.statuses.indexOf(t.status)>-1;}).sort(byUrgency);
     var open=!!S.expanded[p.key], shown=open?items:items.slice(0,COL_LIMIT);
     return h('section',{class:'col','aria-label':p.name},
       h('header',{},h('strong',{},p.n+' · '+p.name),h('span',{class:'chip'},items.length)),
-      h('span',{class:'own'},p.role==='produit'?'Produit':'Tech'),
+      S.role==='tous'?h('span',{class:'own'},p.role==='produit'?'Produit':'Tech'):null,
       shown.length?shown.map(function(t){
         return h('div',{class:'card'+(has(t,'needs-human')?' flag':'')},
           h('div',{class:'t'},h('span',{class:'num mono'},'#'+t.n+' '),t.title),
@@ -1069,7 +1075,8 @@ var KINDS=[
   {key:'bug',label:'Bug',prefix:'/pilot-spec --bug ',hint:'Spec : l’architecte qualifie le défaut, puis crée le ticket.'}
 ];
 var ideaKind=null; /* null: follow the role */
-function kindNow(){var key=ideaKind||(S.role==='tech'?'tech':'produit');return KINDS.filter(function(k){return k.key===key;})[0];}
+function kindsNow(){var ok=ROLE_KINDS[S.role]; return ok?KINDS.filter(function(k){return ok.indexOf(k.key)>-1;}):KINDS;}
+function kindNow(){var ks=kindsNow(), key=ideaKind||(S.role==='tech'?'tech':'produit');return ks.filter(function(k){return k.key===key;})[0]||ks[0];}
 function ideaText(){var el=document.getElementById('ideaText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
 function buildIdea(){
   var box=document.getElementById('idea');
@@ -1089,7 +1096,7 @@ function buildIdea(){
 function ideaFull(k,text){return k.prefix+text+(k.key==='produit'&&S.ideaMulti?' --multi '+S.ideaMulti:'')+(S.ideaDesigner?' --with designer':'');}
 function updateIdea(){
   var k=kindNow(), text=ideaText(), seg=document.getElementById('kindSeg'), open=document.getElementById('ideaOpen');
-  seg.replaceChildren.apply(seg,KINDS.map(function(x){
+  seg.replaceChildren.apply(seg,kindsNow().map(function(x){
     return h('button',{type:'button','aria-pressed':String(x.key===k.key),onclick:function(){ideaKind=x.key;updateIdea();}},x.label);}));
   document.getElementById('ideaHint').textContent=tr(k.hint+' La commande est écrite, pas envoyée.');
   document.getElementById('ideaCmd').textContent=ideaFull(k,text||'…');
@@ -1539,15 +1546,15 @@ function render(){
   var H=!!S.viewHelp; /* the reference page replaces everything under the tabs */
   var hl=document.getElementById('helpLink'); if(H)hl.setAttribute('aria-current','page'); else hl.removeAttribute('aria-current');
   document.getElementById('idea').hidden=H||S.tab!=='file';updateIdea();
-  document.getElementById('batch').hidden=H||S.tab!=='file';
+  document.getElementById('batch').hidden=H||S.tab!=='file'||S.role==='produit'; /* the sweeps are Spec, Dev and Review: no auto mode for product work */
   document.getElementById('search').hidden=H||S.tab!=='recherche';updateSearch();
   document.getElementById('designEdit').hidden=H||S.tab!=='design';updateDesign();
   document.getElementById('protoNew').hidden=H||S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
   document.getElementById('banner').hidden=H||S.tab==='design'||S.tab==='wiki'||S.tab==='architecture'||(S.tab==='prototypes'&&!!S.viewProto);
-  if(S.tab==='ensemble'&&S.sub.ensemble!=='tableau'&&!phasesOn().some(function(p){return p.key===S.sub.ensemble;}))S.sub.ensemble='tableau'; /* a phase this project does not run */
+  if(S.tab==='ensemble'&&S.sub.ensemble!=='tableau'&&!phasesView().some(function(p){return p.key===S.sub.ensemble;}))S.sub.ensemble='tableau'; /* a phase this project does not run */
   var pc=document.getElementById('profileChip'), wf=S.gh&&S.gh.workflow;
   pc.hidden=!wf; if(wf){pc.textContent=tr('Profil')+' '+wf.profile; pc.title=profileSummary(wf);}
-  var items=subItems(S.tab), ph=phasesOn().filter(function(p){return p.key===S.sub.ensemble;})[0];
+  var items=subItems(S.tab), ph=phasesView().filter(function(p){return p.key===S.sub.ensemble;})[0];
   if(H)subnav('aide',HELP_SUBS,S.sub.aide);
   else if(items.length&&!(S.tab==='prototypes'&&S.viewProto))subnav(S.tab,items,S.sub[S.tab]); else subnav('',[],'');
   if(!H&&S.tab==='prototypes'&&!S.viewProto&&S.sub.prototypes==='acceptes')subnav('prototypes',protoSubItems(),S.sub3,'subtabs2','prototypes/acceptes'); else subnav('',[],'','subtabs2');
