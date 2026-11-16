@@ -15,8 +15,8 @@ consumes, claims into and produces — is `python3 .pilot/pilot.py contract <pha
 The PILOT labels (`REQUIRED_LABELS` in `.pilot/pilot.py`, created by `scripts/setup-github-labels.sh`) must exist before any
 skill runs; `pilot.py doctor` checks them. Every phase acts only on a ticket that is currently in its own pre-claim `status:`
 (§4 "Claim Protocol"): nothing infers which phase a ticket belongs to or invents work. Run with a ticket number it works that
-ticket; run bare it works its pool (§4 "Picking the next ticket..."). `/pilot-discovery` and `/pilot-qa` are pair-only and never
-scheduled.
+ticket; run bare it works its pool (§4 "Picking the next ticket..."). `/pilot-discovery` is pair-only and never
+scheduled; `/pilot-qa` is pair unless run with an explicit `--auto` (§4 "Interaction modes").
 
 ## 2. Ticket Types And Levels
 
@@ -203,7 +203,7 @@ resume via `--resume`:
 
 ### Interaction modes: pair and `--auto`
 
-Each phase's own `SKILL.md` follows this contract and may specialize it. Discovery and QA are **pair only** (no `--auto`, never driven by a scheduled Routine; both support `--resume`). Spec, Dev and
+Each phase's own `SKILL.md` follows this contract and may specialize it. Discovery is **pair only** (no `--auto`, never driven by a scheduled Routine; it supports `--resume`). QA is pair too: its `--auto` is explicit only (never the ticket's `mode`, never from `/pilot-auto`'s sweeps) and "agent-driven" means a browser run against an environment the human supplies; it closes a story only when every case was tested and passed, every other outcome waits for a human (`pilot-qa/SKILL.md`). Spec, Dev and
 Review take `--auto` or `--pair` when given, else the ticket's `mode` from `python3 .pilot/pilot.py workflow show --ticket <N>` (`pair` unless the project's workflow defaults to `auto`;
 a project with no `workflow` block is pair). A ticket a risk signal makes pair only is never run unattended: an unattended run passes `--auto` to `pilot.py pool`/`resolve`/`claim`,
 which leave it out or refuse it. `--auto` is what a scheduled Routine uses (`.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). Review specializes pair: its reviewers always

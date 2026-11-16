@@ -1963,6 +1963,17 @@ class WorkflowRouteTests(unittest.TestCase):
         self.assertEqual(refused.exception.payload["reason"], "pair-only")
         self.assertEqual(m.claim("dev", 1, "fresh")["status"], "status:in-dev")
 
+    def test_a_pair_only_story_is_left_out_of_an_auto_qa_run(self):
+        issues = [issue(1, ["status:qa", "type:feature", "level:story", "priority:P0"]),
+                  issue(2, ["status:qa", "type:feature", "level:story", "priority:P1"])]
+        m = self.machine(issues, {"profile": "standard", "signals": [self.P0]})
+        self.assertEqual(m.pool("qa", 5)["pick"]["number"], 1)
+        self.assertEqual(m.pool("qa", 5, auto=True)["pick"]["number"], 2)
+        self.assertEqual(m.resolve("qa", 1, auto=True)["reason"], "pair-only")
+        with self.assertRaises(pilot.Refused):
+            m.claim("qa", 1, "fresh", auto=True)
+        self.assertEqual(m.claim("qa", 2, "fresh", auto=True)["status"], "status:in-qa")
+
     def test_an_auto_descent_into_an_epic_skips_a_pair_only_child(self):
         issues = [issue(1, ["level:epic", "type:feature"]), issue(2, ["status:dev-ready", "type:tech", "priority:P0"]),
                   issue(3, ["status:dev-ready", "type:tech", "priority:P1"])]

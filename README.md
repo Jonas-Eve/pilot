@@ -85,7 +85,7 @@ dialogue rather than one handing a finished draft to the other
     chain until nothing's left, `needs-human`, it closes, or it looks orphaned — given an
     issue number, that ticket; given none, whichever candidate the first sweep pass
     claims. Not a phase itself, and never invokes
-    `/pilot-discovery`/`/pilot-qa` (pair-only).
+    `/pilot-discovery` (pair-only) or `/pilot-qa` (pair, or its own explicit `--auto --url <URL>`).
     Lets one scheduled Routine drive the whole pipeline, or several Routines split it by
     cadence, or a human/Routine hand it one ticket without knowing which phase it's in —
     see `.claude/skills/pilot-auto/SKILL.md`.
@@ -99,8 +99,8 @@ dialogue rather than one handing a finished draft to the other
 - **Agents** (`.claude/agents/`): the seven personas the phase skills delegate to —
   `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 3's
   persona for an end-to-end-test task, `type:e2e`, instead of `pilot-dev`), and
-  `pilot-qa` (phase 5's persona, a human-paired manual QA gate for every `type:feature`
-  story once its tasks are all done), and `pilot-designer` (leads `/pilot-design`, never a phase or a validation — summoned
+  `pilot-qa` (phase 5's persona, a manual QA gate for every `type:feature`
+  story once its tasks are all done, paired with a human or, with `--auto`, run in a browser), and `pilot-designer` (leads `/pilot-design`, never a phase or a validation — summoned
   into a phase's discussion, or added with `--with`, to advise on usage and accessibility). Each file is just that persona's identity — its
   duty instructions (how it scopes, how it reviews, ...) live in `pilot-task-<duty>.md`
   instead, below.
