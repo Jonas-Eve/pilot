@@ -16,7 +16,7 @@ The PILOT labels (`REQUIRED_LABELS` in `.pilot/pilot.py`, created by `scripts/se
 skill runs; `pilot.py doctor` checks them. Every phase acts only on a ticket that is currently in its own pre-claim `status:`
 (§4 "Claim Protocol"): nothing infers which phase a ticket belongs to or invents work. Run with a ticket number it works that
 ticket; run bare it works its pool (§4 "Picking the next ticket..."). `/pilot-discovery` is pair-only and never
-scheduled; `/pilot-qa` is pair unless run with an explicit `--auto` (§4 "Interaction modes").
+scheduled; `/pilot-qa` is pair unless run with `--browser` (§4 "Interaction modes").
 
 ## 2. Ticket Types And Levels
 
@@ -203,7 +203,7 @@ resume via `--resume`:
 
 ### Interaction modes: pair and `--auto`
 
-Each phase's own `SKILL.md` follows this contract and may specialize it. Discovery is **pair only** (no `--auto`, never driven by a scheduled Routine; it supports `--resume`). QA is pair too: its `--auto` is explicit only (never the ticket's `mode`, never from `/pilot-auto`'s sweeps) and "agent-driven" means a browser run against an environment the human supplies; it closes a story only when every case was tested and passed, every other outcome waits for a human (`pilot-qa/SKILL.md`). Spec, Dev and
+Each phase's own `SKILL.md` follows this contract and may specialize it. Discovery is **pair only** (no `--auto`, never driven by a scheduled Routine; it supports `--resume`). QA has no `--auto`: it is pair, or `--browser` (the agent runs the cases in a browser against an environment the human supplies; explicit only, never the ticket's `mode`, never from `/pilot-auto`'s sweeps; it closes a story only when every case was tested and passed, every other outcome waits for a human, `pilot-qa/SKILL.md`). Spec, Dev and
 Review take `--auto` or `--pair` when given, else the ticket's `mode` from `python3 .pilot/pilot.py workflow show --ticket <N>` (`pair` unless the project's workflow defaults to `auto`;
 a project with no `workflow` block is pair). A ticket a risk signal makes pair only is never run unattended: an unattended run passes `--auto` to `pilot.py pool`/`resolve`/`claim`,
 which leave it out or refuse it. `--auto` is what a scheduled Routine uses (`.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). Review specializes pair: its reviewers always
@@ -220,7 +220,7 @@ as the first draft can be shown; there is nothing to `--resume` during framing. 
 stands and fix anything incoherent, since a decision from an early round may no longer square with a later one. It is `pilot-dev`'s self-review before opening the PR, a substitute for a second pass in
 Review, not an addition. Review has no incremental assembly: each reviewer re-checks its own points once before returning (`.pilot/pilot-link-review-consensus.md`).
 
-**`--auto`** has the agent(s) decide everything and the skill apply the result in one pass, no checkpoint. `--auto`, `--resume` and pair are mutually exclusive — pick one per run, unless a phase's own `SKILL.md` says otherwise. `--with
+**`--auto`** has the agent(s) decide everything and the skill apply the result in one pass, no checkpoint. `--auto`, `--resume` and pair are mutually exclusive — pick one per run. `--with
 <persona>[,...]` (`.pilot/pilot-link-roster.md` "Roster") is orthogonal to all of them; `--merge` (Review only, "`status:approved`") only controls whether an all-approve outcome also merges the
 PR, with either mode; `--multi <N>` (Discovery, Spec, Dev, Review; `.pilot/pilot-link-agent-dialogue.md`, `.pilot/pilot-link-multi-consensus.md`) runs an ensemble on the one claimed ticket, with either
 mode, and is invalid only with `--resume`.

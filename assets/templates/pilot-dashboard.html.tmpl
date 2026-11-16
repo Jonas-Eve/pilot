@@ -300,6 +300,8 @@ var EN={
 "Instantané · ": "Snapshot · ",
 "Interroger le wiki": "Query the wiki",
 "Tester en tant que": "Test as",
+"Ouvrir (navigateur)": "Open (browser)",
+"Copier navigateur": "Copy browser",
 "sans adresse, l’agent la cherche dans architecture/ et les runbooks, sinon vous la demande ; il teste dans un navigateur et ne clôt la story que si tous les cas passent": "without an address, the agent looks in architecture/ and the runbooks, else asks you; it tests in a browser and only closes the story when every case passes",
 "Pas encore livré : ce parcours se teste une fois implémenté.": "Not delivered yet: this flow can be tested once it is implemented.",
 "Ce que vous créez": "What you create",
@@ -798,7 +800,7 @@ function foldCard(box,key,title){
 /* what one ticket row can launch, given its chosen options: --next rides it through every phase via /pilot-auto,
    --multi N has N agents converge on the approach first (never on a resume, nor on QA) */
 function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,multi:0,kids:false,w:{},only:{},url:''});}
-/* a QA row: --auto runs the cases in a browser against an address the human gives (or the agent finds); it is never chained (--next) and never takes --with */
+/* a QA row: --browser runs the cases in a browser against an address the human gives (or the agent finds); it is never chained (--next) and never takes --with */
 function isQaRun(a){return /^\/pilot-qa (--resume )?\d+$/.test(a.cmd||'');}
 /* personas a row can add with --with (the step's Summonable column, `.pilot/pilot-link-roster.md` "Roster") and, for a review, narrow to with --only; never on a resume or a container */
 var WITHS={'/pilot-spec':['designer'],'/pilot-dev':['techlead','architect','designer'],'/pilot-review':['architect'],'/pilot-qa':['designer']};
@@ -820,7 +822,7 @@ function rowCmds(t,a,o){
   if(only.length)canAuto=false; /* --only is never combined with --auto */
   return {canAuto:canAuto,multiOK:multiOK,withs:withs,onlys:onlys,
     qa:q,
-    auto:canAuto?(q?a.cmd+' --auto'+flowUrlArg(o.url):o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu+wt):null,
+    auto:canAuto?(q?a.cmd+' --browser'+flowUrlArg(o.url):o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu+wt):null,
     pair:a.cmd+mu+wt+ot};
 }
 function protoOf(n){
@@ -830,7 +832,7 @@ function protoOf(n){
 function ticketRow(t,withLevel,depth){
   if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
   var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), pairFirst=!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='pair'); /* the project's workflow makes pair the default: its button leads */
-  var autoBtn=rc.canAuto?openLink(rc.auto,'Ouvrir (auto)',!pairFirst):null, pairBtn=rc.pair?openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto||pairFirst):null;
+  var autoBtn=rc.canAuto?openLink(rc.auto,rc.qa?'Ouvrir (navigateur)':'Ouvrir (auto)',!pairFirst):null, pairBtn=rc.pair?openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto||pairFirst):null;
   var hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
   var kids=depth<3?kidsOf(t.n):[];
@@ -847,7 +849,7 @@ function ticketRow(t,withLevel,depth){
         h('div',{class:'acts'},
           a.kind==='run'?[
             pairFirst?pairBtn:autoBtn, pairFirst?autoBtn:pairBtn,
-            rc.canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.auto,e.target);}},'Copier auto'):null,
+            rc.canAuto?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.auto,e.target);}},rc.qa?'Copier navigateur':'Copier auto'):null,
             rc.pair?h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(rc.pair,e.target);}},rc.canAuto?'Copier pair':'Copier'):null,
             hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,

@@ -15,7 +15,7 @@ nobody has yet confirmed it behaves as intended for a real user.
    to *execute*, not a restatement of the acceptance criteria.
    When the prompt carries wiki entries, each statement of an entry is a case of its own: they are
    what the product promises, and a case that fails against one is a real failure of the story.
-2. **Present the plan to the human and wait** (pair; `--auto` below) — nothing to do here without
+2. **Present the plan to the human and wait** (pair; `--browser` below) — nothing to do here without
    them. Go case by case rather than dumping the whole plan for one verdict: have them run
    a case, report what happened, move to the next — this surfaces exactly which case
    failed, if any, instead of one pass/fail over the whole feature.
@@ -47,7 +47,7 @@ nobody has yet confirmed it behaves as intended for a real user.
      hand it back to the skill as-is; `status:in-qa` stays and a human resolves it later,
      same as any other `needs-human` ticket.
    These can combine in the same pass — handle each independently.
-4. **`--auto`** (the prompt carries the environment URL): there is no human, so step 2 becomes executing the plan yourself in a browser, case by case, against that URL only. Record for each case
+4. **`--browser`** (the prompt carries the environment URL): there is no human, so step 2 becomes executing the plan yourself in a browser, case by case, against that URL only. Record for each case
    what you did and what you observed, and one of: `passed`, `failed`, `untestable` (needs a real device, a screen reader, a judgment on the experience, a credential or data the project does not
    document — say which). When the prompt carries a test log (a resume), the plan is that log's: do not restart it, keep every `passed` case as it stands, run the cases left, and treat an `untestable` one as still untestable unless the recorded resolution says how to test it. Never mark a case `passed` on a guess, and never test anything beyond the plan. Write no credential, token or personal data you meet into a result, and read the test account from `PILOT_ACCOUNT_QA_USER`/`_PASSWORD` or the file the prompt names, never printing it. Return, besides the results, a coverage list: every acceptance criterion with the cases that cover it (a criterion no case covers is a gap you name, not something to skip). Then step 3 changes:
    - **Every case `passed` and every criterion covered by a passed case** → approve.

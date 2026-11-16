@@ -87,7 +87,7 @@ dialogue rather than one handing a finished draft to the other
     chain until nothing's left, `needs-human`, it closes, or it looks orphaned — given an
     issue number, that ticket; given none, whichever candidate the first sweep pass
     claims. Not a phase itself, and never invokes
-    `/pilot-discovery` (pair-only) or `/pilot-qa` (pair, or its own explicit `--auto --url <URL>`).
+    `/pilot-discovery` (pair-only) or `/pilot-qa` (pair, or its own `--browser --url <URL>`).
     Lets one scheduled Routine drive the whole pipeline, or several Routines split it by
     cadence, or a human/Routine hand it one ticket without knowing which phase it's in —
     see `.claude/skills/pilot-auto/SKILL.md`.
