@@ -63,6 +63,25 @@ const STUB = (opts) => `
     await page.goto(file); await page.waitForTimeout(350);
     return page;
   };
+  // the launch button follows the row's Auto (QA: Navigateur) option: read both commands by flipping it, then put it back
+  const modeHrefs = async (pg, n) => {
+    const row = pg.locator('#view .row', { hasText: '#' + n + ' ' }).first();
+    const href = async () => decodeURIComponent((await row.locator('a.btn').first().getAttribute('href')).split('?q=')[1].split('&repo=')[0]);
+    if (!(await row.locator('button:has-text("Options")').count())) return row.locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
+    const wasOpen = (await row.locator('.opts').count()) > 0;
+    if (!wasOpen) await row.locator('button:has-text("Options")').click();
+    const tog = row.locator('.opts .tog', { hasText: /^(Auto|Navigateur)$/ });
+    const cur = await href();
+    let out;
+    if (!(await tog.count())) out = [null, cur];
+    else {
+      const pressed = (await tog.getAttribute('aria-pressed')) === 'true';
+      await tog.click(); const other = await href(); await tog.click();
+      out = pressed ? [cur, other] : [other, cur];
+    }
+    if (!wasOpen) await row.locator('button:has-text("Options")').click();
+    return out.filter((x) => x !== null);
+  };
   const text = (page, sel) => page.textContent(sel);
   const tab = async (page, name) => { await page.click(`nav >> text=${name}`); await page.waitForTimeout(150); return text(page, '#view'); };
   const rows = (page) => page.$$eval('#view .row', (r) => r.length);
@@ -169,9 +188,10 @@ const STUB = (opts) => `
   const base = 'https://claude.ai/code/new?q=';
   const repoParam = '&repo=' + encodeURIComponent(REPO);
   const find = (cmd) => links.find((l) => l.href === base + encodeURIComponent(cmd) + repoParam);
-  check('auto-capable ticket: open links for auto and pair', find('/pilot-dev 99 --auto') && find('/pilot-dev 99'), JSON.stringify(links));
-  check('QA ticket: open links for the browser run and pair', find('/pilot-qa 50 --browser') && find('/pilot-qa 50'), JSON.stringify(links));
-  check('QA resume: open links for the browser run and pair too', find('/pilot-qa --resume 51 --browser') && find('/pilot-qa --resume 51'), JSON.stringify(links));
+  const both = async (n) => JSON.stringify(await modeHrefs(page, n));
+  check('auto-capable ticket: one launch button, auto and pair behind the Auto option', (await both(99)) === JSON.stringify(['/pilot-dev 99 --auto', '/pilot-dev 99']), await both(99));
+  check('QA ticket: the browser run is the Navigateur option, pair the default', (await both(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), await both(50));
+  check('QA resume: the browser run and pair too', (await both(51)) === JSON.stringify(['/pilot-qa --resume 51 --browser', '/pilot-qa --resume 51']), await both(51));
   check('links open in a new tab without opener', links.length >= 3 && links.every((l) => l.target === '_blank' && /noopener/.test(l.rel)), JSON.stringify(links));
   check('the command and the repository are URL-encoded (documented claude.ai/code/new?q=&repo= form)', links.every((l) => !/ /.test(l.href)) && links.every((l) => l.href.endsWith(repoParam)) && links.every((l) => l.href.startsWith(base)));
   check('one copy button per row stays as a fallback', (await page.$$eval('#view .row button', (b) => b.filter((x) => x.textContent === 'Copier').length)) === (await rows(page)));
@@ -280,7 +300,7 @@ const STUB = (opts) => `
   page = await open({ preload: [OPT_SNAP] });
   await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
   const rowOf = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' });
-  const rowHrefs = (n) => rowOf(n).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
+  const rowHrefs = (n) => modeHrefs(page, n);
   const optBtn = (n) => rowOf(n).locator('button:has-text("Options")');
   check('options are folded by default: no panel, a chevron button on auto-capable rows only',
         (await page.$$('#view .opts')).length === 0 && (await optBtn(99).count()) === 1 && (await optBtn(70).count()) === 1 &&
@@ -316,7 +336,7 @@ const STUB = (opts) => `
   await panel70().locator('.tog', { hasText: 'PM' }).click(); await panel70().locator('.grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
   check('review row: --with architect', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --auto --multi 2 --with architect', '/pilot-review 70 --multi 2 --with architect']), JSON.stringify(await rowHrefs(70)));
   await optBtn(50).click(); await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await page.waitForTimeout(100);
-  check('QA row: --with designer applies to the pair command only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --with designer', '/pilot-qa 50 --browser']), JSON.stringify(await rowHrefs(50)));
+  check('QA row: --with designer applies to the pair command only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50 --with designer']), JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await optBtn(50).click(); await page.waitForTimeout(100);
   await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
   check('spec row of a bug offers the architect, not the designer; a tech story offers the designer',
@@ -325,14 +345,14 @@ const STUB = (opts) => `
   await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
   check('bug spec: /pilot-spec 80 --auto --with architect', JSON.stringify(await rowHrefs(80)) === JSON.stringify(['/pilot-spec 80 --auto --with architect', '/pilot-spec 80 --with architect']), JSON.stringify(await rowHrefs(80)));
   await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
-  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
+  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
   await optBtn(50).click(); await page.waitForTimeout(100);
   check('QA row options: an environment address, no --next', (await rowOf(50).locator('.opts #qaUrl-50').count()) === 1 && (await rowOf(50).locator('.opts .tog', { hasText: 'Enchaîner' }).count()) === 0);
   await rowOf(50).locator('#qaUrl-50').fill('https://staging.example.com'); await page.waitForTimeout(150);
   check('QA row: the address goes to the auto command only, and typing keeps the focus',
-        JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser --url https://staging.example.com']) && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'qaUrl-50', JSON.stringify(await rowHrefs(50)));
+        (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'qaUrl-50' && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser --url https://staging.example.com', '/pilot-qa 50']), JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('#qaUrl-50').fill('javascript:alert(1)'); await page.waitForTimeout(150);
-  check('QA row: anything but an http(s) address is dropped', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50', '/pilot-qa 50 --browser']), JSON.stringify(await rowHrefs(50)));
+  check('QA row: anything but an http(s) address is dropped', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify(await rowHrefs(50)));
   await rowOf(50).locator('#qaUrl-50').fill(''); await optBtn(50).click(); await page.waitForTimeout(100);
   check('row options: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'options.png') });
@@ -377,15 +397,16 @@ const STUB = (opts) => `
   check('tech role: a hidden tab falls back to the queue', /Ma file/.test(await text(page, '#view')));
   await page.close();
 
-  // ---- the other mode's command is copied from Options ----
+  // ---- Auto is an option like the others: it switches what the row launches and copies ----
   page = await open({ preload: [snapshot([ticket(99, ['type:tech', 'status:dev-ready'])])], role: 'tech' });
-  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
   await page.evaluate(() => { window.__clip = []; navigator.clipboard.writeText = (t) => { window.__clip.push(t); return Promise.resolve(); }; });
-  check('the other mode copy is in Options only', !(await page.$('#view .row .tog >> text=Copier l’autre mode')));
+  const launch = () => page.$eval('#view .row a.btn', (a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0]));
+  check('one launch button, auto by default', (await page.$$('#view .row a.btn')).length === 1 && (await launch()) === '/pilot-dev 99 --auto');
   await page.click('#view .row >> text=Options');
-  await page.click('#view .row >> text=Copier l’autre mode');
+  check('Auto is a toggle in Options, pressed by default', (await page.getAttribute('#view .row .opts .tog:text-is("Auto")', 'aria-pressed')) === 'true');
+  await page.click('#view .row .opts .tog:text-is("Auto")');
   await page.click('#view .row button:text-is("Copier")');
-  check('Copier copies the main mode, the other copy the other one', JSON.stringify(await page.evaluate(() => window.__clip)) === JSON.stringify(['/pilot-dev 99', '/pilot-dev 99 --auto']), JSON.stringify(await page.evaluate(() => window.__clip)));
+  check('Auto off: the button and Copier use the pair command', (await launch()) === '/pilot-dev 99' && JSON.stringify(await page.evaluate(() => window.__clip)) === JSON.stringify(['/pilot-dev 99']), await launch());
   await page.close();
 
   // ---- the queue opens with what is waiting ----
@@ -435,8 +456,8 @@ const STUB = (opts) => `
   check('opening lists the open sub-issues, most urgent first', JSON.stringify(await kidNames()) === JSON.stringify(['#11 Story A', '#12 Story B']), JSON.stringify(await kidNames()));
   const kidCmds = (sel) => page.locator(sel).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
   check('each sub-issue can be launched on its own (/pilot-spec 11 auto + pair, /pilot-qa 12)',
-        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(1) > .acts')) === JSON.stringify(['/pilot-spec 11 --auto', '/pilot-spec 11']) &&
-        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(2) > .acts')) === JSON.stringify(['/pilot-qa 12', '/pilot-qa 12 --browser']), JSON.stringify(await kidCmds('#view .kids > .row > .acts')));
+        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(1) > .acts')) === JSON.stringify(['/pilot-spec 11 --auto']) &&
+        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(2) > .acts')) === JSON.stringify(['/pilot-qa 12']), JSON.stringify(await kidCmds('#view .kids > .row > .acts')));
   await page.locator('#view .kids > .row:nth-child(1) > .acts button:has-text("Sous-tickets")').click(); await page.waitForTimeout(100);
   check('nesting goes one level further (story -> tasks), blocked task flagged', JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))) === JSON.stringify(['#14 Tâche bloquée de A', '#13 Tâche de A']), JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))));
   check('a task is launchable (/pilot-dev 13 --auto) and has no sub-tickets chevron', (await kidCmds('#view .kids .kids > .row:has-text("#13 ") > .acts')).includes('/pilot-dev 13 --auto') && (await page.locator('#view .kids .kids button:has-text("Sous-tickets")').count()) === 0);
@@ -1289,8 +1310,8 @@ const STUB = (opts) => `
 
     let page = await open({ preload: [snap(wf('pair'))] });
     let l = await links(page, 31);
-    check('mode: a workflow whose default is pair puts the pair button first, as the primary one',
-          l.length === 2 && l[0].cmd === '/pilot-dev 31' && l[0].primary && l[1].cmd === '/pilot-dev 31 --auto' && !l[1].primary, JSON.stringify(l));
+    check('mode: a workflow whose default is pair launches pair, Auto is off in Options',
+          l.length === 1 && l[0].cmd === '/pilot-dev 31' && l[0].primary && JSON.stringify(await modeHrefs(page, 31)) === JSON.stringify(['/pilot-dev 31 --auto', '/pilot-dev 31']), JSON.stringify(l));
     l = await links(page, 32);
     check('mode: a ticket a signal makes pair only has no auto button, and says why', l.length === 1 && l[0].cmd === '/pilot-dev 32' && l[0].primary
           && (await rowOf2(page, 32).locator('.chip.warn[title="priority-p0"]').count()) === 1 && /pair seulement/.test(await rowOf2(page, 32).textContent()), JSON.stringify(l));
@@ -1301,14 +1322,14 @@ const STUB = (opts) => `
 
     page = await open({ preload: [snap(wf('auto'))] });
     l = await links(page, 31);
-    check('mode: a workflow whose default is auto keeps the auto button first and primary',
-          l.length === 2 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary && l[1].cmd === '/pilot-dev 31' && !l[1].primary, JSON.stringify(l));
+    check('mode: a workflow whose default is auto launches auto, one button',
+          l.length === 1 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary, JSON.stringify(l));
     check('mode: pair only wins over an auto default', JSON.stringify((await links(page, 32)).map((x) => x.cmd)) === JSON.stringify(['/pilot-dev 32']));
     await page.close();
 
     page = await open({ preload: [snap(null)] });
     l = await links(page, 31);
-    check('mode: without a workflow, the buttons are as before (auto first)', l.length === 2 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary, JSON.stringify(l));
+    check('mode: without a workflow, auto is the default', l.length === 1 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary, JSON.stringify(l));
     await page.close();
 
     page = await open({ preload: [snap(wf('pair'))], lang: 'en' });

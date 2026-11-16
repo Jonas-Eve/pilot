@@ -482,10 +482,9 @@ var EN={
 "« Ouvrir » lance une session Claude Code sur ": "“Open” starts a Claude Code session on ",
 "Auto : l’agent travaille seul. Pair : vous dialoguez avec lui.": "Auto: the agent works alone. Pair: you dialogue with it.",
 "à décider": "to decide",
-"Copier l’autre mode": "Copy the other mode",
-"la commande du navigateur": "the browser command",
-"la commande auto": "the auto command",
-"la commande pair": "the pair command",
+"Navigateur": "Browser",
+"l’agent teste dans un navigateur": "the agent tests in a browser, without you",
+"l’agent travaille seul": "the agent works alone, without dialogue with you",
 "prototypes à décider": "prototypes to decide",
 "à cadrer": "to frame",
 "à coder": "to code",
@@ -854,7 +853,9 @@ function protoOf(n){
 function ticketRow(t,withLevel,depth){
   if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
   var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), pairFirst=rc.qa||!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='pair'); /* the project's workflow makes pair the default: its button leads; a QA row always leads with pair, the browser run is never the default */
-  var autoBtn=rc.canAuto?openLink(rc.auto,rc.qa?'Ouvrir (navigateur)':'Ouvrir (auto)',!pairFirst):null, pairBtn=rc.pair?openLink(rc.pair,rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair',!rc.canAuto||pairFirst):null;
+  /* one launch button; auto (a browser run for QA) is an option like the others, on by default unless the project or the ticket leads with pair */
+  var useAuto=rc.canAuto&&(o.auto==null?!pairFirst:o.auto), main=useAuto?rc.auto:rc.pair;
+  var openBtn=openLink(main,useAuto?(rc.qa?'Ouvrir (navigateur)':'Ouvrir (auto)'):(rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair'),true);
   var hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
   var kids=depth<3?kidsOf(t.n):[];
@@ -867,19 +868,19 @@ function ticketRow(t,withLevel,depth){
             t.assignee?h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee):null,
             t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
             h('span',{class:'note'},ago(t.updated)),
-            a.kind==='run'&&o.open?h('span',{class:'cmd'},(rc.auto||rc.pair)+(rc.canAuto?'':'  (pair)')):null)),
+            a.kind==='run'&&o.open?h('span',{class:'cmd'},main+(rc.canAuto?'':'  (pair)')):null)),
         h('div',{class:'acts'},
           a.kind==='run'?[
-            pairFirst?pairBtn:autoBtn, pairFirst?autoBtn:pairBtn,
-            h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(pairFirst&&rc.pair?rc.pair:(rc.auto||rc.pair),e.target);}},'Copier'),
+            openBtn,
+            h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(main,e.target);}},'Copier'),
             hasOpts?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.open),onclick:function(){set('open',!o.open);}},(o.open?'▾':'▸')+' Options'):null]:null,
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
           t.r?h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r):null,
           protoOf(t.n)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+protoOf(t.n);}},'Voir le proto'):null,
           kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
-          rc.canAuto&&rc.pair?h('div',{class:'grp'},h('button',{class:'tog',type:'button',onclick:function(e){copyCmd(pairFirst?rc.auto:rc.pair,e.target);}},'Copier l’autre mode'),
-            h('span',{class:'note'},pairFirst?(rc.qa?'la commande du navigateur':'la commande auto'):'la commande pair')):null,
+          rc.canAuto&&rc.pair?h('div',{class:'grp'},h('button',{class:'tog',type:'button','aria-pressed':String(useAuto),onclick:function(){set('auto',!useAuto);}},rc.qa?'Navigateur':'Auto'),
+            h('span',{class:'note'},rc.qa?'l’agent teste dans un navigateur':'l’agent travaille seul')):null,
           rc.qa&&rc.canAuto?h('div',{class:'grp'},h('label',{for:'qaUrl-'+t.n,class:'note'},'Adresse de l’environnement (facultatif)'),
             h('input',{id:'qaUrl-'+t.n,type:'url',placeholder:'https://…',value:o.url,oninput:function(e){o.url=e.target.value;var id=e.target.id,at=e.target.selectionStart;render();var el=document.getElementById(id);if(el){el.focus();try{el.setSelectionRange(at,at);}catch(x){}}}}),
             h('span',{class:'note'},'sans adresse, l’agent la cherche dans architecture/ et les runbooks, sinon vous la demande ; il teste dans un navigateur et ne clôt la story que si tous les cas passent')):null,
