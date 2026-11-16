@@ -1,5 +1,8 @@
 # CLAUDE CODE GUIDE & DIRECTIVES — `pilot` REPO
 
+## 0. REPLYING TO THE USER
+Reply in the user's language, as concisely as possible without omitting information: lead with the outcome, then only what the user must know or decide (what changed, what is unverified, what is theirs to do). No recap of the steps taken, no restating the question, no filler, no list where one sentence does. Details go in the PR or the docs, not in the reply.
+
 ## 1. WHAT THIS REPO IS
 This repo packages PILOT — a 5-phase ticket-process framework — for reuse across
 projects, as a **plain repo consuming projects clone and copy from**, not a Claude Code
