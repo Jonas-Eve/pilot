@@ -35,7 +35,7 @@ When the project has closed tickets or code to document, offer `--bootstrap` rig
 ## `--edit <id> "<change>"`
 
 Pair only: a human is live (`--auto` is not offered).
-1. `wiki show <id>`. A `Persona` or `UserFlow` → point at `/pilot-flow --edit <id> "<change>"` and stop. A `deprecated` entry is history: say so and stop.
+1. `wiki show <id>`. A `Persona` or `UserFlow` → point at `/pilot-flow --edit <id> "<change>"` and stop. The `Vision` is not edited here: it changes in the PR of the ticket that changes the product's direction, in the human's own wording; say so and stop. A `deprecated` entry is history: say so and stop.
 2. Call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-edit.md`, `.pilot/pilot-link-wiki.md` in full, the entry (status, tickets, text), the change and the wiki's language (`pilot.py module list`)
    — nothing else from this conversation. Validate the returned JSON; fix or call again.
 3. `behavior-change` → give the human the reason and point at `/pilot-discovery "<change>"`; write nothing and stop. `correction` → show the new text against the old and

@@ -402,6 +402,7 @@ const STUB = (opts) => `
       { id: 'layering', title: 'Layering', description: 'Domain never imports adapters.', path: 'guidelines/layering.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Domain never imports adapters.' },
       { id: 'data-model', title: 'Data model', description: 'The tables.', path: 'reference/data-model.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', verifiedAt: iso(120), text: 'Table catalog.' },
       { id: 'stack', title: 'Stack', description: 'Versions.', path: 'apps/web/reference/stack.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Node 22.' },
+      { id: 'overview', title: 'Overview', description: 'Apps.', path: 'overview.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'One CLI.' },
       { id: '0002-store', title: 'Store', description: 'Stored.', path: 'adr/0002-store.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Stored.' },
       { id: '0003-draft', title: 'Draft', description: 'Idea.', path: 'adr/0003-draft.md', status: 'proposed', tickets: [], supersedes: '', supersededBy: '', text: 'Idea.' },
       { id: '0001-old', title: 'Old', description: 'Old.', path: 'adr/0001-old.md', status: 'superseded', tickets: [], supersedes: '', supersededBy: '0002-store', text: 'Old.' } ] };
@@ -417,6 +418,7 @@ const STUB = (opts) => `
     check('architecture: a rule can be edited and deprecated', has('/pilot-architecture --edit layering') && has('/pilot-architecture --deprecate layering'), JSON.stringify(cmdsOf));
     check('architecture: an accepted ADR is replaced, never edited', cmdsOf.some((x) => x.startsWith('/pilot-architecture --adr "remplace 0002-store :')) && !has('/pilot-architecture --edit 0002-store') && has('/pilot-architecture --deprecate 0002-store'), JSON.stringify(cmdsOf));
     check('architecture: a proposed ADR can be edited or removed, a superseded one is history', has('/pilot-architecture --edit 0003-draft') && has('/pilot-architecture --deprecate 0003-draft') && !cmdsOf.some((x) => /0001-old/.test(x)), JSON.stringify(cmdsOf));
+    check('architecture: the overview is checked and edited, never deprecated', has('/pilot-architecture --verify overview') && has('/pilot-architecture --edit overview') && !has('/pilot-architecture --deprecate overview'), JSON.stringify(cmdsOf));
     check('architecture: a proposed entry offers Retirer, an accepted one Déprécier', /Retirer/.test(v) && /Déprécier/.test(v));
     check('architecture reference: no page errors', pg.errors.length === 0, pg.errors.join('|'));
     await pg.close(); }
@@ -1189,12 +1191,14 @@ const STUB = (opts) => `
   { const DOC = { kind: 'wiki', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
       { id: 'filter-a11y', type: 'Behavior', title: 'Filter', description: 'Filters.', path: 'search/filter-a11y.md', status: 'implemented', derived: '', tickets: [], verifiedAt: '', text: 'Filters.' },
       { id: 'saved-places', type: 'Behavior', title: 'Saved', description: 'Saved.', path: 'search/saved-places.md', status: 'proposed', derived: '', tickets: [], verifiedAt: '', text: 'Saved.' },
+      { id: 'vision', type: 'Vision', title: 'Vision', description: 'Why.', path: 'product/vision.md', status: 'implemented', derived: '', tickets: [], verifiedAt: '', text: 'Why.' },
       { id: 'planned', type: 'Behavior', title: 'Planned', description: 'Planned.', path: 'search/planned.md', status: 'specified', derived: '', tickets: [], verifiedAt: '', text: 'Planned.' } ] };
     const pg = await open({ preload: [BASE], wiki: [DOC] });
     await pg.goto(FILE + '#wiki'); await pg.waitForTimeout(350);
     const c = (await hrefs(pg, '#view .row a.btn')).map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]).trim());
     check('wiki: an implemented behavior is checked, edited, never retired from here', c.includes('/pilot-wiki --lint filter-a11y') && c.includes('/pilot-wiki --edit filter-a11y') && !c.some((x) => /--deprecate filter-a11y/.test(x)), JSON.stringify(c));
     check('wiki: a proposed behavior can be edited or removed, not checked against the code', c.includes('/pilot-wiki --edit saved-places') && c.includes('/pilot-wiki --deprecate saved-places') && !c.some((x) => /--lint saved-places/.test(x)), JSON.stringify(c));
+    check('wiki: the vision has no action from here', !c.some((x) => /vision/.test(x)), JSON.stringify(c));
     check('wiki: a specified behavior is only edited', c.includes('/pilot-wiki --edit planned') && !c.some((x) => /--(lint|deprecate) planned/.test(x)), JSON.stringify(c));
     await pg.close(); }
 

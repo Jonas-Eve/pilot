@@ -45,9 +45,7 @@ spec).
    description carried into it, and this
    project's own coding standards/security conventions (`CLAUDE.md`, or what it
    points to — e.g. architecture-layering, how identity is derived, what secrets/
-   headers gate internal calls, single- vs multi-tenant), if documented. When the prompt carries the architecture
-   index, a change to a fact a `reference` entry states (a dependency version, a table, a folder, a command) updates
-   that entry in the same PR (`arch show <id>`, edit the text, `arch set <id> --clear-stamp`).
+   headers gate internal calls, single- vs multi-tenant), if documented.
 3. Write tests first for behavioral changes — real TDD: for each behavior you add or
    change, write the test, run it, confirm it fails for the expected reason (not a
    typo/setup error), then write the minimum implementation to pass, then refactor.
@@ -112,6 +110,9 @@ spec).
    with `needs-human`. In the same PR, an entry this change completes — every other ticket it lists
    with `level` `task` is closed (`python3 .pilot/pilot.py wiki status <id>`) — moves to
    `implemented`: `wiki set <id> --status implemented`. Any other entry stays as it is.
+6b. **Architecture reference** (only when the prompt carries the architecture index): a change to a fact a
+   `reference` entry states (a dependency version, a table, a folder, a command) updates that entry in the same PR
+   (`arch show <id>`, edit the text, `arch set <id> --clear-stamp`). A rule or an ADR is never edited here.
 7. Update any docs or service-level README/CLAUDE.md (or equivalent) the change
    affects, per this project's own documentation-maintenance convention, if it has
    one.

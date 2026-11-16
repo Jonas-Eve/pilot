@@ -56,7 +56,7 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 
 ## `--deprecate <id>`
 
-1. `arch show <id>`: tell the human which entries cite it (`backlinks`), and, for an ADR, that `--adr` is the way when a new decision replaces it.
+1. `arch show <id>`. The root `overview.md` is never deprecated (edit it with `--edit`); an app's own overview only when the app is gone. Tell the human which entries cite it (`backlinks`), and, for an ADR, that `--adr` is the way when a new decision replaces it.
 2. The human confirms (pair); `--auto` is not offered.
 3. A `proposed` entry is removed (`arch remove <id>`); an `accepted` one becomes `deprecated` (`arch set <id> --status deprecated`); another status: say so and stop.
    Branch `architecture/deprecate-<id>`, commit, push, open one PR.
