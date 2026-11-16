@@ -377,6 +377,17 @@ const STUB = (opts) => `
   check('tech role: a hidden tab falls back to the queue', /Ma file/.test(await text(page, '#view')));
   await page.close();
 
+  // ---- the other mode's command is copied from Options ----
+  page = await open({ preload: [snapshot([ticket(99, ['type:tech', 'status:dev-ready'])])], role: 'tech' });
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+  await page.evaluate(() => { window.__clip = []; navigator.clipboard.writeText = (t) => { window.__clip.push(t); return Promise.resolve(); }; });
+  check('the other mode copy is in Options only', !(await page.$('#view .row .tog >> text=Copier l’autre mode')));
+  await page.click('#view .row >> text=Options');
+  await page.click('#view .row >> text=Copier l’autre mode');
+  await page.click('#view .row button:text-is("Copier")');
+  check('Copier copies the main mode, the other copy the other one', JSON.stringify(await page.evaluate(() => window.__clip)) === JSON.stringify(['/pilot-dev 99', '/pilot-dev 99 --auto']), JSON.stringify(await page.evaluate(() => window.__clip)));
+  await page.close();
+
   // ---- the queue opens with what is waiting ----
   const tally = (pg) => pg.$$eval('#view .tally .tile', (t) => t.map((x) => x.textContent));
   page = await open({ preload: [snapshot([ticket(1, ['type:tech', 'status:backlog']), ticket(2, ['type:tech', 'status:dev-ready']), ticket(3, ['type:tech', 'status:dev-ready', 'needs-human']), ticket(4, ['type:feature', 'status:qa'])])], role: 'tech' });
