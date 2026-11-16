@@ -74,6 +74,10 @@ a YAML frontmatter, an `index.md` per folder, so an agent reads the index and op
 - `guidelines/*.md` — the technical rules AIs and developers must respect (layering, testing, security,
   naming, dependencies). The dev and tech lead receive them in their prompts instead of a copy in
   `CLAUDE.md`; the tech lead's review checks conformance, the way it checks the wiki.
+- `reference/<id>.md` — how the code is built today, one subject per file (stack and versions, data model, folder structure, commands,
+  integrations): facts, never rules or reasons. It changes with the code, which wins when they differ: `--verify` checks the entries against the code
+  at a commit and stamps the ones that hold (the wiki's `--lint` mechanism), and a PR that changes a stated fact updates the entry. Added in 3.13.0
+  after finding that a version number or a table layout modelled as an ADR goes stale: an accepted ADR is never edited.
 - `adr/NNNN-title.md` — architecture decision records: context, decision, alternatives rejected,
   consequences, status (`proposed`, `accepted`, `deprecated`, `superseded`), and the ADR it supersedes.
   An ADR is never edited once accepted: a later one supersedes it.
@@ -84,7 +88,8 @@ a YAML frontmatter, an `index.md` per folder, so an agent reads the index and op
   `proposed` entries, so a bulk import of documents as proposals does not grow every phase's context; `search` and `show` still find them.
 - Scaffolding the apps (`apps/<name>/`, pinned latest compatible versions) stays, as `--scaffold`.
 
-**Where an ADR sits.** The wiki says *what* the product does; the guidelines say *how* we build; an ADR
+**Where an ADR sits.** The wiki says *what* the product does; the guidelines say *what to do* when building (stable, checkable rules:
+clean architecture, factoring, testing); the reference says *how the code works today*; an ADR
 says *why* a choice was made. A decision belongs in an ADR when it outlives a ticket and someone could
 be tempted to reverse it ("the catalog is stored, not computed", "the CLI never reads the network").
 When it was forced by a product rule, the ADR cites the wiki entry; a wiki entry never carries the

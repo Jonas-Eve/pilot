@@ -45,7 +45,9 @@ spec).
    description carried into it, and this
    project's own coding standards/security conventions (`CLAUDE.md`, or what it
    points to — e.g. architecture-layering, how identity is derived, what secrets/
-   headers gate internal calls, single- vs multi-tenant), if documented.
+   headers gate internal calls, single- vs multi-tenant), if documented. When the prompt carries the architecture
+   index, a change to a fact a `reference` entry states (a dependency version, a table, a folder, a command) updates
+   that entry in the same PR (`arch show <id>`, edit the text, `arch set <id> --clear-stamp`).
 3. Write tests first for behavioral changes — real TDD: for each behavior you add or
    change, write the test, run it, confirm it fails for the expected reason (not a
    typo/setup error), then write the minimum implementation to pass, then refactor.

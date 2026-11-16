@@ -20,6 +20,8 @@ Produce:
   commands, as they actually are.
 - `runbooks/<id>.md` — one procedure per file for each `runbook` document (and each distinct procedure it holds): the steps in order,
   the commands and values as the document gives them, what to check at the end. Nothing summarised away: a procedure that loses a step is wrong.
+- `reference/<id>.md` — one subject per file, read from the code and the manifests (never from a document alone): the stack with the versions the
+  lockfile pins, the data model (tables or collections, keys, relations), the folder structure, the integrations. Facts only, exact names and values, no rule and no reason.
 - `guidelines/<id>.md` — one rule per file for each technical rule the project really follows or states
   (layering, testing, security, naming, dependencies): the rule in the imperative, one short paragraph, with
   the reason only when the code or documents give one. A rule stated in the documents that the code does not
@@ -37,7 +39,7 @@ came from (`source`, or "code" when you read it there).
 Return one JSON object, nothing else:
 
 ```json
-{"entries": [{"path": "overview.md|guidelines/<id>.md|runbooks/<id>.md|apps/<app>/…", "title": "", "description": "", "body": "", "source": "",
+{"entries": [{"path": "overview.md|guidelines/<id>.md|reference/<id>.md|runbooks/<id>.md|apps/<app>/…", "title": "", "description": "", "body": "", "source": "",
               "triage": "convergent|divergent|documented-only|code-only", "proof": "", "question": ""}],
  "decisions": [{"source": "", "decision": "", "reasoning": ""}],
  "functional": [""], "ignored": [""]}

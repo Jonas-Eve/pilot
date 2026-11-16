@@ -397,6 +397,22 @@ const STUB = (opts) => `
   check('tech role: a hidden tab falls back to the queue', /Ma file/.test(await text(page, '#view')));
   await page.close();
 
+  // ---- architecture: reference entries are checked against the code, rules and decisions are not ----
+  { const REF = { kind: 'architecture', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
+      { id: 'layering', title: 'Layering', description: 'Domain never imports adapters.', path: 'guidelines/layering.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Domain never imports adapters.' },
+      { id: 'data-model', title: 'Data model', description: 'The tables.', path: 'reference/data-model.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', verifiedAt: iso(120), text: 'Table catalog.' },
+      { id: 'stack', title: 'Stack', description: 'Versions.', path: 'apps/web/reference/stack.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Node 22.' } ] };
+    const pg = await open({ preload: [BASE], architecture: [REF] });
+    await pg.goto(FILE + '#architecture'); await pg.waitForTimeout(350);
+    const v = await text(pg, '#view');
+    const refLinks = await hrefs(pg, '#view .refresh a.btn');
+    const cmdsOf = refLinks.map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]));
+    check('architecture: a button adds a rule, one checks the reference', cmdsOf.includes('/pilot-architecture --guideline') && cmdsOf.includes('/pilot-architecture --verify') && /Ajouter une règle/.test(v) && /Vérifier la référence/.test(v), JSON.stringify(cmdsOf));
+    check('architecture: each reference entry has its own check, a rule has none', cmdsOf.includes('/pilot-architecture --verify data-model') && cmdsOf.includes('/pilot-architecture --verify stack') && !cmdsOf.some((c) => /--verify layering/.test(c)), JSON.stringify(cmdsOf));
+    check('architecture: a reference entry says whether it was checked, a rule does not', (v.match(/non vérifié/g) || []).length === 1 && (v.match(/vérifié il y a/g) || []).length === 1 && /Référence/.test(v), v);
+    check('architecture reference: no page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.close(); }
+
   // ---- Auto is an option like the others: it switches what the row launches and copies ----
   page = await open({ preload: [snapshot([ticket(99, ['type:tech', 'status:dev-ready'])])], role: 'tech' });
   await page.evaluate(() => { window.__clip = []; navigator.clipboard.writeText = (t) => { window.__clip.push(t); return Promise.resolve(); }; });

@@ -60,7 +60,7 @@ dialogue rather than one handing a finished draft to the other
     question, `--lint` it against the code (a human arbitrates each divergence), or `--bootstrap` it from the
     closed tickets and the code — see `.claude/skills/pilot-wiki/SKILL.md`.
   - `/pilot-architecture` — the project's architecture (`architecture/`, an optional module that replaces the old one-time `/pilot-init-archi`): the apps, the technical
-    guidelines AIs and developers must respect, and the decision records (ADR), one subfolder per app in a monorepo. Ask it a question, `--adr` a decision,
+    guidelines AIs and developers must respect, the reference of how the code is built today (stack and versions, data model, structure), and the decision records (ADR), one subfolder per app in a monorepo. Ask it a question, add a rule with `--guideline`, `--adr` a decision, `--verify` the reference against the code,
     `--bootstrap` it from what the project already has (apps, `docs/`, each app's own documents), `--scaffold` new apps, or `--lint` it — see
     `.claude/skills/pilot-architecture/SKILL.md`.
   - `/pilot-design` — create or revise the project's design system and brand charter with the

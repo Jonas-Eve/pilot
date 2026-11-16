@@ -482,6 +482,10 @@ var EN={
 "« Ouvrir » lance une session Claude Code sur ": "“Open” starts a Claude Code session on ",
 "Auto : l’agent travaille seul. Pair : vous dialoguez avec lui.": "Auto: the agent works alone. Pair: you dialogue with it.",
 "à décider": "to decide",
+"Référence": "Reference",
+"Ajouter une règle": "Add a rule",
+"Vérifier la référence": "Check the reference",
+"Vérifier": "Check",
 "Navigateur": "Browser",
 "l’agent teste dans un navigateur": "the agent tests in a browser, without you",
 "l’agent travaille seul": "the agent works alone, without dialogue with you",
@@ -1504,7 +1508,9 @@ function vWiki(){
 /* ---------- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ---------- */
 var ARCH_FR={proposed:'proposé',accepted:'accepté',deprecated:'déprécié',superseded:'remplacé'};
 var ARCH_CLS={proposed:'',accepted:'ok',deprecated:'warn',superseded:'warn'};
-var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',adr:'Décisions',runbooks:'Procédures'};
+var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',reference:'Référence',adr:'Décisions',runbooks:'Procédures'};
+/* a reference entry states what the code is today: it is checked against the code (`--verify`), a rule or a decision is not */
+function archIsRef(e){return /(^|\/)reference\//.test(str(e.path,200));}
 function archEntries(){return S.arch&&Array.isArray(S.arch.entries)?S.arch.entries.slice(0,2000):[];}
 function archGroup(e){var p=str(e.path,200).split('/'); if(p[0]==='apps'&&p.length>2)return 'app:'+str(p[1],60); return p.length>1&&ARCH_GROUPS[p[0]]?p[0]:'overview';}
 function archLabel(g){return g.indexOf('app:')===0?'App '+g.slice(4):ARCH_GROUPS[g]||g;}
@@ -1515,13 +1521,15 @@ function archGroups(){
 }
 function archEntry(e){
   var chips=[h('span',{class:'chip '+(ARCH_CLS[e.status]||'')},ARCH_FR[e.status]||str(e.status,40))];
+  if(archIsRef(e))chips.push(e.verifiedAt?h('span',{class:'chip ok'},'vérifié '+ago(e.verifiedAt)):h('span',{class:'chip warn'},'non vérifié'));
   if(e.supersedes)chips.push(h('span',{class:'chip'},'remplace '+str(e.supersedes,80)));
   if(e.supersededBy)chips.push(h('span',{class:'chip warn'},'remplacé par '+str(e.supersededBy,80)));
   (Array.isArray(e.tickets)?e.tickets.slice(0,20):[]).forEach(function(n){n=Math.floor(Number(n));
     if(n>0)chips.push(h('a',{class:'chip',href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n));});
   var text=str(e.text,1600);
   return drow(h('div',{class:'t'},str(e.title,160)),e.description?h('p',{class:'note'},str(e.description,300)):null,h('div',{class:'meta'},chips),
-    text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null);
+    text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null,
+    archIsRef(e)&&FLOW_ID.test(str(e.id,80))?h('div',{class:'refresh'},openLink('/pilot-architecture --verify '+str(e.id,80),'Vérifier')):null);
 }
 function vArch(){
   var a=S.arch;
@@ -1530,7 +1538,7 @@ function vArch(){
   shown.forEach(function(e){counts[e.status]=(counts[e.status]||0)+1; var k=archGroup(e); if(!by[k]){by[k]=[];pages.push(k);} by[k].push(e);});
   var sum=Object.keys(ARCH_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+ARCH_CLS[k]},counts[k]+' '+ARCH_FR[k]);});
   return h('div',{class:'list'},h('h2',{},'Architecture · mis à jour '+ago(a.at)+(a.truncated?' · textes raccourcis':'')),
-    h('div',{class:'refresh'},openLink('/pilot-architecture','Interroger l’architecture',true),openLink('/pilot-architecture --adr','Consigner une décision')),
+    h('div',{class:'refresh'},openLink('/pilot-architecture','Interroger l’architecture',true),openLink('/pilot-architecture --guideline','Ajouter une règle'),openLink('/pilot-architecture --adr','Consigner une décision'),archEntries().some(archIsRef)?openLink('/pilot-architecture --verify','Vérifier la référence'):null),
     sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
     pages.length?archGroups().map(function(g){return g[0];}).filter(function(k){return by[k];}).map(function(k){return h('section',{class:'list','aria-label':archLabel(k)},h('h2',{},archLabel(k)),by[k].map(archEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
 }
