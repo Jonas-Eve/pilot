@@ -852,9 +852,9 @@ function protoOf(n){
 }
 function ticketRow(t,withLevel,depth){
   if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
-  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), pairFirst=rc.qa||!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='pair'); /* the project's workflow makes pair the default: its button leads; a QA row always leads with pair, the browser run is never the default */
-  /* one launch button; auto (a browser run for QA) is an option like the others, on by default unless the project or the ticket leads with pair */
-  var useAuto=rc.canAuto&&(o.auto==null?!pairFirst:o.auto), main=useAuto?rc.auto:rc.pair;
+  var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), autoDefault=!rc.qa&&!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='auto'); /* pair leads, as in the skills; auto only when the project's workflow makes it the default (never for QA) */
+  /* one launch button; auto (a browser run for QA) is an option like the others, off unless the project's workflow defaults to auto */
+  var useAuto=rc.canAuto&&(!rc.pair||(o.next&&!rc.qa)||(o.auto==null?autoDefault:o.auto)), main=useAuto?rc.auto:rc.pair;
   var openBtn=openLink(main,useAuto?(rc.qa?'Ouvrir (navigateur)':'Ouvrir (auto)'):(rc.canAuto?'Ouvrir (pair)':'Ouvrir en pair'),true);
   var hasOpts=rc.canAuto||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
@@ -879,7 +879,7 @@ function ticketRow(t,withLevel,depth){
           protoOf(t.n)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+protoOf(t.n);}},'Voir le proto'):null,
           kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
-          rc.canAuto&&rc.pair?h('div',{class:'grp'},h('button',{class:'tog',type:'button','aria-pressed':String(useAuto),onclick:function(){set('auto',!useAuto);}},rc.qa?'Navigateur':'Auto'),
+          rc.canAuto&&rc.pair?h('div',{class:'grp'},h('button',{class:'tog',type:'button','aria-pressed':String(useAuto),onclick:function(){if(useAuto)o.next=false;set('auto',!useAuto);}},rc.qa?'Navigateur':'Auto'),
             h('span',{class:'note'},rc.qa?'l’agent teste dans un navigateur':'l’agent travaille seul')):null,
           rc.qa&&rc.canAuto?h('div',{class:'grp'},h('label',{for:'qaUrl-'+t.n,class:'note'},'Adresse de l’environnement (facultatif)'),
             h('input',{id:'qaUrl-'+t.n,type:'url',placeholder:'https://…',value:o.url,oninput:function(e){o.url=e.target.value;var id=e.target.id,at=e.target.selectionStart;render();var el=document.getElementById(id);if(el){el.focus();try{el.setSelectionRange(at,at);}catch(x){}}}}),

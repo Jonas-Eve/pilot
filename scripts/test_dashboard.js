@@ -311,9 +311,9 @@ const STUB = (opts) => `
   check('the other rows stay folded', (await rowOf(70).locator('.opts').count()) === 0);
   check('default commands unchanged', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto', '/pilot-dev 99']), JSON.stringify(await rowHrefs(99)));
   await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
-  check('--next: auto rides the ticket through /pilot-auto, pair unchanged', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-auto 99 --next', '/pilot-dev 99']), JSON.stringify(await rowHrefs(99)));
+  check('--next: the launch button rides the ticket through /pilot-auto', (await rowOf(99).locator('a.btn').first().getAttribute('href')).includes(encodeURIComponent('/pilot-auto 99 --next')));
   await panel99().locator('.seg button', { hasText: /^3$/ }).click(); await page.waitForTimeout(100);
-  check('--next + multi 3: /pilot-auto 99 --multi 3 --next, pair gets --multi 3', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-auto 99 --multi 3 --next', '/pilot-dev 99 --multi 3']), JSON.stringify(await rowHrefs(99)));
+  check('--next + multi 3: /pilot-auto 99 --multi 3 --next', (await rowOf(99).locator('a.btn').first().getAttribute('href')).includes(encodeURIComponent('/pilot-auto 99 --multi 3 --next')));
   check('active options shown as chips and in the command line', /enchaîné/.test(await rowOf(99).textContent()) && /multi 3/.test(await rowOf(99).textContent()) && /\/pilot-auto 99 --multi 3 --next/.test(await rowOf(99).locator('.cmd').textContent()));
   await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
   check('multi without --next: /pilot-dev 99 --auto --multi 3', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto --multi 3', '/pilot-dev 99 --multi 3']), JSON.stringify(await rowHrefs(99)));
@@ -328,7 +328,7 @@ const STUB = (opts) => `
   await panel99().locator('.tog', { hasText: 'designer' }).click(); await panel99().locator('.tog', { hasText: 'tech lead' }).click(); await page.waitForTimeout(100);
   check('dev row: --with adds the chosen personas, auto and pair alike', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto --multi 3 --with techlead,designer', '/pilot-dev 99 --multi 3 --with techlead,designer']), JSON.stringify(await rowHrefs(99)));
   await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
-  check('--next hides --with and drops it from the commands', (await panel99().locator('text=Avec').count()) === 0 && JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-auto 99 --multi 3 --next', '/pilot-dev 99 --multi 3']), JSON.stringify(await rowHrefs(99)));
+  check('--next hides --with and drops it from the commands', (await panel99().locator('text=Avec').count()) === 0 && (await rowOf(99).locator('a.btn').first().getAttribute('href')).includes(encodeURIComponent('/pilot-auto 99 --multi 3 --next')));
   await panel99().locator('text=Enchaîner').click(); await optBtn(99).click(); await page.waitForTimeout(100);
   const panel70 = () => rowOf(70).locator('.opts');
   await panel70().locator('.tog', { hasText: 'PM' }).click(); await page.waitForTimeout(100);
@@ -401,12 +401,12 @@ const STUB = (opts) => `
   page = await open({ preload: [snapshot([ticket(99, ['type:tech', 'status:dev-ready'])])], role: 'tech' });
   await page.evaluate(() => { window.__clip = []; navigator.clipboard.writeText = (t) => { window.__clip.push(t); return Promise.resolve(); }; });
   const launch = () => page.$eval('#view .row a.btn', (a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0]));
-  check('one launch button, auto by default', (await page.$$('#view .row a.btn')).length === 1 && (await launch()) === '/pilot-dev 99 --auto');
+  check('one launch button, pair by default', (await page.$$('#view .row a.btn')).length === 1 && (await launch()) === '/pilot-dev 99');
   await page.click('#view .row >> text=Options');
-  check('Auto is a toggle in Options, pressed by default', (await page.getAttribute('#view .row .opts .tog:text-is("Auto")', 'aria-pressed')) === 'true');
+  check('Auto is a toggle in Options, off by default', (await page.getAttribute('#view .row .opts .tog:text-is("Auto")', 'aria-pressed')) === 'false');
   await page.click('#view .row .opts .tog:text-is("Auto")');
   await page.click('#view .row button:text-is("Copier")');
-  check('Auto off: the button and Copier use the pair command', (await launch()) === '/pilot-dev 99' && JSON.stringify(await page.evaluate(() => window.__clip)) === JSON.stringify(['/pilot-dev 99']), await launch());
+  check('Auto on: the button and Copier use the auto command', (await launch()) === '/pilot-dev 99 --auto' && JSON.stringify(await page.evaluate(() => window.__clip)) === JSON.stringify(['/pilot-dev 99 --auto']), await launch());
   await page.close();
 
   // ---- the queue opens with what is waiting ----
@@ -455,12 +455,12 @@ const STUB = (opts) => `
   const kidNames = () => page.$$eval('#view .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()));
   check('opening lists the open sub-issues, most urgent first', JSON.stringify(await kidNames()) === JSON.stringify(['#11 Story A', '#12 Story B']), JSON.stringify(await kidNames()));
   const kidCmds = (sel) => page.locator(sel).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
-  check('each sub-issue can be launched on its own (/pilot-spec 11 auto + pair, /pilot-qa 12)',
-        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(1) > .acts')) === JSON.stringify(['/pilot-spec 11 --auto']) &&
+  check('each sub-issue can be launched on its own (/pilot-spec 11, /pilot-qa 12)',
+        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(1) > .acts')) === JSON.stringify(['/pilot-spec 11']) &&
         JSON.stringify(await kidCmds('#view .kids > .row:nth-child(2) > .acts')) === JSON.stringify(['/pilot-qa 12']), JSON.stringify(await kidCmds('#view .kids > .row > .acts')));
   await page.locator('#view .kids > .row:nth-child(1) > .acts button:has-text("Sous-tickets")').click(); await page.waitForTimeout(100);
   check('nesting goes one level further (story -> tasks), blocked task flagged', JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))) === JSON.stringify(['#14 Tâche bloquée de A', '#13 Tâche de A']), JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))));
-  check('a task is launchable (/pilot-dev 13 --auto) and has no sub-tickets chevron', (await kidCmds('#view .kids .kids > .row:has-text("#13 ") > .acts')).includes('/pilot-dev 13 --auto') && (await page.locator('#view .kids .kids button:has-text("Sous-tickets")').count()) === 0);
+  check('a task is launchable (/pilot-dev 13) and has no sub-tickets chevron', (await kidCmds('#view .kids .kids > .row:has-text("#13 ") > .acts')).includes('/pilot-dev 13') && (await page.locator('#view .kids .kids button:has-text("Sous-tickets")').count()) === 0);
   await page.evaluate((e) => window.__push('events', 'live5', e), ev({ n: 13, title: 'Tâche de A', labels: ['type:tech', 'level:task', 'status:in-dev'], assignees: [] }));
   await page.waitForTimeout(250);
   check('a live update keeps the nesting and moves the sub-ticket (dev-ready -> in-dev)',
@@ -1329,7 +1329,7 @@ const STUB = (opts) => `
 
     page = await open({ preload: [snap(null)] });
     l = await links(page, 31);
-    check('mode: without a workflow, auto is the default', l.length === 1 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary, JSON.stringify(l));
+    check('mode: without a workflow, pair is the default', l.length === 1 && l[0].cmd === '/pilot-dev 31' && l[0].primary, JSON.stringify(l));
     await page.close();
 
     page = await open({ preload: [snap(wf('pair'))], lang: 'en' });
