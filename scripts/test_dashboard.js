@@ -1168,6 +1168,36 @@ const STUB = (opts) => `
   await page.close();
   }
 
+  // ---- wiki: what happened at a flow's last run, and what a person can ask of each entry ----
+  { const run = { kind: 'flowRun', repo: REPO, flow: 'find-a-place', at: iso(48), hash: 'x', result: 'failed', bugs: [99], report: 'https://claude.ai/artifact/abc',
+      personas: [{ id: 'marie-senior', hash: 'y', result: 'passed', steps: { passed: 6, failed: 0, untestable: 0 } }, { id: 'paul-aidant', hash: 'z', result: 'failed', steps: { passed: 4, failed: 2, untestable: 1 } }] };
+    let pg = await open({ preload: [BASE], wiki: [WIKI_FLOWS], flowRuns: [run] });
+    await pg.goto(FILE + '#wiki/user-flow'); await pg.waitForTimeout(350);
+    const lr = await text(pg, '#view .lastrun');
+    check('last run: when, each persona with its steps, the ticket created with its title, the report', /Dernier lancement/.test(lr) && /Joué il y a 48 min/.test(lr) && /6 passées · 0 échouées · 0 non testables/.test(lr) && /4 passées · 2 échouées · 1 non testables/.test(lr) && /Ticket créé : #99 Ticket de l instantane/.test(lr) && /Rapport/.test(lr), lr);
+    check('last run: open when something failed', await pg.$eval('#view .lastrun', (d) => d.open));
+    await pg.evaluate((d) => window.__push('flowRuns', 'f0', d), Object.assign({}, run, { result: 'passed', bugs: [] })); await pg.waitForTimeout(250);
+    check('last run: closed when it passed, and says no ticket was created', !(await pg.$eval('#view .lastrun', (d) => d.open)) && /Aucun ticket créé/.test(await pg.$eval('#view .lastrun', (d) => d.textContent)));
+    const cmdsHere = async () => (await hrefs(pg, '#view .row a.btn')).map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]).trim());
+    let c = await cmdsHere();
+    check('wiki: a flow can be edited and deprecated through /pilot-flow', c.includes('/pilot-flow --edit find-a-place') && c.includes('/pilot-flow --deprecate find-a-place'), JSON.stringify(c));
+    await pg.goto(FILE + '#wiki/persona'); await pg.waitForTimeout(300);
+    c = await cmdsHere();
+    check('wiki: a persona is edited and deprecated through /pilot-flow, never checked against the code', c.includes('/pilot-flow --edit marie-senior') && c.includes('/pilot-flow --deprecate marie-senior') && !c.some((x) => /--lint marie-senior/.test(x)), JSON.stringify(c));
+    check('wiki entries: no page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.close(); }
+  { const DOC = { kind: 'wiki', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
+      { id: 'filter-a11y', type: 'Behavior', title: 'Filter', description: 'Filters.', path: 'search/filter-a11y.md', status: 'implemented', derived: '', tickets: [], verifiedAt: '', text: 'Filters.' },
+      { id: 'saved-places', type: 'Behavior', title: 'Saved', description: 'Saved.', path: 'search/saved-places.md', status: 'proposed', derived: '', tickets: [], verifiedAt: '', text: 'Saved.' },
+      { id: 'planned', type: 'Behavior', title: 'Planned', description: 'Planned.', path: 'search/planned.md', status: 'specified', derived: '', tickets: [], verifiedAt: '', text: 'Planned.' } ] };
+    const pg = await open({ preload: [BASE], wiki: [DOC] });
+    await pg.goto(FILE + '#wiki'); await pg.waitForTimeout(350);
+    const c = (await hrefs(pg, '#view .row a.btn')).map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]).trim());
+    check('wiki: an implemented behavior is checked, edited, never retired from here', c.includes('/pilot-wiki --lint filter-a11y') && c.includes('/pilot-wiki --edit filter-a11y') && !c.some((x) => /--deprecate filter-a11y/.test(x)), JSON.stringify(c));
+    check('wiki: a proposed behavior can be edited or removed, not checked against the code', c.includes('/pilot-wiki --edit saved-places') && c.includes('/pilot-wiki --deprecate saved-places') && !c.some((x) => /--lint saved-places/.test(x)), JSON.stringify(c));
+    check('wiki: a specified behavior is only edited', c.includes('/pilot-wiki --edit planned') && !c.some((x) => /--(lint|deprecate) planned/.test(x)), JSON.stringify(c));
+    await pg.close(); }
+
   // ---- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ----
   const ARCH = { kind: 'architecture', repo: REPO, at: iso(20), total: 7, truncated: false, entries: [
     { id: 'overview', title: 'Overview', description: 'The apps and how they relate.', path: 'overview.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'One CLI <img src=x onerror="window.__pwn=1">.' },

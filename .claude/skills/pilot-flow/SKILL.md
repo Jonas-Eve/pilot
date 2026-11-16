@@ -1,7 +1,7 @@
 ---
 name: pilot-flow
-description: "Tests one user flow of the project's wiki (wiki/user-flow/) as one or several user personas (wiki/persona/), in a browser against an environment URL, on demand only. --new persona|flow drafts a new persona or user flow with a human and opens one wiki PR. Each persona runs in its own isolated browser session with its own test account, in parallel when isolation holds; each step is passed, failed or untestable, with the friction that persona meets. A defect becomes a type:bug ticket (never duplicated across personas); friction and non-bugs go in a report kept as one private Artifact per flow, a new run added to its history. The dashboard shows each flow's last run and who played it. Claims no ticket, sets no status, never --auto. Use to check a journey end to end the way a given kind of user lives it."
-argument-hint: "<user-flow id> [--as <persona id>[,<persona id>...]] [--url <environment URL>] | --new persona|flow <description>"
+description: "Tests one user flow of the project's wiki (wiki/user-flow/) as one or several user personas (wiki/persona/), in a browser against an environment URL, on demand only. --new persona|flow drafts a persona or user flow with a human, one wiki PR; --edit <id> \"<change>\" revises one; --deprecate <id> retires one. Each persona runs in its own isolated browser session with its own test account, in parallel when isolation holds; each step is passed, failed or untestable, with the friction that persona meets. A defect becomes a type:bug ticket (never duplicated across personas); friction and non-bugs go in a report kept as one private Artifact per flow. The dashboard shows each flow's last run: result, who played, steps, tickets created. Claims no ticket, sets no status, never --auto. Use to check a journey end to end the way a given kind of user lives it."
+argument-hint: "<user-flow id> [--as <persona id>[,<persona id>...]] [--url <environment URL>] | --new persona|flow <description> | --edit <id> \"<change>\" | --deprecate <id>"
 disable-model-invocation: true
 ---
 
@@ -46,3 +46,13 @@ Pair only: a human is live. The `wiki` module is on, else say so and stop; prefl
 3. Check the approved draft: the id is `[a-z0-9-]+` (unused for an `add`, existing for an `update`); every `gaps` item of a flow is resolved or dropped; a flow lists only existing persona ids (a missing one → offer `--new persona` first and stop here); no credential or secret anywhere in the text.
 4. Write the approved body to a temporary file with a quoted heredoc (never inline in the command). `add` → `python3 .pilot/pilot.py wiki add persona/<id>.md --status implemented --title … --description … --body "$(cat <file>)"` (a flow: `user-flow/<id>.md`; the folder sets the type). `update` → replace the prose below that entry's frontmatter by hand, then `wiki set <id> --title … --description …` when they changed (a flow a story owns keeps its status and tickets). Branch `wiki/persona-<id>` or `wiki/flow-<id>`, commit, push, open one PR
    and report it. Never merge it: only a PR changes the wiki, a human merges it.
+
+## `--edit <id> "<change>"`
+
+Pair only. `wiki show <id>`: it must be a `Persona` or a `UserFlow` (a behavior → point at `/pilot-wiki --edit` and stop); a `deprecated` one is history, stop. Then run the steps of `--new` with the kind taken from the entry:
+step 1 reads the entry itself too (`wiki show <id>`), the description is the change, and the call must return an `update` of that id (an `add` is refused). A flow that has been played shows "to replay" in the dashboard once its text changed.
+
+## `--deprecate <id>`
+
+Pair only. `wiki show <id>` must be a `Persona` or a `UserFlow`. List the entries that cite it (`backlinks`): a flow that names a persona to retire is named for revision (`--edit`). The human confirms,
+then `wiki set <id> --status deprecated`, branch `wiki/deprecate-<id>`, commit, push, open one PR. Never merge it.

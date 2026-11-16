@@ -489,6 +489,14 @@ var EN={
 "Remplacer": "Replace",
 "Retirer": "Remove",
 "Déprécier": "Deprecate",
+" passées · ": " passed · ",
+" échouées · ": " failed · ",
+" non testables": " untestable",
+"Dernier lancement": "Last run",
+"Joué ": "Played ",
+"Ticket créé : ": "Ticket created: ",
+"Aucun ticket créé.": "No ticket created.",
+"Rapport": "Report",
 "Navigateur": "Browser",
 "l’agent teste dans un navigateur": "the agent tests in a browser, without you",
 "l’agent travaille seul": "the agent works alone, without dialogue with you",
@@ -1459,6 +1467,30 @@ function flowStatus(e){
   if(ART_RE.test(str(r.report,200)))out.push(h('a',{class:'chip',href:r.report,target:'_blank',rel:'noopener'},'rapport'));
   return out;
 }
+/* what a flow's last run did: when, each persona's steps, the tickets it created (their titles come from the snapshot), the report */
+function flowSteps(p){var x=p&&p.steps; if(!x||typeof x!=='object')return null; var n=function(k){return Math.max(0,Math.floor(Number(x[k]))||0);}; return n('passed')+' passées · '+n('failed')+' échouées · '+n('untestable')+' non testables';}
+function flowLastRun(e){
+  var r=S.flowRuns[e.id]; if(!r)return null;
+  var lines=[h('li',{},'Joué '+ago(r.at)+' · '+str(r.at,10))];
+  arr(r.personas).slice(0,12).forEach(function(p){var pe=wikiById(str(p.id,80)), st=flowSteps(p), pr=FLOW_RES[p.result]||['',''];
+    lines.push(h('li',{},(pe?str(pe.title,40):str(p.id,40))+' · '+tr(pr[0]||str(p.result,20))+(st?' — '+st:'')));});
+  var bugs=arr(r.bugs).map(function(n){return Math.floor(Number(n));}).filter(function(n){return n>0;}).slice(0,10);
+  if(bugs.length)bugs.forEach(function(n){var t=tickets().filter(function(x){return x.n===n;})[0];
+    lines.push(h('li',{},'Ticket créé : ',h('a',{href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n+(t?' '+t.title:''))));});
+  else lines.push(h('li',{},'Aucun ticket créé.'));
+  if(ART_RE.test(str(r.report,200)))lines.push(h('li',{},h('a',{href:r.report,target:'_blank',rel:'noopener'},'Rapport')));
+  return h('details',{class:'lastrun',open:r.result==='passed'?null:true},h('summary',{class:'note'},'Dernier lancement'),h('ul',{},lines));
+}
+/* what a person can ask of an entry, as a command written for Claude Code: only a PR changes the wiki */
+function wikiActions(e){
+  var id=str(e.id,80); if(!FLOW_ID.test(id)||e.status==='deprecated')return null;
+  var k=wikiKind(e), pf=(k==='Persona'||k==='UserFlow'), acts=[];
+  if(e.status==='implemented'&&!runChecked(e)&&k!=='Vision')acts.push(openLink('/pilot-wiki --lint '+id,'Vérifier'));
+  acts.push(openLink((pf?'/pilot-flow':'/pilot-wiki')+' --edit '+id+' ','Modifier'));
+  if(pf)acts.push(openLink('/pilot-flow --deprecate '+id,'Déprécier'));
+  else if(e.status==='proposed')acts.push(openLink('/pilot-wiki --deprecate '+id,'Retirer'));
+  return h('div',{class:'refresh'},acts);
+}
 function wikiEntry(e){
   var chips=[h('span',{class:'chip '+(WIKI_CLS[e.status]||'')},WIKI_FR[e.status]||str(e.status,40))];
   if(WIKI_DERIVED_FR[e.derived])chips.push(h('span',{class:'chip acc'},WIKI_DERIVED_FR[e.derived]));
@@ -1470,6 +1502,8 @@ function wikiEntry(e){
   var text=str(e.text,1600);
   return drow(h('div',{class:'t'},str(e.title,160)),e.description?h('p',{class:'note'},str(e.description,300)):null,h('div',{class:'meta'},chips),
     text?h('details',{},h('summary',{class:'note'},'Texte'),h('p',{class:'note',style:'white-space:pre-wrap'},text)):null,
+    wikiKind(e)==='UserFlow'?flowLastRun(e):null,
+    wikiActions(e),
     (wikiKind(e)==='UserFlow'||wikiKind(e)==='Persona')?flowLauncher(e):null);
 }
 /* creating a persona or a user flow: the command is written, then run in Claude Code (only a PR changes the wiki) */

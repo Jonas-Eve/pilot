@@ -113,7 +113,7 @@ def flow_run_document():
     Marie passed, Paul could not finish one step; Paul's persona entry has changed since."""
     rows = {e["id"]: e for e in wiki_document()["entries"]}
     return {"kind": "flowRun", "repo": REPO, "flow": "trouver-un-lieu", "at": iso(48), "hash": rows["trouver-un-lieu"]["hash"],
-            "result": "partial", "bugs": [], "report": "",
+            "result": "partial", "bugs": [401], "report": "",
             "personas": [{"id": "marie-senior", "hash": rows["marie-senior"]["hash"], "result": "passed", "steps": {"passed": 2, "failed": 0, "untestable": 0}},
                          {"id": "paul-aidant", "hash": "0123456789ab", "result": "partial", "steps": {"passed": 1, "failed": 0, "untestable": 1}}]}
 
