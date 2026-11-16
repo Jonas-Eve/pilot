@@ -27,6 +27,11 @@ wiki add user-flow/book-assisted-trip.md --type UserFlow --status implemented --
 Two tabs of one browser share cookies, so two accounts cannot run side by side in them. Each persona gets its own browser context (Playwright `browser.newContext()`), which is why the runs go in parallel only when that
 isolation is available; with a single shared profile they run one after the other.
 
+## The report
+
+The chat reply is the immediate answer; the durable one is a private Artifact per flow (found by its title, updated at the same address), with the latest run first and the earlier runs below it so regressions
+show. It holds what no ticket keeps: the persona × step table, the friction, the non-bugs and the steps not run. Bugs live in their tickets, linked from the page. It is not a dashboard tab and is not committed to the repo.
+
 ## Not done yet
 
 Writing personas and flows is by hand today. A drafting mode (`/pilot-flow --draft`, from the wiki's behaviors and the vision, with a human) and flows where two personas interact (a carer and the person they assist) are

@@ -1,6 +1,6 @@
 ---
 name: pilot-flow
-description: "Tests one user flow of the project's wiki (wiki/user-flow/) as one or several user personas (wiki/persona/), in a browser against an environment URL, on demand only. Each persona runs in its own isolated browser session with its own test account, in parallel when isolation holds; each step is passed, failed or untestable, with the friction that persona meets. A defect becomes a type:bug ticket (never duplicated across personas); friction and non-bugs go in the report. Claims no ticket, sets no status, never --auto. Use to check a journey end to end the way a given kind of user lives it."
+description: "Tests one user flow of the project's wiki (wiki/user-flow/) as one or several user personas (wiki/persona/), in a browser against an environment URL, on demand only. Each persona runs in its own isolated browser session with its own test account, in parallel when isolation holds; each step is passed, failed or untestable, with the friction that persona meets. A defect becomes a type:bug ticket (never duplicated across personas); friction and non-bugs go in a report kept as one private Artifact per flow, a new run added to its history. Claims no ticket, sets no status, never --auto. Use to check a journey end to end the way a given kind of user lives it."
 argument-hint: "<user-flow id> [--as <persona id>[,<persona id>...]] [--url <environment URL>]"
 disable-model-invocation: true
 ---
@@ -27,5 +27,8 @@ a human launches it. The agent is `pilot-qa` (`.pilot/pilot-task-flow-run.md` ru
    (never their values). Parallel runs are all sent in one message. Each returns its per-step results (the JSON `.pilot/pilot-task-flow-run.md` defines); a persona whose session could not start returns that, not a guess.
 5. **Consolidate.** One more `Agent` call, `pilot-qa`, with `.pilot/pilot-task-flow-report.md`, `.pilot/pilot-link-bug-tickets.md` in full, the flow's text and every persona's results. It returns what it did: the `type:bug`
    tickets it originated (one per root cause, whichever personas hit it), the findings that are not bugs, the friction by persona.
-6. **Report** to the human: a persona × step table (`passed`/`failed`/`untestable`), the bug tickets, each non-bug finding to raise via Discovery, the friction per persona, and whether the runs were parallel or sequential.
+6. **Report.** Tell the human: a persona × step table (`passed`/`failed`/`untestable`), the bug tickets, each non-bug finding to raise via Discovery, the friction per persona, and whether the runs were parallel or
+   sequential. Then keep it: one private Artifact per flow, named after the flow's title, found with the `Artifact` tool's `list` (a match on that title) and updated at the same address, else created (`quickstart` first, `intent: "other"`).
+   Its latest run comes first, with the date, the URL tested, the personas (account labels, never credentials), the table, the tickets (linked), the non-bugs, the friction and the steps not run; the earlier runs stay below,
+   newest first, so two runs can be compared. Never share it; the human decides. No `Artifact` tool, or a refusal → say so and give the report in the reply only.
    Nothing is written to the wiki: a flow is never stamped by a run.
