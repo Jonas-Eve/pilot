@@ -46,11 +46,11 @@ itself.
   repo's own `.pilot/state.json` never changes what it sees.
 - `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
   consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
-  sync by `/pilot-update`) — same path on both sides. All fourteen carry the `pilot-`
+  sync by `/pilot-update`) — same path on both sides. All fifteen carry the `pilot-`
   prefix a project-local skill needs to avoid colliding with the project's own — there's
   no plugin namespace to rely on instead. `pilot-init`,
   `pilot-update`, `pilot-dashboard` are this repo's own bootstrap/maintenance commands
-  (`pilot-dashboard` publishes the project's dashboard artifact from a template, below; `pilot-design` and `pilot-proto` are project commands, not phases — they write the design system and the prototypes the dashboard's "Design" and "Prototypes" tabs show; `pilot-wiki` is one too — it answers from, checks and bootstraps the project's wiki, see `docs/wiki-design.md`; so is `pilot-architecture` — the architecture module's skill (`architecture/`: overview, guidelines, ADR; question, `--adr`, `--bootstrap`, `--scaffold`, `--lint`), which replaced the one-time `pilot-init-archi` in v3, see `docs/modules-design.md`); `pilot-discovery`,
+  (`pilot-dashboard` publishes the project's dashboard artifact from a template, below; `pilot-design` and `pilot-proto` are project commands, not phases — they write the design system and the prototypes the dashboard's "Design" and "Prototypes" tabs show; `pilot-flow` is one too — it tests a wiki user flow as user personas in a browser, on demand, claiming no ticket, with `pilot-qa` as its agent; `pilot-wiki` is one too — it answers from, checks and bootstraps the project's wiki, see `docs/wiki-design.md`; so is `pilot-architecture` — the architecture module's skill (`architecture/`: overview, guidelines, ADR; question, `--adr`, `--bootstrap`, `--scaffold`, `--lint`), which replaced the one-time `pilot-init-archi` in v3, see `docs/modules-design.md`); `pilot-discovery`,
   `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa` are the five PILOT
   phases (`pilot-spec` covers splitting a story into dev-sized tasks and writing each
   one's technical spec, in one continuous pass); `pilot-auto` is a dispatcher over the

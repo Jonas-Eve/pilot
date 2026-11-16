@@ -224,7 +224,7 @@ ARCH_DIR = "architecture"
 # it needs, the command that turns it on at first use (`use`), the one that drafts its content from what the
 # project already has (`bootstrap`, only where there is such content), and the folder (if any) `doctor` expects.
 MODULES = {
-    "wiki": {"skills": ["pilot-wiki"], "requires": [], "use": "/pilot-wiki", "bootstrap": "/pilot-wiki --bootstrap",
+    "wiki": {"skills": ["pilot-wiki", "pilot-flow"], "requires": [], "use": "/pilot-wiki", "bootstrap": "/pilot-wiki --bootstrap",
              "dir": WIKI_DIR},
     "architecture": {"skills": ["pilot-architecture"], "requires": [], "use": "/pilot-architecture",
                      "bootstrap": "/pilot-architecture --bootstrap", "dir": ARCH_DIR},
@@ -1915,7 +1915,7 @@ class Bundle:
         return {"ok": True, "id": stem, "path": rel, "status": status}
 
     def _max_words(self, entry):
-        return {"ADR": 600, "Architecture": 800, "Runbook": 1500}.get(entry["type"], self.MAX_WORDS)
+        return {"ADR": 600, "Architecture": 800, "Runbook": 1500, "UserFlow": 800}.get(entry["type"], self.MAX_WORDS)
 
     def _type_of(self, rel):
         return self.DEFAULT_TYPE

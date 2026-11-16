@@ -1974,6 +1974,11 @@ class WorkflowRouteTests(unittest.TestCase):
             m.claim("qa", 1, "fresh", auto=True)
         self.assertEqual(m.claim("qa", 2, "fresh", auto=True)["status"], "status:in-qa")
 
+    def test_the_wiki_module_owns_the_flow_skill_and_a_user_flow_may_run_longer(self):
+        self.assertIn("pilot-flow", pilot.MODULES["wiki"]["skills"])
+        wiki = pilot.Wiki(root="/nonexistent")
+        self.assertGreater(wiki._max_words({"type": "UserFlow"}), wiki._max_words({"type": "Persona"}))
+
     def test_an_auto_descent_into_an_epic_skips_a_pair_only_child(self):
         issues = [issue(1, ["level:epic", "type:feature"]), issue(2, ["status:dev-ready", "type:tech", "priority:P0"]),
                   issue(3, ["status:dev-ready", "type:tech", "priority:P1"])]
