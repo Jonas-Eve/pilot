@@ -97,7 +97,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    - **`--browser`, some case untestable by the agent** (needs a real device, a screen reader, a judgment on the experience, a credential the project does not document) with no real bug originated in the same pass (a bug takes precedence: the untestable cases are only named in its unclaim comment, no `needs-human`, and the next run plans afresh): the agent applied `needs-human` with a comment naming those cases and why; `status:in-qa` stays, the test log holds the tested ones. A human clears the flag and `/pilot-qa --resume`
      (pair) tests only what is left (step 1's `resume-cleared`).
    - **Wiki stamps** (only when the `wiki` module is enabled, with an approved outcome): for each of the story's entries (`python3 .pilot/pilot.py wiki index --ticket <story>`) that is `implemented`, unstamped and returned
-     `passed` by the agent, run `python3 .pilot/pilot.py wiki set <id> --stamp $(git rev-parse origin/<default branch>) --by process:pilot-qa` (the commit that was tested: the default branch's head) on branch
+     `passed` by the agent, after `git fetch origin <default branch>`, run `python3 .pilot/pilot.py wiki set <id> --stamp $(git rev-parse origin/<default branch>) --by process:pilot-qa` (the commit that was tested: the default branch's head) on branch
      `wiki/qa-<story>`, commit, push, open one PR (`mcp__github__create_pull_request`) listing the entries and give the human its link — never merge it. An entry with a case that failed or could not be tested,
      or already stamped, is left as it is.
    These can land in the same pass — apply what applies; each is independent
