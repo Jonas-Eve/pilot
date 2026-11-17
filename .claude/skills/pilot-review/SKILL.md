@@ -135,7 +135,7 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
      human, so it is reclaimable at once.
    - All approved → move to `status:approved`.
 7. **Checkpoint it**: create a pending GitHub PR review with the outcome's full body
-   already written, no `event` yet (`mcp__github__pull_request_review_write`, method
+   already written — it always carries, per reviewer, its **Checked against** list (the entries opened and the result), an approval included — no `event` yet (`mcp__github__pull_request_review_write`, method
    `create`, `commitID` pinned to the PR's current head) — durable immediately, so an
    orphaned run recovers it (step 1) instead of redoing steps 3-6.
 8. **Pair (default), `--human` vs `--auto`** — never for an outcome that carries `needs-human` (`.pilot/pilot-process.md` §3: the block must reach GitHub before any resolution, even a live

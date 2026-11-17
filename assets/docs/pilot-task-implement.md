@@ -71,7 +71,8 @@ spec).
     `status:done` — no `on-hold`, no `--resume` to remember.
 4. Implement exactly what the spec calls for. A deviation that changes behavior or
    architecture needs a comment on the ticket explaining why, for phase 4 to see —
-   but if you can justify and proceed with it yourself, that's not a block. Reserve
+   unless it contradicts a binding wiki or architecture entry (`.pilot/pilot-link-knowledge.md` "What binds"): that is never yours to justify, stop with `needs-human`. Otherwise,
+   if you can justify and proceed with it yourself, that's not a block. Reserve
    blocking for something you genuinely can't resolve alone (the spec is wrong
    about what to build, not just how; a real security concern it didn't cover; an
    ambiguity with no reasonable default). When that happens: add `needs-human`
