@@ -302,14 +302,30 @@ const STUB = (opts) => `
   const rowOf = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' });
   const rowHrefs = (n) => modeHrefs(page, n);
   const optBtn = (n) => rowOf(n).locator('button:has-text("Options")');
-  check('options are folded by default: no panel, a chevron button on auto-capable rows only',
+  check('options are folded by default: no panel, a chevron button on every row that can be launched with an option (auto, human, multi)',
         (await page.$$('#view .opts')).length === 0 && (await optBtn(99).count()) === 1 && (await optBtn(70).count()) === 1 &&
-        (await optBtn(60).count()) === 0 && (await optBtn(50).count()) === 1);
+        (await optBtn(60).count()) === 1 && (await optBtn(50).count()) === 1);
   await optBtn(99).click(); await page.waitForTimeout(100);
   const panel99 = () => rowOf(99).locator('.opts');
   check('chevron opens the panel with --next and multi', (await panel99().count()) === 1 && /Enchaîner \(--next\)/.test(await panel99().textContent()) && /Multi/.test(await panel99().textContent()));
   check('the other rows stay folded', (await rowOf(70).locator('.opts').count()) === 0);
   check('default commands unchanged', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto', '/pilot-dev 99']), JSON.stringify(await rowHrefs(99)));
+  // ---- --human: its own option, exclusive with Auto, --next and multi; never on QA ----
+  const launchOf = async (n) => decodeURIComponent((await rowOf(n).locator('a.btn').first().getAttribute('href')).split('?q=')[1].split('&repo=')[0]);
+  const humanTog = (n) => rowOf(n).locator('.opts .tog', { hasText: /^Humain$/ });
+  await optBtn(60).click(); await page.waitForTimeout(100);
+  const h60 = await launchOf(60);
+  await humanTog(60).click(); await page.waitForTimeout(100);
+  check('resume row (pair only): a Humain option, off by default, launches --human', h60 === '/pilot-dev --resume 60' && (await launchOf(60)) === '/pilot-dev --resume 60 --human' && /humain/.test(await rowOf(60).textContent()), h60 + ' / ' + (await launchOf(60)));
+  await humanTog(60).click(); await optBtn(60).click(); await page.waitForTimeout(100);
+  await humanTog(99).click(); await page.waitForTimeout(100);
+  check('dev row: Humain replaces Auto, hides --next and multi', (await launchOf(99)) === '/pilot-dev 99 --human' && (await panel99().locator('text=Multi').count()) === 0 && (await panel99().locator('text=Enchaîner').count()) === 0, await launchOf(99));
+  await panel99().locator('.tog', { hasText: /^Auto$/ }).click(); await page.waitForTimeout(100);
+  check('Auto switches Humain off', (await launchOf(99)) === '/pilot-dev 99 --auto' && (await humanTog(99).getAttribute('aria-pressed')) === 'false', await launchOf(99));
+  await panel99().locator('.tog', { hasText: /^Auto$/ }).click(); await page.waitForTimeout(100);
+  await optBtn(50).click(); await page.waitForTimeout(100);
+  check('QA row: no Humain option', (await humanTog(50).count()) === 0);
+  await optBtn(50).click(); await page.waitForTimeout(100);
   await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
   check('--next: the launch button rides the ticket through /pilot-auto', (await rowOf(99).locator('a.btn').first().getAttribute('href')).includes(encodeURIComponent('/pilot-auto 99 --next')));
   await panel99().locator('.seg button', { hasText: /^3$/ }).click(); await page.waitForTimeout(100);
