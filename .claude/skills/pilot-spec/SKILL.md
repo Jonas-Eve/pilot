@@ -209,7 +209,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
      `type:bug` + `level:task`, never a sub-issue, always a hard blocker here.
    - For either prerequisite, when step 1 found a parent Epic for the ticket being worked, also comment on that Epic (`mcp__github__add_issue_comment`) naming the blocking relationship.
 5b. **Wiki** (only when the `wiki` module is enabled (`.pilot/pilot-process.md` §8), and for a `type:feature` story that was split or closed as won't-do): per `.pilot/pilot-link-wiki.md`. Won't-do → its
-   `proposed` entries (`python3 .pilot/pilot.py wiki index --ticket <story>`) are removed (`wiki remove <id>`).
+   `proposed` entries (`python3 .pilot/pilot.py wiki index --ticket <story>`) are removed (`wiki remove <id>`; one another entry cites is refused: edit the citing entry in the same PR, or leave it and say so in the PR).
    Split → call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-entries.md` (target status
    `specified`), the project's language (`pilot.py module list`), `.pilot/pilot-link-knowledge.md`, `.pilot/pilot-link-wiki.md`, the story, its tasks and the domains it touches. Apply on branch `wiki/spec-<story>` the way `pilot-discovery/SKILL.md` step 7b does, with
    `--status specified`, and list on every entry the story plus its `type:feature`/`type:tech` tasks

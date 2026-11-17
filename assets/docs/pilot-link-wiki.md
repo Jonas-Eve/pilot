@@ -32,7 +32,7 @@ Prose.
 
 `pilot.tickets` lists the tickets that own the entry (the `type:feature` story too). Create an entry with
 `python3 .pilot/pilot.py wiki add <domain>/<id>.md --title … --description … --status … --ticket …`, change
-its frontmatter only with `wiki set`, remove a `proposed` one with `wiki remove` — never by hand: the script
+its frontmatter only with `wiki set`, remove one with `wiki remove` — never by hand: the script
 keeps the OKF `status` in step with `pilot.status` and the folder `index.md` files current (`wiki reindex`),
 and leaves any other key as it is. The prose below the frontmatter is edited by hand when an entry's behavior
 changes. A pure correction (wording, precision) keeps the entry's status and tickets and goes through
