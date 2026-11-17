@@ -1,0 +1,70 @@
+{
+ "id": "P-DISC-HUMAN",
+ "scenario": "S1",
+ "title": "Discovery --human: analysis, framing, the human's proposal, the architect, then the drafts",
+ "system": "You are Claude Code working in a repository where the PILOT ticket process is installed. A slash command has just expanded into the skill text below, which you follow step by step.",
+ "docs": [
+  ".claude/skills/pilot-discovery/SKILL.md",
+  "assets/docs/pilot-process.md",
+  "assets/docs/pilot-link-existing-analysis.md"
+ ],
+ "situation": "Project `accessplaces` (a small Python CLI), PILOT installed, `wiki` and `architecture` modules on, workflow profile `lean`, a dashboard URL set. A human is live in this session.\n\nThe human typed: `/pilot-discovery --human \"Let travelers save a place as a favorite.\"`\n\nState: no ticket exists yet. No open Epic. `pilot.py doctor` is not part of this skill.",
+ "question": "Without executing anything, list in order every action you would take from the first to the last when you follow this skill for the command above: for each, the number of the skill's step it belongs to, a one-line action in English, and whether you must wait for the human's reply before going on. Stop the list where the skill ends. Do not skip a step the skill requires; do not invent one it does not contain.",
+ "schema": {
+  "type": "object",
+  "properties": {
+   "calls": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "step": {
+       "type": "string"
+      },
+      "action": {
+       "type": "string"
+      },
+      "waits_for_human": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "step",
+      "action",
+      "waits_for_human"
+     ]
+    }
+   }
+  },
+  "required": [
+   "calls"
+  ]
+ },
+ "checks": [
+  {
+   "name": "analyzes-before-framing",
+   "path": "calls",
+   "order": [
+    "analy",
+    "fram"
+   ]
+  },
+  {
+   "name": "asks-the-human-for-the-proposal-after-framing",
+   "path": "calls",
+   "order": [
+    "fram",
+    "(ask|request).{0,60}(human|proposal)|human.{0,40}(proposal|shape)",
+    "(architect|valid)",
+    "(create|draft)"
+   ]
+  },
+  {
+   "name": "waits-for-the-human",
+   "path": "calls",
+   "any": {
+    "waits_for_human": true
+   }
+  }
+ ]
+}
