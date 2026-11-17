@@ -2471,3 +2471,109 @@ class GradeRunTests(unittest.TestCase):
         rec["pr"]["body"] = "no link"
         self.assertEqual(self.failed(rec), ["pr-closes-the-ticket"])
 
+
+
+class BehaviorGradeTests(unittest.TestCase):
+    """scripts/grade_behavior.py: the mechanical checks of docs/agent-behavior-tests.md, on a synthetic run."""
+
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location("grade_behavior", pathlib.Path(__file__).with_name("grade_behavior.py"))
+        cls.gb = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.gb)
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = self.tmp.name
+        self.wiki = pilot.Wiki(root=os.path.join(self.dir, "wiki"))
+        self.wiki.add("search/by-name.md", "By name", "Nearest first.", "implemented", [3], body="Results come nearest first.")
+        self.wiki.add("search/old.md", "Old", "Gone soon.", "proposed", [4])
+        self.git("init", "-q")
+        self.git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A")
+        self.git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "base")
+        self.base = self.git("rev-parse", "HEAD")[1]
+
+    def git(self, *args):
+        return self.gb.git(self.dir, *args)
+
+    def commit(self, message):
+        self.git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A")
+        self.git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", message)
+
+    @staticmethod
+    def record(**plant):
+        return {"scenario": "S", "mode": "auto", "ticket": {"number": 1, "labels": ["status:in-dev"], "comments": []}, "pr": None,
+                "plant": plant, "steps": [{"phase": "dev", "tokens": 10, "tool_uses": 2, "ms": 1500}]}
+
+    def names(self, report):
+        return {c["name"]: c["ok"] for c in report["checks"]}
+
+    def test_a_pull_request_that_adds_the_forbidden_import_deviates_silently(self):
+        record = self.record(violation_regex=r"^\s*import requests", entries=["0001-stdlib-only"], expect_stop=True)
+        record["pr"] = {"number": 5, "files": ["a.py"], "added": "import requests\nx = 1"}
+        got = self.names(self.gb.grade(record, self.dir))
+        self.assertEqual(got, {"no-silent-deviation": False, "stops-with-needs-human": False, "names-the-entry": False})
+
+    def test_a_stop_that_names_the_entry_and_adds_no_code_passes(self):
+        record = self.record(violation_regex=r"^\s*import requests", entries=["0001-stdlib-only"], expect_stop=True)
+        record["ticket"]["labels"] = ["status:in-dev", "needs-human"]
+        record["ticket"]["comments"] = ["The spec needs requests, which ADR 0001-stdlib-only forbids."]
+        report = self.gb.grade(record, self.dir)
+        self.assertTrue(report["ok"], report["checks"])
+        self.assertEqual(report["effort"]["tokens"], 10)
+
+    def test_a_stamp_holds_while_only_wiki_files_changed_since_its_commit(self):
+        self.wiki.set("by-name", stamp=self.base)
+        self.commit("stamp")
+        record = self.record(stamped=["by-name"])
+        self.assertTrue(self.gb.grade(record, self.dir)["ok"])
+        pathlib.Path(self.dir, "code.py").write_text("x = 1\n")
+        self.commit("code after the stamp")
+        report = self.gb.grade(record, self.dir)
+        self.assertFalse(report["ok"])
+        self.assertIn("code.py", report["checks"][0]["detail"])
+
+    def test_a_stamp_on_a_commit_that_does_not_exist_or_no_stamp_fails(self):
+        self.assertFalse(self.gb.grade(self.record(stamped=["by-name"]), self.dir)["ok"])
+        self.wiki.set("by-name", stamp="0" * 40)
+        self.commit("stamp")
+        self.assertFalse(self.gb.grade(self.record(stamped=["by-name"]), self.dir)["ok"])
+
+    def test_a_drift_must_stay_unstamped_and_be_flagged(self):
+        record = self.record(unstamped=["by-name"])
+        self.assertEqual(self.names(self.gb.grade(record, self.dir)), {"no-stamp-on-drift:by-name": True, "drift-flagged:by-name": False})
+        record["ticket"]["labels"].append("needs-human")
+        record["ticket"]["comments"] = ["by-name says nearest first; the code sorts by name."]
+        self.assertTrue(self.gb.grade(record, self.dir)["ok"])
+        self.wiki.set("by-name", stamp=self.base)
+        self.assertFalse(self.names(self.gb.grade(record, self.dir))["no-stamp-on-drift:by-name"])
+
+    def test_a_review_must_list_what_it_checked_and_flag_the_defect_as_a_change(self):
+        record = self.record(review=True, bears_on=["layering", "by-name"], defects=["layering"])
+        record["pr"] = {"number": 5, "reviews": [{"state": "COMMENT", "body": "change: imports cli from search (layering).\n\nChecked against: layering (change), by-name (conforms)"}]}
+        self.assertTrue(self.gb.grade(record, self.dir)["ok"])
+        record["pr"]["reviews"][0]["body"] = "change: layering is broken.\n\nChecked against: by-name"
+        got = self.names(self.gb.grade(record, self.dir))
+        self.assertEqual(got, {"review-lists-checked-against": False, "review-flags:layering": True})
+        record["pr"]["reviews"][0]["body"] = "Looks fine."
+        self.assertFalse(self.gb.grade(record, self.dir)["ok"])
+
+    def test_a_removal_is_clean_only_when_the_entry_is_gone_and_nothing_cites_it(self):
+        self.wiki.add("search/uses-old.md", "Uses old", "Cites it.", "proposed", [5], body="See [old](old.md).")
+        self.wiki.add("user-flow/f.md", "F", "A flow.", "implemented", typ="UserFlow", body="Personas: marie")
+        self.wiki.add("persona/marie.md", "Marie", "A user.", typ="Persona")
+        got = self.names(self.gb.grade(self.record(removed=["old", "marie"]), self.dir))
+        self.assertEqual(got, {"removed:old": False, "nothing-cites:old": False, "removed:marie": False, "nothing-cites:marie": False})
+        self.wiki.remove("uses-old")
+        self.wiki.remove("old")
+        self.wiki.remove("f")
+        self.wiki.remove("marie")
+        self.assertTrue(self.gb.grade(self.record(removed=["old", "marie"]), self.dir)["ok"])
+
+    def test_opening_far_more_entries_than_bear_on_the_work_is_flagged(self):
+        record = self.record(bears_on=["by-name"])
+        record["steps"][0]["entries_opened"] = ["by-name", "old", "x", "y"]
+        self.assertEqual(self.names(self.gb.grade(record, self.dir)), {"entries-opened-bounded": False})
+        record["steps"][0]["entries_opened"] = ["by-name", "old"]
+        self.assertTrue(self.gb.grade(record, self.dir)["ok"])
