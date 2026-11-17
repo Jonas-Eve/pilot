@@ -1,0 +1,29 @@
+{
+ "id": "S5",
+ "title": "Dev --auto: the behavior drifts (the existing sort is farthest first), so no stamp and a stop",
+ "phase": "dev",
+ "mode": "auto",
+ "arms": [
+  "cand"
+ ],
+ "ticket": {
+  "title": "Add a --limit option ({run})",
+  "labels": [
+   "type:tech",
+   "level:task",
+   "priority:P2",
+   "status:dev-ready",
+   "workflow:lean"
+  ],
+  "body": "Bench scenario S5 (throwaway).\n\n## Spec\n\nAdd a `--limit N` option to the CLI that keeps the first N places of the search result. Expose it in `accessplaces/cli.py`. Add a unit test in `tests/test_cli.py`.\n\n## Acceptance\n\n- `python -m accessplaces cafe --limit 1` prints one place and the count line.\n- Tests pass.\n"
+ },
+ "fixtures": {
+  "wiki/search/limit-results.md": "---\ntype: Behavior\ntitle: Limit the number of results\ndescription: With the `--limit N` option, the search returns the N nearest places.\nstatus: draft\npilot:\n  status: specified\n  tickets: [{ticket}]\n---\n\nWith the `--limit N` option, the search returns the N nearest places, nearest first. Without the option every match is returned.\n"
+ },
+ "prompt": "/pilot-dev {ticket} --auto",
+ "plant": {
+  "unstamped": [
+   "limit-results"
+  ]
+ }
+}

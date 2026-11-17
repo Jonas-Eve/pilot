@@ -2773,3 +2773,94 @@ class CompareRunsTests(unittest.TestCase):
                 pathlib.Path(tmp, f"run{i}.json").write_text(json.dumps(r))
             pathlib.Path(tmp, "notes.json").write_text("{}")
             self.assertEqual(len(self.cr.load(tmp)), 3)
+
+
+class BenchKitTests(unittest.TestCase):
+    """scripts/bench_seed.py and scripts/collect_run.py: the pure parts (scenario files, rendering, the record of a run)."""
+
+    @classmethod
+    def setUpClass(cls):
+        scripts = pathlib.Path(__file__).resolve().parent
+        import sys
+        sys.path.insert(0, str(scripts))
+        cls.seed = importlib.import_module("bench_seed")
+        cls.collect = importlib.import_module("collect_run")
+
+    def test_render_replaces_only_the_named_keys_and_leaves_python_and_yaml_braces(self):
+        self.assertEqual(self.seed.render("tickets: [{ticket}] {p['name']}", ticket=7), "tickets: [7] {p['name']}")
+
+    def test_every_scenario_file_is_complete_and_its_placeholders_are_known(self):
+        known = {"ticket", "pr", "run", "base_sha"}
+        ids = []
+        for s in self.seed.all_scenarios():
+            ids.append(s["id"])
+            for key in ("id", "title", "phase", "mode", "arms", "prompt"):
+                self.assertIn(key, s, s["id"])
+            self.assertTrue(set(s["arms"]) <= {"base", "cand"})
+            texts = [s["prompt"]] + [v for v in (s.get("ticket") or {}).values() if isinstance(v, str)] + list(s.get("fixtures", {}).values())
+            texts += [(s.get("pr") or {}).get("body", "")] + list(((s.get("pr") or {}).get("files") or {}).values())
+            for text in texts:
+                import re as _re
+                for found in _re.findall(r"\{(ticket|pr|run|base_sha)\}", text):
+                    self.assertIn(found, known)
+            if "{pr}" in s["prompt"]:
+                self.assertIn("pr", s, "a prompt that names the pull request needs one")
+            if "{ticket}" in s["prompt"]:
+                self.assertIn("ticket", s)
+        self.assertEqual(sorted(ids), ["S1", "S3", "S4", "S5", "S6"])
+        manifest = json.loads((pathlib.Path(__file__).with_name("behavior-scenarios.json")).read_text())
+        self.assertTrue(set(ids) <= {m["id"] for m in manifest["scenarios"]}, "a bench scenario the manifest does not know")
+
+    def test_the_run_names_and_the_ticket_carry_the_scenario_the_arm_and_the_run(self):
+        s3 = self.seed.load_scenario("S3")
+        self.assertEqual(self.seed.names(s3, "cand", 2)["run_branch"], "arm-cand")  # nothing to add: the arm's branch itself
+        self.assertEqual(self.seed.ticket_payload(s3, "base", 1)["title"], "Colour step-free places green in the default text output (bench S3 base r1)")
+        s6 = self.seed.load_scenario("S6")
+        self.assertEqual(self.seed.names(s6, "cand", 3)["run_branch"], "bench/S6-cand-r3")
+
+    def test_the_fixtures_and_the_pull_request_get_their_ticket_and_base_commit(self):
+        s6 = self.seed.load_scenario("S6")
+        files = self.seed.fixtures(s6, 41, "abc123")
+        self.assertIn("tickets: [41]", files["wiki/output/names-only.md"])
+        pr = self.seed.pr_payload(s6, 41, "abc123")
+        self.assertIn("Closes #41", pr["body"])
+        self.assertIn("verifiedCommit: abc123", pr["files"]["wiki/output/names-only.md"])
+        self.assertIn("from .cli import format_distance", pr["files"]["accessplaces/search.py"])  # the planted layer break
+        self.assertIn("{place['name']}", pr["files"]["accessplaces/search.py"])  # Python braces survive the rendering
+        prompt = self.seed.session_prompt(s6, 41, 9, "bench/S6-cand-r1")
+        self.assertTrue(prompt.startswith("/pilot-review 9 --auto"))
+        self.assertIn("`bench/S6-cand-r1`", prompt)
+
+    def test_a_dry_run_seeds_nothing_and_returns_the_prompt(self):
+        runner = self.seed.Runner("/nonexistent", "o/r", dry=True)
+        import io as _io, contextlib as _ctx
+        with _ctx.redirect_stderr(_io.StringIO()):
+            out = self.seed.seed(self.seed.load_scenario("S3"), "base", 1, runner)
+        self.assertEqual((out["scenario"], out["arm"], out["source_revision"]), ("S3", "base", "arm-base"))
+
+    def test_the_record_of_a_run_carries_labels_comments_the_pr_and_the_effort(self):
+        session = {"ccr": {"created_at": "2026-11-17T18:39:34Z", "updated_at": "2026-11-17T18:40:14Z",
+                           "external_metadata": {"usage": {"input_tokens": 15, "output_tokens": 2416, "cache_read_tokens": 724927,
+                                                           "cache_write_tokens": 48065, "cost_usd": 0.289}}}}
+        issue = {"number": 64, "labels": [{"name": "needs-human"}, {"name": "status:in-dev"}]}
+        pr = {"number": 9, "body": "Verified: x — y → z"}
+        files = [{"filename": "a.py", "patch": "@@\n-old\n+import rich\n+x = 1\n+++ b"}]
+        reviews = [{"state": "COMMENT", "body": "change: layering"}]
+        record = self.collect.build_record(self.seed.load_scenario("S3"), "cand", 1, issue, [{"body": "stdlib-only forbids it"}], pr, files, reviews, session)
+        self.assertEqual(record["ticket"], {"number": 64, "labels": ["needs-human", "status:in-dev"], "comments": ["stdlib-only forbids it"]})
+        self.assertEqual(record["pr"]["added"], "import rich\nx = 1")
+        self.assertEqual(record["steps"], [{"phase": "dev", "tokens": 775423, "cost_usd": 0.289, "ms": 40000}])
+        gb = importlib.import_module("grade_behavior")
+        report = gb.grade(record, ".")
+        self.assertFalse(self.names_of(report)["no-silent-deviation"])  # the PR adds `import rich`
+        self.assertEqual(report["effort"]["cost_usd"], 0.289)
+
+    @staticmethod
+    def names_of(report):
+        return {c["name"]: c["ok"] for c in report["checks"]}
+
+    def test_a_cost_in_dollars_is_what_the_comparison_uses_when_the_runs_have_one(self):
+        cr = importlib.import_module("compare_runs")
+        run = lambda cost, tokens: {"scenario": "S3", "mode": "auto", "checks": [{"name": "c", "ok": True}], "effort": {"tokens": tokens, "cost_usd": cost}}
+        out = cr.compare([run(0.29, 1000)] * 3, [run(0.40, 100)] * 3)  # tokens fell, dollars rose 38 %
+        self.assertEqual(out["cost_alerts"], ["S3/auto: median usd x1.38 (0.29 -> 0.4)"])

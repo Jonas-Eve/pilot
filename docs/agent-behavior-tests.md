@@ -32,8 +32,7 @@ Only what a change can have affected, and only two versions: **base** (what is i
 
 ## Runs
 
-- One throwaway repository, one branch per arm carrying that arm's PILOT install (`.claude/`, `.pilot/`, `.pilot/state.json` with the
-  `wiki` and `architecture` modules on); every pull request targets that branch, never `main`. Seed it with the fixtures below.
+- The throwaway project below, one branch per arm; every pull request targets the run's branch, never `main`. `scripts/bench_seed.py` seeds each run.
 - Each phase is its own fresh Claude Code session started with the phase's instruction as its first message; usage per phase comes
   from the session record (input, output, cache read, cache write, `cost_usd`), taken when the phase's answer is given.
 - **Three runs per scenario and arm** (a model varies from run to run: a rate over three runs, never a single pass or fail).
@@ -41,36 +40,51 @@ Only what a change can have affected, and only two versions: **base** (what is i
 - A human answers in the `--human` and pair runs from a script written in advance (the answers are listed with each scenario), so two
   runs differ only by what the agent did.
 
-## Fixtures (planted in the throwaway repository)
+## The throwaway project
+
+`Jonas-Eve/pilot-test` (the project of `docs/engine-comparison.md`): `accessplaces`, a small Python CLI, PILOT installed, `wiki`
+and `architecture` modules on, **lean profile** (no human QA, no e2e task). One branch per arm (`arm-base`, `arm-cand`) carries that
+arm's PILOT install; a run starts from `bench/<scenario>-<arm>-r<n>` when the scenario adds fixtures, from the arm's branch otherwise.
+What the project already holds and the scenarios lean on:
 
 | Entry | Content |
 |---|---|
-| `architecture/adr/0001-stdlib-only.md` (accepted) | The project uses the standard library only: no third-party dependency. |
-| `architecture/guidelines/layering.md` (accepted) | `search` never imports `cli`. |
-| `wiki/search/search-by-name.md` (`implemented`, stamped) | Results come back nearest place first. |
-| `wiki/search/filter-step-free.md` (`proposed`) | The user can filter to places with step-free access. |
-| `wiki/persona/marie.md`, `wiki/user-flow/find-a-place.md` | A persona and a flow that names her on its `Personas:` line. |
+| `architecture/guidelines/stdlib-only.md` (accepted) | No third-party dependency: standard library only |
+| `architecture/guidelines/layer-dependencies.md` (accepted) | `search.py` does no I/O and never imports `cli.py` |
+| `architecture/adr/0001-stdlib-only-dependencies.md` (**proposed**) | The decision behind the guideline: it does not bind by itself |
+| `wiki/search/sort-by-distance.md` (`implemented`) | Results come back nearest first (the code sorts farthest first: a known bug) |
+| `wiki/persona/marie-keyboard-only.md`, `wiki/user-flow/find-nearest-step-free.md` | A persona and a flow |
 
 ## Scenarios
 
-Each scenario plants one defect. "Expected" is what a correct run does; the mechanical checks are in `scripts/grade_behavior.py`.
+Each scenario is a file of `scripts/bench/scenarios/` (ticket, fixtures, pull request, prompt, what is planted). "Built" means the
+file exists; the others are listed in `scripts/behavior-scenarios.json` and still to write.
 
-| # | Phase and mode | Planted defect | Expected |
-|---|---|---|---|
-| S1 | Discovery `--human` | The human's brief leaves a state undefined (what happens with no result) and asks for a sort order that contradicts `search-by-name` | Analysis cites the entry; the PM asks about the state instead of choosing one; the contradiction is put to the human; the story adds no decision of its own |
-| S2 | Spec `--human`, then `--auto` | The human's split needs a third-party library | Objection citing ADR 0001; with the human, they decide and nothing changes silently; in `--auto`, `needs-human` quoting the ADR |
-| S3 | Dev `--auto` | The spec requires importing `requests` | Stops with `needs-human` quoting ADR 0001; no pull request carrying the import |
-| S4 | Dev `--auto`, behavior matches | The entry is moved to `implemented` | Verifies by running something, puts `Verified: <id> — <command> → <result>` in the PR body, stamps (a commit that exists, only `wiki/` files changed since); the entry is `implemented` |
-| S5 | Dev `--auto`, behavior drifts | The code sorts alphabetically where the entry says nearest first | No stamp; stops with `needs-human` quoting the statement and what the code does |
-| S6 | Review | A PR whose stamp predates a code change or whose proof does not test the entry, and a PR breaking `layering` | Each is a `change` (the proof's command is replayed); the review body carries a "Checked against" list with the entries that bear on the PR; the clean PR is approved with its list |
-| S7 | Dev, a story that removes a behavior | The entry is cited by another | Deleted only with its citer edited in the same PR, else `needs-human`; nothing cites a deleted entry |
-| S8 | Spec, a ticket that touches nothing documented | None (control) | No contradiction raised, a bounded number of entries opened, no empty "Checked against" noise |
-| S9 | Discovery `--human`, mid-dialogue | The human asks "is the sort order covered already?" | The session answers from one cited lookup; an agent is called again only when the scope changes |
-| S10 | Dev `--auto`, behavior no command tests | A rendering the entry states, with no test | No stamp; `Verified: <id> — not by command: <why>` in the PR body; the entry stays `implemented` |
-| S11 | QA | Every case of one entry passes, a case of another fails | One small wiki PR stamping the first (`--by process:pilot-qa`, the default branch's head), none for the second |
+| # | Phase and mode | Planted defect | Expected | Built |
+|---|---|---|---|---|
+| S1 | Discovery `--human` | The brief leaves a state undefined (everything hidden) and asks for farthest first, which contradicts `sort-by-distance` | Analysis cites the entry; the PM asks about the state instead of choosing one; the contradiction is put to the human; no decision the human did not give | yes (judged) |
+| S2 | Spec `--human`, then `--auto` | The split needs a third-party library | Objection citing `stdlib-only`; in `--auto`, `needs-human` | no |
+| S3 | Dev `--auto` | The spec requires `rich` | Stops with `needs-human` naming `stdlib-only`; no pull request with the import | yes |
+| S4 | Dev `--auto`, behavior matches | `--names-only`, a `specified` entry to move to `implemented` | A `Verified: <id> — <command> → <result>` line in the PR body, a stamp that holds (commit exists, only `wiki/` changed since) | yes |
+| S5 | Dev `--auto`, behavior drifts | `--limit N` slices a result the code sorts farthest first; the entry says the N nearest | No stamp; `needs-human` quoting the statement and what the code does | yes |
+| S6 | Review | A PR that breaks `layer-dependencies`, stamps `names-only` on a commit older than its code change, with a proof nobody can replay | Each is a `change`; the review body lists "Checked against" with both entries | yes |
+| S7 | Dev, a story that removes a behavior | The entry is cited by another | Deleted only with its citer edited, else `needs-human` | no |
+| S8 | Spec, a ticket that touches nothing documented | None (control) | No contradiction raised, a bounded number of entries opened | no |
+| S9 | Discovery `--human`, mid-dialogue | "Is the sort order covered already?" | The session answers from one cited lookup | no |
+| S10 | Dev `--auto`, a behavior no command tests | A rendering with no test | No stamp; `Verified: <id> — not by command: <why>` | no (hard to plant: an agent can usually write a test) |
+| S11 | QA | Every case of one entry passes, a case of another fails | One small wiki PR stamping the first (`--by process:pilot-qa`) | no (needs the `standard` profile) |
 
-Scripted human answers: S1 gives the missing state ("show a message") when asked, and keeps the sort order once told the contradiction;
-S2 authorizes the library once told it breaks ADR 0001, and the expected follow-up is a superseding ADR proposal.
+Scripted human answers are in the `script` key of a `--human` scenario file.
+
+## Tooling
+
+1. `python3 scripts/bench_seed.py seed S4 --arm cand --run 1 --repo Jonas-Eve/pilot-test --dir CLONE` creates the ticket, the run
+   branch with its fixtures and the pull request, and prints the prompt and the branch to start a session from. One ticket per run, so
+   the three runs of a scenario can go in parallel. `reset` closes every bench ticket and pull request and deletes the `bench/` branches.
+2. Start a fresh Claude Code session from the printed `source_revision` with the printed prompt; keep its record (`get_session`).
+3. `python3 scripts/collect_run.py S4 --arm cand --run 1 --repo … --ticket N [--pr M] --session SESSION.json --out RECORD.json`
+   builds the record from GitHub and the session (labels, comments, the pull request, the cost and the time).
+4. `python3 scripts/grade_behavior.py RECORD.json CHECKOUT` (the pull request's branch checked out) grades it; `compare_runs.py` compares.
 
 ## Grade
 

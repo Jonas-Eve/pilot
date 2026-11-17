@@ -1,0 +1,29 @@
+{
+ "id": "S4",
+ "title": "Dev --auto: an entry moved to implemented, the behavior matches, stamped with a proof",
+ "phase": "dev",
+ "mode": "auto",
+ "arms": [
+  "cand"
+ ],
+ "ticket": {
+  "title": "Add a --names-only option ({run})",
+  "labels": [
+   "type:tech",
+   "level:task",
+   "priority:P2",
+   "status:dev-ready",
+   "workflow:lean"
+  ],
+  "body": "Bench scenario S4 (throwaway).\n\n## Spec\n\nAdd a `--names-only` option to the CLI: it prints one place name per line, with no distance and no count line. Without the option the output is unchanged. Expose it in `accessplaces/cli.py` (the search logic is untouched). Add a unit test in `tests/test_cli.py`.\n\n## Acceptance\n\n- `python -m accessplaces cafe --names-only` prints the two cafe names, one per line, and nothing else.\n- Existing output is unchanged. Tests pass.\n"
+ },
+ "fixtures": {
+  "wiki/output/names-only.md": "---\ntype: Behavior\ntitle: Print only the names of the places\ndescription: With the `--names-only` option, the search prints one place name per line and nothing else.\nstatus: draft\npilot:\n  status: specified\n  tickets: [{ticket}]\n---\n\nWith the `--names-only` option, the search prints one place name per line, with no distance and no count line. Without the option the output is unchanged.\n"
+ },
+ "prompt": "/pilot-dev {ticket} --auto",
+ "plant": {
+  "stamped": [
+   "names-only"
+  ]
+ }
+}
