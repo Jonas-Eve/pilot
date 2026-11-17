@@ -37,6 +37,8 @@ a human launches it. Two modes: a flow id runs it (below), `--new persona|flow <
 
 ## `--new persona|flow <description>`
 
+The drafting persona also gets `.pilot/pilot-link-existing-analysis.md` in full (here and for `--edit`): the human states the entry (already the human-led mode), and each `gaps`/`questions` entry is the cycle's challenge, with its source (wiki entry id), none without.
+
 Pair only: a human is live. The `wiki` module is on, else say so and stop; preflight as above. A persona is drafted by `pilot-designer` (`.pilot/pilot-task-draft-persona.md`), a flow by `pilot-qa` (`.pilot/pilot-task-draft-flow.md`).
 
 1. Read what exists, per `.pilot/pilot-link-knowledge.md`: the vision (`wiki show vision`), `wiki index --under persona`, `wiki index --under user-flow`, and for a flow `wiki search` on the description with `wiki show` of the few behaviors it

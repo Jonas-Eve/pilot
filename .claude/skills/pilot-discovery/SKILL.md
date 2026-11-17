@@ -1,13 +1,13 @@
 ---
 name: pilot-discovery
-description: "Phase 1 of PILOT: turns a raw type:feature idea into formalized GitHub stories. The PM frames the idea with the human into a validated brief and drafts the story; the architect validates it (anticipating architecture) and debates the PM on objection. Produces level:story tickets (plus a type:tech enabler when genuinely needed), under an epic when it does not fit one story, created as status:draft and refined with the human. Never splits into tasks or writes a spec (that is /pilot-spec). Always pair, never --auto. --from-proto <n> starts from an accepted prototype, --resume <issue> continues a draft, --with, --multi. A purely technical need or any bug goes to /pilot-spec --tech/--bug instead. Use to start a new product idea."
-argument-hint: "<raw idea in free text> | --from-proto <accepted prototype number> [--with <persona>[,...]] [--multi [N]] | --resume <issue number>"
+description: "Phase 1 of PILOT: turns a raw type:feature idea into formalized GitHub stories. The PM analyzes the existing, frames the idea with the human into a validated brief and drafts the story (with --human, the human proposes the plan and the PM writes it up and challenges it); the architect validates it (anticipating architecture) and debates the PM on objection. Produces level:story tickets (plus a type:tech enabler when genuinely needed), under an epic when it does not fit one story, created as status:draft and refined with the human. Never splits into tasks or writes a spec (that is /pilot-spec). Always pair, never --auto. --from-proto <n> starts from an accepted prototype, --resume <issue> continues a draft, --with, --multi. A purely technical need or any bug goes to /pilot-spec --tech/--bug instead. Use to start a new product idea."
+argument-hint: "<raw idea in free text> | --from-proto <accepted prototype number> [--human] [--with <persona>[,...]] [--multi [N]] | --resume <issue number> [--human]"
 disable-model-invocation: true
 ---
 
 # PILOT — Phase 1: Discovery
 
-Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
+Read `.pilot/pilot-link-existing-analysis.md` (the analyze / propose / challenge cycle) too; it is passed in full into every persona's call below. `--human`: the human states the stories' shape and decisions, the PM writes them up and challenges them, the architect validates (invalid with `--multi`; with `--resume`, the mode comes from the flag, else pair). Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
 source of truth for labels, states, and the claim protocol; this skill only covers the
 mechanics of running Discovery. Read `.pilot/pilot-link-ticket-tree.md` (where each ticket type originates, how epics, stories and tasks are built) and `.pilot/pilot-link-agent-dialogue.md` too — it covers
 the PM/architect turn-taking mechanic this skill relies on whenever the architect objects. The
@@ -25,7 +25,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    - `--resume <issue>`: must be `status:draft`, assigned, **no** `needs-human`/`on-hold`
      — a draft left mid-pair (`.pilot/pilot-process.md` §4 "Resuming an orphaned
      claim"). Read the ticket and thread (`mcp__github__issue_read` `get_comments`) to
-     reconstruct what's drafted, claim it (overwrite assignee), skip to step 4 with that
+     reconstruct what's drafted (the analysis from a `needs-human` comment if there is one, else run step 2-bis again), claim it (overwrite assignee), skip to step 4 with that
      state (call the agents in step 3 again first if revising the draft, passing the
      reconstructed context instead of a blank idea). A draft whose body carries `Prototype : #<n>` continues as
      `--from-proto <n>` (step 7 still updates and closes that prototype). If it doesn't match, report and stop.
@@ -41,6 +41,9 @@ no-ticket entry, `pilot-spec/SKILL.md`).
 2. Fetch open `level:epic` issues (always `type:feature`, title + body only,
    `mcp__github__list_issues`/`search_issues`) as candidates the agents might reuse —
    cheap, deterministic bookkeeping, not the agents' job to search for itself.
+2-bis. **Analyze the existing** before anything else, with no ticket yet: call `Agent` for `pilot-pm` with `.pilot/pilot-task-analyze-existing.md`, `.pilot/pilot-link-existing-analysis.md` in full, the
+   raw idea (or the prototype's brief and mockup) and step 2's Epic list. Hold the analysis in the conversation, show the human its "Touched by this input" and "Not covered" parts, and pass it into
+   every later call. With `--resume`, skipped when the ticket's thread carries it, else run here.
 2a. **Frame the idea with the human first** (with `--from-proto`, the PM starts from the prototype's brief and
     mockup and puts to the human only what the prototype did not settle — pass both into the round) — before the architect is called and before any
     ticket exists. The PM talks with the human alone, round by round
@@ -53,15 +56,16 @@ no-ticket entry, `pilot-spec/SKILL.md`).
     again. Stop when the PM says the brief is ready and the human has confirmed it (or says to
     go with the provisional defaults), or when the idea turns out to be out of scope or not a
     product idea (`/pilot-spec --tech`/`--bug`): report and create nothing. Only then does
-    step 3's PM-led, architect-validated discussion start, from the validated brief. No ticket exists during
+    step 3's PM-led, architect-validated discussion start, from the validated brief. With `--human`, ask the human here, once, for their proposal — one story or several, the Epic, the acceptance
+    criteria and the decisions they already hold — and pass it into step 3 as the human's proposal, never as something the PM completes on its own. No ticket exists during
     this stage, so `--resume` has nothing to pick up: an interrupted framing is simply run
     again. Skipped with `--resume`.
-3. The PM leads: call `Agent` for `pilot-pm` with `.pilot/pilot-task-write-story.md`, the
+3. The PM leads: call `Agent` for `pilot-pm` with `.pilot/pilot-task-write-story.md`, `.pilot/pilot-link-existing-analysis.md` in full, the analysis, the
    human-validated brief (and the raw idea it came from), the candidate Epic list, and any
    `--with` persona's turns so far — nothing else from this conversation's history
    (`.pilot/pilot-process.md` §5). Once the PM's draft is ready, the architect validates it
    (`.pilot/pilot-link-roster.md` "Roster"): call `Agent` for `pilot-architect` with
-   `.pilot/pilot-task-anticipate-architecture.md` and the draft only, not the PM's
+   `.pilot/pilot-task-anticipate-architecture.md`, `.pilot/pilot-link-existing-analysis.md` in full, the analysis and the draft only, not the PM's
    discussion (with the `architecture` module on, also `.pilot/pilot-link-knowledge.md` and `.pilot/pilot-link-architecture.md` in full: it checks the
    story against the guidelines and decisions that bear on it). An objection brings the architect into the debate with the PM and the human
    (`.pilot/pilot-link-agent-dialogue.md` turn-taking), then back on the revised draft
@@ -100,7 +104,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    Once every ticket is created and linked (the Epic included), their dashboard events come from
    one call: `python3 .pilot/pilot.py event <n> <n>... --action created --phase discovery`
    (best-effort, step 7a).
-5. This phase always runs paired (`.pilot/pilot-process.md` §4 "Interaction modes" —
+5. This phase always runs with a human live, pair or `--human` (`.pilot/pilot-process.md` §4 "Interaction modes" —
    `/pilot-discovery` has no `--auto`): show the human the drafted story/stories (and epic
    decision, if any) and the architecture already anticipated — pointing at the real
    issue number(s) from step 4, not just conversation text. Put the PM's remaining open

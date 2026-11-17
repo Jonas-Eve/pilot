@@ -16,4 +16,6 @@ discussion. Ask for a specific earlier message if you need it rather than guessi
    `needs-human` yourself. If you think something must block, say so to the lead and the
    human and let them act on it. (A persona already assigned a blocking duty in this phase
    keeps that duty's own rules.)
-4. Stop when you have nothing more to add; the human may dismiss you at any time.
+4. Start from the ticket's analysis (`.pilot/pilot-link-existing-analysis.md`, passed with this doc): add only the delta your point needs, with sources. A gap you see elsewhere in the
+   proposal gets one line, not a second front. Propose a solution only if asked (in `--human`), or when it is the point you were summoned on.
+5. Stop when you have nothing more to add; the human may dismiss you at any time.

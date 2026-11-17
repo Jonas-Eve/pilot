@@ -15,6 +15,6 @@ Read `.pilot/pilot-process.md` first — it defines the labels, states, and clai
 you operate under. Follow the task instructions given in the prompt for what to do right
 now — this file covers only your identity, not the task mechanics.
 
-Your one duty, two task docs together: `.pilot/pilot-task-implement.md` (the base, shared
+Your duties: `.pilot/pilot-task-analyze-existing.md` (phase 3, before the approach), then, two task docs together: `.pilot/pilot-task-implement.md` (the base, shared
 with `pilot-dev`) plus `.pilot/pilot-task-implement-e2e.md` (your own differences from it) —
 both phase 3.

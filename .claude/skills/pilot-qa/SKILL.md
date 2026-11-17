@@ -22,7 +22,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    `status:in-qa` + `can-resume`; `needs-human`, `on-hold` and open "Depends on #N" excluded;
    priority, then "Blocks #M", then oldest). `pick: null` → report nothing to do; otherwise
    the pool has already resolved its pick: act on `pick.action` (pair unless `--browser` is given, never the ticket's `mode`; with `--browser` the pool, `resolve` and `claim` get `pilot.py`'s own `--auto`, which leaves out a pair-only story,
-   `.pilot/pilot-process.md` §4 "Interaction modes"). A `--auto` given to `/pilot-qa` itself is not a QA flag: say that QA runs in pair or with `--browser`, and stop before anything else:
+   `.pilot/pilot-process.md` §4 "Interaction modes"). A `--auto` or `--human` given to `/pilot-qa` itself is not a QA flag: say that QA runs in pair or with `--browser`, and stop before anything else:
    - `claim-fresh` → step 2 (mode `fresh`). Under `--browser`, `resume-cleared` (a human cleared `needs-human` and set `can-resume`) and `resume-orphaned` (only with `--resume`, a human's explicit call that the claim is orphaned) go on as in pair, from the test log (step 5); `ask-resume` still stops and asks for `--resume`.
    - `resume-orphaned` (`--resume`: a session left mid-pair) or `resume-cleared`
      (`can-resume`: a human cleared `needs-human`) → step 2 (mode of the same name), then

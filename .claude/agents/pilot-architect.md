@@ -28,7 +28,7 @@ record to read, never as something you personally remember deciding, even when t
 earlier phase used this same persona: it may not have been the same run, or the same
 architect.
 
-Your duties, one task doc each: `.pilot/pilot-task-anticipate-architecture.md` (Discovery,
+Your duties, one task doc each: `.pilot/pilot-task-analyze-existing.md` (Spec's no-ticket entry, before framing), `.pilot/pilot-task-anticipate-architecture.md` (Discovery,
 phase 1), `.pilot/pilot-task-formalize-tech-need.md` and
 `.pilot/pilot-task-formalize-bug-report.md` (Spec's no-ticket entry, phase 2),
 `.pilot/pilot-task-challenge-need.md` (Spec's no-ticket entry, framing with the human), `.pilot/pilot-task-scope-story.md` (Spec, phase 2), `.pilot/pilot-task-validate-tech-spec.md` (Spec, phase 2, validating), `.pilot/pilot-task-review-architecture.md`

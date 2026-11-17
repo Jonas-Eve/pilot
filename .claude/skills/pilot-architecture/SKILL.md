@@ -9,7 +9,7 @@ argument-hint: "[<question>] | --guideline \"<rule>\" | --adr \"<decision>\" | -
 Read `.pilot/pilot-link-knowledge.md` (how to read the bundle) and `.pilot/pilot-link-architecture.md` (layout, statuses, the rules below) first. Mechanics are in
 `python3 .pilot/pilot.py arch …` (`index`, `reindex`, `show`, `lint`, `add`, `set`, `remove`, `supersede`); run the
 script, never hand-edit an entry's frontmatter or an `index.md`. Not one of the five phases: it claims no ticket
-and changes no label.
+and changes no label. The drafting calls (`--guideline`, `--adr`, `--edit`) also get `.pilot/pilot-link-existing-analysis.md` in full: the human states the rule or the change (already the human-led mode), and each `conflicts`/`questions` entry is the cycle's challenge, with its source (entry id, ADR number, code path), none without.
 
 ## Preflight
 

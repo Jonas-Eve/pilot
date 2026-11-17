@@ -13,6 +13,8 @@ claims no ticket and changes no label.
 
 ## Preflight
 
+`--edit` also gets `.pilot/pilot-link-existing-analysis.md` in full: the human states the change (already the human-led mode), and each `conflicts`/`questions` entry is the cycle's challenge, with its source (entry id, ticket, code path), none without.
+
 Run `python3 .pilot/pilot.py doctor --no-wiki` once per session (the wiki check is the one this skill
 repairs); stop with its report if it fails.
 

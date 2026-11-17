@@ -1,7 +1,7 @@
 ---
 name: pilot-design
-description: "Creates or revises the project's design system and brand charter, shown in the \"Design\" tab of its PILOT dashboard (.pilot/pilot-process.md). Not one of the five phases: the designer leads a live discussion with a human (pair only, never --auto), deriving colors, type, spacing, components and accessibility rules from the project's own docs and whatever the human hands over, until the human approves; the approved sections are written into the dashboard's own database. PM and architect are summonable (--with pm,architect) or can be summoned mid-session. --section <charter|colors|type|space|components|a11y> restricts the run to one section; the rest of the document is left untouched. Needs a project with a dashboard (/pilot-dashboard) and the tool that writes to its database. Use whenever a human wants to create or change the design system or the brand charter."
-argument-hint: "[--section charter|colors|type|space|components|a11y] [--with pm,architect] [what to create or change, in free text]"
+description: "Creates or revises the project's design system and brand charter, shown in the \"Design\" tab of its PILOT dashboard (.pilot/pilot-process.md). Not one of the five phases: the designer leads a live discussion with a human (pair or --human, never --auto), deriving colors, type, spacing, components and accessibility rules from the project's own docs and whatever the human hands over, until the human approves; the approved sections are written into the dashboard's own database. PM and architect are summonable (--with pm,architect) or can be summoned mid-session. --section <charter|colors|type|space|components|a11y> restricts the run to one section; the rest of the document is left untouched. Needs a project with a dashboard (/pilot-dashboard) and the tool that writes to its database. Use whenever a human wants to create or change the design system or the brand charter."
+argument-hint: "[--section charter|colors|type|space|components|a11y] [--human] [--with pm,architect] [what to create or change, in free text]"
 disable-model-invocation: true
 ---
 
@@ -10,8 +10,8 @@ disable-model-invocation: true
 Read `.pilot/pilot-process.md` first — it is the source of truth for the roster. Here the
 designer leads, there is no validator (the human approves), and the PM and architect are
 summonable (`.pilot/pilot-link-roster.md` "Roster"); `.pilot/pilot-task-advise.md` is read and
-passed into a summoned persona's call. Always pair: it needs a human live and is never run
-from a scheduled sweep.
+passed into a summoned persona's call. Always pair or `--human`: it needs a human live and is never run
+from a scheduled sweep. Read `.pilot/pilot-link-existing-analysis.md` too (passed in full into every persona's call below): the designer first analyzes the existing design system for what the change touches (step 4's first call, held in the conversation), then proposes — with `--human`, the human states the choices (palette, scale, components) and the designer writes them up and challenges them, never adding one — and challenges as a sourced self-review.
 
 ## Steps
 
@@ -28,7 +28,7 @@ from a scheduled sweep.
 3. **Sources.** The project's vision (the wiki's `Vision` entry) and the brand, mockup, wireframe, UX or theme/token
    files the project's root `CLAUDE.md` points to; add whatever the human gives in the
    session (view an image, read a file).
-4. **Discuss.** Call `Agent` for `pilot-designer` with `.pilot/pilot-task-write-design-system.md`,
+4. **Discuss.** First an analysis turn: `pilot-designer` with `.pilot/pilot-task-analyze-existing.md` and the current document; show the human its "Touched" and "Not covered" parts. Then call `Agent` for `pilot-designer` with `.pilot/pilot-task-write-design-system.md`, the analysis,
    the current document, the section, the human's text, the sources and the conversation so
    far — nothing else from this conversation. Show the human the designer's proposal and its
    questions as a natural conversation (a provisional default as the recommended option when
