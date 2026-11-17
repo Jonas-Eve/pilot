@@ -1414,6 +1414,9 @@ function vDesign(){
 /* ---------- wiki tab: the project's `wiki` document (built by `pilot.py wiki snapshot`), read-only ---------- */
 var WIKI_FR={proposed:'proposé',specified:'spécifié',implemented:'implémenté'};
 var WIKI_CLS={proposed:'',specified:'acc',implemented:'ok'};
+/* who verified an entry: a Dev PR, a QA run or a lint (`verified.by` in the file) */
+var VERIFIER={'process:pilot-dev':'Dev','process:pilot-qa':'QA','process:pilot-wiki':'lint'};
+function verifiedChip(e){var who=VERIFIER[str(e.verifiedBy,40)]; return h('span',{class:'chip ok'},'vérifié '+ago(e.verifiedAt)+(who?' · '+who:''));}
 var WIKI_DERIVED_FR={'in-dev':'en dev','in-review':'en review','in-qa':'en QA'};
 function wikiEntries(){return S.wiki&&Array.isArray(S.wiki.entries)?S.wiki.entries.slice(0,2000):[];}
 function wikiDomain(e){var p=str(e.path,200).split('/'); return p.length>1?p[0]:'général';}
@@ -1504,7 +1507,7 @@ function wikiActions(e){
 function wikiEntry(e){
   var chips=e.status?[h('span',{class:'chip '+(WIKI_CLS[e.status]||'')},WIKI_FR[e.status]||str(e.status,40))]:[]; /* a vision or a persona carries no status */
   if(WIKI_DERIVED_FR[e.derived])chips.push(h('span',{class:'chip acc'},WIKI_DERIVED_FR[e.derived]));
-  if(e.verifiedAt)chips.push(h('span',{class:'chip ok'},'vérifié '+ago(e.verifiedAt)));
+  if(e.verifiedAt)chips.push(verifiedChip(e));
   else if(e.status==='implemented'&&!runChecked(e))chips.push(h('span',{class:'chip warn'},'non vérifié'));
   (Array.isArray(e.tickets)?e.tickets.slice(0,20):[]).forEach(function(n){n=Math.floor(Number(n));
     if(n>0)chips.push(h('a',{class:'chip',href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n));});
@@ -1578,7 +1581,7 @@ function archActions(e){
 }
 function archEntry(e){
   var chips=[h('span',{class:'chip '+(ARCH_CLS[e.status]||'')},ARCH_FR[e.status]||str(e.status,40))];
-  if(archIsRef(e))chips.push(e.verifiedAt?h('span',{class:'chip ok'},'vérifié '+ago(e.verifiedAt)):h('span',{class:'chip warn'},'non vérifié'));
+  if(archIsRef(e))chips.push(e.verifiedAt?verifiedChip(e):h('span',{class:'chip warn'},'non vérifié'));
   if(e.supersedes)chips.push(h('span',{class:'chip'},'remplace '+str(e.supersedes,80)));
   if(e.supersededBy)chips.push(h('span',{class:'chip warn'},'remplacé par '+str(e.supersededBy,80)));
   (Array.isArray(e.tickets)?e.tickets.slice(0,20):[]).forEach(function(n){n=Math.floor(Number(n));

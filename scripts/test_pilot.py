@@ -1088,6 +1088,9 @@ class WikiTests(unittest.TestCase):
     def test_a_stamp_says_who_verified_and_only_a_known_verifier_is_accepted(self):
         self.wiki.set("search-sort", stamp="abc", by="process:pilot-qa")
         self.assertIn("by: process:pilot-qa", self.text("search/search-sort.md"))
+        rows = {r["id"]: r for r in self.wiki.snapshot(FakeGh([]))["entries"]}
+        self.assertEqual(rows["search-sort"]["verifiedBy"], "process:pilot-qa")
+        self.assertEqual(rows["search-filter"]["verifiedBy"], "")
         self.wiki.set("search-sort", stamp="def")
         self.assertIn("by: process:pilot-wiki", self.text("search/search-sort.md"))
         with self.assertRaises(pilot.Refused) as caught:

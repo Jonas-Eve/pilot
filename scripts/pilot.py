@@ -1393,7 +1393,7 @@ class Bundle:
                 text = handle.read()
             block, rest = split_frontmatter(text)
             entry = {"id": stem, "path": rel, "abs": path, "title": stem, "description": "", "type": "",
-                     "status": "", "tickets": [], "verifiedAt": "", "verifiedCommit": "", "managed": False,
+                     "status": "", "tickets": [], "verifiedAt": "", "verifiedBy": "", "verifiedCommit": "", "managed": False,
                      "fm": None, "rest": rest, "text": rest.strip(), "problems": []}
             entries.append(entry)
             if block is None:
@@ -1445,6 +1445,7 @@ class Bundle:
             entry["tickets"] = list(tickets)
         verified = fm.get("verified")
         entry["verifiedAt"] = str(verified.get("at") or "") if isinstance(verified, dict) else ""
+        entry["verifiedBy"] = str(verified.get("by") or "") if isinstance(verified, dict) else ""
         entry["verifiedCommit"] = str(pilot.get("verifiedCommit") or "")
         if bool(entry["verifiedAt"]) != bool(entry["verifiedCommit"]):
             add(("partial-stamp", "`verified.at` and `pilot.verifiedCommit` go together"))
@@ -1841,7 +1842,7 @@ class Bundle:
             d = self.derive(e, gh, cache)
             rows.append({"id": e["id"], "type": e["type"], "hash": entry_hash(e), "title": e["title"], "description": e["description"], "path": e["path"],
                          "status": e["status"], "derived": d["derived"], "display": d["display"],
-                         "tickets": e["tickets"], "verifiedAt": e["verifiedAt"], "text": e["text"]})
+                         "tickets": e["tickets"], "verifiedAt": e["verifiedAt"], "verifiedBy": e["verifiedBy"], "text": e["text"]})
         doc = {"kind": "wiki", "repo": gh.repo, "at": now_iso(), "total": len(rows), "truncated": False, "entries": rows}
         return self._fit(doc, rows)
 
@@ -2204,7 +2205,7 @@ class Architecture(Bundle):
             fm = e["fm"]["pilot"] if isinstance(e.get("fm"), dict) and isinstance(e["fm"].get("pilot"), dict) else {}
             rows.append({"id": e["id"], "title": e["title"], "description": e["description"], "path": e["path"],
                          "status": e["status"], "tickets": e["tickets"], "supersedes": str(fm.get("supersedes") or ""),
-                         "supersededBy": str(fm.get("supersededBy") or ""), "verifiedAt": e["verifiedAt"], "text": e["text"]})
+                         "supersededBy": str(fm.get("supersededBy") or ""), "verifiedAt": e["verifiedAt"], "verifiedBy": e["verifiedBy"], "text": e["text"]})
         doc = {"kind": "architecture", "repo": repo, "at": now_iso(), "total": len(rows), "truncated": False,
                "entries": rows}
         return self._fit(doc, rows)
