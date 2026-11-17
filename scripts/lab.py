@@ -2,7 +2,7 @@
 """A laboratory for the prompts of PILOT: one model call per trial, the facts given, a decision graded mechanically.
 
     python3 scripts/lab.py run --base REV --cand REV|WORKTREE [--cases L-S3,L-S4 | --select] [--n 10] [--model sonnet]
-                               [--workers 4] [--max-cost 3.00] [--out DIR]
+                               [--arms base,cand|cand] [--workers 4] [--max-cost 3.00] [--out DIR]
     python3 scripts/lab.py report DIR
     python3 scripts/lab.py show CASE --arm REV|WORKTREE        # the assembled prompt, to read it
 
@@ -65,9 +65,12 @@ def strip_frontmatter(text):
 
 def assemble(case, repo, rev):
     """(system prompt, user prompt): the persona's identity, then what the skill injects, then the situation."""
-    persona = read_at(repo, rev, f".claude/agents/{case['persona']}.md")
-    if persona is None:
-        raise SystemExit(f"{case['persona']} does not exist at {rev}")
+    if case.get("system"):  # no persona: the orchestrating session itself (a skill's own steps)
+        persona = case["system"]
+    else:
+        persona = read_at(repo, rev, f".claude/agents/{case['persona']}.md")
+        if persona is None:
+            raise SystemExit(f"{case['persona']} does not exist at {rev}")
     parts, missing = [], []
     for path in case["docs"]:
         body = read_at(repo, rev, path)
@@ -126,6 +129,15 @@ def run_check(check, output):
         return check["contains"].lower() in text_of(value).lower()
     if "regex" in check:
         return re.search(check["regex"], text_of(value) if value is not None else "", re.I | re.S) is not None
+    if "order" in check:  # each pattern matches some item, and the first matches come in the order given
+        items = [text_of(i) for i in value] if isinstance(value, list) else []
+        last = -1
+        for pattern in check["order"]:
+            hits = [n for n, item in enumerate(items) if re.search(pattern, item, re.I | re.S)]
+            if not hits or hits[0] <= last:
+                return False
+            last = hits[0]
+        return True
     if "any" in check:
         return isinstance(value, list) and any(matches(i, check["any"]) for i in value)
     if "all_of" in check:
@@ -316,8 +328,8 @@ def main(argv):
         print(f"selected by the diff: {[c['id'] for c in cases] or 'nothing'}", file=sys.stderr)
     if not cases:
         return 0
-    arms = ["base", "cand"]
-    trials, spent = run_trials(cases, {"base": base, "cand": cand}, int(opt.get("n", 10)), opt.get("model", "sonnet"), repo,
+    arms = opt["arms"].split(",") if "arms" in opt else ["base", "cand"]
+    trials, spent = run_trials(cases, {a: {"base": base, "cand": cand}[a] for a in arms}, int(opt.get("n", 10)), opt.get("model", "sonnet"), repo,
                                int(opt.get("workers", 4)), float(opt["max-cost"]) if "max-cost" in opt else None)
     out = opt.get("out")
     if out:

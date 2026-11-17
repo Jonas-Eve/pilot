@@ -2914,14 +2914,33 @@ class LabTests(unittest.TestCase):
         manifest = json.loads(pathlib.Path(self.lab.ROOT, "scripts", "behavior-scenarios.json").read_text())
         scenarios = {s["id"] for s in manifest["scenarios"]}
         for c in self.lab.all_cases():
-            for key in ("id", "scenario", "persona", "docs", "situation", "question", "schema", "checks"):
+            for key in ("id", "scenario", "docs", "situation", "question", "schema", "checks"):
                 self.assertIn(key, c, c["id"])
+            self.assertTrue("persona" in c or "system" in c, c["id"])  # a persona, or the session itself for a skill's own steps
             self.assertIn(c["scenario"], scenarios)
-            self.assertTrue(pathlib.Path(self.lab.ROOT, ".claude", "agents", c["persona"] + ".md").exists())
+            if "persona" in c:
+                self.assertTrue(pathlib.Path(self.lab.ROOT, ".claude", "agents", c["persona"] + ".md").exists())
             for path in c["docs"]:
                 self.assertTrue(pathlib.Path(self.lab.ROOT, path).exists(), path)
             self.assertTrue(c["checks"])
             self.assertEqual(set(self.lab.grade(c, None)), {k["name"] for k in c["checks"]})  # a missing answer is graded, never a crash
+
+    def test_the_order_check_wants_every_pattern_present_and_in_sequence(self):
+        calls = [{"step": "1", "action": "claim the ticket"}, {"step": "2", "action": "analyze the existing"}, {"step": "3", "action": "ask the human for the approach"}]
+        check = lambda *patterns: self.lab.run_check({"path": "calls", "order": list(patterns)}, {"calls": calls})
+        self.assertTrue(check("claim", "analy", "approach"))
+        self.assertFalse(check("analy", "claim"))      # the wrong way round
+        self.assertFalse(check("claim", "implement"))  # a step that never appears
+        self.assertFalse(check("claim", "claim"))      # the same item twice is not a sequence
+        self.assertFalse(self.lab.run_check({"path": "calls", "order": ["x"]}, {"calls": "not a list"}))
+
+    def test_a_plan_case_has_no_persona_and_its_prompt_is_the_skill_then_the_situation(self):
+        case = self.lab.load_case("P-DEV-HUMAN")
+        system, user, missing = self.lab.assemble(case, str(self.lab.ROOT), self.lab.WORKTREE)
+        self.assertEqual(missing, [])
+        self.assertTrue(system.startswith("You are Claude Code"))
+        self.assertTrue(user.index(".claude/skills/pilot-dev/SKILL.md") < user.index("# The situation"))
+        self.assertIn("--human", user)
 
     def test_the_intervals_and_the_verdict(self):
         low, high = self.lab.wilson(10, 10)
