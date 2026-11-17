@@ -1,7 +1,7 @@
 # PILOT task — Analyze the existing
 
-Injected by `.claude/skills/pilot-discovery/SKILL.md` and `.claude/skills/pilot-spec/SKILL.md` into the prompt of the persona that opens a discussion (the PM in Discovery, the architect for Spec's
-no-ticket entry, the tech lead for a story or a bug), with `.pilot/pilot-link-existing-analysis.md` in full, before that persona proposes anything.
+Injected by `/pilot-discovery`, `/pilot-spec`, `/pilot-dev`, `/pilot-design` and `/pilot-proto` into the prompt of the persona that opens a discussion (the PM in Discovery and `/pilot-proto`, the architect for Spec's
+no-ticket entry, the tech lead for a story or a bug, the dev in Dev, the designer in `/pilot-design`), with `.pilot/pilot-link-existing-analysis.md` in full, before that persona proposes anything.
 
 You receive the input (a raw idea, a need, or the ticket), and, when one exists, the analysis already written.
 

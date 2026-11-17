@@ -1,7 +1,7 @@
 ---
 name: pilot-proto
 description: "Builds a clickable prototype of a feature with a human, to decide whether to build it, before any Discovery (not one of the five phases). The PM frames the brief, the designer leads a live discussion that builds the mockup (shown in the dashboard's Prototypes tab), the PM checks it against the brief. Creates a type:poc ticket (status:poc-draft, then poc-review). <n> --accept validates it, after which /pilot-discovery --from-proto <n> may start from it; <n> --reject [reason] closes it; --from-artifact <url> imports a self-contained Claude artifact; --resume <n>; --with architect. Pair only. Needs the dashboard module."
-argument-hint: "<feature idea in free text> [--with architect] | --from-artifact <artifact url> [note] | --resume <issue number> | <issue number> --accept | <issue number> --reject [reason]"
+argument-hint: "<feature idea in free text> [--human] [--with architect] | --from-artifact <artifact url> [note] | --resume <issue number> | <issue number> --accept | <issue number> --reject [reason]"
 disable-model-invocation: true
 ---
 
@@ -9,8 +9,8 @@ disable-model-invocation: true
 
 Read `.pilot/pilot-process.md` first (labels `type:poc` and `status:poc-*`, the roster). Here the PM
 frames, the designer leads, the PM validates and the architect is summonable; the human approves.
-`.pilot/pilot-task-advise.md` is passed into a summoned persona's call. Always pair: it needs a human
-live (except `--accept` and `--reject`, which are one mechanical step).
+`.pilot/pilot-task-advise.md` is passed into a summoned persona's call. Always pair or `--human`: it needs a human
+live (except `--accept` and `--reject`, which are one mechanical step). Read `.pilot/pilot-link-existing-analysis.md` too (passed in full into every persona's call below): the PM analyzes the existing (wiki, prototypes) before framing (step 3's first call, held in the conversation, shown to the human, posted on the ticket in step 4 as the `<!-- PILOT:ANALYSIS -->` comment), the PM validator and the designer start from it; with `--human` the human states the brief's decisions and the layout choices, the agents write them up and challenge them, never adding one.
 
 ## Steps
 
@@ -41,7 +41,7 @@ live (except `--accept` and `--reject`, which are one mechanical step).
    available, else stop. Repo = `owner/repo` from `git config --get remote.origin.url`. Read the design system
    if there is one (`ArtifactData` `get` on `design/<owner>__<repo>`; none is fine, the designer then chooses
    plainly and says so).
-3. **Frame, alone with the human, before any ticket exists.** Call `Agent` for `pilot-pm` with
+3. **Frame, alone with the human, before any ticket exists.** First an analysis turn: `pilot-pm` with `.pilot/pilot-task-analyze-existing.md` and the idea. Then call `Agent` for `pilot-pm` with
    `.pilot/pilot-task-frame-proto.md`, the idea, the design system and the framing conversation so far,
    (and, with `--from-artifact`, the imported mockup: the brief states what it shows and what it must teach)
    round by round: show the human its brief and questions as a natural conversation (a provisional default

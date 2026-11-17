@@ -1,13 +1,13 @@
 ---
 name: pilot-dev
-description: "Phase 3 of PILOT: implements a spec'd ticket (status:dev-ready) with pilot-dev (pilot-e2e for a type:e2e task) and opens a PR, or flags needs-human and stops if genuinely blocked. Pair by default, or the project workflow's default (agrees the approach with a live human before coding), --auto or --pair to choose, --auto for a Routine. --resume continues a flagged or mid-pair ticket; it also reclaims a status:changes-requested ticket by pushing to its existing PR; --with, --multi (N devs converge on an approach); bare, it sweeps fresh, resumable and reclaimable work. Use once /pilot-spec has produced a spec."
-argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto|--pair] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume"
+description: "Phase 3 of PILOT: implements a spec'd ticket (status:dev-ready) with pilot-dev (pilot-e2e for a type:e2e task) and opens a PR, or flags needs-human and stops if genuinely blocked. Pair by default, or the project workflow's default (agrees the approach with a live human before coding), --auto, --pair or --human (the human sets the approach, the agent analyzes, challenges it and codes) to choose, --auto for a Routine. --resume continues a flagged or mid-pair ticket; it also reclaims a status:changes-requested ticket by pushing to its existing PR; --with, --multi (N devs converge on an approach); bare, it sweeps fresh, resumable and reclaimable work. Use once /pilot-spec has produced a spec."
+argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto|--pair|--human] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume [--auto|--pair|--human]"
 ---
 
 # PILOT — Phase 3: Dev
 
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
-protocol; this skill covers only phase 3's mechanics. Most likely phase to run as several
+protocol; read `.pilot/pilot-link-existing-analysis.md` too (the analyze / propose / challenge cycle), passed in full into the dev's calls below — the dev leads, no validator, so its challenge is a sourced self-review. `--human`: never with `--auto` (`pool`, `resolve` and `claim` get no `--auto`) or `--multi`; with `--resume`, the mode is the flag, else the analysis comment's `mode:` line, else pair; this skill covers only phase 3's mechanics. Most likely phase to run as several
 parallel instances; the claim step below prevents collisions. The roster (`.pilot/pilot-link-roster.md`
 "Roster"): the dev (`pilot-e2e` for a `type:e2e` task) leads, no validator; the tech lead,
 architect and designer are summonable. Summons and dismissals are recorded in the ticket's
@@ -74,7 +74,12 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    `.pilot/pilot-link-knowledge.md` in full and, per module on, `.pilot/pilot-link-wiki.md` / `.pilot/pilot-link-architecture.md` in full;
    with `wiki` on, the ticket's entries (`python3 .pilot/pilot.py wiki index --ticket <issue>`, each with `wiki show <id>`). The dev
    reads the rest itself, following the guidelines that bear on the ticket.
+   - **Analysis first** (a fresh claim or a paused-pair resume, never a reclaim, in every mode): call `Agent` for `pilot-dev` (`pilot-e2e` for a `type:e2e` task) with
+     `.pilot/pilot-task-analyze-existing.md`, `.pilot/pilot-link-existing-analysis.md` in full and the ticket's spec; post the result on the ticket as the comment opening with
+     `<!-- PILOT:ANALYSIS -->` and `mode: <pair|auto|human>`, and pass it into the call below. Step 5 edits it down to one line with the scratch comment.
    - **Without `--multi`** (or on a reclaim, where `--multi` has no effect either way):
+     **with `--human`**, after the analysis ask the human, once, for the approach they want (what to change where, the pieces, the order) and pass it as the human's proposal: the dev challenges it
+     (sourced), writes it up as the approach and shows it back as the checkpoint below, adding no decision of its own; then implements once approved.
      **unless `--auto` was given** (`.pilot/pilot-process.md` §4 "Interaction modes" — pair
      is the default; a fresh claim or paused-pair resume only, never combined with a
      reclaim): first ask for a proposed implementation approach, not the finished
@@ -122,7 +127,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
      "Claim Protocol"; `--pr` puts the PR's link in the event the dashboard shows). If step
      3 left a scratch approach-checkpoint comment, collapse it to one concise line (e.g.
      "Approach: <one-line summary> — see PR #<n>") — the PR itself is the real artifact
-     now, not the negotiation that led to it.
+     now, not the negotiation that led to it. Edit the ticket's analysis comment down to one line the same way.
    - Blocking conflict: nothing further to set — the subagent already added
      `needs-human` and posted its comment itself (`status:in-dev` stays, per
      `.pilot/pilot-process.md` §3).

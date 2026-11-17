@@ -1,6 +1,6 @@
-# PILOT link — The analyze / propose / challenge cycle (Discovery, Spec)
+# PILOT link — The analyze / propose / challenge cycle
 
-Read by `pilot-discovery` and `pilot-spec`'s own `SKILL.md`, and passed in full into the call of every persona of their discussion (lead, validator, summoned).
+Read by the `SKILL.md` of every skill that runs the cycle, and passed in full into the call of every persona of its discussion (lead, validator, summoned).
 The turn-taking and the stopping rule are `.pilot/pilot-link-agent-dialogue.md`, the roster `.pilot/pilot-link-roster.md`.
 
 ## The cycle

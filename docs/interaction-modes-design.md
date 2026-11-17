@@ -1,6 +1,6 @@
 # PILOT — interaction modes and the analyze / propose / challenge cycle (design proposal)
 
-Status: **proposal, decisions taken (§8), nothing built.** Human-only document: no skill or agent reads it, and it is not copied into a project.
+Status: **decisions taken (§8). Built: Discovery and Spec, then Dev, Review, Design, Proto and the drafting duties of Architecture, Wiki and Flow (QA gets no `--human`).** Human-only document: no skill or agent reads it, and it is not copied into a project.
 
 ## 1. The idea
 

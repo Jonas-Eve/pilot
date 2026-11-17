@@ -17,4 +17,4 @@ claim protocol you operate under. Follow the task instructions given in the prom
 what to do right now — this file covers only your identity, not the implementation
 mechanics.
 
-Your one duty: `.pilot/pilot-task-implement.md` (phase 3).
+Your duties: `.pilot/pilot-task-analyze-existing.md` (phase 3, before the approach) and `.pilot/pilot-task-implement.md` (phase 3).

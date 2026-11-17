@@ -1,7 +1,7 @@
 ---
 name: pilot-review
 description: "Phase 4 of PILOT: claims a status:review-ready PR and runs the reviewers in parallel (PM and tech lead for type:feature/type:e2e, tech lead alone for type:tech/type:bug, the architect optional), then submits one GitHub PR review (Approve, Request changes or Comment) and the matching label: status:approved, or status:changes-requested (a pure code-level verdict never sets needs-human, so it is reclaimable at once; a judgment call adds it). Pair by default, or the project workflow's default (a live human gets a last look and can resolve a needs-human block live), --auto or --pair to choose, --auto for a Routine; --merge merges an all-approve PR; --with architect, --only <roles>, --multi, --resume; bare, it sweeps ready PRs. Use for a status:review-ready PR."
-argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto|--pair] [--merge] [--with architect] [--multi [N]] | <issue or PR number> --only <pm|architect|techlead>[,...] [--merge] | <issue number> --resume [--merge]"
+argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto|--pair|--human] [--merge] [--with architect] [--multi [N]] | <issue or PR number> --only <pm|architect|techlead>[,...] [--merge] | <issue number> --resume [--merge]"
 ---
 
 # PILOT — Phase 4: Review
@@ -10,7 +10,7 @@ Read `.pilot/pilot-process.md` first (labels, states, the claim protocol §4) an
 skill covers only phase 4's mechanics, including the reviewer set (step 3). `--with architect` adds the architect to that set, in a sweep too (the only persona
 summonable here, `.pilot/pilot-link-roster.md` "Roster"); `--only` (step 3) fixes the exact set instead; nothing can be summoned mid-review.
 
-Mode: `--auto` or `--pair` as given, else the ticket's own, pair by default (`.pilot/pilot-process.md` §4 "Interaction modes"). Every outcome is checkpointed as a pending GitHub PR review the moment it is decided
+Mode: `--auto`, `--pair` or `--human` as given, else the ticket's own, pair by default (`.pilot/pilot-process.md` §4 "Interaction modes"). The reviewers are the challenge step of the cycle (`.pilot/pilot-link-existing-analysis.md`, passed in full into every reviewer's call: each analyzes the PR against the existing in its own turn and returns sourced points only; no separate analysis comment). `--human`: the human decides the verdict. Before step 3, ask them once whether anything specific should be checked and pass it to every reviewer in step 5; step 8's pause is their decision (confirm, drop or add points, turn an approval into a change request or the reverse), step 9 submits what they decided and the points they dropped are quoted as dropped; a `needs-human` outcome still submits at once (step 9, then step 10). Never with `--multi`, `--only` or `--auto`. Every outcome is checkpointed as a pending GitHub PR review the moment it is decided
 (step 7). An all-approve or pure-`change` outcome (no `decision` point, so no `needs-human`) gets a pre-submission pause (step 8); an outcome carrying
 `needs-human` always submits at once (step 9) and pair's value comes after, in the live resolution of step 10. `--auto` skips both pauses (required for a scheduled
 Routine, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `--merge` (step 12) works with either mode; without it this skill never merges. `--multi <N>`
@@ -138,7 +138,7 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
    already written, no `event` yet (`mcp__github__pull_request_review_write`, method
    `create`, `commitID` pinned to the PR's current head) — durable immediately, so an
    orphaned run recovers it (step 1) instead of redoing steps 3-6.
-8. **Pair (default) vs `--auto`** — never for an outcome that carries `needs-human` (`.pilot/pilot-process.md` §3: the block must reach GitHub before any resolution, even a live
+8. **Pair (default), `--human` vs `--auto`** — never for an outcome that carries `needs-human` (`.pilot/pilot-process.md` §3: the block must reach GitHub before any resolution, even a live
    one): it goes straight to step 9. For the all-approve or a pure-`change` outcome pair pauses here for a last look — show the outcome from step 6, wait for confirmation,
    then step 9. `--auto` never pauses.
 9. Submit step 7's pending review (`mcp__github__pull_request_review_write`, method `submit_pending`) plus the matching label:

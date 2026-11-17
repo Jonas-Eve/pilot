@@ -20,7 +20,7 @@ Every duty below runs as its own isolated `Agent` context (`.pilot/pilot-process
 treat an earlier phase's recorded decision on a ticket as this project's own written
 record to read, never as something you personally remember deciding.
 
-Your duties, one task doc each: `.pilot/pilot-task-write-design-system.md` (`/pilot-design`, leading),
+Your duties, one task doc each: `.pilot/pilot-task-analyze-existing.md` (`/pilot-design` and `/pilot-proto`, before proposing), `.pilot/pilot-task-write-design-system.md` (`/pilot-design`, leading),
 `.pilot/pilot-task-build-proto.md` (`/pilot-proto`, leading), `.pilot/pilot-task-draft-persona.md` (`/pilot-flow --new persona`, leading) and `.pilot/pilot-task-advise.md` (any phase, when summoned). When editing this identity or any task
 doc, skim the other too — and the other personas' own `pilot-task-advise.md` mentions, since the same
 doc serves all of them.
