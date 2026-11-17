@@ -73,6 +73,21 @@ How to read it, learned on the first runs:
 - The lab tests the decision, not the order of a skill's steps: keep a few complete runs (the throwaway project below) as the reference
   it must agree with (S3 stops in both).
 
+### First results (4.2.0 against 4.1.0, Sonnet, ten trials per arm)
+
+| Case | What it checks | Base 4.1.0 | Candidate 4.2.0 |
+|---|---|---|---|
+| L-S3 Dev | stops on a spec that breaks `stdlib-only`, names it | 10/10 | 9/10 (one empty answer) |
+| L-S4 Dev | stamps with a `Verified:` line in the PR body | 0/10 | **10/10** |
+| L-S5 Dev | does not stamp a drift, says what differs | 10/10 (never stamps) | 10/10 |
+| L-S6 / 6b / 6c Review | obvious defects (layer break, no proof, network command, proof that tests nothing) | 10/10 | 10/10: no difference, a competent reviewer sees them either way |
+| L-S6d Review | **accepts** a stamp whose proof holds and covers every statement | 0/10 | **10/10** |
+| L-S6e Review | rejects "not by command" for a behavior a command can test | 4/10 | **10/10** |
+| L-S1 Discovery `--human` | asks about the all-hidden state, flags the contradiction, decides nothing for the human | 10/10, 10/10, about 8/10 (rubric since corrected) | same |
+
+Total cost of the runs behind this table, rubric fixes included: about 8 $. A first version of L-S6d, whose proof covered only half of
+the entry's statements, was rejected 9 times out of 10 by the candidate: the rule is strict (a proof must exercise every statement), as written.
+
 ## The throwaway project
 
 `Jonas-Eve/pilot-test` (the project of `docs/engine-comparison.md`): `accessplaces`, a small Python CLI, PILOT installed, `wiki`
