@@ -10,7 +10,7 @@ disable-model-invocation: true
 Read `.pilot/pilot-process.md` first (labels `type:poc` and `status:poc-*`, the roster). Here the PM
 frames, the designer leads, the PM validates and the architect is summonable; the human approves.
 `.pilot/pilot-task-advise.md` is passed into a summoned persona's call. Always pair or `--human`: it needs a human
-live (except `--accept` and `--reject`, which are one mechanical step). Read `.pilot/pilot-link-existing-analysis.md` too (passed in full into every persona's call below): the PM analyzes the existing (wiki, prototypes) before framing (step 3's first call, held in the conversation, shown to the human, posted on the ticket in step 4 as the `<!-- PILOT:ANALYSIS -->` comment), the PM validator and the designer start from it; with `--human` the human states the brief's decisions and the layout choices, the agents write them up and challenge them, never adding one.
+live (except `--accept` and `--reject`, which are one mechanical step). Read `.pilot/pilot-link-existing-analysis.md` too (passed in full into every persona's call below): the PM analyzes the existing (wiki, prototypes) before framing (step 3's first call, held in the conversation and shown to the human), the PM validator and the designer start from it; with `--human` the human states the brief's decisions and the layout choices, the agents write them up and challenge them, never adding one.
 
 ## Steps
 

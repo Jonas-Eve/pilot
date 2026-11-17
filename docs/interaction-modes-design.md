@@ -29,7 +29,7 @@ The cycle is per persona. The personas are the ones the roster already defines (
 
 - The validator has no challenge step: this is what stops the regress (a challenger of the challenger of…). Its objections are answered by the lead — accepts, rejects with arguments, or amends — which is the existing debate. A third party is only ever the human, when they are blocked.
 - A summoned persona keeps `pilot-task-advise.md`'s rules (advises, never decides, never blocks alone, stops when it has nothing to add) and adds: it starts from the analysis already written and only adds the delta its point needs, with sources. In `--human` it proposes a solution only when the human asks; in pair it may offer one unasked.
-- Every `Agent` call is an isolated context (`pilot-process.md` §5), so no extra "fresh agent" rule: what carries between calls is the ticket (analysis, proposal, objections and answers), never an agent's memory. A validator receives the deliverable, not the conversation, and returns with only its own objections (roster, "Validator").
+- Every `Agent` call is an isolated context (`pilot-process.md` §5), so no extra "fresh agent" rule: what carries between calls is what the session passes (analysis, proposal, objections and answers) and the ticket (the proposal's checkpoints, a `needs-human` comment), never an agent's memory. A validator receives the deliverable, not the conversation, and returns with only its own objections (roster, "Validator").
 
 ## 3. What the challenge is worth
 
@@ -92,7 +92,7 @@ The skills marked "self-review only" keep the sourced self-review (decided). Add
 ## 7. Where it lives
 
 - **`pilot-process.md` "Interaction modes"** (generic, every phase): the cycle, the three roles, `--human`, the mutual exclusions.
-- **A link doc** (e.g. `pilot-link-existing-analysis.md`): what the analysis contains, where it is written in the ticket, how a round's delta is fed to an isolated agent; the sourcing rule of §3. Read by every skill that runs the cycle. `pilot-link-agent-dialogue.md` stays the stopping rule, `pilot-link-roster.md` the roles.
+- **A link doc** (e.g. `pilot-link-existing-analysis.md`): what the analysis contains, when it reaches the ticket (only with a `needs-human`), how a round's delta is fed to an isolated agent; the sourcing rule of §3. Read by every skill that runs the cycle. `pilot-link-agent-dialogue.md` stays the stopping rule, `pilot-link-roster.md` the roles.
 - **Task docs**: one per duty, the persona's lens only (the architect's feasibility, the tech lead's code, the PM's acceptance criteria). `pilot-task-advise.md` gains the summoned persona's rules of §2.
 - **`pilot.py`**: `workflow show` gives a ticket's mode; decide whether a project's `workflow` can default to `--human`.
 
@@ -103,6 +103,6 @@ A mechanism change that makes projects act differently: **major** version.
 1. **Name**: `--human` (says who decides; `--manual` suggests the agent is hands-off, but it still writes and codes).
 2. **Review**: the human decides the verdict and may add what to check; the reviewers stay isolated and parallel and return sourced objections. Nothing is submitted to GitHub before the human decides, except a `needs-human`, which still goes out at once.
 3. **Cost**: the analysis is bounded by its sources: it covers only what the ticket touches (`wiki search`, `arch index --active`, the code paths concerned) and lists what it does not cover. Later rounds redo only the delta.
-4. **Where the analysis is written**: in pair and `--human`, one dedicated, marked comment kept up to date (`--resume` and the human read it); in `--auto`, no comment — the skill passes the analysis between calls within the run, as nothing resumes from it and no human reads it; the ticket body stays the deliverable. It is not reused across phases (it goes stale): each phase redoes its own delta.
+4. **Where the analysis is written**: nowhere by default — it stays with the session (shown to the human, passed between calls). It is written to the ticket only when the work leaves the session: a `needs-human` flag's comment carries the part that bears on the blocker; a `--resume` that finds none runs a fresh analysis; the ticket body stays the deliverable. It is not reused across phases (it goes stale): each phase redoes its own delta.
 5. **Default mode**: stays pair. `--human` is an explicit flag, never a project default (it needs a live human, so no sweep or Routine can take it); a `workflow` value for it can come later without touching the cycle.
 6. **Scope**: two PRs. First the generic base (`pilot-process.md`, the link doc, the task docs) with Discovery and Spec, which already have a validator; then the other pair-capable skills.

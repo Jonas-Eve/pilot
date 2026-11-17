@@ -7,7 +7,7 @@ argument-hint: "<issue number, optional — picks the next dev-ready or can-resu
 # PILOT — Phase 3: Dev
 
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
-protocol; read `.pilot/pilot-link-existing-analysis.md` too (the analyze / propose / challenge cycle), passed in full into the dev's calls below — the dev leads, no validator, so its challenge is a sourced self-review. `--human`: never with `--auto` (`pool`, `resolve` and `claim` get no `--auto`) or `--multi`; with `--resume`, the mode is the flag, else the analysis comment's `mode:` line, else pair; this skill covers only phase 3's mechanics. Most likely phase to run as several
+protocol; read `.pilot/pilot-link-existing-analysis.md` too (the analyze / propose / challenge cycle), passed in full into the dev's calls below — the dev leads, no validator, so its challenge is a sourced self-review. `--human`: never with `--auto` (`pool`, `resolve` and `claim` get no `--auto`) or `--multi`; with `--resume`, the mode is the flag, else the ticket's own, pair by default; this skill covers only phase 3's mechanics. Most likely phase to run as several
 parallel instances; the claim step below prevents collisions. The roster (`.pilot/pilot-link-roster.md`
 "Roster"): the dev (`pilot-e2e` for a `type:e2e` task) leads, no validator; the tech lead,
 architect and designer are summonable. Summons and dismissals are recorded in the ticket's
@@ -75,8 +75,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    with `wiki` on, the ticket's entries (`python3 .pilot/pilot.py wiki index --ticket <issue>`, each with `wiki show <id>`). The dev
    reads the rest itself, following the guidelines that bear on the ticket.
    - **Analysis first** (a fresh claim or a paused-pair resume, never a reclaim, in every mode): call `Agent` for `pilot-dev` (`pilot-e2e` for a `type:e2e` task) with
-     `.pilot/pilot-task-analyze-existing.md`, `.pilot/pilot-link-existing-analysis.md` in full and the ticket's spec; unless `--auto` (which posts nothing and holds the analysis for the run), post the result on the ticket as the comment opening with
-     `<!-- PILOT:ANALYSIS -->` and `mode: <pair|human>`; pass it into the calls below. Step 5 edits it down to one line with the scratch comment.
+     `.pilot/pilot-task-analyze-existing.md`, `.pilot/pilot-link-existing-analysis.md` in full and the ticket's spec; keep the result for the run (no comment of its own: it goes into a `needs-human` flag's comment if one is raised) and pass it into the calls below.
    - **Without `--multi`** (or on a reclaim, where `--multi` has no effect either way):
      **with `--human`**, after the analysis ask the human, once, for the approach they want (what to change where, the pieces, the order) and pass it as the human's proposal: the dev challenges it
      (sourced), writes it up as the approach and shows it back as the checkpoint below, adding no decision of its own; then implements once approved.
@@ -127,7 +126,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
      "Claim Protocol"; `--pr` puts the PR's link in the event the dashboard shows). If step
      3 left a scratch approach-checkpoint comment, collapse it to one concise line (e.g.
      "Approach: <one-line summary> — see PR #<n>") — the PR itself is the real artifact
-     now, not the negotiation that led to it. Edit the ticket's analysis comment (none under `--auto`) down to one line the same way.
+     now, not the negotiation that led to it.
    - Blocking conflict: nothing further to set — the subagent already added
      `needs-human` and posted its comment itself (`status:in-dev` stays, per
      `.pilot/pilot-process.md` §3).

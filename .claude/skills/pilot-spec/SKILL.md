@@ -6,7 +6,7 @@ argument-hint: "<issue number, optional — picks the next fresh/resumable statu
 
 # PILOT — Phase 2: Spec
 
-Read `.pilot/pilot-process.md` first (labels, states, the claim protocol); this skill covers only the mechanics of this phase. Also read `.pilot/pilot-link-existing-analysis.md` (the analyze / propose / challenge cycle), passed in full into every persona's call below: with `--human`, the human states the split and the decisions, the personas analyze, challenge and write them up (invalid with `--multi`; never with `--auto`: `pool`, `resolve` and `claim` get no `--auto`; with `--resume`, the mode is the flag, else the analysis comment's `mode:` line, else pair). Also read `.pilot/pilot-link-ticket-tree.md` (ticket
+Read `.pilot/pilot-process.md` first (labels, states, the claim protocol); this skill covers only the mechanics of this phase. Also read `.pilot/pilot-link-existing-analysis.md` (the analyze / propose / challenge cycle), passed in full into every persona's call below: with `--human`, the human states the split and the decisions, the personas analyze, challenge and write them up (invalid with `--multi`; never with `--auto`: `pool`, `resolve` and `claim` get no `--auto`; with `--resume`, the mode is the flag, else the ticket's own, pair by default). Also read `.pilot/pilot-link-ticket-tree.md` (ticket
 types and levels), `.pilot/pilot-link-split-tickets.md` (prerequisite tickets, dependencies between tasks, re-scoping) and `.pilot/pilot-link-agent-dialogue.md` (the architect/tech lead
 turn-taking this skill relies on, and what `--multi` means here). The roster (`.pilot/pilot-link-roster.md` "Roster"): the architect and tech lead lead together (the tech lead alone for an
 existing `type:bug` ticket), the PM validates a `type:feature` split (step 4a), the designer is summonable (the architect, for an existing `type:bug`). Summons and dismissals are recorded
@@ -62,7 +62,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
 1a. **No-ticket entry** (`--tech`/`--bug`, explicit or auto-detected). **Frame the need with the human first, before any ticket exists.** This stage needs a human live, so it never runs
     when another phase applies the shared bug mechanism on its own (`.pilot/pilot-link-bug-tickets.md`). The architect talks with the human alone, round by round
     (`.pilot/pilot-task-challenge-need.md`): call `Agent` for `pilot-architect` with it, the raw need and the framing conversation so far, nothing else from this conversation. Each round,
-    First an analysis turn (`pilot-architect` with `.pilot/pilot-task-analyze-existing.md`, held in the conversation, posted on the ticket once created, step 3). Then
+    First an analysis turn (`pilot-architect` with `.pilot/pilot-task-analyze-existing.md`, held in the conversation, kept for step 3). Then
     show the human the architect's classification and challenges as a natural conversation (questions only where useful, a provisional default as the recommended option when one helps),
     feed their replies back, call it again. Stop when the architect says the need is ready and the human confirmed (or accepts the provisional defaults), or when it does not belong here
     (out of scope, a product idea for `/pilot-discovery`, not a real defect, a duplicate): report and create nothing. No ticket exists yet, so an interrupted framing is simply run again.
@@ -87,7 +87,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
    refusal → report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag|event` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Branch on `level:`. First the analysis: call `Agent` for `pilot-techlead` with `.pilot/pilot-task-analyze-existing.md`, `.pilot/pilot-link-existing-analysis.md` in full and the ticket (for
-   the no-ticket entry, the analysis step 1a already ran: only post it); unless `--auto` (which posts nothing and holds the analysis for the run), post it on the ticket as the comment opening with `<!-- PILOT:ANALYSIS -->` and `mode: <pair|human>`, show the human its "Touched by
+   the no-ticket entry, the analysis step 1a already ran: only keep it); keep the analysis for the run (no comment of its own: it goes into a `needs-human` flag's comment if one is raised), show the human its "Touched by
    this input" and "Not covered" parts (pair and `--human`), and pass it into every call below. With `--human`, then ask the human, once, for their proposal — the split (or none), the decisions,
    dependencies and priorities — and pass it into the dialogue as the human's proposal: the personas challenge it and write the specs, adding no decision of their own.
    - **`level:story`**: first `python3 .pilot/pilot.py workflow show --ticket <story>` once: its `spec.architect` says how the pass runs, its
@@ -168,7 +168,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
     that no longer holds together across rounds (an earlier security decision at
     odds with a later one, a spec that no longer matches a since-revised split). Do this
     for both pair and `--auto`.
-5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`); in every case also edit the ticket's analysis comment (none under `--auto`) down to one line (`.pilot/pilot-link-existing-analysis.md`):
+5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`):
    - No split (`type:tech` `level:story` only, or a `level:task` needing just a spec —
      a `type:feature` story is never this case, step 4): update the ticket body with the
      spec and decisions, write the reconfirmed/revised `priority:` (for a `level:story` —

@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # PILOT — Phase 1: Discovery
 
-Read `.pilot/pilot-link-existing-analysis.md` (the analyze / propose / challenge cycle) too; it is passed in full into every persona's call below. `--human`: the human states the stories' shape and decisions, the PM writes them up and challenges them, the architect validates (invalid with `--multi`; with `--resume`, the mode comes from the flag, else the analysis comment's `mode:` line, else pair). Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
+Read `.pilot/pilot-link-existing-analysis.md` (the analyze / propose / challenge cycle) too; it is passed in full into every persona's call below. `--human`: the human states the stories' shape and decisions, the PM writes them up and challenges them, the architect validates (invalid with `--multi`; with `--resume`, the mode comes from the flag, else pair). Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
 source of truth for labels, states, and the claim protocol; this skill only covers the
 mechanics of running Discovery. Read `.pilot/pilot-link-ticket-tree.md` (where each ticket type originates, how epics, stories and tasks are built) and `.pilot/pilot-link-agent-dialogue.md` too — it covers
 the PM/architect turn-taking mechanic this skill relies on whenever the architect objects. The
@@ -25,7 +25,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    - `--resume <issue>`: must be `status:draft`, assigned, **no** `needs-human`/`on-hold`
      — a draft left mid-pair (`.pilot/pilot-process.md` §4 "Resuming an orphaned
      claim"). Read the ticket and thread (`mcp__github__issue_read` `get_comments`) to
-     reconstruct what's drafted (and the analysis comment's analysis and `mode:`), claim it (overwrite assignee), skip to step 4 with that
+     reconstruct what's drafted (the analysis from a `needs-human` comment if there is one, else run step 2-bis again), claim it (overwrite assignee), skip to step 4 with that
      state (call the agents in step 3 again first if revising the draft, passing the
      reconstructed context instead of a blank idea). A draft whose body carries `Prototype : #<n>` continues as
      `--from-proto <n>` (step 7 still updates and closes that prototype). If it doesn't match, report and stop.
@@ -43,7 +43,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    cheap, deterministic bookkeeping, not the agents' job to search for itself.
 2-bis. **Analyze the existing** before anything else, with no ticket yet: call `Agent` for `pilot-pm` with `.pilot/pilot-task-analyze-existing.md`, `.pilot/pilot-link-existing-analysis.md` in full, the
    raw idea (or the prototype's brief and mockup) and step 2's Epic list. Hold the analysis in the conversation, show the human its "Touched by this input" and "Not covered" parts, and pass it into
-   every later call; step 4 posts it. Skipped with `--resume`, which reads the ticket's analysis comment instead.
+   every later call. With `--resume`, skipped when the ticket's thread carries it, else run here.
 2a. **Frame the idea with the human first** (with `--from-proto`, the PM starts from the prototype's brief and
     mockup and puts to the human only what the prototype did not settle — pass both into the round) — before the architect is called and before any
     ticket exists. The PM talks with the human alone, round by round
@@ -99,7 +99,6 @@ no-ticket entry, `pilot-spec/SKILL.md`).
      `status:` label, unassigned — an Epic is never itself a draft, and never carries a
      `priority:`) first, then each story linked as its sub-issue, its own `type:` +
      `level:story` + `status:draft` + its own `priority:` + assigned.
-   Post the analysis on each created story as a comment opening with `<!-- PILOT:ANALYSIS -->` and `mode: <pair|human>` (`.pilot/pilot-link-existing-analysis.md`), kept up to date in place.
    Under `--from-proto`, each story's body also carries `Prototype : #<n>` and, when `dashboardUrl` is set,
    `Maquette : <dashboardUrl>#proto/<n> (dashboard › Prototypes › #<n>)`.
    Once every ticket is created and linked (the Epic included), their dashboard events come from
@@ -137,7 +136,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    (an out-of-scope note from an early round that no longer matches an acceptance
    criterion added later, an architecture assumption one round made that a later round's
    split contradicts).
-7. Finalize (`mcp__github__issue_write`): edit each story's analysis comment down to one line, then flip it from `status:draft` to
+7. Finalize (`mcp__github__issue_write`): flip each story from `status:draft` to
    `status:backlog`, unassigned. Under `--from-proto`: `update` `protos/p<n>` with `stories` (the numbers just
    finalized), comment on the prototype ticket with them, then `python3 .pilot/pilot.py set <n> --close` (the
    label stays). If the dialogue decides the idea is out of scope, ask the human whether to reject the

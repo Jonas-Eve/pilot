@@ -25,9 +25,9 @@ and the project's `CLAUDE.md`. Written as:
 - **Touched by this input** — what the input would change or rely on;
 - **Not covered** — what was not checked or has no source.
 
-In pair and `--human` it lives in one comment on the ticket opened by `<!-- PILOT:ANALYSIS -->`, kept up to date in place (it is what `--resume` rebuilds from and what the human reads); its second line
-records the run's mode (`mode: pair|human`), which a `--resume` without a mode flag reads. In `--auto` no comment is posted: the skill passes the analysis from one call to the next within the run. Before a ticket exists (framing) it is held in the conversation and posted when the ticket is created. A later round or a persona joining adds only the delta its point needs, with sources,
-in its own turn. When the phase finalizes, edit the comment (when there is one) down to one line: it goes stale and is never reused by the next phase.
+It stays with the session: shown to the human, passed from one call to the next, never posted as a comment of its own. It is written to the ticket only when the work leaves the session: the mandatory
+comment of a `needs-human` flag carries the part of the analysis that bears on the blocker (what exists with its sources, what is touched, what is not covered). A `--resume` reads the ticket's thread; no
+analysis there → a fresh analysis turn. A later round or a persona joining adds only the delta its point needs, with sources, in its own turn. It is never reused by the next phase: it goes stale.
 
 ## The challenge
 
