@@ -55,7 +55,13 @@
     "cache_creation_input_tokens": 16362
    },
    "ms": 11430,
-   "judged": {}
+   "judged": {
+    "c5a6ac84fb82966d": {
+     "pass": true,
+     "cost": 0.0006771,
+     "reason": "The criterion is met by two points. The second `change` point (entry \"names-only\") states that the `Verified:` line \"I read the code and it looks right\" is not a replayable command from the project's tests or CLI, so the stamp has no proof. The fourth point states that the 10 passing tests do not exercise `--names-only`, so the entry's claims are untested. Either one is enough."
+    }
+   }
   },
   {
    "output": {
@@ -109,7 +115,13 @@
     "cache_creation_input_tokens": 2313
    },
    "ms": 11200,
-   "judged": {}
+   "judged": {
+    "d83e8b9302d963e1": {
+     "pass": true,
+     "cost": 0.00069386,
+     "reason": "The second point, tagged \"change\" on the names-only entry, says the `Verified:` line (\"I read the code and it looks right\") is not a command that can be replayed. It asks for a real command, such as a unittest that runs the CLI with `--names-only`, and says that proof is what makes the stamp valid. That matches the criterion's first branch. The third point also says the stamp is not backed by a valid proof, since files under `accessplaces/` changed after the stamped commit, and the fourth says no test under `tests/` covers `--names-only`. Those points reinforce the same finding."
+    }
+   }
   },
   {
    "output": {
@@ -172,7 +184,13 @@
     "cache_creation_input_tokens": 2311
    },
    "ms": 6582,
-   "judged": {}
+   "judged": {
+    "64c522830476090c": {
+     "pass": true,
+     "cost": 0.0006908400000000001,
+     "reason": "The second point, tagged \"change\" and about the entry \"names-only\", says the `Verified:` line (\"I read the code and it looks right\") \"is not a replayable command from the project's own tests or CLI\", and that the stamp (`verified: by process:pilot-dev`, `verifiedCommit: 4f9e2ab`) \"does not stand\" because of it. That directly states the proof is not a replayable command and that the stamp is not backed by a valid proof, which is what the criterion asks for. The point is not just a statement that stamps are disallowed in pull requests; it names the proof line itself as non-replayable."
+    }
+   }
   },
   {
    "output": {
@@ -226,7 +244,13 @@
     "cache_creation_input_tokens": 2314
    },
    "ms": 11004,
-   "judged": {}
+   "judged": {
+    "ee517dbed7fa1eba": {
+     "pass": true,
+     "cost": 0.00065424,
+     "reason": "The second point, tagged \"change\" on the entry \"names-only\", states that the `Verified:` line (\"I read the code and it looks right\") is not a replayable command, so the entry has no valid proof and the stamp cannot stand. That matches the criterion's condition that the proof is not a replayable command and that the stamp is not backed by such a proof. The point goes further than saying a stamp is not allowed in a pull request, so it is not excluded by the carve-out."
+    }
+   }
   },
   {
    "output": {
@@ -285,7 +309,13 @@
     "cache_creation_input_tokens": 2314
    },
    "ms": 12648,
-   "judged": {}
+   "judged": {
+    "ca78ebc9c8b32d93": {
+     "pass": true,
+     "cost": 0.00066561,
+     "reason": "The second point, tagged \"change\" and about the entry \"names-only\", says the `Verified:` line (\"I read the code and it looks right\") is not a replayable run of the project's tests or CLI, so the proof is invalid. It asks for a replayable command instead. This meets the criterion. The stamp-validity point and the test-coverage point also reinforce it, but the second point is enough on its own."
+    }
+   }
   },
   {
    "output": {
@@ -340,7 +370,13 @@
     "cache_creation_input_tokens": 2313
    },
    "ms": 6884,
-   "judged": {}
+   "judged": {
+    "87f6ffba3a6e295b": {
+     "pass": true,
+     "cost": 0.0006327,
+     "reason": "The second point under the `names-only` entry says the `Verified:` line is \"I read the code and it looks right\", that it \"has no command and cannot be replayed\", and that the stamp is therefore invalid. That directly states the proof is not a replayable command and that the stamp is not backed by one, which is what the criterion asks for."
+    }
+   }
   },
   {
    "output": {
@@ -398,7 +434,13 @@
     "cache_creation_input_tokens": 2316
    },
    "ms": 6109,
-   "judged": {}
+   "judged": {
+    "c93abf360ce3c93a": {
+     "pass": true,
+     "cost": 0.00067401,
+     "reason": "The second point, tagged `change` on the `names-only` entry, says the `Verified:` line (\"I read the code and it looks right\") is \"not a replayable command\" and that the entry is \"testable by command, so the stamp is invalid.\" That directly states the proof is not a replayable command and the stamp is not backed by valid proof, which is what the criterion asks for. The third point also says the tests do not show coverage of `--names-only`, which supports the same conclusion. The point is not merely a statement that stamps are disallowed in a pull request."
+    }
+   }
   },
   {
    "output": {
@@ -448,7 +490,13 @@
     "cache_creation_input_tokens": 2316
    },
    "ms": 5552,
-   "judged": {}
+   "judged": {
+    "bf438ce7d8fdeb85": {
+     "pass": true,
+     "cost": 0.0006837799999999999,
+     "reason": "The second point (tag \"change\", entry \"names-only\") says the PR's `Verified:` line, \"I read the code and it looks right\", has no command and no result, so it cannot be replayed, and that the `process:pilot-dev` stamp is therefore unproven. It also says the 10 passing tests do not show that any of them covers `--names-only`, which addresses whether the proof tests what the entry states. This meets the criterion. The point is not merely that a stamp is disallowed, since it explains why the proof is not replayable and not backed by a test."
+    }
+   }
   },
   {
    "output": {
@@ -507,7 +555,13 @@
     "cache_creation_input_tokens": 2307
    },
    "ms": 6467,
-   "judged": {}
+   "judged": {
+    "42e0526f20fa22bf": {
+     "pass": true,
+     "cost": 0.0006705600000000001,
+     "reason": "The answer has a point (tagged change, entry \"names-only\") that says the proof line \"Verified: names-only — I read the code and it looks right\" is not a command that can be replayed and does not test the entry: \"That is not a command I can replay, and it does not test the entry.\" It also has a point saying the stamp is invalid and \"the stamp stands only if just files under wiki/ changed. Without a valid proof the entry should not carry a stamp,\" so the stamp is tied to the missing proof. The criterion is met."
+    }
+   }
   },
   {
    "output": {
@@ -560,7 +614,13 @@
     "cache_creation_input_tokens": 2311
    },
    "ms": 9861,
-   "judged": {}
+   "judged": {
+    "ffad85623e5dcdbd": {
+     "pass": true,
+     "cost": 0.0006753500000000001,
+     "reason": "The second point, tagged \"change\" and about the \"names-only\" entry, says the stamp is invalid and that the `Verified:` line is not a proof. It states that \"'I read the code and it looks right' is not a replayable command\" and that without a command the entry's details cannot be checked. This directly matches the criterion that the proof line is not a replayable command and is not backed by such a proof. The point also goes beyond saying a stamp is disallowed in a PR, so the criterion is met."
+    }
+   }
   }
  ]
 }

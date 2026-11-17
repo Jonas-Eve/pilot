@@ -45,7 +45,13 @@
     "cache_creation_input_tokens": 13808
    },
    "ms": 8880,
-   "judged": {}
+   "judged": {
+    "3bc052f172f8b9ce": {
+     "pass": true,
+     "cost": 0.0006871,
+     "reason": "The first point, tagged \"change\" and about the entry \"names-only\", says the existing proof command does not exercise the new behavior. It re-ran `python -m unittest discover -s tests`, reports 10 tests OK, and states that \"none of them exercises the new option,\" so the \"Verified: names-only\" claim is unsupported by the suite. The reason given is that no test covers `--names-only`, which is the criterion's stated cause. The second point is about stamping and does not count toward this, but the first point alone meets the criterion."
+    }
+   }
   },
   {
    "output": {
@@ -99,7 +105,13 @@
     "cache_creation_input_tokens": 2311
    },
    "ms": 5379,
-   "judged": {}
+   "judged": {
+    "e36a6b73ef49095c": {
+     "pass": true,
+     "cost": 0.0006677300000000001,
+     "reason": "The first point under the `names-only` entry says the PR adds no test that passes `--names-only`, and that the 10 passing tests were all there before, so the green run says nothing about the new behavior. That is a statement that the existing test suite, the proof command, does not exercise the `--names-only` behavior because no test covers it. The other points concern the wiki stamp, the PR description, and output ordering, so they do not meet the criterion on their own, but the first point does."
+    }
+   }
   },
   {
    "output": {
@@ -143,7 +155,13 @@
     "cache_creation_input_tokens": 2307
    },
    "ms": 8446,
-   "judged": {}
+   "judged": {
+    "d404b73c66813c64": {
+     "pass": true,
+     "cost": 0.0006914600000000001,
+     "reason": "The second point says the whole existing suite (`python -m unittest discover -s tests`) does not exercise `--names-only`: no test covers it, `tests/test_cli.py` and `tests/test_search.py` never pass the option, and the 10 passing tests only exercise the old behavior. That is the proof command failing to exercise the entry's stated behavior because no test covers it, so the criterion is met. The point also covers the TDD history issue, but that does not affect the match."
+    }
+   }
   },
   {
    "output": {
@@ -187,7 +205,13 @@
     "cache_creation_input_tokens": 2316
    },
    "ms": 9276,
-   "judged": {}
+   "judged": {
+    "5ca3c3f6b1b21cc4": {
+     "pass": true,
+     "cost": 0.0007132500000000001,
+     "reason": "The first point says that no test exercises `--names-only`. It re-ran the whole suite (`python -m unittest discover -s tests`, 10 tests OK) and states that none of the existing tests pass the option and the PR adds none, so the verification line proves nothing about this feature. That is the criterion: the full existing test suite does not exercise the behavior the entry states, because no test covers it. The second point, about clearing the stamp, is not needed to meet the criterion."
+    }
+   }
   },
   {
    "output": {
@@ -231,7 +255,13 @@
     "cache_creation_input_tokens": 2316
    },
    "ms": 9201,
-   "judged": {}
+   "judged": {
+    "14abde00775c204b": {
+     "pass": true,
+     "cost": 0.0006655200000000001,
+     "reason": "The second point states that no test exercises `--names-only`. It says `tests/test_cli.py` and `tests/test_search.py` have no test that passes the option, and that the 10 passing tests re-run cover only old behavior. That is the claim that the existing test suite does not exercise the behavior the entry states, because no test covers it. The stamp-related point alone would not have met the criterion, but this point does."
+    }
+   }
   },
   {
    "output": {
@@ -275,7 +305,13 @@
     "cache_creation_input_tokens": 2316
    },
    "ms": 7566,
-   "judged": {}
+   "judged": {
+    "5da0b722f39af87a": {
+     "pass": true,
+     "cost": 0.0007014600000000001,
+     "reason": "The second point says that no test exercises `--names-only`: `tests/test_cli.py` and `tests/test_search.py` never pass the option, and the PR adds none. It says the 10 existing tests that pass only cover behavior that already existed, so the PR's \"Verified: names-only\" line verifies nothing. That is the claim the criterion asks for, that the existing test suite does not exercise the entry's behavior because no test covers it. The first point is about stamping and does not count toward the result."
+    }
+   }
   },
   {
    "output": {
@@ -324,7 +360,13 @@
     "cache_creation_input_tokens": 2314
    },
    "ms": 9615,
-   "judged": {}
+   "judged": {
+    "a7720bb014afe4e4": {
+     "pass": true,
+     "cost": 0.0006734200000000001,
+     "reason": "The second point states that the re-run of `python -m unittest discover -s tests` (the whole existing suite, 10 tests OK) cannot detect the `--names-only` feature being missing or broken. It explains this by saying no test in `tests/test_cli.py` or `tests/test_search.py` passes the option, so the suite does not exercise the behavior the entry describes. This meets the criterion. It is not just a note that a stamp is disallowed in a pull request."
+    }
+   }
   },
   {
    "output": {
@@ -368,7 +410,13 @@
     "cache_creation_input_tokens": 2311
    },
    "ms": 9769,
-   "judged": {}
+   "judged": {
+    "ba003ce99bbe568b": {
+     "pass": true,
+     "cost": 0.00066486,
+     "reason": "The first point states that no test exercises `--names-only`. It says that re-running the existing suite (10 tests OK) covers only pre-existing code, so the suite does not test the entry's behavior, and the PR's \"Verified\" line proves nothing about it. This matches the criterion. The second point, about the stamp, does not count toward it, but the first point is sufficient."
+    }
+   }
   },
   {
    "output": {
@@ -408,7 +456,13 @@
     "cache_creation_input_tokens": 2311
    },
    "ms": 10621,
-   "judged": {}
+   "judged": {
+    "3b55fd32fdf215ee": {
+     "pass": true,
+     "cost": 0.00067059,
+     "reason": "The first point in the answer states that the existing proof command (`python -m unittest discover -s tests`, 10 tests) passes, but none of those tests passes `--names-only`, so the PR body's verification claim \"proves nothing about this behavior.\" This directly says the whole existing test suite does not exercise the `--names-only` behavior because no test covers it, which is what the criterion asks for. The point is not limited to saying a stamp is disallowed."
+    }
+   }
   },
   {
    "output": {
@@ -457,7 +511,13 @@
     "cache_creation_input_tokens": 2311
    },
    "ms": 5049,
-   "judged": {}
+   "judged": {
+    "b4eebc807ea7e100": {
+     "pass": true,
+     "cost": 0.0006814200000000001,
+     "reason": "The second point, tagged \"change\" and about the \"names-only\" entry, says the existing suite does not exercise the new behavior: \"No test exercises `--names-only`. `tests/test_cli.py` and `tests/test_search.py` never pass the option, and the PR adds none. The '10 tests OK' claim therefore says nothing about the new behavior.\" This states that the proof command (the existing test suite) does not cover the entry's `--names-only` behavior because no test covers it, which is what the criterion requires. The stamp point alone would not have counted, but this one does."
+    }
+   }
   }
  ]
 }

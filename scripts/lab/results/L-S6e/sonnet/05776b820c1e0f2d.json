@@ -45,7 +45,13 @@
     "cache_creation_input_tokens": 13775
    },
    "ms": 13914,
-   "judged": {}
+   "judged": {
+    "69c8902a4bc8c685": {
+     "pass": false,
+     "cost": 0.00101814,
+     "reason": "The second point asks for the CLI to be run and its output recorded, and notes that the unit test covers only the query `cafe`. However, it never says that the stated reason, \"not by command: it is a trivial option,\" is wrong or does not hold. It frames the issue as the PR showing no check that the CLI behaves as described, which is a missing-verification complaint. The criterion requires the point to contest the justification itself, on the ground that the behavior can be checked by a command or test, and that is not stated explicitly."
+    }
+   }
   },
   {
    "output": {
@@ -89,7 +95,13 @@
     "cache_creation_input_tokens": 2312
    },
    "ms": 11953,
-   "judged": {}
+   "judged": {
+    "0104e5c329d7b751": {
+     "pass": true,
+     "cost": 0.0009440000000000001,
+     "reason": "The second point targets the PR body's claim \"Verified: names-only — not by command: it is a trivial option\" and states \"I did not accept that.\" It then shows the behavior can be checked by running a command (`python -m accessplaces.cli cafe --names-only` and the same query without the option), and asks for the observed output to replace the claim. The point rejects the triviality reason and implies the behavior is checkable by command. The rejection is implicit rather than an explicit statement that triviality does not exempt verification, and the point does not cite the PR's own test as the example. Even so, the answer's substance meets the criterion."
+    }
+   }
   },
   {
    "output": {
@@ -133,7 +145,13 @@
     "cache_creation_input_tokens": 2313
    },
    "ms": 10837,
-   "judged": {}
+   "judged": {
+    "45b712fe0942b24a": {
+     "pass": true,
+     "cost": 0.0008620500000000001,
+     "reason": "Point 2 (tag \"change\", entry \"names-only\") states that the PR body's justification, \"not by command: it is a trivial option\", does not hold. It gives the reason: the behavior is a CLI output contract whose unchanged-output clause was never exercised. It then says the line should name the command actually run, such as `python -m unittest discover -s tests` and the CLI invocation with and without `--names-only`. That shows the behavior can be checked by running commands. Point 1 separately notes that the PR's own test, NamesOnlyTests.test_prints_only_names, already checks one clause. The criterion is met, though the link to \"as the PR's own test does\" is only made across the two points rather than within point 2."
+    }
+   }
   },
   {
    "output": {
@@ -166,7 +184,13 @@
     "cache_creation_input_tokens": 2313
    },
    "ms": 10463,
-   "judged": {}
+   "judged": {
+    "cf012e9cce44c752": {
+     "pass": false,
+     "cost": 0.00064543,
+     "reason": "The criterion requires one of the points to say that the reason given for not verifying an entry by command (\"it is a trivial option\") does not hold, because the behavior can be checked by running a command or test. The answer's \"points\" array is empty, so no point makes this argument. The answer only lists checked_against entries marked \"conforms\" and a verdict of \"approve\", with nothing about an unverified entry or a trivial-option rationale. The criterion is not met."
+    }
+   }
   },
   {
    "output": {
@@ -205,7 +229,13 @@
     "cache_creation_input_tokens": 2315
    },
    "ms": 10750,
-   "judged": {}
+   "judged": {
+    "65ad66d77b840808": {
+     "pass": false,
+     "cost": 0.0006915900000000001,
+     "reason": "The criterion needs a point saying that the reason for not verifying an entry by command (\"it is a trivial option\") does not hold, because a command or test can check the behavior. The answer has one point, tagged \"decision\" on the names-only entry. It concerns whether the test's line order (farthest first, versus nearest first as the product description suggests) is intended or a latent bug. It never mentions a \"trivial option\" justification or argues that an entry could have been checked by running a command or test. Its suggestion to compare sets of lines is a test-design option, not a rebuttal of a non-verification rationale. The criterion is not met."
+    }
+   }
   },
   {
    "output": {
@@ -234,7 +264,13 @@
     "cache_creation_input_tokens": 2315
    },
    "ms": 7842,
-   "judged": {}
+   "judged": {
+    "5749f0edc2d9d6f4": {
+     "pass": false,
+     "cost": 0.00062104,
+     "reason": "The answer's \"points\" array is empty, so no point says that the \"trivial option\" justification for skipping command verification fails because the behavior can be checked by running a command or test. The checked_against entries (names-only, stdlib-only, layer-dependencies) all report \"conforms\" and do not mention this reasoning either. The criterion is not met."
+    }
+   }
   },
   {
    "output": {
@@ -267,7 +303,13 @@
     "cache_creation_input_tokens": 2314
    },
    "ms": 10535,
-   "judged": {}
+   "judged": {
+    "01a31f7531d7c4b8": {
+     "pass": false,
+     "cost": 0.0006296300000000001,
+     "reason": "The criterion requires one of the points to say that the reason given for not verifying an entry by command (\"it is a trivial option\") does not hold, because the behavior can be checked by running a command or test. The answer's \"points\" array is empty, so no point makes this argument. The checked_against list only records \"conforms\" results for four entries and says nothing about a trivial-option justification or a command-based check. The criterion is not met."
+    }
+   }
   },
   {
    "output": {
@@ -300,7 +342,13 @@
     "cache_creation_input_tokens": 2317
    },
    "ms": 8431,
-   "judged": {}
+   "judged": {
+    "cf012e9cce44c752": {
+     "pass": false,
+     "cost": 0.0006461300000000001,
+     "reason": "The criterion is not met. The agent's answer has \"points\": [], so no point says that the reason given for not verifying an entry by command (\"it is a trivial option\") does not hold. The answer also never mentions checking behavior by running a command or test. Its checked_against list marks all four entries (names-only, stdlib-only, layer-dependencies, overview) as \"conforms\", with no challenge to any verification reason."
+    }
+   }
   },
   {
    "output": {
@@ -349,7 +397,13 @@
     "cache_creation_input_tokens": 2309
    },
    "ms": 13434,
-   "judged": {}
+   "judged": {
+    "1237edea25569b90": {
+     "pass": true,
+     "cost": 0.00101292,
+     "reason": "The second point quotes the PR's justification (\"not by command: it is a trivial option\") and rejects it (\"That is not verification\"). It then asks for the behavior to be checked by running the real CLI with and without `--names-only` and recording the output. That treats the behavior as checkable by command, which is the substance of the criterion. The point does not explicitly say that \"trivial\" is the wrong reason, and it never cites the PR's own unit test as the example, so the match is implicit rather than stated. It is still a rejection of the reason, not a mere note that a stamp is missing."
+    }
+   }
   },
   {
    "output": {
@@ -378,7 +432,13 @@
     "cache_creation_input_tokens": 2314
    },
    "ms": 11917,
-   "judged": {}
+   "judged": {
+    "5749f0edc2d9d6f4": {
+     "pass": false,
+     "cost": 0.00064614,
+     "reason": "The criterion requires one of the points to state that the \"trivial option\" reason for not verifying an entry by command does not hold, because the behavior can be checked by running a command or test as the pull request's own test does. The answer's \"points\" array is empty, so no point makes this argument. The three checked entries (names-only, stdlib-only, layer-dependencies) are all marked \"conforms\" and none is described as unverified for a trivial-option reason. Nothing in the answer meets the criterion."
+    }
+   }
   }
  ]
 }

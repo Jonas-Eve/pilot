@@ -50,7 +50,13 @@
     "cache_creation_input_tokens": 15718
    },
    "ms": 11107,
-   "judged": {}
+   "judged": {
+    "ab4fd29b4fdbdb57": {
+     "pass": true,
+     "cost": 0.00069812,
+     "reason": "The third point (tag \"change\", entry \"names-only\") says the PR's only verification, \"I read the code and it looks right\", is not a real test: no test file is in the diff, the 10 passing tests are existing ones that never exercise `--names-only`, and the verification line must be replaced with an actual test run. That states the proof does not test what the entry says, which meets the criterion. The second point's stamp criticism is about stamping being disallowed and stale, but the third point independently covers the proof itself, so the criterion is met."
+    }
+   }
   },
   {
    "output": {
@@ -104,7 +110,13 @@
     "cache_creation_input_tokens": 2312
    },
    "ms": 6071,
-   "judged": {}
+   "judged": {
+    "3374a97a91172fa3": {
+     "pass": true,
+     "cost": 0.00078072,
+     "reason": "Point 3 (tag \"change\", entry \"names-only\") says the PR's proof is not a test of the entry's behavior. It quotes the PR body as only \"I read the code and it looks right\", states that no test covers `--names-only` output, and says the unchanged default output is also untested. That matches the criterion's \"does not test what the entry states\" branch. The point is not limited to saying a stamp is forbidden in a PR."
+    }
+   }
   },
   {
    "output": {
@@ -158,7 +170,13 @@
     "cache_creation_input_tokens": 2311
    },
    "ms": 9425,
-   "judged": {}
+   "judged": {
+    "d70d4f00d20d2591": {
+     "pass": true,
+     "cost": 0.0007529300000000001,
+     "reason": "The answer addresses the PR's proof for the names-only entry directly. Point 4 says the 'Verified' line is not empirical evidence and asks to replace it with the commands run and their results, which means the line is not a replayable command. Point 3 says the claim rests only on 'I read the code and it looks right' and that the 10 passing tests re-run without exercising `--names-only`, so the proof does not test what the entry states. Point 2 also says the stamp is not backed by a valid proof, since it is stale and a PR never stamps an entry. The criterion is therefore met, and it is not met only by a bare 'stamps not allowed' remark."
+    }
+   }
   },
   {
    "output": {
@@ -216,7 +234,13 @@
     "cache_creation_input_tokens": 2314
    },
    "ms": 6680,
-   "judged": {}
+   "judged": {
+    "0c6bf00c58bd3e50": {
+     "pass": true,
+     "cost": 0.00077884,
+     "reason": "The answer meets the criterion. Its names-only point 3 says the PR body's only proof, \"I read the code and it looks right\", is not a test: the 10 passing tests do not show that --names-only is tested, and it asks for tests covering the entry's stated behavior. Its point 4 also calls that same statement \"unverified\" and asks for a replayable validation command (the command and its result) in its place. Both points fall under the criterion's \"does not test what the entry states\" and \"not a command that can be replayed\" wording."
+    }
+   }
   },
   {
    "output": {
@@ -265,7 +289,13 @@
     "cache_creation_input_tokens": 2314
    },
    "ms": 10907,
-   "judged": {}
+   "judged": {
+    "5117dbd9697936c9": {
+     "pass": true,
+     "cost": 0.00073746,
+     "reason": "The third point (tagged \"change\", entry \"names-only\") targets the PR's proof line. It quotes the PR body's only evidence, \"I read the code and it looks right\", and says this \"is not verification\". It also says the new behavior is untested, since no test file is in the diff and the 10 passing tests predate the change. That meets the criterion's \"does not test what the entry states\" branch, and the \"not verification\" wording covers the replayable-proof branch. The fix asks for tests covering each part of the entry and replacing the \"Verified\" line with actual test results. The stamp point alone would not qualify, but this point does."
+    }
+   }
   },
   {
    "output": {
@@ -319,7 +349,13 @@
     "cache_creation_input_tokens": 2318
    },
    "ms": 5773,
-   "judged": {}
+   "judged": {
+    "54d3442b61548ded": {
+     "pass": true,
+     "cost": 0.0007749499999999999,
+     "reason": "The third point (tag \"change\", entry \"names-only\") directly addresses the PR's proof line. It says the line \"I read the code and it looks right\" is not evidence, that nothing shows the behavior was exercised, and that the diff adds no test for `--names-only`, so the proof does not test what the entry states. It asks for the line to be replaced with a real test run. That meets the criterion that the proof is not a replayable command or does not test the entry's behavior. The point about the hand-written stamp is a separate issue and does not carry the finding alone."
+    }
+   }
   },
   {
    "output": {
@@ -377,7 +413,13 @@
     "cache_creation_input_tokens": 2315
    },
    "ms": 6301,
-   "judged": {}
+   "judged": {
+    "37999bb5d985a006": {
+     "pass": true,
+     "cost": 0.00079673,
+     "reason": "The second point (tag `change`, entry `names-only`) says the PR adds no tests for `--names-only`, that the existing 10 tests \"none exercises the new behavior\", and that the line \"Verified: names-only — I read the code and it looks right\" \"is not evidence.\" That is a statement that the PR's proof does not test what the entry states, so it meets the criterion. The stamp point alone would not qualify, but this point does not depend on it."
+    }
+   }
   },
   {
    "output": {
@@ -440,7 +482,13 @@
     "cache_creation_input_tokens": 2317
    },
    "ms": 6987,
-   "judged": {}
+   "judged": {
+    "12ef5937298611e4": {
+     "pass": true,
+     "cost": 0.00076497,
+     "reason": "The third point, on the names-only entry, addresses the PR's proof directly. It says the passing tests do not show the entry's behavior because the diff adds no tests for `--names-only`, and it states that \"I read the code and it looks right\" is not validation. That is a claim that the proof does not test what the entry states. The point is not only about the stamp being disallowed. The second point, which says the PR body has no real verification statement, supports this reading."
+    }
+   }
   },
   {
    "output": {
@@ -503,7 +551,13 @@
     "cache_creation_input_tokens": 2313
    },
    "ms": 6636,
-   "judged": {}
+   "judged": {
+    "760db6f7bce66864": {
+     "pass": true,
+     "cost": 0.00071999,
+     "reason": "The third point on the names-only entry addresses the PR's proof line directly. It says the PR description's \"I read the code and it looks right\" is not verification, and that nothing in the diff tests `--names-only`, so the proof does not test what the entry states. That meets the criterion. The point is not only a statement that stamps are disallowed in a PR."
+    }
+   }
   },
   {
    "output": {
@@ -561,7 +615,13 @@
     "cache_creation_input_tokens": 2315
    },
    "ms": 7552,
-   "judged": {}
+   "judged": {
+    "a28f6e653c22e049": {
+     "pass": true,
+     "cost": 0.0009325,
+     "reason": "The point tagged `change` on `names-only` says the PR's line \"Verified: names-only — I read the code and it looks right\" \"is not evidence\", asks for tests that exercise the entry, and asks that the claim be replaced with actual test output. That treats the proof line as something that does not test what the entry states and cannot be replayed as a check, which is what the criterion asks for. The stamp-removal point on its own only says the stamp is not allowed, so it does not meet the criterion, but the proof-line point does."
+    }
+   }
   }
  ]
 }
