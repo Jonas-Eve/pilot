@@ -45,7 +45,13 @@
     "cache_creation_input_tokens": 14452
    },
    "ms": 9036,
-   "judged": {}
+   "judged": {
+    "8261cf368eefd354": {
+     "pass": true,
+     "cost": 0.0006882600000000001,
+     "reason": "The first point meets the criterion. It replays the existing proof command (`python -m unittest discover -s tests`, which runs the whole suite), then states that neither `tests/test_cli.py` nor `tests/test_search.py` passes `--names-only` and that the PR adds no test. It concludes that the command does not test any detail the entry states, so the `Verified:` stamp cannot stand. This is a claim that the existing suite does not exercise the `--names-only` behavior because no test covers it, not only that a stamp is disallowed."
+    }
+   }
   },
   {
    "output": {
@@ -89,7 +95,13 @@
     "cache_creation_input_tokens": 2310
    },
    "ms": 8140,
-   "judged": {}
+   "judged": {
+    "e47136bf2a86ad67": {
+     "pass": true,
+     "cost": 0.0006870000000000001,
+     "reason": "The first point is about the `names-only` entry and says the proof command does not exercise the behavior. It states that the `Verified:` command replays `python -m unittest discover -s tests`, that the suite passes, and that no test in `tests/test_cli.py` or `tests/test_search.py` passes `--names-only`, so the command would pass with or without the feature. It then names the untested details: one name per line, no distance or count line, and unchanged output without the option. This is the specific claim the criterion asks for, not just a statement that a stamp is disallowed in a pull request."
+    }
+   }
   },
   {
    "output": {
@@ -133,7 +145,13 @@
     "cache_creation_input_tokens": 2311
    },
    "ms": 9331,
-   "judged": {}
+   "judged": {
+    "b525210ec52b87e0": {
+     "pass": true,
+     "cost": 0.00066192,
+     "reason": "The first point on the `names-only` entry says the `Verified:` proof command, `python -m unittest discover -s tests`, is the whole existing suite and that no test in it passes `--names-only`. It states the command \"passes whether or not the option works\" and so does not test the entry's behavior (one name per line, no distance, no count line, unchanged output without the option). That is the required claim that the proof command does not exercise the `--names-only` behavior because no test covers it. It is more than a bare statement that a stamp is not allowed in a PR."
+    }
+   }
   },
   {
    "output": {
@@ -182,7 +200,13 @@
     "cache_creation_input_tokens": 2313
    },
    "ms": 9657,
-   "judged": {}
+   "judged": {
+    "41db5904ffe9c2cd": {
+     "pass": true,
+     "cost": 0.0006639400000000001,
+     "reason": "The first point says the proof command (the whole existing suite, `python -m unittest discover -s tests`) does not exercise `--names-only`: no test passes the option, the PR adds none, and the run's result would be identical without the change, so it proves nothing about the feature. The second point repeats that the command does not test what the entry states. This meets the criterion. It is not only a complaint about stamps in a pull request."
+    }
+   }
   },
   {
    "output": {
@@ -226,7 +250,13 @@
     "cache_creation_input_tokens": 2315
    },
    "ms": 8418,
-   "judged": {}
+   "judged": {
+    "d76acc15145e7431": {
+     "pass": true,
+     "cost": 0.00065565,
+     "reason": "The first point, tagged \"change\" and about the \"names-only\" entry, says the `Verified:` proof does not test the entry. It states that the whole existing suite (`python -m unittest discover -s tests`) passes, but no test passes `--names-only`, so the command would pass without the feature. That is the criterion: the proof command does not exercise the `--names-only` behavior because no test covers it. The second point is about TDD ordering and does not affect the result."
+    }
+   }
   },
   {
    "output": {
@@ -270,7 +300,13 @@
     "cache_creation_input_tokens": 2319
    },
    "ms": 8625,
-   "judged": {}
+   "judged": {
+    "8f782c1d862ae3bb": {
+     "pass": true,
+     "cost": 0.00066829,
+     "reason": "The first point (tag \"change\", entry \"names-only\") says the `Verified:` proof command, `python -m unittest discover -s tests`, is the whole existing test suite, and that no test in `tests/test_cli.py` or `tests/test_search.py` passes `--names-only`. It concludes the command \"passes with or without the feature and tests nothing the entry states.\" That is the required claim that the proof command does not exercise the `--names-only` behavior because no test covers it. The point is not limited to saying a stamp is disallowed in a pull request."
+    }
+   }
   },
   {
    "output": {
@@ -319,7 +355,13 @@
     "cache_creation_input_tokens": 2313
    },
    "ms": 8226,
-   "judged": {}
+   "judged": {
+    "c77d8a9d76e4bcec": {
+     "pass": true,
+     "cost": 0.00064608,
+     "reason": "The first point states that the `Verified:` command, `python -m unittest discover -s tests`, passes but does not exercise the `--names-only` behavior. It says no test in `tests/test_cli.py` or `tests/test_search.py` passes `--names-only` and the PR adds none, so the command does not test what the entry states. That matches the criterion: the whole existing suite is named as the proof, and the point says no test covers the behavior."
+    }
+   }
   },
   {
    "output": {
@@ -363,7 +405,13 @@
     "cache_creation_input_tokens": 2317
    },
    "ms": 8188,
-   "judged": {}
+   "judged": {
+    "0c215e76b21b11ec": {
+     "pass": true,
+     "cost": 0.00065689,
+     "reason": "The first point states that the proof command (`python -m unittest discover -s tests → OK (10 tests)`) does not exercise the `--names-only` behavior. It says no test in `tests/test_cli.py` or `tests/test_search.py` passes `--names-only`, so the command does not test the entry. This is the required reason, not just a note that a stamp is disallowed in a PR."
+    }
+   }
   },
   {
    "output": {
@@ -407,7 +455,13 @@
     "cache_creation_input_tokens": 2317
    },
    "ms": 9952,
-   "judged": {}
+   "judged": {
+    "a24b108a24dbc891": {
+     "pass": true,
+     "cost": 0.0006742600000000001,
+     "reason": "The second point states that the proof command `python -m unittest discover -s tests` passes without exercising the feature: \"no test calls `--names-only`, so the command would pass without the feature.\" That directly says the existing suite does not exercise the `--names-only` behavior because no test covers it, so the criterion is met. The first point also says the suite passes but \"none of them exercises the new behavior,\" which supports the same conclusion."
+    }
+   }
   },
   {
    "output": {
@@ -456,7 +510,13 @@
     "cache_creation_input_tokens": 2312
    },
    "ms": 4785,
-   "judged": {}
+   "judged": {
+    "22fe86a41f332eaf": {
+     "pass": true,
+     "cost": 0.00067336,
+     "reason": "The first point says the `Verified:` proof command (`python -m unittest discover -s tests → OK (10 tests)`) does not test the `names-only` entry. It states that no test in tests/test_cli.py or tests/test_search.py passes `--names-only`, so the existing suite passes with or without the feature and cannot show the behavior the entry requires. That is the criterion. The point also rejects the stamp and the status change, but the criterion is met by the coverage explanation, not by the stamp objection alone."
+    }
+   }
   }
  ]
 }

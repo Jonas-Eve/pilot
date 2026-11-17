@@ -59,6 +59,13 @@ call, costs about four times that, so it runs first), about 0.0015 $ on Haiku, 7
 arm of five cases cost about 2.6 $ (a complete session costs 0.3 $ or more and gives one sample). `--select` replays only the cases whose
 scenario depends on a file that changed between the two revisions.
 
+Answers are kept in `scripts/lab/results/` by fingerprint of the prompt (a hash of what the model reads and of the model): a case whose
+prompt did not change is read back, not asked again, only the missing samples run, and `lab.py plan` says before any call what is kept, what
+would run and what it would cost. The checks are applied on every run, so a corrected check or rubric costs no call (`regrade`, or
+simply a new `run`). Measured: the whole of the nine L-S cases, both versions, ten trials each (180 trials, about 5 $ the first time)
+replays for 0.12 $ (the judge re-reading rubrics that had changed, and one missing sample). The kept answers weigh about 0.7 MB for
+about 200 trials; delete a case's folder to forget it.
+
 What it tells: per check, the passing share with a 95 % Wilson interval, and between base and candidate the difference with a Newcombe
 interval and a plain verdict. With ten trials only a large change is detectable ("no detectable difference" is not "identical").
 

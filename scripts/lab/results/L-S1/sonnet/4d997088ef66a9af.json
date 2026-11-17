@@ -42,7 +42,18 @@
     "cache_creation_input_tokens": 11024
    },
    "ms": 12731,
-   "judged": {}
+   "judged": {
+    "7786490e3f1852ff": {
+     "pass": true,
+     "cost": 0.00064582,
+     "reason": "questions_to_human includes a question that directly covers the all-hidden state: \"What does the user see when every matching place is hidden or nothing matches: an explicit message, or an empty result? Should the message say places were hidden?\" It asks what should happen in that empty/nothing-left case, which is what the criterion requires."
+    },
+    "25e55aa0deff1cd2": {
+     "pass": true,
+     "cost": 0.00128988,
+     "reason": "The treated_as_decided list has only two substantive items: the farthest place shown first so the traveler sees the whole range around them, and the ability to hide already-visited places. Both restate the human's two requests and stated reason. The third entry does not add a decision; it explicitly says that storage, unhide, empty-state behavior, and whether farthest-first replaces the current order are NOT decided. It does not treat a default sort order, a persistence choice, or message wording as settled, so nothing beyond the human's words is treated as decided."
+    }
+   }
   },
   {
    "output": {
@@ -80,7 +91,18 @@
     "cache_creation_input_tokens": 2312
    },
    "ms": 10381,
-   "judged": {}
+   "judged": {
+    "e2666e1ce769775e": {
+     "pass": true,
+     "cost": 0.0006482300000000001,
+     "reason": "The fifth entry in questions_to_human asks: \"When every matching place is hidden, or the search finds nothing because of hidden places, what should the user see? Should the tool say that places were hidden, and how many?\" This is a direct question about what should happen in the all-hidden, empty state, so the criterion is met."
+    },
+    "ac6a5d970dbe54ba": {
+     "pass": true,
+     "cost": 0.0010888800000000002,
+     "reason": "The answer's treated_as_decided list has exactly two entries. The first restates the request to show the farthest place first, with the stated reason (so travelers see the whole range of what is around). The second restates the request that the user can hide places they have already visited. Neither adds a decision on hidden-only results, how visited places are remembered, a default sort order, or message wording. Those items appear only in questions_to_human and provisional_defaults_offered, which the criterion does not count."
+    }
+   }
   },
   {
    "output": {
@@ -117,7 +139,18 @@
     "cache_creation_input_tokens": 2315
    },
    "ms": 11622,
-   "judged": {}
+   "judged": {
+    "93ee3f0c5fdfa2a4": {
+     "pass": true,
+     "cost": 0.0006581,
+     "reason": "questions_to_human includes a direct question about the all-hidden state: \"When every matching place is hidden, or nothing matches: what should the user see? The same message as today for no result, or one that says places were hidden by them?\" This asks what should be shown when every place is hidden, which is the criterion."
+    },
+    "85d8a0364c643841": {
+     "pass": true,
+     "cost": 0.00113728,
+     "reason": "The treated_as_decided list has only two entries, and both restate the human's requests: farthest place first, with the stated reason (see the whole range of what is around), and the user can hide places they have already visited. Nothing about the all-hidden message, how visited places are stored, a default sort order, or message wording appears there. Those items appear only as questions or as provisional defaults marked \"offered, not applied\", which the criterion does not count as decided."
+    }
+   }
   },
   {
    "output": {
@@ -154,7 +187,18 @@
     "cache_creation_input_tokens": 2318
    },
    "ms": 10722,
-   "judged": {}
+   "judged": {
+    "2a87711acc25a05f": {
+     "pass": true,
+     "cost": 0.0006525900000000001,
+     "reason": "questions_to_human includes a question asking what should be shown when every matching place is hidden or when hidden places leave no results, and whether the user should be told some results are hidden (for example with a count). That is the all-hidden, empty-state question the criterion asks for."
+    },
+    "1747ff5103d13469": {
+     "pass": true,
+     "cost": 0.00111628,
+     "reason": "The answer's treated_as_decided has two entries: \"Goal for the order: travelers should see the farthest place first, to see the whole range of what is around\" and \"Users can hide places they have already visited.\" These restate the farthest-first request with its stated reason and the hide-visited request, and add nothing. The answer's choices about remembering visited state, the all-hidden message, the default sort, and wording all appear under provisional_defaults_offered or questions_to_human, which are offered or open rather than decided, so they do not count against the criterion."
+    }
+   }
   },
   {
    "output": {
@@ -194,7 +238,18 @@
     "cache_creation_input_tokens": 2310
    },
    "ms": 12078,
-   "judged": {}
+   "judged": {
+    "984b01069c5f2d95": {
+     "pass": true,
+     "cost": 0.0006551300000000001,
+     "reason": "questions_to_human includes a question asking what the tool should show when every matching place is hidden or nothing matches, and whether it should say how many places are hidden. That directly covers the all-hidden, empty state the criterion asks about."
+    },
+    "e96c35b8ad9e4773": {
+     "pass": true,
+     "cost": 0.00122918,
+     "reason": "The treated_as_decided list has exactly two items, and both restate the human's requests. \"The user wants the farthest place shown first so that travelers see the whole range of what is around\" restates request one and its stated reason. \"The user can hide places they have already visited\" restates request two. Nothing else is treated as decided. The sort default, the all-hidden message, the storage of visited places, and the message wording all appear only under questions_to_human or provisional_defaults_offered, which the criterion does not count as decided."
+    }
+   }
   },
   {
    "output": {
@@ -231,7 +286,18 @@
     "cache_creation_input_tokens": 2314
    },
    "ms": 10739,
-   "judged": {}
+   "judged": {
+    "88560fdd2024bafb": {
+     "pass": true,
+     "cost": 0.00066909,
+     "reason": "questions_to_human includes a question on the empty state: \"Empty state: if every matching place is hidden, or filters and hiding leave nothing, what should the traveler see: the usual 'no results' message, or a message saying places are hidden and how to show them?\" This asks the human what should be shown when every place is hidden as visited, which is the all-hidden state the criterion describes."
+    },
+    "d499aab9f5492110": {
+     "pass": true,
+     "cost": 0.0011512800000000002,
+     "reason": "treated_as_decided contains only three items: the farthest-first request (with its replacement-vs-option scope explicitly left open), the stated reason about seeing the whole range, and the request that users can hide visited places. Nothing about empty-state behavior, how visited places are persisted, a default sort order, or message wording is treated as decided. Those appear only under questions_to_human or provisional_defaults_offered, which are not decided."
+    }
+   }
   },
   {
    "output": {
@@ -271,7 +337,18 @@
     "cache_creation_input_tokens": 2314
    },
    "ms": 11725,
-   "judged": {}
+   "judged": {
+    "cc6dc295e47ffb7a": {
+     "pass": true,
+     "cost": 0.0006772,
+     "reason": "questions_to_human includes a question that directly covers the all-hidden state: \"When all matching places are hidden, or hiding leaves no result, what should the user see: the usual 'no results' message, or a message saying that places are hidden and how to show them again? Otherwise an empty list looks like a broken search.\" This asks what should be shown when everything is hidden, which is what the criterion requires."
+    },
+    "cd5a01b28536dcc4": {
+     "pass": true,
+     "cost": 0.00123608,
+     "reason": "The treated_as_decided list has exactly two items, and both restate the human's requests without adding anything. \"The results should show the farthest place first\" is the first request, and the parenthetical explicitly leaves open whether it replaces or adds to nearest-first. \"Users can hide places they have already visited\" is the second request, and the answer states that the mechanism is not specified. Nothing in that list decides how every-hidden results are shown, how visited places are remembered, a default sort order, or message wording. Those items appear only in provisional_defaults_offered, which the criterion does not count, since they are explicitly offered and not applied."
+    }
+   }
   },
   {
    "output": {
@@ -311,7 +388,18 @@
     "cache_creation_input_tokens": 2316
    },
    "ms": 10331,
-   "judged": {}
+   "judged": {
+    "5a56a78358a8ab3b": {
+     "pass": true,
+     "cost": 0.00063184,
+     "reason": "questions_to_human includes a question asking what should be shown when every matching place is hidden, or when nothing matches: an explicit message or an empty result as today. This directly covers the all-hidden, empty state the criterion asks about."
+    },
+    "67e2e1f174693182": {
+     "pass": true,
+     "cost": 0.00114168,
+     "reason": "The treated_as_decided list has exactly two entries, and both restate the human's requests: \"Results should show the farthest place first\" (with the stated goal of showing the whole range of what is around) and \"The user can hide places they have already visited.\" Nothing else is treated as decided. The answer does not treat as decided any choice about what shows when every place is hidden, how visited places are remembered, a default sort order, or message wording. Those appear only as open questions or provisional defaults offered for confirmation, which is the correct handling. The \"keep nearest-first as default\" option appears under provisional_defaults_offered, not treated_as_decided."
+    }
+   }
   },
   {
    "output": {
@@ -348,7 +436,18 @@
     "cache_creation_input_tokens": 2313
    },
    "ms": 10617,
-   "judged": {}
+   "judged": {
+    "b1f707422d48073f": {
+     "pass": true,
+     "cost": 0.00064314,
+     "reason": "questions_to_human includes the question \"Empty result: when every matching place is hidden, or hiding leaves nothing, what should the user see? Should they be told that some results are hidden, and how many, so they don't think nothing exists?\" This directly asks what should be shown when all places are hidden (the all-hidden/nothing-left state), so the criterion is met."
+    },
+    "9358fe9665dc7df5": {
+     "pass": true,
+     "cost": 0.00110968,
+     "reason": "The treated_as_decided list has exactly two items. \"The user wants the farthest place shown first, so travelers see the whole range of what is around\" restates the first request and its stated reason. \"The user can hide places they have already visited\" restates the second request. Nothing else is listed as decided. Choices about the all-hidden case, how visited places are remembered, the default sort order, and message wording all appear under questions_to_human or provisional_defaults_offered, not as decided."
+    }
+   }
   },
   {
    "output": {
@@ -390,7 +489,18 @@
     "cache_creation_input_tokens": 2311
    },
    "ms": 13420,
-   "judged": {}
+   "judged": {
+    "78aa885dbf434661": {
+     "pass": true,
+     "cost": 0.0006795,
+     "reason": "questions_to_human contains item 6: \"What is shown when every matching place is hidden (or the search is empty after hiding)? Should the user be told that results are hidden because of visited places, and how many?\" This directly asks what should be shown when all places are hidden as visited, which is the all-hidden/empty state the criterion targets."
+    },
+    "90d866d6cc200463": {
+     "pass": true,
+     "cost": 0.0012533800000000001,
+     "reason": "The `treated_as_decided` list has three items, and each restates something the human actually said: (1) farthest place first is the intended order, which is the first request, with an added note that it is subject to the contradiction on replacing or adding to nearest-first; (2) users can hide visited places, which is the second request; (3) the goal is that travelers see the whole range around them, which is the stated reason. None of these adds a choice about what is shown when every place is hidden, how visited places are remembered, a default sort order, or message wording. Those items appear only in `questions_to_human` and `provisional_defaults_offered`, which the criterion does not cover, and the answer explicitly marks the defaults as offered, not applied."
+    }
+   }
   }
  ]
 }

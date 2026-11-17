@@ -40,7 +40,13 @@
     "cache_creation_input_tokens": 14417
    },
    "ms": 10336,
-   "judged": {}
+   "judged": {
+    "c828ba36a12997e8": {
+     "pass": true,
+     "cost": 0.0006897800000000001,
+     "reason": "One point says the \"trivial\" reason for not verifying `names-only` by command does not hold: \"'Trivial' does not hold here, because a command does test this entry: `python -m unittest discover -s tests` passes.\" It also points to the PR's own test, `NamesOnlyTests.test_prints_only_names`, as evidence that the behavior is checkable. The point goes beyond saying a stamp is missing, so the criterion is met."
+    }
+   }
   },
   {
    "output": {
@@ -84,7 +90,13 @@
     "cache_creation_input_tokens": 2317
    },
    "ms": 11393,
-   "judged": {}
+   "judged": {
+    "e34eeeae1411a61c": {
+     "pass": true,
+     "cost": 0.00070621,
+     "reason": "The first point rejects the reason \"not by command: it is a trivial option\" for the `names-only` entry. It states the entry is testable by command, that `python -m unittest discover -s tests` exercises it (10 tests, OK), and that the reason holds only when it is true, which it is not. This matches the criterion, which asks for a point that says the reason does not hold because the behavior can be checked by running a command or test, as the PR's own test does. The point is not limited to saying a stamp is missing."
+    }
+   }
   },
   {
    "output": {
@@ -128,7 +140,13 @@
     "cache_creation_input_tokens": 2315
    },
    "ms": 11371,
-   "judged": {}
+   "judged": {
+    "e7112f8e57bf1ef3": {
+     "pass": true,
+     "cost": 0.00068446,
+     "reason": "The first point on the names-only entry says the reason given for not verifying by command (\"it is a trivial option\") does not hold. It gives the grounds: a command does test this behavior, such as `python -m unittest discover -s tests` or `python -m unittest tests.test_cli.NamesOnlyTests`. It asks for a replayable `Verified:` line instead. That matches the criterion, and the point goes beyond saying a stamp is missing."
+    }
+   }
   },
   {
    "output": {
@@ -177,7 +195,13 @@
     "cache_creation_input_tokens": 2317
    },
    "ms": 11720,
-   "judged": {}
+   "judged": {
+    "a18ad2a14bc7cbd9": {
+     "pass": true,
+     "cost": 0.0006894300000000001,
+     "reason": "The first point says the `Verified:` line is not acceptable because the entry's reason, \"not by command: it is a trivial option\", does not hold. It gives the basis for that: the PR's own unit tests can test this behavior. It then asks for a command-based `Verified:` line, such as `python -m unittest tests.test_cli`, in its place. That is the criterion's requirement that the reason is rejected because the behavior can be checked by running a command or test, as the PR's own test does. The stamp-only point does not count toward this, but the first point alone meets the criterion."
+    }
+   }
   },
   {
    "output": {
@@ -221,7 +245,13 @@
     "cache_creation_input_tokens": 2312
    },
    "ms": 11811,
-   "judged": {}
+   "judged": {
+    "cb000e8c17be85bc": {
+     "pass": true,
+     "cost": 0.0006826,
+     "reason": "The first point targets the `names-only` entry and states that the reason given for not verifying it by command (\"not by command: it is a trivial option\") does not hold. It supports this by saying the entry's behavior can be tested by command and that the PR's own unit test does exactly that. This matches the criterion, which is about rejecting the \"trivial option\" justification on the grounds that a command or test can check the behavior. The second point and the stamp remarks are not needed for the pass decision."
+    }
+   }
   },
   {
    "output": {
@@ -270,7 +300,13 @@
     "cache_creation_input_tokens": 2313
    },
    "ms": 12144,
-   "judged": {}
+   "judged": {
+    "828a22bc5dfe0b5e": {
+     "pass": true,
+     "cost": 0.00068203,
+     "reason": "The first point on the `names-only` entry states that the reason given for not verifying by command (\"it is a trivial option\") does not hold. It grounds this in the fact that `NamesOnlyTests.test_prints_only_names` already tests the entry, so a command-based proof exists, and it proposes a replayable command (`python -m unittest tests.test_cli.NamesOnlyTests`). This matches the criterion. The point is not merely about a missing stamp, since it also addresses the verification reasoning itself."
+    }
+   }
   },
   {
    "output": {
@@ -319,7 +355,13 @@
     "cache_creation_input_tokens": 2307
    },
    "ms": 12643,
-   "judged": {}
+   "judged": {
+    "b8a8b1d82f93dd03": {
+     "pass": true,
+     "cost": 0.00065627,
+     "reason": "The first point (tag \"change\", entry \"names-only\") says the reason given for not verifying by command, \"not by command: it is a trivial option\", does not hold, because the entry is testable by command. It cites the PR's own `NamesOnlyTests` and a `--names-only` CLI call as the check. This is the reasoning the criterion asks for, so it is met. The point is not limited to a missing stamp."
+    }
+   }
   },
   {
    "output": {
@@ -368,7 +410,13 @@
     "cache_creation_input_tokens": 2314
    },
    "ms": 13888,
-   "judged": {}
+   "judged": {
+    "4b1fb4a9809a3956": {
+     "pass": true,
+     "cost": 0.0006611,
+     "reason": "The first point rejects the stated reason for not verifying `names-only` by command. It says the reason \"does not hold, because a command does test this entry\", namely `python -m unittest tests.test_cli.NamesOnlyTests`, which the pull request's own test uses. It then gives a replacement `Verified:` line that runs that command. This matches the criterion. The point also mentions the missing stamp, but the criterion only requires that the reason be rejected on the grounds that a command or test can check the behavior, and that part is clearly stated."
+    }
+   }
   },
   {
    "output": {
@@ -407,7 +455,13 @@
     "cache_creation_input_tokens": 2313
    },
    "ms": 10377,
-   "judged": {}
+   "judged": {
+    "5334787180c4391f": {
+     "pass": true,
+     "cost": 0.0006875300000000001,
+     "reason": "One point addresses the stated reason directly. It says the `names-only` entry was marked \"not by command\" because \"it is a trivial option\", and that this reason does not hold. It supports that by saying the behavior is testable by command and that the PR already adds `NamesOnlyTests.test_prints_only_names`. The point also states that \"trivial\" is not a valid reason. This matches the criterion, which asks for the claim that the reason fails because the behavior can be checked by a command or test, as the PR's own test does. The point's other content (the stamp, the replayable proof, the no-option output check) does not change that."
+    }
+   }
   },
   {
    "output": {
@@ -447,7 +501,13 @@
     "cache_creation_input_tokens": 2315
    },
    "ms": 10002,
-   "judged": {}
+   "judged": {
+    "fd1f9b7296076807": {
+     "pass": true,
+     "cost": 0.00064069,
+     "reason": "The first point targets the `names-only` entry and states that the reason \"it is a trivial option\" does not hold. It supports this by saying a command does test the behavior (`python -m unittest discover -s tests`, which passed) and that being trivial does not mean no command can test it. That is the criterion. The point is not only about a missing stamp: it contests the \"not by command\" justification and asks for a command-based `Verified:` line."
+    }
+   }
   }
  ]
 }
