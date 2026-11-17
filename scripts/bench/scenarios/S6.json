@@ -1,0 +1,45 @@
+{
+ "id": "S6",
+ "title": "Review: a layer break, a stamp that predates a code change, a proof nobody can replay",
+ "phase": "review",
+ "mode": "auto",
+ "arms": [
+  "base",
+  "cand"
+ ],
+ "ticket": {
+  "title": "Add a --names-only option ({run})",
+  "labels": [
+   "type:tech",
+   "level:task",
+   "priority:P2",
+   "status:review-ready",
+   "workflow:lean"
+  ],
+  "body": "Bench scenario S6 (throwaway). Add a `--names-only` option that prints one place name per line. The pull request is already open.\n"
+ },
+ "fixtures": {
+  "wiki/output/names-only.md": "---\ntype: Behavior\ntitle: Print only the names of the places\ndescription: With the `--names-only` option, the search prints one place name per line and nothing else.\nstatus: draft\npilot:\n  status: specified\n  tickets: [{ticket}]\n---\n\nWith the `--names-only` option, the search prints one place name per line, with no distance and no count line. Without the option the output is unchanged.\n"
+ },
+ "pr": {
+  "title": "feat(cli): add --names-only",
+  "body": "## Summary\n\nAdds `--names-only`.\n\nVerified: names-only — I read the code and it looks right\n\nCloses #{ticket}\n",
+  "files": {
+   "accessplaces/search.py": "from .cli import format_distance\nfrom .data import PLACES\n\n\ndef search(query=\"\", step_free=False, places=None):\n    \"\"\"Places whose name contains `query` (case-insensitive), optionally only step-free ones,\n    sorted by distance, farthest first.\"\"\"\n    found = [p for p in (PLACES if places is None else places)\n             if query.lower() in p[\"name\"].lower() and (p[\"step_free\"] or not step_free)]\n    return sorted(found, key=lambda p: p[\"distance_m\"], reverse=True)\n\n\ndef describe(place):\n    return f\"{place['name']} ({format_distance(place['distance_m'])})\"\n",
+   "accessplaces/cli.py": "import argparse\nimport json\nimport sys\n\nfrom .search import describe, search\n\n\ndef format_distance(distance_m):\n    if distance_m < 1000:\n        return f\"{distance_m} m\"\n    return f\"{distance_m / 1000:.1f} km\"\n\n\ndef format_count(n):\n    if n == 1:\n        return \"1 place found\"\n    return f\"{n} places found\"\n\n\ndef main(argv=None):\n    parser = argparse.ArgumentParser(prog=\"accessplaces\")\n    parser.add_argument(\"query\", nargs=\"?\", default=\"\")\n    parser.add_argument(\"--step-free\", action=\"store_true\", help=\"only places with step-free access\")\n    parser.add_argument(\"--json\", action=\"store_true\", help=\"print the result as JSON\")\n    parser.add_argument(\"--names-only\", action=\"store_true\", help=\"print only the place names\")\n    args = parser.parse_args(argv)\n    found = search(args.query, args.step_free)\n    if args.json:\n        print(json.dumps(found))\n    elif args.names_only:\n        for place in found:\n            print(place[\"name\"])\n    else:\n        for place in found:\n            print(describe(place))\n        print(format_count(len(found)))\n    return 0\n\n\nif __name__ == \"__main__\":\n    sys.exit(main())\n",
+   "wiki/output/names-only.md": "---\ntype: Behavior\ntitle: Print only the names of the places\ndescription: With the `--names-only` option, the search prints one place name per line and nothing else.\nstatus: stable\nverified:\n  by: process:pilot-dev\n  at: 2026-11-17T12:00:00Z\npilot:\n  verifiedCommit: {base_sha}\n  status: implemented\n  tickets: [{ticket}]\n---\n\nWith the `--names-only` option, the search prints one place name per line, with no distance and no count line. Without the option the output is unchanged.\n"
+  }
+ },
+ "prompt": "/pilot-review {pr} --auto",
+ "plant": {
+  "review": true,
+  "bears_on": [
+   "layer-dependencies",
+   "names-only"
+  ],
+  "defects": [
+   "layer-dependencies",
+   "names-only"
+  ]
+ }
+}

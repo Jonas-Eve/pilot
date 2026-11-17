@@ -1,0 +1,23 @@
+{
+ "id": "S1",
+ "title": "Discovery --human: a hole in the brief and a contradiction with a wiki entry",
+ "phase": "discovery",
+ "mode": "human",
+ "arms": [
+  "base",
+  "cand"
+ ],
+ "judged": true,
+ "prompt": "/pilot-discovery --human \"Show the farthest place first, so travelers see the whole range of what is around. The user can also hide places they have already visited.\"",
+ "plant": {
+  "entries": [
+   "sort-by-distance"
+  ],
+  "hole": "what happens when every place has been hidden (not stated)"
+ },
+ "script": [
+  "If asked what happens when every place is hidden: show a message saying there is nothing left to show.",
+  "If told the sort order contradicts the entry that says nearest first: keep nearest first and drop the request."
+ ],
+ "expect": "The analysis cites sort-by-distance; the PM asks about the all-hidden state instead of choosing one; the contradiction with nearest first is put to the human; the story adds no decision the human did not give."
+}

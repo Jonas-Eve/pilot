@@ -156,8 +156,8 @@ def proportion(record):
 def effort(record):
     steps = record.get("steps", [])
     total = lambda key: sum(s.get(key, 0) for s in steps)
-    return {"tokens": total("tokens"), "tool_uses": total("tool_uses"), "seconds": round(total("ms") / 1000, 1),
-            "per_phase": {s["phase"]: {k: s.get(k, 0) for k in ("tokens", "tool_uses", "ms")} for s in steps}}
+    return {"tokens": total("tokens"), "cost_usd": round(total("cost_usd"), 4), "tool_uses": total("tool_uses"), "seconds": round(total("ms") / 1000, 1),
+            "per_phase": {s["phase"]: {k: s.get(k, 0) for k in ("tokens", "cost_usd", "tool_uses", "ms")} for s in steps}}
 
 
 def grade(record, checkout):

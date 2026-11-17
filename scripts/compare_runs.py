@@ -5,8 +5,8 @@
 
 Each directory holds the reports `scripts/grade_behavior.py` printed, one JSON file per run (three runs per scenario and per mode).
 For every scenario present in both, it prints, per check, the share of runs that passed on the base and on the candidate, and the
-median tokens of a run on each side. A **regression** is a check the candidate fails in more runs than the base by more than a third
-of the runs (two of three: one failure is noise); a **cost alert** is a candidate whose median tokens exceed the base's by more than
+median cost of a run on each side (dollars when the reports carry them, else tokens). A **regression** is a check the candidate fails in more runs than the base by more than a third
+of the runs (two of three: one failure is noise); a **cost alert** is a candidate whose median cost exceeds the base's by more than
 the threshold (1.25 = 25 % more). Exits 1 when there is a regression or a cost alert.
 """
 import glob
@@ -42,9 +42,13 @@ def rates(reports):
     return {name: ok / n for name, (ok, n) in seen.items()}
 
 
-def median_tokens(reports):
+def median_cost(reports):
+    """The median cost in dollars when the runs carry one, else the median tokens."""
+    costs = [r.get("effort", {}).get("cost_usd", 0) for r in reports]
+    if any(costs):
+        return statistics.median(costs), "usd"
     values = [r.get("effort", {}).get("tokens", 0) for r in reports]
-    return statistics.median(values) if values else 0
+    return (statistics.median(values) if values else 0), "tokens"
 
 
 def compare(base, candidate, cost_threshold=1.25):
@@ -60,12 +64,12 @@ def compare(base, candidate, cost_threshold=1.25):
         for n, v in checks.items():
             if v["base"] is not None and v["candidate"] is not None and v["base"] - v["candidate"] > 1 / 3 + 1e-9:
                 regressions.append(f"{name}: {n} passes {v['base']:.0%} of runs on the base, {v['candidate']:.0%} on the candidate")
-        tb, tc = median_tokens(b[key]), median_tokens(c[key])
+        (tb, unit), (tc, _) = median_cost(b[key]), median_cost(c[key])
         ratio = round(tc / tb, 2) if tb else None
         if ratio is not None and ratio > cost_threshold:
-            alerts.append(f"{name}: median tokens x{ratio} ({int(tb)} -> {int(tc)})")
+            alerts.append(f"{name}: median {unit} x{ratio} ({tb:g} -> {tc:g})")
         rows.append({"scenario": name, "runs": {"base": len(b[key]), "candidate": len(c[key])}, "checks": checks,
-                     "median_tokens": {"base": tb, "candidate": tc, "ratio": ratio}})
+                     "median_cost": {"unit": unit, "base": tb, "candidate": tc, "ratio": ratio}})
     return {"scenarios": rows, "regressions": regressions, "cost_alerts": alerts, "ok": not regressions and not alerts}
 
 
