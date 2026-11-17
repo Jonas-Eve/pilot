@@ -2958,3 +2958,45 @@ class LabTests(unittest.TestCase):
                   {"case": "c", "arm": "base", "checks": {}, "output": None, "cost": 0.1, "error": "timeout"}]
         row = self.lab.summarize(trials, ["base", "cand"])["c"]["arms"]["base"]
         self.assertEqual((row["n"], row["errors"], row["checks"]["x"]["rate"]), (1, 1, 1.0))
+
+
+class LabJudgeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import sys
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        cls.lab = importlib.import_module("lab")
+
+    def test_a_judge_check_goes_to_the_judge_and_its_cost_is_added_to_the_trial(self):
+        case = {"id": "c", "question": "Q?", "schema": {}, "persona": "p", "docs": [], "situation": "s",
+                "checks": [{"name": "equals", "path": "a", "equals": 1}, {"name": "meaning", "judge": "Is it kind?"}]}
+        seen = []
+
+        def judge_backend(system, user, schema, model):
+            seen.append((model, "Is it kind?" in user, '"a": 1' in user))
+            return {"output": {"pass": True, "reason": "yes"}, "cost": 0.002}
+        ok, cost = self.lab.call_judge(case, {"a": 1}, "Is it kind?", backend=judge_backend)
+        self.assertEqual((ok, cost, seen), (True, 0.002, [("haiku", True, True)]))
+        graded = self.lab.grade(case, {"a": 1}, lambda c, o, crit: (True, 0.002))
+        self.assertEqual(graded, {"equals": True, "meaning": True})
+        self.assertEqual(self.lab.grade(case, {"a": 1}), {"equals": True, "meaning": False})  # no judge, no pass
+        self.assertEqual(self.lab.grade(case, None, lambda *a: (True, 0)), {"equals": False, "meaning": False})
+
+    def test_a_trial_with_a_judge_check_costs_the_answer_and_the_judgement(self):
+        case = self.lab.load_case("L-S1")
+
+        def backend(system, user, schema, model):
+            if "strict grader" in system:
+                return {"output": {"pass": True, "reason": ""}, "cost": 0.002}
+            return {"output": {"questions_to_human": ["q"], "decisions_you_make": [], "contradictions_flagged": ["nearest first"]}, "cost": 0.02, "tokens": {}, "ms": 1}
+        trials, spent = self.lab.run_trials([case], {"base": self.lab.WORKTREE}, 1, "m", str(self.lab.ROOT), 1, None, backend)
+        self.assertEqual(len(trials), 1)
+        self.assertTrue(all(trials[0]["checks"].values()), trials[0]["checks"])
+        self.assertAlmostEqual(trials[0]["cost"], 0.02 + 2 * 0.002)  # two judged checks
+        self.assertAlmostEqual(spent, trials[0]["cost"])
+
+    def test_the_prompts_ask_for_english_and_exact_ids(self):
+        for cid in ("L-S1", "L-S6"):
+            self.assertIn("Write in English.", self.lab.load_case(cid)["question"])
+        props = self.lab.load_case("L-S6")["schema"]["properties"]
+        self.assertIn("exactly", props["checked_against"]["items"]["properties"]["entry"]["description"])
