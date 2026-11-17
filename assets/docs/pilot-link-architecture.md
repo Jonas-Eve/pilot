@@ -44,11 +44,12 @@ corrected in the same PR once the human confirms); the code must change on purpo
 entry untouched). An entry never stamped has not been checked against anything: a divergence on it is first read as
 a wrong or stale entry, with the reason.
 
-**Statuses.** `pilot.status` is `proposed`, `accepted`, `deprecated` or `superseded` (OKF `status`: `draft`,
-`stable`, `deprecated`, `deprecated`). An accepted ADR is never edited: a later one supersedes it
-(`arch supersede <new> <old>` sets both sides). Create and change entries only with `python3 .pilot/pilot.py arch
+**Statuses.** `pilot.status` is `proposed`, `accepted` or `superseded` (OKF `status`: `draft`,
+`stable`, `deprecated`). An accepted ADR is never edited and never deleted: a later one supersedes it, the old one stays as the history of the
+decision (`arch supersede <new> <old>` sets both sides). Any other retired entry — a guideline, a reference, a runbook, a `proposed` ADR — is deleted (`arch remove`, refused while another entry
+cites it; the root `overview.md` never), never kept as `deprecated`; an entry still `deprecated` from an earlier version is read and `lint` warns. Create and change entries only with `python3 .pilot/pilot.py arch
 add|set|remove|supersede`, never by hand; the prose below the frontmatter is the only hand-edited part. Only an
-`accepted` entry is in force: `index --active`, which a phase prompt carries, leaves out `proposed`, `deprecated` and
+`accepted` entry is in force: `index --active`, which a phase prompt carries, leaves out `proposed` and
 `superseded` entries (`search` and `show` still find them).
 
 **Only a PR changes the architecture.** Changes go on a branch and reach `main` through a PR a human merges;

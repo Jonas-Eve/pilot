@@ -64,9 +64,9 @@ pilot:
 The user can filter search results to places with step-free access. …
 ```
 
-`status` (OKF: `draft`, `stable`, `deprecated`) is derived by the script from `pilot.status`
-(`proposed` and `specified` → `draft`, `implemented` → `stable`); `verified` is OKF's own provenance key,
-written only by a lint or an init, with the commit in `pilot.verifiedCommit`. Other keys are kept as
+`status` (OKF: `draft`, `stable`) is derived by the script from `pilot.status`
+(`proposed` and `specified` → `draft`, `implemented` → `stable`; a Vision or a Persona carries none); `verified` is OKF's own provenance key,
+written (with the commit in `pilot.verifiedCommit`) only on an `implemented` entry: by the Dev PR that moves it there, after checking it, by a manual lint, or by an init. Other keys are kept as
 they are. `pilot.py wiki` reads a YAML subset (scalars, `[a, b]`, `{k: v}` flow mappings, one nested block, inline
 comments); for an entry it manages (one with a `pilot:` block), a frontmatter outside it is reported by `lint`
 and never rewritten, while a concept it does not manage (valid OKF written by hand, e.g. with `sources:` lists)
@@ -80,7 +80,6 @@ lists: that list is what makes ownership and conflicts decidable.
 | durable (in the file) | `proposed` | Discovery validated it, not specified | wiki PR from Discovery |
 | durable | `specified` | Spec validated it, ready for or in dev | wiki PR from Spec |
 | durable | `implemented` | merged in code | the code PR that completes it |
-| durable | `deprecated` | being or already retired | wiki PR from a story that removes it |
 | derived | `in-dev` | a listed ticket is `status:in-dev` | labels |
 | derived | `in-review` | a listed PR is `review-ready`/`in-review`/`changes-requested` | labels |
 | derived | `in-qa` | the story is `status:qa`/`in-qa` | labels |
@@ -97,9 +96,9 @@ that completes it; before that it stays `specified`.
 | Phase | Reads | Writes (always via PR) |
 |---|---|---|
 | 1 Discovery | entries touching the idea: already exists? contradicts? | small docs-only PR: new/changed entries as `proposed`, merged by the human who validates the brief |
-| 2 Spec | entries of the story | same, entries → `specified` (and `deprecated` where the story retires behavior); a `wont-do` ticket removes its `proposed` entries |
-| 3 Dev | the entries its ticket lists | its own code PR flips them to `implemented`. A dev who finds the wiki wrong or unfollowable does **not** edit it: `needs-human`, existing flow |
-| 4 Review | the PR's wiki diff | tech lead (spec conformance): wiki diff matches the code; PM: entries match the acceptance criteria. A behavior change with no wiki diff is a blocking finding |
+| 2 Spec | entries of the story | same, entries → `specified` (a story that removes behavior lists the entry it retires, which stays until the Dev PR deletes it); a `wont-do` ticket removes its `proposed` entries |
+| 3 Dev | the entries its ticket lists | its own code PR flips them to `implemented`, verifies each (the behavior holds as stated) and stamps it (date and commit), or deletes an entry its story removes. A dev who finds the wiki wrong or unfollowable does **not** edit it: `needs-human`, existing flow |
+| 4 Review | the PR's wiki diff | tech lead (spec conformance): wiki diff matches the code; PM: entries match the acceptance criteria. A behavior change with no wiki diff is a blocking finding; the tech lead independently verifies each entry the PR moves to `implemented` and confirms its stamp |
 | 5 QA | the story's entries | nothing: `verified` is derived |
 
 `type:tech`, `type:e2e` tasks and `type:bug` fixes change no entry unless the wiki was
@@ -222,3 +221,10 @@ files unchanged except their duty lists.
   a human-merged PR.
 - Lint's code comparison is only as good as the agent's reading; `unverifiable` is an
   honest verdict and leaves the entry unstamped.
+
+## Retiring and verifying (4.2)
+
+- A retired entry is deleted (`wiki remove`, `arch remove`): there is no `deprecated` status any more. Removal is refused while another entry cites it (a flow's `Personas:` line counts for a persona), and never applies to the Vision, the root architecture overview, an accepted ADR or a superseded one (a new ADR supersedes an accepted one; the old stays as the history of the decision). An entry still `deprecated` from an earlier version is read for one more version and `lint` warns.
+- A Vision and a Persona carry no status: they promise no behavior. A UserFlow keeps `proposed` / `specified` / `implemented`; its `verified` is derived by the dashboard from the last `flowRuns` document (a passing run whose flow and personas hashes still match), never written in the file.
+- An entry is verified when it becomes `implemented`: the Dev PR that moves it checks the behavior holds, stamps it (`verified.at` and `pilot.verifiedCommit`), and Review independently confirms the stamp (valid while only files under `wiki/` changed since its commit). A PR stamps no other entry. `/pilot-wiki --lint` stays a manual, global check.
+

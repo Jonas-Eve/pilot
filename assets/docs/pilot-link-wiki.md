@@ -39,15 +39,16 @@ changes. A pure correction (wording, precision) keeps the entry's status and tic
 `/pilot-wiki --edit`; a change of behavior goes back through `/pilot-discovery`, never an edit. A stamped entry whose text changed has its stamp cleared (`wiki set --clear-stamp`).
 
 **Statuses.** `pilot.status` is `proposed` (validated in Discovery), `specified` (validated in Spec),
-`implemented` (merged in code) or `deprecated`; the OKF `status` is `draft`, `draft`, `stable`, `deprecated`
-accordingly. `in-dev`, `in-review`, `in-qa` and `verified` are derived (`wiki status`/`wiki show`), never
-written: the first three from the tickets' labels, `verified` for an `implemented` entry that carries a lint
-stamp and whose feature story is done. The stamp — `verified` (who, when) and `pilot.verifiedCommit` — is
-written only by a lint that found the entry conforming (`wiki set --stamp <commit>`), or by an init that
-found tickets and code in agreement.
+or `implemented` (merged in code); the OKF `status` is `draft`, `draft`, `stable` accordingly. A retired entry is deleted
+(`wiki remove`, refused while another entry cites it), never kept as `deprecated`; an entry still `deprecated` from an earlier version is read and `lint` warns. `in-dev`, `in-review`, `in-qa` and `verified` are derived
+(`wiki status`/`wiki show`), never written: the first three from the tickets' labels, `verified` for an `implemented` entry that carries a
+stamp and whose feature story is done. The stamp — `verified` (who, when) and `pilot.verifiedCommit` — verifies an entry against the code and is written
+(`wiki set --stamp <commit>`) only on an `implemented` entry: by the Dev PR that moves it to `implemented`, after checking the behavior holds
+(`.pilot/pilot-task-implement.md` step 6a), confirmed by Review (a stamp stays valid while only files under `wiki/` changed since its commit); by a manual `/pilot-wiki --lint`; or by an init that found tickets and code in agreement.
+A PR stamps no other entry. Editing an entry's text clears its stamp.
 
-**The vision.** One entry of `type: Vision` (id `vision`, status `implemented`, no ticket; create it with
-`wiki add <domain>/vision.md --type Vision --status implemented …`) says what the product is, for whom
+**The vision.** One entry of `type: Vision` (id `vision`, no status and no ticket: it promises no behavior; create it with
+`wiki add <domain>/vision.md --type Vision …`) says what the product is, for whom
 and by which principles — never a behavior to deliver. It is the vision `pilot-pm` and `pilot-designer`
 read first. It is created when the wiki is initialised (`/pilot-init`, or `/pilot-wiki` turning the module on), from the vision
 the human gives. No code verifies it: it is never stamped and `--lint` leaves it out. It changes in the PR of the ticket that
@@ -55,8 +56,8 @@ changes the product's direction, with the wording the human confirmed, never sil
 
 **Personas and user flows.** Two folders are not functional domains: `wiki/persona/` (`type: Persona`, one end user's profile: who they are, their constraints, their test account's label) and `wiki/user-flow/`
 (`type: UserFlow`, one journey: its goal, the personas it is for, numbered steps each with the expected outcome), tested by `/pilot-flow`. They are never stamped (a run of the flow, not the code, is what checks one), and `--lint`
-and `--bootstrap` leave them out. Neither is ever removed (`wiki remove` only deletes a `proposed` entry): a retired one is `wiki set <id> --status deprecated`. A persona is written by a human or `/pilot-flow --new persona`, `implemented`, no ticket, never by a story. A flow written by hand (or `/pilot-flow --new flow`) is `implemented`
-with no ticket; one a story creates or changes follows the story's entries (`proposed`, `specified`, and `implemented` by the Dev PR that completes it, like any entry: `.pilot/pilot-task-implement.md` step 6a; the story as its ticket), and `/pilot-flow` runs only an `implemented` one.
+and `--bootstrap` leave them out. A retired one is deleted (`wiki remove`), refused while a flow's `Personas:` line or another entry cites it. A persona carries no status; it is written by a human or `/pilot-flow --new persona`, no ticket, never by a story. A flow written by hand (or `/pilot-flow --new flow`) is `implemented`
+with no ticket; one a story creates or changes follows the story's entries (`proposed`, `specified`, and `implemented` by the Dev PR that completes it, like any entry: `.pilot/pilot-task-implement.md` step 6a; the story as its ticket), and `/pilot-flow` runs only an `implemented` one. A flow's `verified` is derived by the dashboard, not written in the file: its last run passed and the flow and each persona that played are unchanged since (the hashes of the `flowRuns` document).
 
 **Only a PR changes the wiki.** Wiki changes go on a branch and reach `main` through a PR a human merges,
 the `index.md` files included; nothing is committed to `main` directly.

@@ -483,6 +483,7 @@ var EN={
 "traite ce qui est prêt dans cette arborescence, ticket après ticket, jusqu’à la fin ou un blocage": "handles what is ready in this tree, ticket after ticket, until the end or a block",
 "tâche": "task",
 "vérifié ": "verified ",
+"vérifié": "verified",
 "« Ouvrir » lance une session Claude Code sur ": "“Open” starts a Claude Code session on ",
 "Auto : l’agent travaille seul. Pair : vous dialoguez avec lui. Humain : vous décidez, l’agent analyse et challenge.": "Auto: the agent works alone. Pair: you dialogue with it. Human: you decide, the agent analyzes and challenges.",
 "à décider": "to decide",
@@ -492,7 +493,6 @@ var EN={
 "Vérifier": "Check",
 "Remplacer": "Replace",
 "Retirer": "Remove",
-"Déprécier": "Deprecate",
 " passées · ": " passed · ",
 " échouées · ": " failed · ",
 " non testables": " untestable",
@@ -1473,6 +1473,7 @@ function flowStatus(e){
   var stale=!!e.hash&&r.hash!==e.hash;
   arr(r.personas).forEach(function(p){var pe=wikiById(str(p.id,80)); if(pe&&pe.hash&&p.hash&&pe.hash!==p.hash)stale=true;});
   if(stale)out.push(h('span',{class:'chip acc'},'à rejouer'));
+  else if(r.result==='passed')out.push(h('span',{class:'chip ok'},'vérifié')); /* a flow is verified by a passing run its flow and personas have not changed since */
   arr(r.bugs).slice(0,10).forEach(function(n){n=Math.floor(Number(n)); if(n>0)out.push(h('a',{class:'chip crit',href:'https://github.com/'+S.repo+'/issues/'+n,target:'_blank',rel:'noopener'},'#'+n));});
   if(ART_RE.test(str(r.report,200)))out.push(h('a',{class:'chip',href:r.report,target:'_blank',rel:'noopener'},'rapport'));
   return out;
@@ -1493,16 +1494,17 @@ function flowLastRun(e){
 }
 /* what a person can ask of an entry, as a command written for Claude Code: only a PR changes the wiki */
 function wikiActions(e){
-  var id=str(e.id,80); if(!FLOW_ID.test(id)||e.status==='deprecated')return null;
+  var id=str(e.id,80); if(!FLOW_ID.test(id))return null;
   var k=wikiKind(e), pf=(k==='Persona'||k==='UserFlow'), acts=[];
+  if(e.status==='deprecated')return h('div',{class:'refresh'},openLink((pf?'/pilot-flow':'/pilot-wiki')+' --remove '+id,'Retirer')); /* an entry written before the status went away: to be deleted */
   if(e.status==='implemented'&&!runChecked(e)&&k!=='Vision')acts.push(openLink('/pilot-wiki --lint '+id,'Vérifier'));
   if(k!=='Vision')acts.push(openLink((pf?'/pilot-flow':'/pilot-wiki')+' --edit '+id+' ','Modifier'));
-  if(pf)acts.push(openLink('/pilot-flow --deprecate '+id,'Déprécier'));
-  else if(e.status==='proposed')acts.push(openLink('/pilot-wiki --deprecate '+id,'Retirer'));
+  if(pf)acts.push(openLink('/pilot-flow --remove '+id,'Retirer'));
+  else if(e.status==='proposed')acts.push(openLink('/pilot-wiki --remove '+id,'Retirer'));
   return acts.length?h('div',{class:'refresh'},acts):null;
 }
 function wikiEntry(e){
-  var chips=[h('span',{class:'chip '+(WIKI_CLS[e.status]||'')},WIKI_FR[e.status]||str(e.status,40))];
+  var chips=e.status?[h('span',{class:'chip '+(WIKI_CLS[e.status]||'')},WIKI_FR[e.status]||str(e.status,40))]:[]; /* a vision or a persona carries no status */
   if(WIKI_DERIVED_FR[e.derived])chips.push(h('span',{class:'chip acc'},WIKI_DERIVED_FR[e.derived]));
   if(e.verifiedAt)chips.push(h('span',{class:'chip ok'},'vérifié '+ago(e.verifiedAt)));
   else if(e.status==='implemented'&&!runChecked(e))chips.push(h('span',{class:'chip warn'},'non vérifié'));
@@ -1573,7 +1575,7 @@ function archActions(e){
   if(archIsRef(e)||/(^|\/|-)overview\.md$/.test(str(e.path,200)))acts.push(openLink('/pilot-architecture --verify '+id,'Vérifier'));
   if(e.status==='proposed'||(e.status==='accepted'&&!adr))acts.push(openLink('/pilot-architecture --edit '+id+' ','Modifier'));
   if(e.status==='accepted'&&adr)acts.push(openLink('/pilot-architecture --adr "remplace '+id+' : "','Remplacer'));
-  if((e.status==='proposed'||e.status==='accepted')&&str(e.path,200)!=='overview.md')acts.push(openLink('/pilot-architecture --deprecate '+id,e.status==='proposed'?'Retirer':'Déprécier'));
+  if((e.status==='proposed'||(e.status==='accepted'&&!adr)||e.status==='deprecated')&&str(e.path,200)!=='overview.md')acts.push(openLink('/pilot-architecture --remove '+id,'Retirer'));
   return acts.length?h('div',{class:'refresh'},acts):null;
 }
 function archEntry(e){

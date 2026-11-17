@@ -20,7 +20,8 @@ PR's branch — a finding is a `change`. The entries state what the code must do
 or changes that no entry states, an entry the PR leaves contradicting its code, or an entry moved to
 `implemented` while another dev task it lists is still open (or the other way round: the PR completes
 an entry and leaves it `specified`) is a `change`. An entry the code cannot satisfy as written is a
-`decision`. A PR never stamps an entry (`verifiedAt` stays empty: only a lint writes it).
+`decision`. An entry the PR moves to `implemented` is verified by you, independently of the dev: open it and the code that implements it, run what is cheap, and confirm its stamp — the behavior holds in
+every detail the entry states, and only files under `wiki/` changed since the stamp's commit. A missing or unconfirmable stamp, or a stamp on any other entry, is a `change`; code that does something else than the entry states is a `decision`.
 
 **Architecture** (only when the prompt carries the architecture index): open the entries that bear on the PR
 (`arch show <id>`) and run `python3 .pilot/pilot.py arch lint` on the PR's branch when it changes `architecture/` — a

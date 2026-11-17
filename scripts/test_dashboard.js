@@ -444,11 +444,11 @@ const STUB = (opts) => `
     check('architecture: each reference entry has its own check, a rule has none', cmdsOf.includes('/pilot-architecture --verify data-model') && cmdsOf.includes('/pilot-architecture --verify stack') && !cmdsOf.some((c) => /--verify layering/.test(c)), JSON.stringify(cmdsOf));
     check('architecture: a reference entry says whether it was checked, a rule does not', (v.match(/non vérifié/g) || []).length === 1 && (v.match(/vérifié il y a/g) || []).length === 1 && /Référence/.test(v), v);
     const has = (c) => cmdsOf.some((x) => x.trim() === c);
-    check('architecture: a rule can be edited and deprecated', has('/pilot-architecture --edit layering') && has('/pilot-architecture --deprecate layering'), JSON.stringify(cmdsOf));
-    check('architecture: an accepted ADR is replaced, never edited', cmdsOf.some((x) => x.startsWith('/pilot-architecture --adr "remplace 0002-store :')) && !has('/pilot-architecture --edit 0002-store') && has('/pilot-architecture --deprecate 0002-store'), JSON.stringify(cmdsOf));
-    check('architecture: a proposed ADR can be edited or removed, a superseded one is history', has('/pilot-architecture --edit 0003-draft') && has('/pilot-architecture --deprecate 0003-draft') && !cmdsOf.some((x) => /0001-old/.test(x)), JSON.stringify(cmdsOf));
-    check('architecture: the overview is checked and edited, never deprecated', has('/pilot-architecture --verify overview') && has('/pilot-architecture --edit overview') && !has('/pilot-architecture --deprecate overview'), JSON.stringify(cmdsOf));
-    check('architecture: a proposed entry offers Retirer, an accepted one Déprécier', /Retirer/.test(v) && /Déprécier/.test(v));
+    check('architecture: a rule can be edited and removed', has('/pilot-architecture --edit layering') && has('/pilot-architecture --remove layering'), JSON.stringify(cmdsOf));
+    check('architecture: an accepted ADR is replaced, never edited nor removed', cmdsOf.some((x) => x.startsWith('/pilot-architecture --adr "remplace 0002-store :')) && !has('/pilot-architecture --edit 0002-store') && !has('/pilot-architecture --remove 0002-store'), JSON.stringify(cmdsOf));
+    check('architecture: a proposed ADR can be edited or removed, a superseded one is history', has('/pilot-architecture --edit 0003-draft') && has('/pilot-architecture --remove 0003-draft') && !cmdsOf.some((x) => /0001-old/.test(x)), JSON.stringify(cmdsOf));
+    check('architecture: the overview is checked and edited, never removed', has('/pilot-architecture --verify overview') && has('/pilot-architecture --edit overview') && !has('/pilot-architecture --remove overview'), JSON.stringify(cmdsOf));
+    check('architecture: a removable entry offers Retirer, nothing is deprecated any more', /Retirer/.test(v) && !/Déprécier/.test(v));
     check('architecture reference: no page errors', pg.errors.length === 0, pg.errors.join('|'));
     await pg.close(); }
 
@@ -1170,6 +1170,11 @@ const STUB = (opts) => `
   await page.evaluate((d) => window.__push('flowRuns', 'f1', d), run({ repo: 'o/other', result: 'failed' })); await page.waitForTimeout(200);
   check('flow status: another repo\'s run is not shown', !(await chipsOf()).includes('échec'));
   await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ bugs: ['x', -1, 0], report: 'javascript:alert(1)' })); await page.waitForTimeout(250);
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ result: 'passed' })); await page.waitForTimeout(250);
+  check('flow status: a passing run its flow and personas have not changed since verifies the flow', (await chipsOf()).includes('vérifié') && !(await chipsOf()).includes('à rejouer'), (await chipsOf()).join('|'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ result: 'passed', hash: 'changed' })); await page.waitForTimeout(250);
+  check('flow status: once the flow changed it is to replay, not verified', (await chipsOf()).includes('à rejouer') && !(await chipsOf()).includes('vérifié'), (await chipsOf()).join('|'));
+  await page.evaluate((d) => window.__push('flowRuns', 'f0', d), run({ bugs: ['x', -1, 0], report: 'javascript:alert(1)' })); await page.waitForTimeout(250);
   check('flow status: a bad bug number or report address is dropped', !(await chipsOf()).some((x) => /^#/.test(x) || x === 'rapport'), (await chipsOf()).join('|'));
   { const en = await open({ preload: [BASE], wiki: [withHash], flowRuns: [run()], lang: 'en' });
   await en.goto(FILE + '#wiki/user-flow'); await en.waitForTimeout(350);
@@ -1211,7 +1216,7 @@ const STUB = (opts) => `
     check('last run: closed when it passed, and says no ticket was created', !(await pg.$eval('#view .lastrun', (d) => d.open)) && /Aucun ticket créé/.test(await pg.$eval('#view .lastrun', (d) => d.textContent)));
     const cmdsHere = async () => (await hrefs(pg, '#view .row a.btn')).map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]).trim());
     let c = await cmdsHere();
-    check('wiki: a flow can be edited and deprecated through /pilot-flow', c.includes('/pilot-flow --edit find-a-place') && c.includes('/pilot-flow --deprecate find-a-place'), JSON.stringify(c));
+    check('wiki: a flow can be edited and removed through /pilot-flow', c.includes('/pilot-flow --edit find-a-place') && c.includes('/pilot-flow --remove find-a-place'), JSON.stringify(c));
     await pg.goto(FILE + '#wiki/persona'); await pg.waitForTimeout(300);
     c = await cmdsHere();
     check('wiki: a persona is edited and deprecated through /pilot-flow, never checked against the code', c.includes('/pilot-flow --edit marie-senior') && c.includes('/pilot-flow --deprecate marie-senior') && !c.some((x) => /--lint marie-senior/.test(x)), JSON.stringify(c));

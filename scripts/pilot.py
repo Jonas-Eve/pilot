@@ -235,7 +235,8 @@ MODULES = {
     "proto": {"skills": ["pilot-proto"], "requires": ["dashboard"], "use": "/pilot-proto"},
 }
 WIKI_SNAPSHOT_MAX_BYTES = 240_000  # a database document holds at most 256 KiB
-WIKI_STATUSES = ("proposed", "specified", "implemented", "deprecated")  # the only ones a file holds
+WIKI_STATUSES = ("proposed", "specified", "implemented")  # the only ones a file holds
+WIKI_LEGACY_STATUSES = ("deprecated",)  # still read for one version (`lint` warns): a retired entry is now deleted
 OKF_VERSION = "0.2"  # the Open Knowledge Format the wiki follows (https://github.com/GoogleCloudPlatform/open-knowledge-format)
 WIKI_RESERVED = ("index.md", "log.md")  # OKF: never concept files
 WIKI_OKF_STATUS = {"proposed": "draft", "specified": "draft", "implemented": "stable", "deprecated": "deprecated"}
@@ -1361,7 +1362,10 @@ class Bundle:
     OKF_STATUS = WIKI_OKF_STATUS
     DEFAULT_TYPE = WIKI_DEFAULT_TYPE
     DERIVED_NAMES = ("in-dev", "in-review", "in-qa", "verified")  # in-flight names a file never holds
-    REMOVABLE = "proposed"  # the one status whose entry may be deleted
+    LEGACY_STATUSES = WIKI_LEGACY_STATUSES
+    STATUSLESS = ("Vision", "Persona")  # types that carry no status: they promise no behavior
+    NEVER_STAMPED = ("Vision", "Persona", "UserFlow")  # nothing in the code verifies them
+    STAMP_STATUS = "implemented"  # a stamp is written only on an entry in this status
 
     def __init__(self, root=None, language=None):
         self.root = root or self.DIR
@@ -1426,7 +1430,10 @@ class Bundle:
             add(("bad-id", "the file name (the id) is lowercase letters, digits and dashes"))
         status = pilot.get("status")
         if not status:
-            add(("missing-status", "no `pilot.status`"))
+            if entry["type"] not in self.STATUSLESS:
+                add(("missing-status", "no `pilot.status`"))
+        elif status in self.LEGACY_STATUSES:
+            entry["status"] = status  # tolerated for one version more: `lint` warns, the entry is to be deleted
         elif status not in self.STATUSES:
             add(("bad-status", f"status {status!r} is not one of {', '.join(self.STATUSES)}"
                  + (" (derived, never written)" if status in self.DERIVED_NAMES else "")))
@@ -1446,6 +1453,14 @@ class Bundle:
             add(("partial-stamp", "`verified.at` and `pilot.verifiedCommit` go together"))
         if not entry["description"]:
             add(("missing-description", "the index shows each entry's one-sentence `description`"))
+
+    def _removal_refusal(self, entry):
+        """(reason, hint) when an entry is never deleted, or None."""
+        return None
+
+    def _extra_citers(self, entry, entries):
+        """Ids of entries that cite this one other than by a link."""
+        return []
 
     @staticmethod
     def _view(entry):
@@ -1789,6 +1804,9 @@ class Bundle:
             findings += [{**where, "code": c, "message": m} for c, m in e["problems"]]
             if len(seen[e["id"]]) > 1:
                 findings.append({**where, "code": "duplicate-id", "message": "this id is used by %d files" % len(seen[e["id"]])})
+            if e["status"] in self.LEGACY_STATUSES:
+                findings.append({**where, "level": "warn", "code": "legacy-status",
+                                 "message": f"status {e['status']!r} is gone: delete the entry (a retired entry is not kept)"})
             if not e["managed"] or e["status"] not in ("proposed", "specified", "implemented"):
                 continue
             if e["status"] in ("proposed", "specified") and not e["tickets"]:
@@ -1867,6 +1885,14 @@ class Bundle:
         if status is not None and status not in self.STATUSES:
             raise Refused({"ok": False, "reason": "bad-status", "expected": list(self.STATUSES),
                            **({"hint": ", ".join(self.DERIVED_NAMES) + " are derived, never written"} if self.DERIVED_NAMES else {})})
+        if status is not None and entry["type"] in self.STATUSLESS:
+            raise Refused({"ok": False, "reason": "status-not-allowed", "id": entry_id, "hint": f"a {entry['type']} carries no status"})
+        if stamp:
+            if entry["type"] in self.NEVER_STAMPED:
+                raise Refused({"ok": False, "reason": "never-stamped", "id": entry_id, "hint": f"nothing in the code verifies a {entry['type']}"})
+            if (status or entry["status"]) != self.STAMP_STATUS:
+                raise Refused({"ok": False, "reason": "stamp-needs-status", "id": entry_id, "status": status or entry["status"],
+                               "hint": f"an entry is verified when it is {self.STAMP_STATUS}"})
         fm = entry["fm"]
         pilot = dict(fm["pilot"])
         if status:
@@ -1895,7 +1921,7 @@ class Bundle:
     def _path_ok(self, rel):
         return True
 
-    def add(self, path, title, description, status, tickets=(), body="", typ=None):
+    def add(self, path, title, description, status=None, tickets=(), body="", typ=None):
         """Create an entry: `<domain>/<id>.md` under the wiki root, then refresh the indexes."""
         rel = path.replace(os.sep, "/")
         stem = posixpath.splitext(posixpath.basename(rel))[0]
@@ -1905,7 +1931,11 @@ class Bundle:
                            "hint": self.PATH_HINT})
         if not self._path_ok(rel):
             raise Refused({"ok": False, "reason": "bad-path", "path": path, "hint": self.PATH_HINT})
-        if status not in self.STATUSES:
+        kind = typ or self._type_of(rel)
+        if kind in self.STATUSLESS:
+            if status:
+                raise Refused({"ok": False, "reason": "status-not-allowed", "hint": f"a {kind} carries no status"})
+        elif status not in self.STATUSES:
             raise Refused({"ok": False, "reason": "bad-status", "expected": list(self.STATUSES)})
         if not title.strip() or not description.strip():
             raise Refused({"ok": False, "reason": "title-and-description-required"})
@@ -1915,11 +1945,13 @@ class Bundle:
             raise Refused({"ok": False, "reason": "duplicate-id", "id": stem})
         target = os.path.join(self.root, *rel.split("/"))
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        fm = {"type": typ or self._type_of(rel), "title": title.strip(), "description": description.strip(), "status": self.OKF_STATUS[status],
-              "pilot": {"status": status, "tickets": list(tickets)}}
+        fm = {"type": kind, "title": title.strip(), "description": description.strip()}
+        if status:
+            fm["status"] = self.OKF_STATUS[status]
+        fm["pilot"] = ({"status": status} if status else {}) | {"tickets": list(tickets)}
         self._write(target, fm, ("\n" + body.strip() + "\n") if body.strip() else "")
         self.reindex()
-        return {"ok": True, "id": stem, "path": rel, "status": status}
+        return {"ok": True, "id": stem, "path": rel, "status": status or ""}
 
     def _max_words(self, entry):
         return {"ADR": 600, "Architecture": 800, "Runbook": 1500, "UserFlow": 800}.get(entry["type"], self.MAX_WORDS)
@@ -1928,11 +1960,17 @@ class Bundle:
         return self.DEFAULT_TYPE
 
     def remove(self, entry_id):
-        """Delete a `proposed` entry (a won't-do story's promise); anything else is deprecated, not removed."""
+        """Delete an entry: a retired entry is gone, not kept as history. Refused while another entry cites it, and
+        for the entries a bundle never deletes."""
         entry = self._editable(entry_id)
-        if entry["status"] != self.REMOVABLE:
-            raise Refused({"ok": False, "reason": "not-removable", "id": entry_id, "status": entry["status"],
-                           "hint": f"only a {self.REMOVABLE} entry is removed; deprecate the others"})
+        refusal = self._removal_refusal(entry)
+        if refusal:
+            raise Refused({"ok": False, "reason": refusal[0], "id": entry_id, "hint": refusal[1]})
+        entries = self.parse()
+        cited = sorted({c["id"] for c in self._related(entry, entries)["backlinks"]} | set(self._extra_citers(entry, entries)))
+        if cited:
+            raise Refused({"ok": False, "reason": "cited", "id": entry_id, "citedBy": cited,
+                           "hint": "edit or remove the entries that cite it first"})
         os.remove(entry["abs"])
         self.reindex()
         return {"ok": True, "id": entry_id, "removed": entry["path"]}
@@ -2000,14 +2038,33 @@ class Bundle:
 
 
 class Wiki(Bundle):
-    """The functional wiki: statuses proposed / specified / implemented / deprecated, derived from tickets."""
+    """The functional wiki: statuses proposed / specified / implemented, derived from tickets. A Vision or a Persona
+    carries no status."""
     FOLDER_TYPES = {"persona": "Persona", "user-flow": "UserFlow"}
+
+    def _removal_refusal(self, entry):
+        if entry["type"] == "Vision":
+            return ("vision-never-removed", "the vision is edited, never removed")
+        return None
+
+    def _extra_citers(self, entry, entries):
+        """A flow names its personas on a `Personas:` line, not with links."""
+        if entry["type"] != "Persona":
+            return []
+        out = []
+        for e in entries:
+            if e["type"] == "UserFlow":
+                for line in e["rest"].splitlines():
+                    if line.strip().startswith("Personas:") and entry["id"] in [x.strip() for x in line.split(":", 1)[1].split(",")]:
+                        out.append(e["id"])
+        return out
 
     def _type_of(self, rel):
         return self.FOLDER_TYPES.get(rel.split("/")[0], self.DEFAULT_TYPE) if "/" in rel else self.DEFAULT_TYPE
 
 
-ARCH_STATUSES = ("proposed", "accepted", "deprecated", "superseded")
+ARCH_STATUSES = ("proposed", "accepted", "superseded")
+ARCH_LEGACY_STATUSES = ("deprecated",)  # still read for one version (`lint` warns): a retired entry is now deleted
 ARCH_OKF_STATUS = {"proposed": "draft", "accepted": "stable", "deprecated": "deprecated", "superseded": "deprecated"}
 
 
@@ -2107,10 +2164,23 @@ class Architecture(Bundle):
         return {"ok": True, "next": "%04d" % (max(used, default=0) + 1)}
     DIR = ARCH_DIR
     STATUSES = ARCH_STATUSES
+    LEGACY_STATUSES = ARCH_LEGACY_STATUSES
+    STATUSLESS = ()
+    NEVER_STAMPED = ()
+    STAMP_STATUS = "accepted"
     OKF_STATUS = ARCH_OKF_STATUS
     DEFAULT_TYPE = "Guideline"
     DERIVED_NAMES = ()
     LIVE = ("deprecated", "superseded")
+
+    def _removal_refusal(self, entry):
+        if entry["id"] == "overview":
+            return ("overview-never-removed", "the root overview is edited, never removed")
+        if entry["type"] == "ADR" and entry["status"] == "accepted":
+            return ("accepted-adr", "an accepted ADR is retired by a new one that supersedes it (`/pilot-architecture --adr`)")
+        if entry["status"] == "superseded":
+            return ("superseded-is-history", "a superseded ADR stays as the history of the decision that replaced it")
+        return None
     ACTIVE_LEFT_OUT = ("Runbook",)
     ACTIVE_LEFT_OUT_STATUS = ("proposed",)
 
@@ -2177,6 +2247,9 @@ class Architecture(Bundle):
             findings += [{**where, "code": c, "message": m} for c, m in e["problems"]]
             if len(seen[e["id"]]) > 1:
                 findings.append({**where, "code": "duplicate-id", "message": "this id is used by %d files" % len(seen[e["id"]])})
+            if e["status"] in self.LEGACY_STATUSES:
+                findings.append({**where, "level": "warn", "code": "legacy-status",
+                                 "message": f"status {e['status']!r} is gone: delete the entry (a retired entry is not kept)"})
             if not e["managed"]:
                 continue
             pilot = e["fm"]["pilot"]
@@ -2297,7 +2370,7 @@ def build_parser():
             w.add_argument("--app", metavar="APP", help="the transversal entries plus those of this app")
         w.add_argument("--under", metavar="FOLDER")
         w.add_argument("--limit", type=int, default=8)
-        w.add_argument("--all", action="store_true", help="include entries that are history (deprecated, superseded)")
+        w.add_argument("--all", action="store_true", help="include entries that are history (superseded)")
         w = ws.add_parser("describe", help="the one sentence an outline shows next to a folder ('' for the bundle)")
         w.add_argument("folder")
         w.add_argument("description")
@@ -2329,7 +2402,7 @@ def build_parser():
     w.add_argument("path", help="path under the wiki directory, e.g. search/search-by-name.md (the file name is the id)")
     w.add_argument("--title", required=True)
     w.add_argument("--description", required=True, help="one sentence, shown in the index")
-    w.add_argument("--status", required=True, choices=list(WIKI_STATUSES))
+    w.add_argument("--status", choices=list(WIKI_STATUSES), help="required, except for a Vision or a Persona (they carry none)")
     w.add_argument("--type", default=None, help="default: set by the folder (persona/, user-flow/), else Behavior")
     w.add_argument("--ticket", type=int, action="append", default=[])
     w.add_argument("--body", default="")
@@ -2342,7 +2415,7 @@ def build_parser():
     w.add_argument("--remove-ticket", type=int, action="append", default=[])
     w.add_argument("--stamp", metavar="COMMIT", help="verified = now, pilot.verifiedCommit = COMMIT")
     w.add_argument("--clear-stamp", action="store_true", help="forget the stamp (the entry's text changed)")
-    w = ws.add_parser("remove", help="delete a proposed entry")
+    w = ws.add_parser("remove", help="delete an entry (refused while another entry cites it)")
     w.add_argument("id")
     ws.add_parser("migrate", help="convert a wiki from the earlier multi-entry page format to OKF files")
     p = sub.add_parser("arch")
@@ -2377,7 +2450,7 @@ def build_parser():
     w.add_argument("--remove-ticket", type=int, action="append", default=[])
     w.add_argument("--stamp", metavar="COMMIT", help="verified = now, pilot.verifiedCommit = COMMIT")
     w.add_argument("--clear-stamp", action="store_true")
-    w = ws.add_parser("remove", help="delete a proposed entry")
+    w = ws.add_parser("remove", help="delete an entry (refused while another entry cites it)")
     w.add_argument("id")
     w = ws.add_parser("supersede", help="an accepted ADR is replaced by a new one")
     w.add_argument("new")
@@ -2497,6 +2570,8 @@ def flow_run_doc(wiki, repo, data):
     flow = by_id.get(data.get("flow"))
     if flow is None or flow["type"] != "UserFlow":
         raise Refused({"ok": False, "reason": "not-a-user-flow", "id": data.get("flow")})
+    if flow["status"] != "implemented":
+        raise Refused({"ok": False, "reason": "flow-not-playable", "id": flow["id"], "hint": "only an implemented flow is played"})
     personas = []
     for run in data.get("personas") or []:
         if not isinstance(run, dict):
