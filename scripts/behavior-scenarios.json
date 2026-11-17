@@ -70,7 +70,8 @@
   "CLAUDE.md",
   "VERSION",
   "scripts/test_*",
-  "scripts/grade_*","scripts/compare_runs.py",
+  "scripts/grade_*",
+  "scripts/compare_runs.py",
   "scripts/bench_seed.py",
   "scripts/collect_run.py",
   "scripts/bench/*",
@@ -83,7 +84,9 @@
   ".github/*",
   ".pilot/*",
   "wiki/*",
-  "architecture/*"
+  "architecture/*",
+  "scripts/lab.py",
+  "scripts/lab/*"
  ],
  "untested": [
   ".claude/skills/pilot-architecture/SKILL.md",
