@@ -134,21 +134,22 @@ def run_check(check, output):
 
 
 def call_judge(case, output, criterion, model="haiku", backend=call_claude):
-    """A small model decides one question of meaning about the answer, where a pattern cannot. Returns (pass, cost)."""
+    """A small model decides one question of meaning about the answer, where a pattern cannot. Returns (pass, cost, reason)."""
     system = "You are a strict grader of one criterion. Answer only through the structured output."
     user = (f"The agent was asked:\n{case['question']}\n\nIts answer (JSON):\n{json.dumps(output, ensure_ascii=False)}\n\n"
             f"Criterion: {criterion}\n\nSet pass to true only when the criterion is met by what the answer actually says.")
     schema = {"type": "object", "properties": {"pass": {"type": "boolean"}, "reason": {"type": "string"}}, "required": ["pass", "reason"]}
     result = backend(system, user, schema, model)
-    return bool((result.get("output") or {}).get("pass")), float(result.get("cost") or 0)
+    verdict_ = result.get("output") or {}
+    return bool(verdict_.get("pass")), float(result.get("cost") or 0), str(verdict_.get("reason") or "")
 
 
 def grade(case, output, judge=None):
-    """Every check of the case on one answer; a `judge` check is put to `judge(case, output, criterion) -> (pass, cost)`."""
+    """Every check of the case on one answer; a `judge` check is put to `judge(case, output, check) -> (pass, cost, reason)`."""
     graded = {}
     for c in case["checks"]:
         if "judge" in c:
-            graded[c["name"]] = bool(output is not None and judge is not None and judge(case, output, c["judge"])[0])
+            graded[c["name"]] = bool(output is not None and judge is not None and judge(case, output, c)[0])
         else:
             graded[c["name"]] = bool(run_check(c, output))
     return graded
@@ -223,15 +224,16 @@ def run_trials(cases, revs, n, model, repo, workers, max_cost, backend=call_clau
         c, arm, i = job
         system, user, _ = prompts[(c["id"], arm)]
         result = backend(system, user, c["schema"], model)
-        extra = [0.0]
+        extra, reasons = [0.0], {}
 
-        def judge(case, output, criterion):
-            ok, cost = call_judge(case, output, criterion, judge_model, backend)
+        def judge(case, output, check):
+            ok, cost, reason = call_judge(case, output, check["judge"], judge_model, backend)
             extra[0] += cost
+            reasons[check["name"]] = reason
             return ok, cost
         checks = grade(c, result["output"], judge) if result.get("output") is not None else {}
         result = {**result, "cost": float(result.get("cost") or 0) + extra[0]}
-        return {"case": c["id"], "arm": arm, "sample": i, "checks": checks, **result}
+        return {"case": c["id"], "arm": arm, "sample": i, "checks": checks, "judged": reasons, **result}
 
     def phase(pending):
         nonlocal spent
