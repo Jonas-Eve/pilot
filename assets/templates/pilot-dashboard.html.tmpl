@@ -484,7 +484,7 @@ var EN={
 "tâche": "task",
 "vérifié ": "verified ",
 "« Ouvrir » lance une session Claude Code sur ": "“Open” starts a Claude Code session on ",
-"Auto : l’agent travaille seul. Pair : vous dialoguez avec lui.": "Auto: the agent works alone. Pair: you dialogue with it.",
+"Auto : l’agent travaille seul. Pair : vous dialoguez avec lui. Humain : vous décidez, l’agent analyse et challenge.": "Auto: the agent works alone. Pair: you dialogue with it. Human: you decide, the agent analyzes and challenges.",
 "à décider": "to decide",
 "Référence": "Reference",
 "Ajouter une règle": "Add a rule",
@@ -776,7 +776,7 @@ function vActivity(){
         h('div',{class:'main'},
           h('div',{class:'t'},h('span',{class:'num'},'#'+a.n+' '),a.title||''),
           h('div',{class:'meta'},h('span',{class:'chip acc'},PHASE_FR[a.phase]||a.phase||'?'),
-            a.auto===true?h('span',{class:'chip'},'auto'):a.auto===false?h('span',{class:'chip'},'pair'):null,
+            a.human===true?h('span',{class:'chip'},'humain'):a.auto===true?h('span',{class:'chip'},'auto'):a.auto===false?h('span',{class:'chip'},'pair'):null,
             a.by?h('span',{class:'note'},a.by):null,
             h('span',{class:'note'},'démarré '+ago(a.startedAt)+' · dernier signe '+ago(beat(a))))),
         h('div',{class:'acts'},h('span',{class:'chip '+(ok?'ok':'warn')},h('span',{class:'dot'}),ok?'en cours':'sans signe de vie')));
@@ -965,7 +965,7 @@ function vFile(){
     h('h2',{},'Ma file · '+(S.scope==='moi'?'assignés à '+(S.me?'@'+S.me:'moi')+' · ':S.scope==='prendre'?'à prendre · ':'')+roleTxt+' · '+mine.length),
     vTally(),
     scopeSeg,
-    h('p',{class:'note',title:'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'},'Auto : l’agent travaille seul. Pair : vous dialoguez avec lui.'),
+    h('p',{class:'note',title:'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'},'Auto : l’agent travaille seul. Pair : vous dialoguez avec lui. Humain : vous décidez, l’agent analyse et challenge.'),
     pager(mine.length),
     shown.length?shown.map(function(t){return ticketRow(t);}):h('div',{class:'empty'},
       S.scope==='moi'&&!S.me?'Indiquez votre identifiant GitHub (en haut de la page) pour voir les tickets qui vous sont assignés.':

@@ -227,7 +227,7 @@ mode, and is invalid only with `--resume`.
 
 **`--human`** (Discovery, Spec, Dev, Review, `/pilot-design` and `/pilot-proto`; `.pilot/pilot-link-existing-analysis.md`) needs a human live like pair, but the human proposes: the plan and the decisions are theirs, and the agent(s) analyze the existing, challenge what the human proposes and write the tickets, never adding a decision of their own. Same checkpoints, `--resume` and final consolidation as pair; invalid with `--multi`.
 
-**The cycle**, in every mode (the skills above, and the drafting duties of `/pilot-architecture`, `/pilot-wiki --edit` and `/pilot-flow`): analyze the existing, propose (who depends on the mode), challenge, repeated until agreed. The lead persona goes through all three, a validator the first two, a summoned persona only the point it was summoned on (`.pilot/pilot-link-existing-analysis.md`).
+**The cycle**, in every mode (the skills above, and the drafting duties of `/pilot-architecture`, `/pilot-wiki --edit` and `/pilot-flow`): analyze the existing, propose (who depends on the mode), challenge, repeated until agreed. The lead persona goes through all three, a validator the first two, a summoned persona only the point it was summoned on (`.pilot/pilot-link-existing-analysis.md`). The first analysis is an agent's turn (its reading stays out of the session's context); between rounds the session may answer a targeted factual question itself from a lookup it cites, never rewriting the analysis, and a point that changes the proposal's scope goes back to an agent for the delta.
 
 Unrelated to the "ask live" behavior of `needs-human`: that fires for a genuine blocker, pair or not; pair is for iterating on a draft together even when nothing blocks.
 
