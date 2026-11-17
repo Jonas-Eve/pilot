@@ -11,11 +11,27 @@ and the cockpit, never what an agent does with the prompts. This protocol does, 
 3. Does the challenge find the planted defect, with its source, and say nothing when there is none?
 4. Does Dev verify an entry before stamping it, and refuse to stamp a drift? Does Review catch a stamp it cannot confirm?
 5. Is the checking proportionate: only the entries that bear on the work are opened?
-6. What does the cycle cost (tokens, tool uses, seconds) against the version before it?
+6. What does the change cost (tokens, tool uses, seconds) against the base?
 
-## Arms and runs
+## What is replayed, and against what
 
-- **before**: PILOT 3.13.0 (the last version without the cycle, `--human` and the stamp rule); **after**: `main`.
+Only what a change can have affected, and only two versions: **base** (what is in use, `main`) and **candidate** (the branch to ship).
+
+- `python3 scripts/select_scenarios.py BASE CANDIDATE` reads the git diff and prints the scenarios to replay, with the changed files that
+  selected each. A scenario depends on its skill's files: the `SKILL.md`, the docs it cites with `.pilot/pilot-*.md`, the personas it
+  names and the link docs those cite (never the task docs another skill injects). A change to `pilot-process.md` therefore selects every
+  phase; one to `pilot-task-implement.md` selects the Dev scenarios only; one to `scripts/pilot.py` selects all; docs, tests, the
+  dashboard template and this repo's own `wiki/` and `architecture/` select nothing.
+- The output also lists what **no scenario covers** (`untested`: the wiki, architecture, design, proto, flow and QA prompts for now), so
+  a change there is visibly unchecked rather than silently passed, and a file nobody classified (`unclassified`) selects the smoke set.
+- `scripts/behavior-scenarios.json` holds the scenarios, the smoke set, the engine files, what is ignored and what is untested. A test
+  fails when a prompt file is neither covered by a scenario nor listed as untested, or when the untested list names a covered file: adding
+  a prompt without deciding how it is checked is not possible. A pull request that changes a covered prompt adds or updates its scenario.
+- The base's results are kept by commit: replay the base only when its commit has no result yet. Replay everything now and then
+  (a release, or each time the manifest changes): the dependency lists are read from the prompts and can miss a link the prose hides.
+
+## Runs
+
 - One throwaway repository, one branch per arm carrying that arm's PILOT install (`.claude/`, `.pilot/`, `.pilot/state.json` with the
   `wiki` and `architecture` modules on); every pull request targets that branch, never `main`. Seed it with the fixtures below.
 - Each phase is its own fresh Claude Code session started with the phase's instruction as its first message; usage per phase comes
@@ -72,9 +88,9 @@ seconds). `RECORD.json` is what the harness collected for one run (fields in the
 
 ## Reading the result
 
-Report, per scenario and arm: the rate of runs passing each mechanical check, the judged scores, and the median cost per phase.
-A defect the `after` arm misses in more than one of three runs is a defect of the prompts, not of the run; fix it and replay that
-scenario. The cost is the cost of the cycle: if it is not paid back by S1 to S7, simplify the cycle rather than the protocol.
+Report, per selected scenario and arm: the rate of runs passing each mechanical check, the judged scores, and the median cost per phase.
+A check the candidate fails in more than one of three runs where the base passes is a regression of the prompts, not of the run; fix it
+and replay that scenario. A change whose cost is not paid back by the scenarios it touches should be simplified, not the protocol.
 
 ## Limits
 

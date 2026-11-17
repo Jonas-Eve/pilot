@@ -2577,3 +2577,72 @@ class BehaviorGradeTests(unittest.TestCase):
         self.assertEqual(self.names(self.gb.grade(record, self.dir)), {"entries-opened-bounded": False})
         record["steps"][0]["entries_opened"] = ["by-name", "old"]
         self.assertTrue(self.gb.grade(record, self.dir)["ok"])
+
+
+class ScenarioSelectionTests(unittest.TestCase):
+    """scripts/select_scenarios.py: only the scenarios a change can have affected are replayed."""
+
+    ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location("select_scenarios", pathlib.Path(__file__).with_name("select_scenarios.py"))
+        cls.sel = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.sel)
+        cls.manifest = cls.sel.load_manifest(str(cls.ROOT))
+
+    def pick(self, *changed):
+        return self.sel.select(str(self.ROOT), list(changed), self.manifest)
+
+    def test_a_dev_task_doc_selects_the_dev_scenarios_only(self):
+        out = self.pick("assets/docs/pilot-task-implement.md")
+        self.assertEqual(out["selected"], ["S3", "S4", "S5", "S7"])
+        self.assertEqual(out["reasons"]["S3"], ["assets/docs/pilot-task-implement.md"])
+
+    def test_a_review_task_doc_selects_the_review_scenario_only(self):
+        self.assertEqual(self.pick("assets/docs/pilot-task-review-spec-conformance.md")["selected"], ["S6"])
+
+    def test_the_process_doc_selects_every_phase_and_the_engine_selects_all(self):
+        self.assertEqual(len(self.pick("assets/docs/pilot-process.md")["selected"]), len(self.manifest["scenarios"]))
+        out = self.pick("scripts/pilot.py")
+        self.assertTrue(out["all"])
+        self.assertEqual(len(out["selected"]), len(self.manifest["scenarios"]))
+
+    def test_docs_and_tests_select_nothing(self):
+        out = self.pick("README.md", "docs/wiki-design.md", "scripts/test_pilot.py", "VERSION", "assets/templates/pilot-dashboard.html.tmpl")
+        self.assertEqual((out["selected"], out["untested"], out["unclassified"]), ([], [], []))
+
+    def test_a_prompt_no_scenario_covers_is_reported_not_silently_dropped(self):
+        out = self.pick("assets/docs/pilot-task-wiki-edit.md", ".claude/skills/pilot-flow/SKILL.md")
+        self.assertEqual(out["selected"], [])
+        self.assertEqual(out["untested"], [".claude/skills/pilot-flow/SKILL.md", "assets/docs/pilot-task-wiki-edit.md"])
+
+    def test_a_file_nobody_classified_selects_the_smoke_set(self):
+        out = self.pick("assets/docs/pilot-task-brand-new.md")
+        self.assertEqual(out["selected"], self.manifest["smoke"])
+        self.assertEqual(out["unclassified"], ["assets/docs/pilot-task-brand-new.md"])
+
+    def test_every_prompt_file_is_covered_or_listed_as_untested_and_the_list_is_honest(self):
+        covered = set()
+        for s in self.manifest["scenarios"]:
+            covered |= self.sel.closure(str(self.ROOT), s["skill"])
+        untested = set(self.manifest["untested"])
+        prompts = set(self.sel.prompt_files(str(self.ROOT)))
+        self.assertEqual(sorted(prompts - covered - untested), [], "a prompt file no scenario covers: add a scenario or list it as untested")
+        self.assertEqual(sorted(untested & covered), [], "listed as untested but a scenario covers it: drop it from the list")
+        self.assertEqual(sorted(untested - prompts), [], "listed as untested but it does not exist")
+
+    def test_the_scenario_ids_are_unique_and_the_smoke_set_exists(self):
+        ids = [s["id"] for s in self.manifest["scenarios"]]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertTrue(set(self.manifest["smoke"]) <= set(ids))
+
+    def test_the_git_diff_between_two_revisions_gives_the_changed_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = lambda *a: subprocess.run(["git", "-C", tmp, "-c", "user.email=t@t", "-c", "user.name=t", *a], capture_output=True, text=True, check=True)
+            run("init", "-q")
+            pathlib.Path(tmp, "a.txt").write_text("1")
+            run("add", "-A"); run("commit", "-qm", "one")
+            pathlib.Path(tmp, "b.txt").write_text("2")
+            run("add", "-A"); run("commit", "-qm", "two")
+            self.assertEqual(self.sel.changed_files(tmp, "HEAD~1", "HEAD"), ["b.txt"])
