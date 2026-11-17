@@ -157,12 +157,14 @@ const STUB = (opts) => `
     activity: [
       { kind: 'activity', id: 'dev-99-1', phase: 'dev', n: 99, title: 'Ticket vivant', mode: 'fresh', auto: true, by: 'alice', startedAt: iso(30), lastBeat: iso(3) },
       { kind: 'activity', id: 'spec-5-1', phase: 'spec', n: 5, title: 'Ticket muet', mode: 'fresh', auto: false, by: 'bob', startedAt: iso(300), lastBeat: iso(180) },
+      { kind: 'activity', id: 'dev-7-1', phase: 'dev', n: 7, title: 'Ticket humain', mode: 'fresh', auto: false, human: true, by: 'dave', startedAt: iso(20), lastBeat: iso(2) },
       { kind: 'activity', id: 'qa-6-1', phase: 'qa', n: 6, title: 'Ticket ancien', mode: 'fresh', by: 'carol', startedAt: iso(3000), lastBeat: iso(2900) },
     ],
     events: [ev({ action: 'claim:fresh', at: iso(4) })] });
-  check('activity tab and chip show the live count', /Activité \(1\)/.test(await text(page, 'nav')) && /Sessions · 1 en cours/.test(await text(page, '#conn')));
+  check('activity tab and chip show the live count', /Activité \(2\)/.test(await text(page, 'nav')) && /Sessions · 2 en cours/.test(await text(page, '#conn')));
   view = await tab(page, 'Activité');
   check('activity: live session with phase and mode', /Ticket vivant/.test(view) && /en cours/.test(view) && /Dev/.test(view) && /auto/.test(view), view);
+  check('activity: a --human session shows the humain chip, not pair', /Ticket humain/.test(view) && /humain/.test(await page.locator('#view .row', { hasText: 'Ticket humain' }).textContent()) && !/pair/.test(await page.locator('#view .row', { hasText: 'Ticket humain' }).textContent()), view);
   check('activity: silent session flagged', /Ticket muet/.test(view) && /sans signe de vie/.test(view), view);
   check('activity: entries older than a day hidden', !/Ticket ancien/.test(view), view);
   check('activity: hash route', (await page.evaluate(() => location.hash)) === '#activite');
