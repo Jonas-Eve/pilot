@@ -310,6 +310,17 @@ const STUB = (opts) => `
   check('chevron opens the panel with --next and multi', (await panel99().count()) === 1 && /Enchaîner \(--next\)/.test(await panel99().textContent()) && /Multi/.test(await panel99().textContent()));
   check('the other rows stay folded', (await rowOf(70).locator('.opts').count()) === 0);
   check('default commands unchanged', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto', '/pilot-dev 99']), JSON.stringify(await rowHrefs(99)));
+  // a reclaim (changes-requested) has no approach to propose: no Humain option
+  const RC_SNAP = snapshot([ticket(301, ['type:tech', 'status:changes-requested', 'priority:P1']), ticket(302, ['type:tech', 'status:dev-ready', 'priority:P1'])], 120);
+  const rcPage = await open({ preload: [RC_SNAP] });
+  await rcPage.click('#roleSeg >> text=Tous'); await rcPage.waitForTimeout(150);
+  const rcRow = (n) => rcPage.locator('#view .row', { hasText: '#' + n + ' ' });
+  await rcRow(302).locator('button:has-text("Options")').click(); await rcPage.waitForTimeout(100);
+  const rcHas302 = (await rcRow(302).locator('.opts .tog', { hasText: /^Humain$/ }).count()) === 1;
+  const rcOpts301 = await rcRow(301).locator('button:has-text("Options")').count();
+  if (rcOpts301) { await rcRow(301).locator('button:has-text("Options")').click(); await rcPage.waitForTimeout(100); }
+  check('reclaim row: no Humain option, a dev-ready row keeps it', rcHas302 && (await rcRow(301).locator('.opts .tog', { hasText: /^Humain$/ }).count()) === 0, String(rcHas302));
+  await rcPage.close();
   // ---- --human: its own option, exclusive with Auto, --next and multi; never on QA ----
   const launchOf = async (n) => decodeURIComponent((await rowOf(n).locator('a.btn').first().getAttribute('href')).split('?q=')[1].split('&repo=')[0]);
   const humanTog = (n) => rowOf(n).locator('.opts .tog', { hasText: /^Humain$/ });

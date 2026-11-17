@@ -857,7 +857,7 @@ function rowCmds(t,a,o){
   if(a.container)return {canAuto:true,multiOK:true,container:true,auto:a.cmd+(o.multi?' --multi '+o.multi:'')+(o.next?' --next':''),pair:null};
   var canAuto=a.kind==='run'&&!a.pairOnly&&!(t.g&&t.g.p), multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
   /* --human: the human proposes, the agents analyze and challenge; Discovery, Spec, Dev, Review and Proto, never QA, a container, nor --multi (`.pilot/pilot-process.md` §4) */
-  var humanOK=a.kind==='run'&&!/^\/pilot-qa /.test(a.cmd)&&/^\/pilot-(discovery|spec|dev|review|proto) /.test(a.cmd);
+  var humanOK=a.kind==='run'&&t.status!=='changes-requested'&&!/^\/pilot-qa /.test(a.cmd)&&/^\/pilot-(discovery|spec|dev|review|proto) /.test(a.cmd); /* a reclaim has no approach to propose */
   var useHuman=humanOK&&!!o.human&&!o.next;
   if(useHuman)multiOK=false;
   var mu=multiOK&&o.multi?' --multi '+o.multi:'';

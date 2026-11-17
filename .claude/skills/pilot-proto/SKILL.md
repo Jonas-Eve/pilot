@@ -1,7 +1,7 @@
 ---
 name: pilot-proto
 description: "Builds a clickable prototype of a feature with a human, to decide whether to build it, before any Discovery (not one of the five phases). The PM frames the brief, the designer leads a live discussion that builds the mockup (shown in the dashboard's Prototypes tab), the PM checks it against the brief. Creates a type:poc ticket (status:poc-draft, then poc-review). <n> --accept validates it, after which /pilot-discovery --from-proto <n> may start from it; <n> --reject [reason] closes it; --from-artifact <url> imports a self-contained Claude artifact; --resume <n>; --with architect. Pair only. Needs the dashboard module."
-argument-hint: "<feature idea in free text> [--human] [--with architect] | --from-artifact <artifact url> [note] | --resume <issue number> | <issue number> --accept | <issue number> --reject [reason]"
+argument-hint: "<feature idea in free text> [--human] [--with architect] | --from-artifact <artifact url> [note] | --resume <issue number> [--human] | <issue number> --accept | <issue number> --reject [reason]"
 disable-model-invocation: true
 ---
 

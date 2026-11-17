@@ -7,7 +7,7 @@ argument-hint: "<issue number, optional — picks the next dev-ready or can-resu
 # PILOT — Phase 3: Dev
 
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
-protocol; read `.pilot/pilot-link-existing-analysis.md` too (the analyze / propose / challenge cycle), passed in full into the dev's calls below — the dev leads, no validator, so its challenge is a sourced self-review. `--human`: never with `--auto` (`pool`, `resolve` and `claim` get no `--auto`) or `--multi`; with `--resume`, the mode is the flag, else the ticket's own, pair by default; this skill covers only phase 3's mechanics. Most likely phase to run as several
+protocol; read `.pilot/pilot-link-existing-analysis.md` too (the analyze / propose / challenge cycle), passed in full into the dev's calls below — the dev leads, no validator, so its challenge is a sourced self-review. `--human` is ignored on a reclaim (nothing to propose, only fixes to push); never with `--auto` (`pool`, `resolve` and `claim` get no `--auto`) or `--multi`; with `--resume`, the mode is the flag, else the ticket's own, pair by default; this skill covers only phase 3's mechanics. Most likely phase to run as several
 parallel instances; the claim step below prevents collisions. The roster (`.pilot/pilot-link-roster.md`
 "Roster"): the dev (`pilot-e2e` for a `type:e2e` task) leads, no validator; the tech lead,
 architect and designer are summonable. Summons and dismissals are recorded in the ticket's
