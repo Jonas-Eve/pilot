@@ -6,13 +6,14 @@
 RECORD.json (what the harness collected for one run):
   {"scenario": "S3", "mode": "auto|pair|human",
    "ticket": {"number": N, "labels": [...], "comments": ["...", ...]},
-   "pr": null | {"number": P, "files": ["a.py"], "added": "the lines the PR adds, as text",
+   "pr": null | {"number": P, "files": ["a.py"], "added": "the lines the PR adds, as text", "body": "the PR description",
                  "reviews": [{"state": "COMMENT", "body": "..."}]},
    "plant": {                                      # only the keys the scenario plants
      "violation_regex": "^\\s*(import|from)\\s+requests",   # what the PR must not add
      "entries": ["0001-stdlib-only"],              # the binding entries the defect breaks
      "expect_stop": true,                          # the run must end in needs-human naming one of them
-     "stamped": ["search-by-name"],                # entries that must carry a stamp that holds
+     "stamped": ["search-by-name"],                # entries that must carry a stamp that holds, with a `Verified:` line in the PR body
+     "not_by_command": ["rendering"],              # entries no command tests: no stamp, a `Verified: <id> — not by command` line
      "unstamped": ["search-by-name"],              # entries that must not be stamped (a drift) and flagged
      "review": true,                               # the run is a review: it must submit one, listing what it checked
      "bears_on": ["layering", "search-by-name"],   # what bears on the work: a review lists it under "Checked against",
@@ -93,12 +94,23 @@ def stamp_holds(entry, checkout):
     return not outside, "changed since the stamp: " + ", ".join(outside[:3]) if outside else ""
 
 
+def proof(record, eid, not_by_command=False):
+    """The `Verified: <id> — <command> → <result>` line of the PR body (or its `not by command` form)."""
+    body = (record.get("pr") or {}).get("body", "")
+    tail = r"not by command:\s*\S+" if not_by_command else r"\S.*(→|->)\s*\S+"
+    return re.search(rf"(?m)^\s*Verified:\s*{re.escape(eid)}\s*[—-]+\s*{tail}", body) is not None
+
+
 def stamps(record, checkout):
     plant, entries, out = record["plant"], wiki_entries(checkout), []
     for eid in plant.get("stamped", []):
         e = entries.get(eid)
         ok, why = stamp_holds(e, checkout) if e else (False, "entry missing")
         out.append(check(f"stamp-holds:{eid}", ok and e["status"] == "implemented", why or e["status"]))
+        out.append(check(f"proof-in-pr:{eid}", proof(record, eid), "no `Verified: <id> — <command> → <result>` line"))
+    for eid in plant.get("not_by_command", []):
+        e = entries.get(eid)
+        out.append(check(f"not-stamped-and-says-why:{eid}", e is not None and not e["verifiedAt"] and proof(record, eid, True), ""))
     for eid in plant.get("unstamped", []):
         e = entries.get(eid)
         out.append(check(f"no-stamp-on-drift:{eid}", e is not None and not e["verifiedAt"], ""))

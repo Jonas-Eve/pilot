@@ -43,9 +43,9 @@ or `implemented` (merged in code); the OKF `status` is `draft`, `draft`, `stable
 (`wiki remove`, refused while another entry cites it), never kept as `deprecated`; an entry still `deprecated` from an earlier version is read and `lint` warns. `in-dev`, `in-review`, `in-qa` and `verified` are derived
 (`wiki status`/`wiki show`), never written: the first three from the tickets' labels, `verified` for an `implemented` entry that carries a
 stamp and whose feature story is done. The stamp — `verified` (who, when) and `pilot.verifiedCommit` — verifies an entry against the code and is written
-(`wiki set --stamp <commit>`) only on an `implemented` entry: by the Dev PR that moves it to `implemented`, after checking the behavior holds
-(`.pilot/pilot-task-implement.md` step 6a), confirmed by Review (a stamp stays valid while only files under `wiki/` changed since its commit); by a manual `/pilot-wiki --lint`; or by an init that found tickets and code in agreement.
-A PR stamps no other entry. Editing an entry's text clears its stamp.
+(`wiki set --stamp <commit> --by <who>`, `who` one of `process:pilot-dev`, `process:pilot-qa`, `process:pilot-wiki`) only on an `implemented` entry: by the Dev PR that moves it to `implemented`, with its proof (a `Verified: <id> — <command> → <result>` line in the PR body, replayed by Review;
+`.pilot/pilot-task-implement.md` step 6a); by QA, for what no command tests, once every case of the entry passed (a small wiki PR, `.claude/skills/pilot-qa/SKILL.md`); by a manual `/pilot-wiki --lint`; or by an init that found tickets and code in agreement.
+A stamp stays valid while only files under `wiki/` changed since its commit. A Dev PR stamps no entry but the ones it moves to `implemented`. Editing an entry's text clears its stamp.
 
 **The vision.** One entry of `type: Vision` (id `vision`, no status and no ticket: it promises no behavior; create it with
 `wiki add <domain>/vision.md --type Vision …`) says what the product is, for whom

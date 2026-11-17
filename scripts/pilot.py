@@ -241,6 +241,7 @@ OKF_VERSION = "0.2"  # the Open Knowledge Format the wiki follows (https://githu
 WIKI_RESERVED = ("index.md", "log.md")  # OKF: never concept files
 WIKI_OKF_STATUS = {"proposed": "draft", "specified": "draft", "implemented": "stable", "deprecated": "deprecated"}
 WIKI_VERIFIER = "process:pilot-wiki"
+WIKI_VERIFIERS = ("process:pilot-wiki", "process:pilot-dev", "process:pilot-qa")  # who verified: a lint, a Dev PR, a QA run
 WIKI_DEFAULT_TYPE = "Behavior"
 WIKI_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 WIKI_IN_DEV = ("status:in-dev",)
@@ -1878,7 +1879,7 @@ class Bundle:
             raise Refused({"ok": False, "reason": "not-a-pilot-entry", "id": entry_id})
         return entry
 
-    def set(self, entry_id, status=None, add=(), remove=(), stamp=None, clear_stamp=False, title=None, description=None):
+    def set(self, entry_id, status=None, add=(), remove=(), stamp=None, clear_stamp=False, title=None, description=None, by=None):
         """The only writer of an entry's frontmatter (unknown keys are kept as they are). `stamp` is the commit
         a lint verified the entry against; `clear_stamp` forgets it when the entry's text changed."""
         entry = self._editable(entry_id)
@@ -1887,6 +1888,8 @@ class Bundle:
                            **({"hint": ", ".join(self.DERIVED_NAMES) + " are derived, never written"} if self.DERIVED_NAMES else {})})
         if status is not None and entry["type"] in self.STATUSLESS:
             raise Refused({"ok": False, "reason": "status-not-allowed", "id": entry_id, "hint": f"a {entry['type']} carries no status"})
+        if by is not None and by not in WIKI_VERIFIERS:
+            raise Refused({"ok": False, "reason": "bad-verifier", "expected": list(WIKI_VERIFIERS)})
         if stamp:
             if entry["type"] in self.NEVER_STAMPED:
                 raise Refused({"ok": False, "reason": "never-stamped", "id": entry_id, "hint": f"nothing in the code verifies a {entry['type']}"})
@@ -1909,7 +1912,7 @@ class Bundle:
             fm.pop("verified", None)
             pilot.pop("verifiedCommit", None)
         if stamp:
-            fm["verified"] = {"by": WIKI_VERIFIER, "at": now_iso()}
+            fm["verified"] = {"by": by or WIKI_VERIFIER, "at": now_iso()}
             pilot["verifiedCommit"] = stamp
         fm["pilot"] = pilot
         self._write(entry["abs"], fm, entry["rest"])
@@ -2414,6 +2417,7 @@ def build_parser():
     w.add_argument("--add-ticket", type=int, action="append", default=[])
     w.add_argument("--remove-ticket", type=int, action="append", default=[])
     w.add_argument("--stamp", metavar="COMMIT", help="verified = now, pilot.verifiedCommit = COMMIT")
+    w.add_argument("--by", choices=list(WIKI_VERIFIERS), help="who verified the entry (default: process:pilot-wiki, a lint)")
     w.add_argument("--clear-stamp", action="store_true", help="forget the stamp (the entry's text changed)")
     w = ws.add_parser("remove", help="delete an entry (refused while another entry cites it)")
     w.add_argument("id")
@@ -2449,6 +2453,7 @@ def build_parser():
     w.add_argument("--add-ticket", type=int, action="append", default=[])
     w.add_argument("--remove-ticket", type=int, action="append", default=[])
     w.add_argument("--stamp", metavar="COMMIT", help="verified = now, pilot.verifiedCommit = COMMIT")
+    w.add_argument("--by", choices=list(WIKI_VERIFIERS), help="who verified the entry (default: process:pilot-wiki)")
     w.add_argument("--clear-stamp", action="store_true")
     w = ws.add_parser("remove", help="delete an entry (refused while another entry cites it)")
     w.add_argument("id")
@@ -2501,7 +2506,7 @@ def run_bundle(args, gh):
     if args.bundle_cmd == "supersede":
         return wiki.supersede(args.new, args.old)
     return wiki.set(args.id, args.status, args.add_ticket, args.remove_ticket, args.stamp, args.clear_stamp,
-                    args.title, args.description)
+                    args.title, args.description, args.by)
 
 
 def run_contract(args):

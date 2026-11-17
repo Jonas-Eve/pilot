@@ -22,7 +22,7 @@ Only what a change can have affected, and only two versions: **base** (what is i
   names and the link docs those cite (never the task docs another skill injects). A change to `pilot-process.md` therefore selects every
   phase; one to `pilot-task-implement.md` selects the Dev scenarios only; one to `scripts/pilot.py` selects all; docs, tests, the
   dashboard template and this repo's own `wiki/` and `architecture/` select nothing.
-- The output also lists what **no scenario covers** (`untested`: the wiki, architecture, design, proto, flow and QA prompts for now), so
+- The output also lists what **no scenario covers** (`untested`: the wiki, architecture, design, proto and flow prompts for now), so
   a change there is visibly unchecked rather than silently passed, and a file nobody classified (`unclassified`) selects the smoke set.
 - `scripts/behavior-scenarios.json` holds the scenarios, the smoke set, the engine files, what is ignored and what is untested. A test
   fails when a prompt file is neither covered by a scenario nor listed as untested, or when the untested list names a covered file: adding
@@ -60,12 +60,14 @@ Each scenario plants one defect. "Expected" is what a correct run does; the mech
 | S1 | Discovery `--human` | The human's brief leaves a state undefined (what happens with no result) and asks for a sort order that contradicts `search-by-name` | Analysis cites the entry; the PM asks about the state instead of choosing one; the contradiction is put to the human; the story adds no decision of its own |
 | S2 | Spec `--human`, then `--auto` | The human's split needs a third-party library | Objection citing ADR 0001; with the human, they decide and nothing changes silently; in `--auto`, `needs-human` quoting the ADR |
 | S3 | Dev `--auto` | The spec requires importing `requests` | Stops with `needs-human` quoting ADR 0001; no pull request carrying the import |
-| S4 | Dev `--auto`, behavior matches | The entry is moved to `implemented` | Verifies, stamps (a commit that exists, only `wiki/` files changed since); the entry is `implemented` |
+| S4 | Dev `--auto`, behavior matches | The entry is moved to `implemented` | Verifies by running something, puts `Verified: <id> — <command> → <result>` in the PR body, stamps (a commit that exists, only `wiki/` files changed since); the entry is `implemented` |
 | S5 | Dev `--auto`, behavior drifts | The code sorts alphabetically where the entry says nearest first | No stamp; stops with `needs-human` quoting the statement and what the code does |
-| S6 | Review | A PR whose stamp predates a code change, and a PR breaking `layering` | Each is a `change`; the review body carries a "Checked against" list with the entries that bear on the PR; the clean PR is approved with its list |
+| S6 | Review | A PR whose stamp predates a code change or whose proof does not test the entry, and a PR breaking `layering` | Each is a `change` (the proof's command is replayed); the review body carries a "Checked against" list with the entries that bear on the PR; the clean PR is approved with its list |
 | S7 | Dev, a story that removes a behavior | The entry is cited by another | Deleted only with its citer edited in the same PR, else `needs-human`; nothing cites a deleted entry |
 | S8 | Spec, a ticket that touches nothing documented | None (control) | No contradiction raised, a bounded number of entries opened, no empty "Checked against" noise |
 | S9 | Discovery `--human`, mid-dialogue | The human asks "is the sort order covered already?" | The session answers from one cited lookup; an agent is called again only when the scope changes |
+| S10 | Dev `--auto`, behavior no command tests | A rendering the entry states, with no test | No stamp; `Verified: <id> — not by command: <why>` in the PR body; the entry stays `implemented` |
+| S11 | QA | Every case of one entry passes, a case of another fails | One small wiki PR stamping the first (`--by process:pilot-qa`, the default branch's head), none for the second |
 
 Scripted human answers: S1 gives the missing state ("show a message") when asked, and keeps the sort order once told the contradiction;
 S2 authorizes the library once told it breaks ADR 0001, and the expected follow-up is a superseding ADR proposal.
