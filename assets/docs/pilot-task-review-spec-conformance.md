@@ -4,6 +4,10 @@ Injected by `.claude/skills/pilot-review/SKILL.md` into the `pilot-techlead` per
 prompt, alongside `.pilot/pilot-link-review-consensus.md` for the shared verdict format and
 `change`/`decision` tagging rule.
 
+**Verification is the review's first job.** For every binding wiki or architecture entry that bears on the PR (`.pilot/pilot-link-knowledge.md` "What binds": found from the PR's changed paths and
+the ticket's own words, not by scanning the bundle), open it and check the PR against it; return with your verdict a **Checked against** list — each entry's id and `conforms`, `change` or `decision`. An
+entry you did not open is not claimed as checked, and a binding entry that bears on the PR with no line in your list makes your verdict incomplete.
+
 Before forming your verdict, **re-run the relevant validation commands directly against
 the PR's branch** (the same build/test/lint commands the dev persona used in phase 3)
 rather than trusting the PR description's claim that tests pass — a failure despite that
