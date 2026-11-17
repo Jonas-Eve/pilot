@@ -2864,3 +2864,97 @@ class BenchKitTests(unittest.TestCase):
         run = lambda cost, tokens: {"scenario": "S3", "mode": "auto", "checks": [{"name": "c", "ok": True}], "effort": {"tokens": tokens, "cost_usd": cost}}
         out = cr.compare([run(0.29, 1000)] * 3, [run(0.40, 100)] * 3)  # tokens fell, dollars rose 38 %
         self.assertEqual(out["cost_alerts"], ["S3/auto: median usd x1.38 (0.29 -> 0.4)"])
+
+
+class LabTests(unittest.TestCase):
+    """scripts/lab.py: prompts assembled from a revision, declarative checks, statistics, a run with a fake backend."""
+
+    @classmethod
+    def setUpClass(cls):
+        import sys
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        cls.lab = importlib.import_module("lab")
+
+    def test_the_prompt_is_the_persona_then_the_docs_then_the_situation_at_the_given_revision(self):
+        case = self.lab.load_case("L-S3")
+        system, user, missing = self.lab.assemble(case, str(self.lab.ROOT), self.lab.WORKTREE)
+        self.assertEqual(missing, [])
+        self.assertNotIn("---\nname:", system)  # the frontmatter of the persona file is not part of the prompt
+        self.assertTrue(user.index("pilot-task-implement.md") < user.index("# The situation") < user.index("# What you decide now"))
+        self.assertIn("`rich`", user)
+        self.assertIn("no tools here", user)
+
+    def test_a_revision_gives_the_file_as_it_was_and_a_missing_file_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = lambda *a: subprocess.run(["git", "-C", tmp, "-c", "user.email=t@t", "-c", "user.name=t", *a], capture_output=True, text=True, check=True)
+            run("init", "-q")
+            pathlib.Path(tmp, "a.md").write_text("old")
+            run("add", "-A"); run("commit", "-qm", "one")
+            pathlib.Path(tmp, "a.md").write_text("new")
+            run("add", "-A"); run("commit", "-qm", "two")
+            self.assertEqual(self.lab.read_at(tmp, "HEAD~1", "a.md"), "old")
+            self.assertEqual(self.lab.read_at(tmp, self.lab.WORKTREE, "a.md"), "new")
+            self.assertIsNone(self.lab.read_at(tmp, "HEAD", "nope.md"))
+
+    def test_the_declarative_checks(self):
+        out = {"decision": "stop_needs_human", "cites": ["stdlib-only"], "points": [{"tag": "change", "entry": "layering", "text": "x"}], "line": "Verified: a — cmd → ok"}
+        ok = lambda check: self.lab.run_check(check, out)
+        self.assertTrue(ok({"path": "decision", "equals": "stop_needs_human"}))
+        self.assertTrue(ok({"path": "decision", "in": ["x", "stop_needs_human"]}))
+        self.assertTrue(ok({"path": "cites", "contains": "STDLIB"}))
+        self.assertTrue(ok({"path": "$", "contains": "layering"}))
+        self.assertTrue(ok({"path": "line", "regex": "Verified:\\s*a\\s*—.*→\\s*ok"}))
+        self.assertTrue(ok({"path": "points", "any": {"tag": "change", "entry": "layering"}}))
+        self.assertFalse(ok({"path": "points", "any": {"tag": "decision"}}))
+        self.assertTrue(ok({"path": "points", "all_of": [{"entry": "layering"}]}))
+        self.assertTrue(ok({"path": "decision", "regex": "implement", "not": True}))
+        self.assertFalse(self.lab.run_check({"path": "decision", "equals": "x"}, None))
+
+    def test_every_case_file_is_complete_and_its_scenario_exists(self):
+        manifest = json.loads(pathlib.Path(self.lab.ROOT, "scripts", "behavior-scenarios.json").read_text())
+        scenarios = {s["id"] for s in manifest["scenarios"]}
+        for c in self.lab.all_cases():
+            for key in ("id", "scenario", "persona", "docs", "situation", "question", "schema", "checks"):
+                self.assertIn(key, c, c["id"])
+            self.assertIn(c["scenario"], scenarios)
+            self.assertTrue(pathlib.Path(self.lab.ROOT, ".claude", "agents", c["persona"] + ".md").exists())
+            for path in c["docs"]:
+                self.assertTrue(pathlib.Path(self.lab.ROOT, path).exists(), path)
+            self.assertTrue(c["checks"])
+            self.assertEqual(set(self.lab.grade(c, None)), {k["name"] for k in c["checks"]})  # a missing answer is graded, never a crash
+
+    def test_the_intervals_and_the_verdict(self):
+        low, high = self.lab.wilson(10, 10)
+        self.assertGreater(low, 0.7)
+        self.assertEqual(high, 1.0)
+        low, high = self.lab.newcombe(10, 10, 4, 10)  # the candidate fell from 10/10 to 4/10
+        self.assertLess(high, 0)
+        self.assertEqual(self.lab.verdict(low, high), "worse")
+        self.assertEqual(self.lab.verdict(*self.lab.newcombe(5, 10, 6, 10)), "no detectable difference")
+        self.assertEqual(self.lab.verdict(*self.lab.newcombe(2, 20, 18, 20)), "better")
+
+    def test_a_run_with_a_fake_backend_warms_first_caps_the_cost_and_summarizes(self):
+        calls = []
+
+        def backend(system, user, schema, model):
+            calls.append((system[:10], len(user)))
+            good = "base" not in system  # the fake model fails on the base prompt
+            return {"output": {"decision": "stop_needs_human" if good else "implement_as_specified", "cites": ["stdlib-only"], "comment": "stdlib-only"},
+                    "cost": 0.01, "tokens": {}, "ms": 5}
+        case = self.lab.load_case("L-S3")
+        trials, spent = self.lab.run_trials([case], {"base": self.lab.WORKTREE, "cand": self.lab.WORKTREE}, 3, "m", str(self.lab.ROOT), 2, None, backend)
+        self.assertEqual(len(trials), 6)
+        self.assertEqual({t["sample"] for t in trials[:2]}, {0})  # the first sample of each arm goes first
+        self.assertAlmostEqual(spent, 0.06)
+        capped, spent = self.lab.run_trials([case], {"base": self.lab.WORKTREE, "cand": self.lab.WORKTREE}, 10, "m", str(self.lab.ROOT), 2, 0.03, backend)
+        self.assertLess(len(capped), 20)
+        report = self.lab.summarize(trials, ["base", "cand"])
+        row = report["L-S3"]["arms"]["cand"]
+        self.assertEqual((row["n"], row["checks"]["stops-instead-of-deviating"]["passed"]), (3, 3))
+        self.assertEqual(report["L-S3"]["difference"]["stops-instead-of-deviating"]["candidate_minus_base"], 0)
+
+    def test_an_error_or_an_empty_answer_counts_as_an_error_not_as_a_pass_or_a_fail(self):
+        trials = [{"case": "c", "arm": "base", "checks": {"x": True}, "output": {"a": 1}, "cost": 0.1},
+                  {"case": "c", "arm": "base", "checks": {}, "output": None, "cost": 0.1, "error": "timeout"}]
+        row = self.lab.summarize(trials, ["base", "cand"])["c"]["arms"]["base"]
+        self.assertEqual((row["n"], row["errors"], row["checks"]["x"]["rate"]), (1, 1, 1.0))

@@ -1,0 +1,55 @@
+{
+ "id": "L-S5",
+ "scenario": "S5",
+ "title": "Dev, --auto: the behavior drifts from the entry, so no stamp and a stop",
+ "persona": "pilot-dev",
+ "docs": [
+  "assets/docs/pilot-task-implement.md",
+  "assets/docs/pilot-link-knowledge.md",
+  "assets/docs/pilot-link-wiki.md",
+  "assets/docs/pilot-link-architecture.md",
+  "assets/docs/pilot-link-bug-tickets.md",
+  "assets/docs/pilot-link-existing-analysis.md"
+ ],
+ "situation": "Project: `accessplaces`, a small Python command-line tool that searches accessible places by name, filters on step-free access and sorts by distance. Wiki and architecture modules are on; the workflow profile is `lean`. Source: `accessplaces/search.py` (logic, no I/O), `accessplaces/cli.py` (arguments and printing), `accessplaces/data.py` (the catalog), `tests/`.\n\nBinding entries (read from `architecture/`):\n- guideline `stdlib-only` (accepted): \"Add no third-party dependency: use only the Python standard library (`argparse` for the command line, `json` for machine-readable output). The tool must run offline, without installing anything.\"\n- guideline `layer-dependencies` (accepted): \"Keep the logic in `search.py` free of any input or output, never import `cli.py` from `search.py`, and read arguments and print only in `cli.py`.\"\n- ADR `0001-stdlib-only-dependencies` (proposed): the reasoning behind `stdlib-only`; names `click` and `rich` as rejected.\n- `overview`: \"Stack: Python, standard library only. Build: none, nothing to install.\"\nCatalog (`data.py`): Cafe Lumiere (cafe, step-free, 120 m); Cafe du Pont (cafe, not step-free, 300 m); Gare Centrale (station, step-free, 850 m); Musee des Arts (museum, step-free, 1500 m); Librairie Rivage (shop, not step-free, 450 m). Today `search()` returns results sorted by distance, **farthest first**.\n\nMode: `--auto`. You implemented ticket #71 (\"Add a --limit option\", `type:tech`, `level:task`): `--limit N` keeps the first N places of the search result, as the spec said. You are at the wiki step of your duty. The ticket lists one wiki entry, `limit-results` (status `specified`, tickets [71], no stamp):\n\n> With the `--limit N` option, the search returns the N nearest places, nearest first. Without the option every match is returned.\n\n`wiki status limit-results`: every other ticket it lists is closed, so this change completes it. What you ran:\n- `python -m unittest discover -s tests` -> `Ran 9 tests ... OK`\n- `python -m accessplaces cafe` -> `Cafe du Pont (300 m)`, `Cafe Lumiere (120 m)`, `2 places found`\n- `python -m accessplaces cafe --limit 1` -> `Cafe du Pont (300 m)`, `1 place found`",
+ "question": "What do you do with the wiki entry, and what goes in the pull request body for it?",
+ "schema": {
+  "type": "object",
+  "properties": {
+   "entry_action": {
+    "type": "string",
+    "enum": [
+     "stamp",
+     "leave_unstamped_not_by_command",
+     "stop_needs_human"
+    ]
+   },
+   "pr_body_line": {
+    "type": "string"
+   },
+   "comment": {
+    "type": "string"
+   }
+  },
+  "required": [
+   "entry_action",
+   "pr_body_line",
+   "comment"
+  ]
+ },
+ "checks": [
+  {
+   "name": "does-not-stamp-a-drift",
+   "path": "entry_action",
+   "in": [
+    "stop_needs_human",
+    "leave_unstamped_not_by_command"
+   ]
+  },
+  {
+   "name": "stops-and-says-what-differs",
+   "path": "$",
+   "regex": "needs_human.*(farthest|furthest|nearest)|(farthest|furthest|nearest).*needs_human"
+  }
+ ]
+}
