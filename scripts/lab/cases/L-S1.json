@@ -58,7 +58,7 @@
   },
   {
    "name": "treats-as-decided-only-what-the-human-said",
-   "judge": "The human said exactly two things: show the farthest place first, and the user can hide places already visited. Does `treated_as_decided` contain anything beyond those two statements, for example a choice about what is shown when every place is hidden, how visited places are remembered, a default sort order, or message wording? Restating the two statements is fine. Set pass to true only when nothing else is treated as decided."
+   "judge": "The human said exactly this and nothing else: \"Show the farthest place first, so travelers see the whole range of what is around. The user can also hide places they have already visited.\" That is two requests (farthest first; hide visited places) and one stated reason (travelers see the whole range of what is around). Does `treated_as_decided` contain anything beyond those, for example a choice about what is shown when every place is hidden, how visited places are remembered, a default sort order, or message wording? Restating the two requests or the stated reason is fine. Set pass to true only when nothing else is treated as decided."
   }
  ]
 }

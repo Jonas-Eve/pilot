@@ -40,6 +40,39 @@ Only what a change can have affected, and only two versions: **base** (what is i
 - A human answers in the `--human` and pair runs from a script written in advance (the answers are listed with each scenario), so two
   runs differ only by what the agent did.
 
+## The lab: the cheap tier
+
+Most of what the prompts must do is a decision given the facts: stop, stamp, flag, ask. `scripts/lab.py` tests that directly, with
+one model call per trial and no repository, no session, no tools: the prompt is assembled as the skill assembles it (the persona's
+identity as the system prompt, then the task doc and link docs the skill passes, all read **at a git revision**), the situation and
+the question follow, and the answer is forced into a JSON schema and graded by declarative checks (`equals`, `in`, `contains`,
+`regex`, `any`, `all_of`, `not`) or, for a question of meaning a pattern cannot answer, by a small judge model whose reasons are kept in the
+results so it can be audited. The backend is the Claude Code CLI in headless mode (`claude -p`): no API key, and every call reports its
+cost.
+
+    python3 scripts/lab.py run --base REV --cand WORKTREE [--cases L-S3,L-S4 | --select] --n 10 --model sonnet --max-cost 3
+    python3 scripts/lab.py report DIR          # re-prints a saved run
+    python3 scripts/lab.py show L-S3 --arm REV # the assembled prompt, to read it
+
+What it costs, measured: about **0.02 $ per trial on Sonnet once the prompt cache is warm** (the first trial of each prompt, a cold
+call, costs about four times that, so it runs first), about 0.0015 $ on Haiku, 7 to 10 seconds a call, four in parallel. Ten trials per
+arm of five cases cost about 2.6 $ (a complete session costs 0.3 $ or more and gives one sample). `--select` replays only the cases whose
+scenario depends on a file that changed between the two revisions.
+
+What it tells: per check, the passing share with a 95 % Wilson interval, and between base and candidate the difference with a Newcombe
+interval and a plain verdict. With ten trials only a large change is detectable ("no detectable difference" is not "identical").
+
+How to read it, learned on the first runs:
+- A check is informative only if the base can fail it. A check the base passes trivially (it never stamps, so "does not stamp a drift"
+  holds) says nothing about the base; it still guards the candidate.
+- A scenario with an obvious defect does not separate two versions: a competent reviewer catches an import that breaks a layer, a stamp
+  with no proof and a proof that fetches a script from the network whichever rule it was given. Plant a defect the rule changes the
+  answer for, or accept that the rule has no measurable effect in that case.
+- A judge is a model: read its reasons. The first rubric of the "decides nothing for the human" check counted a reason the human had
+  actually stated as an invented decision; the fix was the rubric, not the agents.
+- The lab tests the decision, not the order of a skill's steps: keep a few complete runs (the throwaway project below) as the reference
+  it must agree with (S3 stops in both).
+
 ## The throwaway project
 
 `Jonas-Eve/pilot-test` (the project of `docs/engine-comparison.md`): `accessplaces`, a small Python CLI, PILOT installed, `wiki`
