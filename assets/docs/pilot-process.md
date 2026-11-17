@@ -220,7 +220,7 @@ as the first draft can be shown; there is nothing to `--resume` during framing. 
 stands and fix anything incoherent, since a decision from an early round may no longer square with a later one. It is `pilot-dev`'s self-review before opening the PR, a substitute for a second pass in
 Review, not an addition. Review has no incremental assembly: each reviewer re-checks its own points once before returning (`.pilot/pilot-link-review-consensus.md`).
 
-**`--auto`** has the agent(s) decide everything and the skill apply the result in one pass, no checkpoint. `--pair`, `--auto` and `--human` are mutually exclusive — pick one per run; `--resume` goes with a mode flag wherever its skill's argument hint shows it, else the mode recorded in the ticket's checkpoint. `--with
+**`--auto`** has the agent(s) decide everything and the skill apply the result in one pass, no checkpoint. `--pair`, `--auto` and `--human` are mutually exclusive — pick one per run; `--resume` goes with a mode flag wherever its skill's argument hint shows it, else the ticket's own mode (pair by default). `--with
 <persona>[,...]` (`.pilot/pilot-link-roster.md` "Roster") is orthogonal to all of them; `--merge` (Review only, "`status:approved`") only controls whether an all-approve outcome also merges the
 PR, with either mode; `--multi <N>` (Discovery, Spec, Dev, Review; `.pilot/pilot-link-agent-dialogue.md`, `.pilot/pilot-link-multi-consensus.md`) runs an ensemble on the one claimed ticket, with either
 mode, and is invalid only with `--resume`.
