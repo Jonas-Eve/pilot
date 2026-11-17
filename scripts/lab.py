@@ -133,8 +133,25 @@ def run_check(check, output):
     raise ValueError("unknown check " + json.dumps(check))
 
 
-def grade(case, output):
-    return {c["name"]: bool(run_check(c, output)) for c in case["checks"]}
+def call_judge(case, output, criterion, model="haiku", backend=call_claude):
+    """A small model decides one question of meaning about the answer, where a pattern cannot. Returns (pass, cost)."""
+    system = "You are a strict grader of one criterion. Answer only through the structured output."
+    user = (f"The agent was asked:\n{case['question']}\n\nIts answer (JSON):\n{json.dumps(output, ensure_ascii=False)}\n\n"
+            f"Criterion: {criterion}\n\nSet pass to true only when the criterion is met by what the answer actually says.")
+    schema = {"type": "object", "properties": {"pass": {"type": "boolean"}, "reason": {"type": "string"}}, "required": ["pass", "reason"]}
+    result = backend(system, user, schema, model)
+    return bool((result.get("output") or {}).get("pass")), float(result.get("cost") or 0)
+
+
+def grade(case, output, judge=None):
+    """Every check of the case on one answer; a `judge` check is put to `judge(case, output, criterion) -> (pass, cost)`."""
+    graded = {}
+    for c in case["checks"]:
+        if "judge" in c:
+            graded[c["name"]] = bool(output is not None and judge is not None and judge(case, output, c["judge"])[0])
+        else:
+            graded[c["name"]] = bool(run_check(c, output))
+    return graded
 
 
 # ---- statistics -------------------------------------------------------------------------------------------------
@@ -194,7 +211,7 @@ def summarize(trials, arms):
 
 
 # ---- a run ------------------------------------------------------------------------------------------------------
-def run_trials(cases, revs, n, model, repo, workers, max_cost, backend=call_claude):
+def run_trials(cases, revs, n, model, repo, workers, max_cost, backend=call_claude, judge_model="haiku"):
     """Every (case, arm, sample) once, a few at a time. The first sample of each prompt goes first, alone with its siblings: it writes
     the prompt cache the others read (a cold call costs about four times a warm one). Stops launching once the cost cap is reached."""
     prompts = {(c["id"], arm): assemble(c, repo, rev) for c in cases for arm, rev in revs.items()}
@@ -206,7 +223,14 @@ def run_trials(cases, revs, n, model, repo, workers, max_cost, backend=call_clau
         c, arm, i = job
         system, user, _ = prompts[(c["id"], arm)]
         result = backend(system, user, c["schema"], model)
-        checks = grade(c, result["output"]) if result.get("output") is not None else {}
+        extra = [0.0]
+
+        def judge(case, output, criterion):
+            ok, cost = call_judge(case, output, criterion, judge_model, backend)
+            extra[0] += cost
+            return ok, cost
+        checks = grade(c, result["output"], judge) if result.get("output") is not None else {}
+        result = {**result, "cost": float(result.get("cost") or 0) + extra[0]}
         return {"case": c["id"], "arm": arm, "sample": i, "checks": checks, **result}
 
     def phase(pending):
