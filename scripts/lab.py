@@ -4,6 +4,7 @@
     python3 scripts/lab.py run --base REV --cand REV|WORKTREE [--cases L-S3,L-S4 | --select] [--n 10] [--model sonnet]
                                [--arms base,cand|cand] [--workers 4] [--max-cost 3.00] [--out DIR]
     python3 scripts/lab.py report DIR
+    python3 scripts/lab.py regrade DIR                         # the saved answers graded again with the current checks, no model call
     python3 scripts/lab.py show CASE --arm REV|WORKTREE        # the assembled prompt, to read it
 
 A case (`scripts/lab/cases/<id>.json`) names a persona, the docs a skill passes into that persona's call, the situation (what the
@@ -135,6 +136,17 @@ def run_check(check, output):
         for pattern in check["order"]:
             hits = [n for n, item in enumerate(items) if re.search(pattern, item, re.I | re.S)]
             if not hits or hits[0] <= last:
+                return False
+            last = hits[0]
+        return True
+    if "sequence" in check:  # matchers on an item's `step` and/or `action`; their first matches come in this order
+        items = value if isinstance(value, list) else []
+        last = -1
+        for m in check["sequence"]:
+            hits = [n for n, i in enumerate(items) if isinstance(i, dict)
+                    and (not m.get("step") or re.search(m["step"], str(i.get("step", "")), re.I))
+                    and (not m.get("action") or re.search(m["action"], str(i.get("action", "")), re.I | re.S))]
+            if not hits or hits[0] < last:  # two matchers may land on one item: a plan often merges two steps into a line
                 return False
             last = hits[0]
         return True
@@ -283,6 +295,22 @@ def select_cases(cases, repo, base, cand):
     return [c for c in cases if c.get("scenario") in chosen]
 
 
+def regrade(case_index, data):
+    """The saved trials graded again with the cases' current checks: no model call. A judged check keeps its saved result."""
+    trials = []
+    for t in data["trials"]:
+        case = case_index.get(t["case"])
+        if case is None or t.get("output") is None:
+            trials.append(t)
+            continue
+        old = t.get("checks", {})
+        graded = {}
+        for c in case["checks"]:
+            graded[c["name"]] = bool(old.get(c["name"], False)) if "judge" in c else bool(run_check(c, t["output"]))
+        trials.append({**t, "checks": graded})
+    return trials
+
+
 def print_report(report):
     for case, data in report.items():
         print(f"\n== {case}")
@@ -296,7 +324,7 @@ def print_report(report):
 
 def main(argv):
     args = argv[1:]
-    if not args or args[0] not in ("run", "report", "show"):
+    if not args or args[0] not in ("run", "report", "show", "regrade"):
         print(__doc__)
         return 2
     cmd, args, opt, rest = args[0], args[1:], {}, []
@@ -312,6 +340,15 @@ def main(argv):
     if cmd == "report":
         with open(os.path.join(rest[0], "trials.json"), encoding="utf-8") as handle:
             data = json.load(handle)
+        print_report(summarize(data["trials"], data["arms"]))
+        return 0
+    if cmd == "regrade":
+        path = os.path.join(rest[0], "trials.json")
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+        data["trials"] = regrade({c["id"]: c for c in all_cases()}, data)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, indent=1, ensure_ascii=False)
         print_report(summarize(data["trials"], data["arms"]))
         return 0
     if cmd == "show":

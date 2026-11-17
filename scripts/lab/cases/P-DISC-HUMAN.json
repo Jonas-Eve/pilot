@@ -42,21 +42,21 @@
  },
  "checks": [
   {
-   "name": "analyzes-before-framing",
+   "name": "analyzes-asks-writes-the-story-then-creates-the-drafts",
    "path": "calls",
-   "order": [
-    "analy",
-    "fram"
-   ]
-  },
-  {
-   "name": "asks-the-human-for-the-proposal-after-framing",
-   "path": "calls",
-   "order": [
-    "fram",
-    "(ask|request).{0,60}(human|proposal)|human.{0,40}(proposal|shape)",
-    "(architect|valid)",
-    "(create|draft)"
+   "sequence": [
+    {
+     "action": "Agent.{0,80}analy|pilot-task-analyze-existing|analy[sz]e the existing"
+    },
+    {
+     "action": "ask the human.{0,60}proposal|human.{0,40}proposal"
+    },
+    {
+     "action": "pilot-task-write-story|write.{0,20}story"
+    },
+    {
+     "action": "create the draft"
+    }
    ]
   },
   {

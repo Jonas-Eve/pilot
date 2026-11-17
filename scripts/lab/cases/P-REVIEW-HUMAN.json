@@ -43,20 +43,24 @@
  },
  "checks": [
   {
-   "name": "claims-then-asks-what-to-check",
+   "name": "claims-asks-what-to-check-runs-the-reviewer-the-human-decides-then-submits",
    "path": "calls",
-   "order": [
-    "claim",
-    "(ask|anything|specific).{0,60}(check|human)|human.{0,40}check",
-    "review"
-   ]
-  },
-  {
-   "name": "the-human-decides-before-the-submission",
-   "path": "calls",
-   "order": [
-    "(human|pause|verdict).{0,60}(decid|confirm|last look)",
-    "submit"
+   "sequence": [
+    {
+     "action": "claim"
+    },
+    {
+     "action": "ask the human.{0,80}(check|specific)|whether anything specific"
+    },
+    {
+     "action": "(Agent|call|run|spawn).{0,60}(techlead|reviewer)"
+    },
+    {
+     "action": "human.{0,60}(decide|confirm|last look)"
+    },
+    {
+     "action": "submit_pending|Submit the pending review"
+    }
    ]
   },
   {

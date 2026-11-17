@@ -41,30 +41,32 @@
  },
  "checks": [
   {
-   "name": "claims-before-anything-else",
+   "name": "claims-analyzes-asks-codes-then-hands-over",
    "path": "calls",
-   "order": [
-    "claim",
-    "analy",
-    "(ask|request).{0,60}(human|approach|plan|proposal)|human.{0,40}(approach|proposal)",
-    "implement",
-    "review-ready"
+   "sequence": [
+    {
+     "action": "claim"
+    },
+    {
+     "action": "Agent.{0,80}analy|pilot-task-analyze-existing|analy[sz]e the existing"
+    },
+    {
+     "action": "ask the human|human.{0,30}(approach|proposal)"
+    },
+    {
+     "action": "(?<!task-)implement"
+    },
+    {
+     "action": "review-ready"
+    }
    ]
   },
   {
-   "name": "waits-for-the-human-before-coding",
+   "name": "waits-for-the-human",
    "path": "calls",
    "any": {
     "waits_for_human": true
    }
-  },
-  {
-   "name": "analysis-comes-before-the-approach",
-   "path": "calls",
-   "order": [
-    "analy",
-    "approach"
-   ]
   }
  ]
 }
