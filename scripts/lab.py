@@ -3,6 +3,7 @@
 
     python3 scripts/lab.py run --base REV --cand REV|WORKTREE [--cases L-S3,L-S4 | --select] [--n 10] [--model sonnet]
                                [--arms base,cand|cand] [--workers 4] [--max-cost 3.00] [--out DIR]
+    python3 scripts/lab.py plan --base REV --cand REV|WORKTREE [--cases ...] [--n 10]   # what is already kept, what would run, what it would cost
     python3 scripts/lab.py report DIR
     python3 scripts/lab.py regrade DIR                         # the saved answers graded again with the current checks, no model call
     python3 scripts/lab.py show CASE --arm REV|WORKTREE        # the assembled prompt, to read it
@@ -16,9 +17,15 @@ and grades the structured answer. Nothing needs an API key: the Claude Code CLI 
 Per case and arm it prints, for each check, the passing share with a 95 % Wilson interval, and between the two arms the
 difference with a Newcombe interval and a plain verdict (worse / better / no detectable difference: with ten trials only a large
 change is detectable). `--select` keeps the cases whose scenario depends on a file that changed between the two revisions
-(scripts/select_scenarios.py). `--max-cost` stops the run when the calls so far have cost that much.
+(scripts/select_scenarios.py). `--max-cost` stops the run when the calls made now have cost that much.
+
+Answers are kept in `scripts/lab/results/<case>/<model>/<fingerprint>.json`, the fingerprint being a hash of what the model reads
+(persona, docs, situation, question, schema) and the model: a case whose prompt did not change is read back, not asked again, and only the
+missing samples are run; two arms with the same prompt share their answers. The checks are applied on every run, so a corrected rubric
+costs no call, and a judged result is reused while rubric and answer are unchanged. `--refresh` asks again.
 """
 import concurrent.futures
+import hashlib
 import importlib.util
 import json
 import math
@@ -27,6 +34,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -208,8 +216,9 @@ def summarize(trials, arms):
     """trials: dicts with case, arm, checks, cost, tokens. -> per case, per arm: n, cost, per check rate and interval; and the arms' difference."""
     out = {}
     for t in trials:
-        cell = out.setdefault(t["case"], {}).setdefault(t["arm"], {"n": 0, "errors": 0, "cost": 0.0, "checks": {}})
+        cell = out.setdefault(t["case"], {}).setdefault(t["arm"], {"n": 0, "errors": 0, "cost": 0.0, "cached": 0, "checks": {}})
         cell["cost"] += t.get("cost", 0)
+        cell["cached"] += 1 if t.get("cached") else 0
         if t.get("error") or t.get("output") is None:
             cell["errors"] += 1
             continue
@@ -220,7 +229,7 @@ def summarize(trials, arms):
     for case, by_arm in out.items():
         rows = {}
         for arm, cell in by_arm.items():
-            rows[arm] = {"n": cell["n"], "errors": cell["errors"], "cost_usd": round(cell["cost"], 4),
+            rows[arm] = {"n": cell["n"], "errors": cell["errors"], "cached": cell["cached"], "cost_usd": round(cell["cost"], 4),
                          "cost_per_trial": round(cell["cost"] / max(1, cell["n"] + cell["errors"]), 4),
                          "checks": {name: {"passed": k, "rate": round(k / cell["n"], 3) if cell["n"] else None,
                                            "ci95": [round(x, 3) for x in wilson(k, cell["n"])]} for name, k in sorted(cell["checks"].items())}}
@@ -236,49 +245,130 @@ def summarize(trials, arms):
 
 
 # ---- a run ------------------------------------------------------------------------------------------------------
-def run_trials(cases, revs, n, model, repo, workers, max_cost, backend=call_claude, judge_model="haiku"):
-    """Every (case, arm, sample) once, a few at a time. The first sample of each prompt goes first, alone with its siblings: it writes
-    the prompt cache the others read (a cold call costs about four times a warm one). Stops launching once the cost cap is reached."""
+def fingerprint(system, user, schema, model):
+    """What the model's answer depends on: the prompt, the schema and the model. Same fingerprint, same answers worth keeping."""
+    h = hashlib.sha256()
+    for part in (system, user, json.dumps(schema, sort_keys=True), model):
+        h.update(part.encode("utf-8"))
+        h.update(b"\0")
+    return h.hexdigest()[:16]
+
+
+def judge_key(check, output):
+    """A judged result is reusable while the rubric and the answer are the same."""
+    return hashlib.sha256((check["judge"] + "\0" + json.dumps(output, sort_keys=True, ensure_ascii=False)).encode("utf-8")).hexdigest()[:16]
+
+
+def cache_file(results, case_id, model, fp):
+    return os.path.join(results, case_id, model, fp + ".json")
+
+
+def load_cache(results, case_id, model, fp):
+    try:
+        with open(cache_file(results, case_id, model, fp), encoding="utf-8") as handle:
+            return json.load(handle)["trials"]
+    except (OSError, ValueError, KeyError):
+        return []
+
+
+def save_cache(results, case_id, model, fp, trials):
+    path = cache_file(results, case_id, model, fp)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump({"case": case_id, "model": model, "fingerprint": fp, "trials": trials}, handle, indent=1, ensure_ascii=False)
+        handle.write("\n")
+
+
+def run_trials(cases, revs, n, model, repo, workers, max_cost, backend=call_claude, judge_model="haiku", results=None, refresh=False):
+    """Answers for every (case, arm), n each. With a `results` directory the raw answers are kept by fingerprint of the prompt: an arm
+    whose prompt did not change is read back, not asked again; only the missing samples are run (the first of each prompt first, alone
+    with its siblings, because it writes the prompt cache the others read); arms with the same prompt share their answers. The checks
+    are applied afterwards, so a corrected rubric costs no model call, and a judged result is reused while rubric and answer are unchanged.
+    Returns (trials, new spend): the spend counts only calls made now, and stops new calls once max_cost is reached."""
     prompts = {(c["id"], arm): assemble(c, repo, rev) for c in cases for arm, rev in revs.items()}
-    jobs = [(c, arm, i) for c in cases for arm in revs for i in range(n)]
-    warm, rest = [j for j in jobs if j[2] == 0], [j for j in jobs if j[2] != 0]
-    trials, spent = [], 0.0
+    fps = {key: fingerprint(system, user, next(c for c in cases if c["id"] == key[0])["schema"], model) for key, (system, user, _m) in prompts.items()}
+    cases_by_id = {c["id"]: c for c in cases}
+    stored = {}
+    for (cid, arm), fp in fps.items():
+        if (cid, fp) not in stored:
+            stored[(cid, fp)] = [] if (results is None or refresh) else load_cache(results, cid, model, fp)
+    jobs = []
+    for (cid, fp), have in stored.items():
+        arm = next(a for (c, a), f in fps.items() if c == cid and f == fp)
+        jobs += [(cases_by_id[cid], arm, fp, i) for i in range(len(have), n)]
+    before = {key: len(have) for key, have in stored.items()}
+    errors = []
+    spent = [0.0]
 
     def one(job):
-        c, arm, i = job
+        c, arm, fp, i = job
         system, user, _ = prompts[(c["id"], arm)]
         result = backend(system, user, c["schema"], model)
-        extra, reasons = [0.0], {}
-
-        def judge(case, output, check):
-            ok, cost, reason = call_judge(case, output, check["judge"], judge_model, backend)
-            extra[0] += cost
-            reasons[check["name"]] = reason
-            return ok, cost
-        checks = grade(c, result["output"], judge) if result.get("output") is not None else {}
-        result = {**result, "cost": float(result.get("cost") or 0) + extra[0]}
-        return {"case": c["id"], "arm": arm, "sample": i, "checks": checks, "judged": reasons, **result}
+        return job, result
 
     def phase(pending):
-        nonlocal spent
         pending, running = list(pending), set()
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
             while pending or running:
-                while pending and len(running) < workers and (max_cost is None or spent < max_cost):
+                while pending and len(running) < workers and (max_cost is None or spent[0] < max_cost):
                     running.add(pool.submit(one, pending.pop(0)))
                 if not running:
                     break
                 done, running = concurrent.futures.wait(running, return_when=concurrent.futures.FIRST_COMPLETED)
                 for f in done:
-                    t = f.result()
-                    spent += t.get("cost", 0)
-                    trials.append(t)
-                if max_cost is not None and spent >= max_cost:
+                    job, result = f.result()
+                    spent[0] += float(result.get("cost") or 0)
+                    if result.get("output") is not None:
+                        stored[(job[0]["id"], job[2])].append({"output": result["output"], "cost": float(result.get("cost") or 0), "tokens": result.get("tokens", {}),
+                                                              "ms": result.get("ms", 0), "judged": {}})
+                    else:  # an error is reported, not kept: it is asked again next time
+                        errors.append((job[0]["id"], job[2], float(result.get("cost") or 0), str(result.get("error") or "no answer")))
+                if max_cost is not None and spent[0] >= max_cost:
                     pending = []
 
-    phase(warm)
-    phase(rest)
-    return trials, spent
+    first = {}
+    for j in jobs:
+        first.setdefault((j[0]["id"], j[2]), j)
+    phase(list(first.values()))
+    done_first = set(id(x) for x in first.values())
+    phase([j for j in jobs if id(j) not in done_first])
+    # the checks, applied now; a judged check not yet judged for this rubric and answer is put to the judge
+    todo = []
+    for (cid, fp), have in stored.items():
+        for t in have[:n]:
+            for check in cases_by_id[cid]["checks"]:
+                if "judge" in check and judge_key(check, t["output"]) not in t["judged"]:
+                    todo.append((cases_by_id[cid], check, t))
+
+    def judge_one(item):
+        case, check, t = item
+        ok, cost, reason = call_judge(case, t["output"], check["judge"], judge_model, backend)
+        return item, ok, cost, reason
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        for (case, check, t), ok, cost, reason in pool.map(judge_one, todo):
+            t["judged"][judge_key(check, t["output"])] = {"pass": ok, "cost": cost, "reason": reason}
+            spent[0] += cost
+    if results is not None:
+        for (cid, fp), have in stored.items():
+            if have:
+                save_cache(results, cid, model, fp, have)
+    out = []
+    new_counts = {}
+    for (cid, arm), fp in fps.items():
+        for i, t in enumerate(stored[(cid, fp)][:n]):
+            case = cases_by_id[cid]
+            graded, reasons, cost = {}, {}, t["cost"]
+            for check in case["checks"]:
+                if "judge" in check:
+                    j = t["judged"][judge_key(check, t["output"])]
+                    graded[check["name"]], reasons[check["name"]] = j["pass"], j["reason"]
+                    cost += j["cost"]
+                else:
+                    graded[check["name"]] = bool(run_check(check, t["output"]))
+            out.append({"case": cid, "arm": arm, "sample": i, "checks": graded, "judged": reasons, "output": t["output"], "cost": cost,
+                        "tokens": t.get("tokens", {}), "ms": t.get("ms", 0), "cached": i < before[(cid, fp)]})
+        out += [{"case": cid, "arm": arm, "sample": -1, "checks": {}, "output": None, "error": e, "cost": c, "cached": False} for (ecid, efp, c, e) in errors if (ecid, efp) == (cid, fp)]
+    return out, spent[0]
 
 
 def select_cases(cases, repo, base, cand):
@@ -315,7 +405,7 @@ def print_report(report):
     for case, data in report.items():
         print(f"\n== {case}")
         for arm, row in data["arms"].items():
-            print(f"  {arm}: n={row['n']} errors={row['errors']} cost={row['cost_usd']}$ ({row['cost_per_trial']}$/trial)")
+            print(f"  {arm}: n={row['n']} ({row['cached']} read from the cache) errors={row['errors']} cost={row['cost_usd']}$ ({row['cost_per_trial']}$/trial)")
             for name, c in row["checks"].items():
                 print(f"     {name}: {c['passed']}/{row['n']} = {c['rate']}  95% [{c['ci95'][0]}, {c['ci95'][1]}]")
         for name, d in data["difference"].items():
@@ -324,7 +414,7 @@ def print_report(report):
 
 def main(argv):
     args = argv[1:]
-    if not args or args[0] not in ("run", "report", "show", "regrade"):
+    if not args or args[0] not in ("run", "report", "show", "regrade", "plan"):
         print(__doc__)
         return 2
     cmd, args, opt, rest = args[0], args[1:], {}, []
@@ -332,6 +422,8 @@ def main(argv):
         a = args.pop(0)
         if a == "--select":
             opt["select"] = True
+        elif a in ("--refresh", "--no-cache"):
+            opt["refresh"] = True
         elif a.startswith("--"):
             opt[a[2:]] = args.pop(0)
         else:
@@ -366,15 +458,33 @@ def main(argv):
     if not cases:
         return 0
     arms = opt["arms"].split(",") if "arms" in opt else ["base", "cand"]
-    trials, spent = run_trials(cases, {a: {"base": base, "cand": cand}[a] for a in arms}, int(opt.get("n", 10)), opt.get("model", "sonnet"), repo,
-                               int(opt.get("workers", 4)), float(opt["max-cost"]) if "max-cost" in opt else None)
+    model, n = opt.get("model", "sonnet"), int(opt.get("n", 10))
+    revs = {a: {"base": base, "cand": cand}[a] for a in arms}
+    results = opt.get("results", os.path.join(HERE, "lab", "results"))
+    if cmd == "plan":
+        total = 0
+        for c in cases:
+            seen = set()
+            for arm, rev in revs.items():
+                system, user, _m = assemble(c, repo, rev)
+                fp = fingerprint(system, user, c["schema"], model)
+                have = len(load_cache(results, c["id"], model, fp))
+                note = "same prompt as another arm" if (c["id"], fp) in seen else ""
+                missing = 0 if (c["id"], fp) in seen else max(0, n - have)
+                seen.add((c["id"], fp))
+                total += missing
+                print(f"{c['id']:<16} {arm:<5} {fp}  cached {have:>2}  to run {missing:>2}  {note}")
+        print(f"\n{total} calls to make, about {total * 0.03:.2f}$ on sonnet (0.0015$ per call on haiku)")
+        return 0
+    trials, spent = run_trials(cases, revs, n, model, repo, int(opt.get("workers", 4)), float(opt["max-cost"]) if "max-cost" in opt else None,
+                               results=results, refresh=bool(opt.get("refresh")))
     out = opt.get("out")
     if out:
         os.makedirs(out, exist_ok=True)
         with open(os.path.join(out, "trials.json"), "w", encoding="utf-8") as handle:
             json.dump({"base": base, "cand": cand, "model": opt.get("model", "sonnet"), "arms": arms, "trials": trials}, handle, indent=1, ensure_ascii=False)
     print_report(summarize(trials, arms))
-    print(f"\ntotal cost: {spent:.4f}$ for {len(trials)} trials")
+    print(f"\ncost of the calls made now: {spent:.4f}$ ({sum(1 for t in trials if t.get('cached'))} of {len(trials)} trials read from the cache)")
     return 0
 
 

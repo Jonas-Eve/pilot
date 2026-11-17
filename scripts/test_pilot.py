@@ -2967,25 +2967,82 @@ class LabTests(unittest.TestCase):
         self.assertEqual(self.lab.verdict(*self.lab.newcombe(5, 10, 6, 10)), "no detectable difference")
         self.assertEqual(self.lab.verdict(*self.lab.newcombe(2, 20, 18, 20)), "better")
 
-    def test_a_run_with_a_fake_backend_warms_first_caps_the_cost_and_summarizes(self):
-        calls = []
-
+    def fake(self, calls, bad=()):
         def backend(system, user, schema, model):
-            calls.append((system[:10], len(user)))
-            good = "base" not in system  # the fake model fails on the base prompt
+            calls.append(system[:12])
+            good = not any(b in user for b in bad)
             return {"output": {"decision": "stop_needs_human" if good else "implement_as_specified", "cites": ["stdlib-only"], "comment": "stdlib-only"},
                     "cost": 0.01, "tokens": {}, "ms": 5}
+        return backend
+
+    def test_a_run_without_a_cache_asks_every_sample_and_arms_with_the_same_prompt_share_them(self):
+        calls = []
         case = self.lab.load_case("L-S3")
-        trials, spent = self.lab.run_trials([case], {"base": self.lab.WORKTREE, "cand": self.lab.WORKTREE}, 3, "m", str(self.lab.ROOT), 2, None, backend)
+        revs = {"base": self.lab.WORKTREE, "cand": self.lab.WORKTREE}  # the same files: the same prompt
+        trials, spent = self.lab.run_trials([case], revs, 3, "m", str(self.lab.ROOT), 2, None, self.fake(calls))
+        self.assertEqual(len(calls), 3)  # one set of answers for two arms
         self.assertEqual(len(trials), 6)
-        self.assertEqual({t["sample"] for t in trials[:2]}, {0})  # the first sample of each arm goes first
-        self.assertAlmostEqual(spent, 0.06)
-        capped, spent = self.lab.run_trials([case], {"base": self.lab.WORKTREE, "cand": self.lab.WORKTREE}, 10, "m", str(self.lab.ROOT), 2, 0.03, backend)
-        self.assertLess(len(capped), 20)
+        self.assertAlmostEqual(spent, 0.03)
         report = self.lab.summarize(trials, ["base", "cand"])
-        row = report["L-S3"]["arms"]["cand"]
-        self.assertEqual((row["n"], row["checks"]["stops-instead-of-deviating"]["passed"]), (3, 3))
+        self.assertEqual(report["L-S3"]["arms"]["cand"]["checks"]["stops-instead-of-deviating"]["passed"], 3)
         self.assertEqual(report["L-S3"]["difference"]["stops-instead-of-deviating"]["candidate_minus_base"], 0)
+
+    def test_the_cost_cap_stops_new_calls(self):
+        calls = []
+        case = self.lab.load_case("L-S3")
+        trials, spent = self.lab.run_trials([case], {"base": self.lab.WORKTREE}, 10, "m", str(self.lab.ROOT), 1, 0.03, self.fake(calls))
+        self.assertLessEqual(len(calls), 4)
+        self.assertGreaterEqual(spent, 0.03)
+
+    def test_a_kept_answer_is_read_back_only_the_missing_samples_run_and_a_changed_prompt_is_asked_again(self):
+        case = self.lab.load_case("L-S3")
+        with tempfile.TemporaryDirectory() as results:
+            args = lambda calls, n, c=case: ([c], {"cand": self.lab.WORKTREE}, n, "m", str(self.lab.ROOT), 2, None, self.fake(calls))
+            first = []
+            self.lab.run_trials(*args(first, 3), results=results)
+            self.assertEqual(len(first), 3)
+            again = []
+            trials, spent = self.lab.run_trials(*args(again, 3), results=results)
+            self.assertEqual((again, spent), ([], 0.0))                       # nothing asked, nothing spent
+            self.assertTrue(all(t["cached"] for t in trials) and len(trials) == 3)
+            more = []
+            trials, spent = self.lab.run_trials(*args(more, 5), results=results)
+            self.assertEqual(len(more), 2)                                    # only the two missing samples
+            self.assertEqual(sum(1 for t in trials if t["cached"]), 3)
+            changed = dict(case, situation=case["situation"] + " One more fact.")
+            other = []
+            self.lab.run_trials(*args(other, 3, changed), results=results)
+            self.assertEqual(len(other), 3)                                   # a new fingerprint: asked again
+            refreshed = []
+            self.lab.run_trials(*args(refreshed, 3), results=results, refresh=True)
+            self.assertEqual(len(refreshed), 3)
+            report = self.lab.summarize(trials, ["cand"])
+            self.assertEqual(report["L-S3"]["arms"]["cand"]["cached"], 3)
+
+    def test_a_corrected_check_regrades_the_kept_answers_without_a_call_and_a_judged_result_is_reused(self):
+        case = self.lab.load_case("L-S1")
+        judged = []
+
+        def backend(system, user, schema, model):
+            if "strict grader" in system:
+                judged.append(1)
+                return {"output": {"pass": True, "reason": "ok"}, "cost": 0.002}
+            return {"output": {"questions_to_human": ["q"], "provisional_defaults_offered": [], "treated_as_decided": [], "contradictions_flagged": ["nearest first"]},
+                    "cost": 0.02, "tokens": {}, "ms": 1}
+        with tempfile.TemporaryDirectory() as results:
+            run = lambda c: self.lab.run_trials([c], {"cand": self.lab.WORKTREE}, 2, "m", str(self.lab.ROOT), 1, None, backend, results=results)
+            _t, spent = run(case)
+            self.assertEqual(len(judged), 4)                                   # two judged checks on two answers
+            self.assertAlmostEqual(spent, 2 * 0.02 + 4 * 0.002)
+            trials, spent = run(case)
+            self.assertEqual((len(judged), spent), (4, 0.0))                  # the judgements are kept too
+            fixed = dict(case, checks=[dict(k, regex="nope") if k["name"].startswith("flags-the") else k for k in case["checks"]])
+            trials, spent = run(fixed)
+            self.assertEqual((len(judged), spent), (4, 0.0))                  # a corrected pattern: re-graded, nothing asked
+            self.assertFalse(trials[0]["checks"]["flags-the-contradiction-with-nearest-first"])
+            reworded = dict(case, checks=[dict(k, judge=k["judge"] + " Be strict.") if "judge" in k else k for k in case["checks"]])
+            run(reworded)
+            self.assertEqual(len(judged), 8)                                   # a new rubric is judged again, the answers are not asked again
 
     def test_an_error_or_an_empty_answer_counts_as_an_error_not_as_a_pass_or_a_fail(self):
         trials = [{"case": "c", "arm": "base", "checks": {"x": True}, "output": {"a": 1}, "cost": 0.1},

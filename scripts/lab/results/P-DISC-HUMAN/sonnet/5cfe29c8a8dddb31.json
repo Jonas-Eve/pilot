@@ -1,0 +1,612 @@
+{
+ "case": "P-DISC-HUMAN",
+ "model": "sonnet",
+ "fingerprint": "5cfe29c8a8dddb31",
+ "trials": [
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "0 (preamble)",
+      "action": "Read .pilot/pilot-process.md, pilot-link-existing-analysis.md, pilot-link-ticket-tree.md and pilot-link-agent-dialogue.md (and roster) before running.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Determine input: raw idea 'Let travelers save a place as a favorite.' with --human (product idea, not tech/bug, so proceed).",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Fetch open level:epic issues (title+body) as candidate Epics; none exist.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2-bis",
+      "action": "Call Agent pilot-pm with pilot-task-analyze-existing.md, the analysis link in full, the raw idea and the (empty) Epic list; hold the analysis and show the human its 'Touched by this input' and 'Not covered' parts.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "With --human, ask the human once for their proposal (one story or several, Epic, acceptance criteria, decisions already held); also run PM framing rounds (pilot-task-frame-idea.md) challenging what the human stated, feeding replies back until the brief is ready and the human confirms it.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-pm with pilot-task-write-story.md, the analysis, the validated brief, the human's proposal and Epic list to write up and challenge the draft; then call pilot-architect with pilot-task-anticipate-architecture.md, the analysis, the draft, plus knowledge and architecture links (architecture module on) to validate; on objection run the dialogue with PM and human, and put any human-needing question to the human before creating anything.",
+      "waits_for_human": true
+     },
+     {
+      "step": "4",
+      "action": "Create the draft story ticket(s) (type:feature, level:story, status:draft, priority, assigned to session; Epic only if the dialogue decides several stories), then run pilot.py event <n> --action created --phase discovery.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Show the human the drafted story with its real issue number and anticipated architecture; put the PM's remaining open questions to the human; ask once about a mockup (UI involved); check ticket comments for attachments; write each round's changes into the draft; repeat until approved (or wont-do and close if out of scope).",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Final consolidation: have the dialogue re-read each draft ticket body as a whole and fix incoherences across rounds.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Finalize: flip each story from status:draft to status:backlog, unassigned (no --from-proto steps apply).",
+      "waits_for_human": false
+     },
+     {
+      "step": "7a",
+      "action": "Dashboard (dashboardUrl set): run pilot.py event <n> --action approved --phase discovery and push the events (plus the created ones) with ArtifactData, best-effort.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7b",
+      "action": "Wiki module on: call Agent pilot-pm with pilot-task-wiki-entries.md (status proposed) for the story; put any conflicts question to the human and settle it first.",
+      "waits_for_human": true
+     },
+     {
+      "step": "7b",
+      "action": "Apply wiki entries on branch wiki/discovery-<story n> via pilot.py wiki add/set, run wiki lint, commit docs(wiki) with the required Co-Authored-By/Claude-Session trailer, push, open one PR ending with the required Claude Code attribution lines, and give the human the link without merging.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "Report the issue number(s)/URL(s) and the wiki PR link to the human.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.095264,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1318,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 20520
+   },
+   "ms": 8508,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "0 (preamble)",
+      "action": "Read .pilot/pilot-process.md, pilot-link-ticket-tree.md, pilot-link-agent-dialogue.md, pilot-link-roster.md and pilot-link-existing-analysis.md before running.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Determine input: a raw idea ('save a place as favorite') in --human mode; it reads as a product idea, not tech/bug, so continue (no --resume/--from-proto).",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Fetch open level:epic issues (title+body) via list_issues/search_issues; result is none.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2-bis",
+      "action": "Call Agent pilot-pm with pilot-task-analyze-existing.md, the analysis link doc in full, the raw idea and the (empty) Epic list; hold the analysis and show the human its 'Touched by this input' and 'Not covered' parts.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "With --human, ask the human once for their proposal (one story or several, Epic, acceptance criteria, decisions already held); then call pilot-pm with pilot-task-frame-idea.md (idea, Epic list, framing conversation) to challenge it and restate the brief, relaying challenges to the human round by round.",
+      "waits_for_human": true
+     },
+     {
+      "step": "2a",
+      "action": "Feed the human's replies back to pilot-pm and repeat framing rounds until the brief is ready and the human confirms it (or accepts provisional defaults).",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-pm with pilot-task-write-story.md, the existing-analysis doc, the analysis, the validated brief, the human's proposal and empty Epic list to write up the story (never adding its own decisions).",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-architect with pilot-task-anticipate-architecture.md, existing-analysis doc, the analysis, the draft only, plus pilot-link-knowledge.md and pilot-link-architecture.md (architecture module on) to validate.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "If the architect objects, run the PM/architect dialogue (agent-dialogue turn-taking), putting any human-dependent question to the human before creating tickets, until convergence (single story, possibly with a tech companion; no Epic since none exists unless several stories).",
+      "waits_for_human": true
+     },
+     {
+      "step": "4",
+      "action": "Create the draft ticket(s) via issue_write (type:feature, level:story, status:draft, priority, assigned to session; new Epic first with sub_issue_write links if several stories), then run pilot.py event <n>... --action created --phase discovery.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Show the human the drafted story/stories with real issue numbers and the anticipated architecture; put the PM's open questions to the human; ask once about a mockup (existing, sketch live, or prose) for the user-facing UI feature and tell them to attach it themselves as a comment.",
+      "waits_for_human": true
+     },
+     {
+      "step": "5",
+      "action": "Check ticket comments for attachments, feed corrections/answers back into the dialogue, write each round's changes into the draft with issue_write, and repeat until the human approves (or set wont-do and close if out of scope).",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Final consolidation: have the dialogue re-read each draft body as a whole and fix incoherences across rounds.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Finalize: flip each story from status:draft to status:backlog, unassigned via issue_write (no prototype handling since not --from-proto).",
+      "waits_for_human": false
+     },
+     {
+      "step": "7a",
+      "action": "Dashboard (dashboardUrl is set): run pilot.py event <n>... --action approved --phase discovery and push the returned events plus the created ones via ArtifactData (ToolSearch to load if deferred), best-effort.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7b",
+      "action": "Wiki module on: call pilot-pm with pilot-task-wiki-entries.md (target status proposed, project language from pilot.py module list, knowledge and wiki link docs, finalized story, touched domains) for the story.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7b",
+      "action": "Put any returned 'conflicts' questions to the human and settle them before applying.",
+      "waits_for_human": true
+     },
+     {
+      "step": "7b",
+      "action": "On branch wiki/discovery-<story n>, apply add/update/remove via pilot.py wiki commands, run wiki lint, commit (docs(wiki): …) with the required Co-Authored-By/Claude-Session trailers, push, open one PR with the pull-request description ending with the required attribution; give the human the link, never merge.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "Report the story issue number(s)/URL(s) and the wiki PR link to the human; stop (no splitting, dependencies or spec).",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.028600900000000002,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1750,
+    "cache_read_input_tokens": 18209,
+    "cache_creation_input_tokens": 2319
+   },
+   "ms": 11106,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "0 (preamble)",
+      "action": "Read .pilot/pilot-process.md, pilot-link-existing-analysis.md, pilot-link-ticket-tree.md, pilot-link-agent-dialogue.md and pilot-link-roster.md; note --human (no --multi, no --resume), raw idea given.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Determine input: raw idea 'Let travelers save a place as a favorite.' It is a product idea, not a tech need or bug, so proceed without analyzing it myself.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Fetch open level:epic issues (title and body) via list_issues/search_issues as candidates for reuse; none exist.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2-bis",
+      "action": "Call Agent pilot-pm with pilot-task-analyze-existing.md, the analysis link in full, the raw idea and the (empty) Epic list; hold the analysis and show the human its 'Touched by this input' and 'Not covered' parts.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Because of --human, ask the human once for their proposal: one story or several, the Epic, acceptance criteria and decisions they already hold.",
+      "waits_for_human": true
+     },
+     {
+      "step": "2a",
+      "action": "Call Agent pilot-pm with pilot-task-frame-idea.md, the idea, Epic list and the human's proposal; show the PM's challenges and restated brief conversationally, feed the replies back, and repeat rounds until the brief is ready and the human confirms it (or accepts the provisional defaults).",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-pm with pilot-task-write-story.md, the analysis link, the analysis, the validated brief, the idea, the Epic list and the human's proposal to write up the story and challenge it, without adding decisions of its own.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-architect with pilot-task-anticipate-architecture.md, the analysis link, pilot-link-knowledge.md and pilot-link-architecture.md in full (architecture module on), the analysis and the draft only, to validate it.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "If the architect objects, run the PM/architect/human dialogue per pilot-link-agent-dialogue.md and put any human-dependent question to the human before creating anything. Then re-validate the revised draft until convergence on a single story (or story plus tech enabler), or out of scope.",
+      "waits_for_human": true
+     },
+     {
+      "step": "4",
+      "action": "Create the draft story with issue_write: type:feature, level:story, status:draft, a priority label, assigned to this session. No Epic is needed (a sub_issue link only if the dialogue decided on one). Then run pilot.py event <n> --action created --phase discovery.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Show the human the drafted story with its real issue number and the anticipated architecture. Put the PM's open questions to the human, and ask about a mockup (existing, sketch live, or prose) since this is user-facing UI. Check the ticket comments for an attachment before each round. Write each round's changes into the ticket with issue_write and repeat until the human approves.",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Final consolidation: have the dialogue re-read the whole draft body and fix any incoherence across rounds, then update the ticket.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Finalize with issue_write: flip the story from status:draft to status:backlog and unassign it. (The --from-proto parts are skipped.)",
+      "waits_for_human": false
+     },
+     {
+      "step": "7a",
+      "action": "Dashboard (dashboardUrl is set): run pilot.py event <n> --action approved --phase discovery. Push these events and the created ones from step 4 with ArtifactData (loaded via ToolSearch if deferred). This is best-effort.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7b",
+      "action": "Wiki module on: call Agent pilot-pm with pilot-task-wiki-entries.md (target status proposed), the project language, knowledge and wiki links, the finalized story and its domains, to get the wiki entries.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7b",
+      "action": "If the PM returns any conflicts, put each to the human and settle it before applying.",
+      "waits_for_human": true
+     },
+     {
+      "step": "7b",
+      "action": "On branch wiki/discovery-<story n>, apply the add/update/remove entries with pilot.py wiki add/set, run wiki lint, commit with docs(wiki) plus the Co-Authored-By trailer, push, and open one PR via create_pull_request (with the Claude Code footer in its description). Do not merge it.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "Report the story issue number and URL and the wiki PR link to the human, who merges the PR.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.028204899999999998,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1712,
+    "cache_read_input_tokens": 18209,
+    "cache_creation_input_tokens": 2315
+   },
+   "ms": 11345,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "0 (preamble)",
+      "action": "Read .pilot/pilot-process.md, pilot-link-existing-analysis.md, pilot-link-ticket-tree.md, pilot-link-agent-dialogue.md and pilot-link-roster.md if not already read.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Determine input: raw idea 'Let travelers save a place as a favorite.' with --human (a product idea, not tech/bug, so continue; no --resume/--from-proto).",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Fetch open level:epic issues (title+body) via list_issues/search_issues; result is none.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2-bis",
+      "action": "Call Agent pilot-pm with pilot-task-analyze-existing.md, the existing-analysis link in full, the raw idea and the (empty) Epic list; hold the analysis and show the human its 'Touched by this input' and 'Not covered' parts.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Call Agent pilot-pm with pilot-task-frame-idea.md, the raw idea, the Epic list and the framing conversation so far; show the human the PM's challenges and restated brief as a natural conversation.",
+      "waits_for_human": true
+     },
+     {
+      "step": "2a",
+      "action": "Ask the human once for their --human proposal (one story or several, Epic, acceptance criteria, decisions already held) and feed it plus their answers back to the PM, repeating rounds until the PM says the brief is ready and the human confirms (or accepts provisional defaults).",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-pm with pilot-task-write-story.md, the existing-analysis link, the analysis, the validated brief, the human's proposal and the Epic list so it writes up and challenges the human's plan.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-architect with pilot-task-anticipate-architecture.md, the existing-analysis link, the analysis, plus pilot-link-knowledge.md and pilot-link-architecture.md (architecture module on) and only the PM's draft, to validate it.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "If the architect objects, run the PM/architect/human dialogue per agent-dialogue turn-taking, putting any question that needs the human to them before creating tickets, until convergence on a single story, a story plus tech companion, or several stories (with Epic).",
+      "waits_for_human": true
+     },
+     {
+      "step": "4",
+      "action": "Create the draft story ticket(s) (issue_write, plus sub_issue_write and a new Epic if needed): type:feature, level:story, status:draft, priority label, assigned to this session.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "Run python3 .pilot/pilot.py event <n>... --action created --phase discovery to get the created events (pushed to the dashboard in step 7a).",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Show the human the drafted story/stories with real issue numbers and the anticipated architecture; put the PM's open questions to them; ask once about a mockup (existing, live sketch, or PM prose) since it is user-facing UI, and check ticket comments for attachments before each round.",
+      "waits_for_human": true
+     },
+     {
+      "step": "5",
+      "action": "Feed corrections back into the dialogue and write each round's changes into the draft ticket(s) via issue_write, repeating until the human approves (if judged out of scope: set status:wont-do and close the draft instead).",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Final consolidation: have the dialogue re-read each draft ticket body as a whole and fix incoherences across rounds, updating the ticket.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Finalize: issue_write to flip each story from status:draft to status:backlog and unassign it (no prototype handling, since not --from-proto).",
+      "waits_for_human": false
+     },
+     {
+      "step": "7a",
+      "action": "Run pilot.py event <n>... --action approved --phase discovery and push the created and approved events to the dashboard with ArtifactData (loaded through ToolSearch if deferred), best-effort since dashboardUrl is set.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7b",
+      "action": "Wiki module on: for each finalized type:feature story, call Agent pilot-wiki entries task (pilot-task-wiki-entries.md, target status proposed) with project language, knowledge and wiki links, the story and touched domains.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7b",
+      "action": "Put each 'conflicts' question from the PM to the human and settle it before applying.",
+      "waits_for_human": true
+     },
+     {
+      "step": "7b",
+      "action": "On branch wiki/discovery-<first story n>, apply the add/update/remove wiki operations with pilot.py wiki add/set, run wiki lint, commit (docs(wiki): … with the required Co-Authored-By/Claude-Session trailer), push, open one PR with create_pull_request (description ending with the required Claude Code footer), and give the human the link without merging.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "Report the issue number(s)/URL(s) and the wiki PR link to the human.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.029278900000000004,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1821,
+    "cache_read_input_tokens": 18209,
+    "cache_creation_input_tokens": 2311
+   },
+   "ms": 11257,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "0 (preamble)",
+      "action": "Read .pilot/pilot-process.md, pilot-link-existing-analysis.md, pilot-link-ticket-tree.md, pilot-link-agent-dialogue.md and pilot-link-roster.md, if not already read.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Determine input: a raw idea ('Let travelers save a place as a favorite'), with --human mode; it is a product idea, not tech or bug, so continue without analyzing it myself.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Fetch open level:epic issues (title and body) as candidates; none exist, so the list is empty.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2-bis",
+      "action": "Call Agent pilot-pm with pilot-task-analyze-existing.md, the existing-analysis link in full, the raw idea and the empty Epic list; hold the analysis and show the human its 'Touched by this input' and 'Not covered' parts.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Frame the idea: with --human, ask the human once for their proposal (one story or several, Epic, acceptance criteria, decisions already held); then run PM framing rounds (pilot-task-frame-idea.md), showing challenges and the restated brief, feeding replies back until the brief is ready and the human confirms.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-pm with pilot-task-write-story.md, the analysis link, the analysis, the validated brief, the human's proposal and the Epic list, to write up and challenge the human's plan; then call pilot-architect (anticipate-architecture, plus knowledge and architecture links since the module is on) on the draft only; on objection run the PM/architect/human dialogue, putting human-needing questions to the human, until convergence.",
+      "waits_for_human": true
+     },
+     {
+      "step": "4",
+      "action": "Create the draft ticket(s) via issue_write (type:feature, level:story, status:draft, priority, assigned to this session; plus sub_issue_write/Epic if the dialogue decided so), then run pilot.py event <n>... --action created --phase discovery.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Show the human the drafted story and anticipated architecture with real issue numbers, put the PM's open questions to them, ask once about a mockup for the user-facing UI (existing, live sketch, or prose), check ticket comments for attachments, write each round's changes into the ticket and repeat until approved.",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Final consolidation: have the dialogue re-read each draft ticket body as a whole and fix incoherences across rounds.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Finalize: flip each story from status:draft to status:backlog, unassigned (no prototype, so no proto updates).",
+      "waits_for_human": false
+     },
+     {
+      "step": "7a",
+      "action": "Dashboard: dashboardUrl is set, so push via ArtifactData the events from pilot.py event <n>... --action approved --phase discovery, plus the created ones from step 4.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7b",
+      "action": "Wiki (module on): call Agent pilot-pm with pilot-task-wiki-entries.md (target status proposed) for each finalized story; put any conflicts questions to the human and settle them first.",
+      "waits_for_human": true
+     },
+     {
+      "step": "7b",
+      "action": "Apply wiki changes on branch wiki/discovery-<story n> (wiki add/set), run wiki lint, commit docs(wiki) with the required Co-Authored-By trailers, push, open one PR with the attribution footer, and give the human its link without merging.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "Report the issue number(s)/URL(s) and the wiki PR link to the human.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.0245849,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1350,
+    "cache_read_input_tokens": 18209,
+    "cache_creation_input_tokens": 2315
+   },
+   "ms": 8485,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "Preamble",
+      "action": "Read .pilot/pilot-process.md, pilot-link-ticket-tree.md, pilot-link-agent-dialogue.md, pilot-link-roster.md and pilot-link-existing-analysis.md (--human mode, no --multi, no --resume).",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Take the raw idea 'Let travelers save a place as a favorite.' as input; it is a product idea (not tech/bug), so continue without analyzing it myself.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Fetch open level:epic issues (title and body) as candidate Epics; there are none, so the list is empty.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2-bis",
+      "action": "Call Agent pilot-pm with pilot-task-analyze-existing.md, the analysis link in full, the raw idea and the empty Epic list; hold the analysis and show the human its 'Touched by this input' and 'Not covered' parts.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Call Agent pilot-pm with pilot-task-frame-idea.md (raw idea, Epic list, conversation so far); show the human the PM's challenges and restated brief conversationally. Repeat, feeding replies back, until the brief is ready and confirmed (or the human accepts provisional defaults).",
+      "waits_for_human": true
+     },
+     {
+      "step": "2a",
+      "action": "With --human, ask the human once for their proposal (one story or several, the Epic, acceptance criteria, decisions already held), to be passed to step 3 as the human's proposal and never completed by the PM.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-pm with pilot-task-write-story.md, the analysis link, the analysis, the validated brief, the raw idea, the human's proposal and the Epic list. The PM writes it up and challenges it without adding decisions of its own.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-architect with pilot-task-anticipate-architecture.md, the analysis link, the analysis, the draft, and the knowledge and architecture links (architecture module on) to validate the draft. On objection, run the PM/architect dialogue per agent-dialogue turn-taking, then re-validate the revised draft.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Put to the human any question that changes the story's shape or contradicts one of their decisions, and feed the answer back into the dialogue. Continue until convergence: a single story, several stories, or out of scope (stop and create nothing). Step 3a is skipped because there is no --multi.",
+      "waits_for_human": true
+     },
+     {
+      "step": "4",
+      "action": "Create the draft ticket(s) with issue_write: type:feature, level:story, status:draft, a priority label, assigned to this session. There is no Epic, so none is linked unless a new Epic is agreed, in which case create it first and link the stories with sub_issue_write. Then run pilot.py event <n>... --action created --phase discovery.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Show the human the drafted story or stories with real issue numbers and the anticipated architecture. Put the PM's open questions to them, feed the answers back and run more rounds as needed. Ask once whether they have a mockup, want to sketch one, or accept the PM's prose description, and ask them to attach any mockup to the ticket themselves. Check ticket comments before each round. Write each round's changes into the draft with issue_write until the human approves. If the idea is judged out of scope, set status:wont-do and close the draft.",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Run the final consolidation pass: have the dialogue re-read each draft's whole body and fix anything incoherent across rounds, updating the ticket.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Finalize with issue_write: flip each story from status:draft to status:backlog and unassign it. The prototype handling is skipped because there is no --from-proto.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7a",
+      "action": "Dashboard, best-effort: run pilot.py event <n>... --action approved --phase discovery and push these events plus the earlier created events with ArtifactData. Skip silently if dashboardUrl or pilot.py is missing.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7b",
+      "action": "Wiki module is on: for each finalized type:feature story, call Agent pilot-pm with pilot-task-wiki-entries.md (target status proposed), the project language, the knowledge and wiki links, the story and its domains.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7b",
+      "action": "Put each 'conflicts' question from the PM to the human and settle it before applying anything.",
+      "waits_for_human": true
+     },
+     {
+      "step": "7b",
+      "action": "On branch wiki/discovery-<first story n>, apply the wiki add/update/remove entries via pilot.py wiki add/set, run wiki lint, commit as docs(wiki) including the indexes with the required Co-Authored-By and Claude-Session trailers, push, and open one PR with the entries and their status (PR description ending with the required generated-with line and session link). Do not merge it.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "Report the story issue number(s)/URL(s) and the wiki PR link to the human, who merges the PR.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.0338509,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2279,
+    "cache_read_input_tokens": 18209,
+    "cache_creation_input_tokens": 2309
+   },
+   "ms": 14659,
+   "judged": {}
+  }
+ ]
+}

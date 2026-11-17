@@ -1,0 +1,384 @@
+{
+ "case": "L-S6e",
+ "model": "sonnet",
+ "fingerprint": "05776b820c1e0f2d",
+ "trials": [
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "`NamesOnlyTests.test_prints_only_names` asserts the exact order `Cafe du Pont` (300 m) then `Cafe Lumiere` (120 m). That is today's farthest-first order, and the `names-only` entry says nothing about order. The test therefore pins an incidental behavior, probably a bug, that the ticket did not ask to specify. Whoever fixes the sort will break this test for no reason related to `--names-only`. Fix: compare the lines in an order-independent way (for example sorted, or as a set), and keep asserting that there is no distance and no count line. Separately, farthest-first looks questionable against the overview's \"sorts by distance\". It is out of scope for #74, so I am not blocking on it. The author may open a `type:bug` ticket."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The PR body says \"not by command: it is a trivial option\", so the PR shows no check that the CLI really behaves as described. The unit test only covers the query `cafe`. Run `--names-only` through the CLI and record the real output in the PR body. Add a test for the second half of the entry (\"Without the option the output is unchanged\") if the existing tests do not already cover it. Also state or test what `--names-only` does with a query that matches nothing, since the entry says nothing about it. Prove that case, or leave it out of the claim."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "names-only",
+      "result": "change"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.07267638,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1616,
+    "cache_read_input_tokens": 1890,
+    "cache_creation_input_tokens": 13775
+   },
+   "ms": 13914,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The entry has two statements: with `--names-only` the output is one name per line with no distance and no count, and without it the output is unchanged. The PR tests only the first (`NamesOnlyTests.test_prints_only_names`). Add a test for the same query `cafe` without the option that asserts the existing output, including the distance and count lines. Without it the 'unchanged' promise is unchecked, and the entry is being moved to `implemented`."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The PR body says 'Verified: names-only — not by command: it is a trivial option'. I did not accept that. I re-ran `python -m unittest discover -s tests` on the branch (10 tests, OK), but that run does not cover the unchanged-output half of the entry. After adding the test, replace the line with the real command and its observed output, for example `python -m accessplaces.cli cafe --names-only` and the same query without the option. Also make sure the history shows the failing test commit before the implementation commit. I could not confirm that from what I was given."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "names-only",
+      "result": "change"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.02678308,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1508,
+    "cache_read_input_tokens": 13353,
+    "cache_creation_input_tokens": 2312
+   },
+   "ms": 11953,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The entry has two clauses: `--names-only` prints one name per line with no distance and no count, and without the option the output is unchanged. The PR moves it to `implemented`, but its only test, `NamesOnlyTests.test_prints_only_names`, covers the first clause. Nothing checks that the default output (distance and count line) is unchanged after the cli.py edit. Add a regression test that runs the same `cafe` query without the option and asserts the previous output exactly. The 10 tests I re-ran pass, but none of them is stated to cover this clause."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The PR body says \"Verified: names-only — not by command: it is a trivial option\". That justification does not hold. The behavior is a CLI output contract, and the unchanged-output clause was never exercised. Once the regression test is added, update the line to name the command actually run, for example `python -m unittest discover -s tests` and the CLI invocation with and without `--names-only`."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "names-only",
+      "result": "change"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.025102380000000004,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1350,
+    "cache_read_input_tokens": 13353,
+    "cache_creation_input_tokens": 2313
+   },
+   "ms": 10837,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "approve",
+    "points": [],
+    "checked_against": [
+     {
+      "entry": "names-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.024346680000000002,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1296,
+    "cache_read_input_tokens": 13353,
+    "cache_creation_input_tokens": 2313
+   },
+   "ms": 10463,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "decision",
+      "entry": "names-only",
+      "text": "The new test fixes the line order as `Cafe du Pont` (300 m) then `Cafe Lumiere` (120 m). That is farthest first, which is how `search()` behaves today. The product is described as sorting by distance, and nearest first is the usual reading. Neither the `names-only` entry nor ticket #74 states an order, so the test locks in a behavior that may be a latent bug. I have no fix to propose until a human answers. Options: (a) farthest first is intended, so the order goes into the wiki; (b) it is a bug, so open a separate `type:bug` ticket and keep this test's order out of this PR, for example by comparing the set of lines or a sorted list. The PR cannot settle this alone."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     },
+     {
+      "entry": "names-only",
+      "result": "decision"
+     }
+    ]
+   },
+   "cost": 0.02469938,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1322,
+    "cache_read_input_tokens": 13353,
+    "cache_creation_input_tokens": 2315
+   },
+   "ms": 10750,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "approve",
+    "points": [],
+    "checked_against": [
+     {
+      "entry": "names-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.02094418,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 957,
+    "cache_read_input_tokens": 13353,
+    "cache_creation_input_tokens": 2315
+   },
+   "ms": 7842,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "approve",
+    "points": [],
+    "checked_against": [
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     },
+     {
+      "entry": "names-only",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.02315568,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1179,
+    "cache_read_input_tokens": 13353,
+    "cache_creation_input_tokens": 2314
+   },
+   "ms": 10535,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "approve",
+    "points": [],
+    "checked_against": [
+     {
+      "entry": "names-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.02102273,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 981,
+    "cache_read_input_tokens": 13353,
+    "cache_creation_input_tokens": 2317
+   },
+   "ms": 8431,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The entry makes two promises: the option prints names only, and \"without the option the output is unchanged\". The PR adds only NamesOnlyTests.test_prints_only_names, which covers the first. Nothing in the diff shows a test pinning the default output (distance and count line) for the same query. Add one, or point to an existing test that already asserts it, so the move to `implemented` is backed for both promises."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The PR body says \"Verified: names-only — not by command: it is a trivial option\". That is not verification. Run the real CLI with and without `--names-only` on the `cafe` query, and record the commands and their output in the PR body. My re-run of `python -m unittest discover -s tests` (10 tests, OK) only exercises the unit test."
+     },
+     {
+      "tag": "decision",
+      "entry": "names-only",
+      "text": "The new test asserts the order `Cafe du Pont` (300 m), then `Cafe Lumiere` (120 m). That is farthest first, the current behavior of `search()`, which is probably a bug for a tool described as sorting by distance. Neither the entry nor the ticket states an order, so the test now pins an order nobody specified. A human has to choose between two options. Option 1: keep the current order and have the test assert it deliberately. Option 2: open a separate `type:bug` ticket for the sort and make this test order-independent, so it does not break when that is fixed. I am not deciding this inside a `type:tech` ticket."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     }
+    ]
+   },
+   "cost": 0.02810778,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1637,
+    "cache_read_input_tokens": 13353,
+    "cache_creation_input_tokens": 2309
+   },
+   "ms": 13434,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "approve",
+    "points": [],
+    "checked_against": [
+     {
+      "entry": "names-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.02541504,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1418,
+    "cache_read_input_tokens": 13353,
+    "cache_creation_input_tokens": 2314
+   },
+   "ms": 11917,
+   "judged": {}
+  }
+ ]
+}

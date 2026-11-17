@@ -1,0 +1,682 @@
+{
+ "case": "P-SPEC-HUMAN",
+ "model": "sonnet",
+ "fingerprint": "b7e07992d32604ea",
+ "trials": [
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "0",
+      "action": "Skip preflight: doctor already reported ok: true in this conversation.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve spec 80` (no --auto, human live); it returns claim-fresh. Read issue #80, its parent Epic if any, and any Blocks/Depends-on or sub-issue links as context.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Claim: `python3 .pilot/pilot.py claim spec 80 --mode fresh` (assignee + status:in-spec, re-read to confirm; on lost-race stand down, else report and stop).",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Best-effort dashboard push of the event/activity returned by claim via ArtifactData (ToolSearch to load it if deferred), since dashboardUrl is set.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Call Agent for pilot-techlead with pilot-task-analyze-existing.md, pilot-link-existing-analysis.md in full and ticket #80; keep the analysis in session (no comment), and show the human its 'Touched by this input' and 'Not covered' parts.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "--human: ask the human once for their proposal (the split, decisions, dependencies, priorities), to be passed to the dialogue as the human's proposal.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Run `python3 .pilot/pilot.py workflow show --ticket 80` once (spec.architect: leads, so the architect+tech lead dialogue; rules.e2e_task false, notes passed along; designer only if designer: true).",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Run the architect/tech lead dialogue by alternating Agent calls (pilot-architect with scope-story, pilot-techlead with write-spec), passing bug-tickets link, workflow rules, the ticket body, parent Epic, coding standards, knowledge and architecture links in full (architecture module on), the analysis and the human's proposal. They challenge it and add no decision of their own. Checkpoint the split shape and each spec as one scratch comment on story #80, created once then edited.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "Collect the dialogue result: type:feature is always a set of tasks (no e2e task since e2e_task is false), each with its own spec, dependencies and priority, possibly prerequisite needs, or a won't-do verdict.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4a",
+      "action": "Call Agent for pilot-pm with pilot-task-check-split-coverage.md, the acceptance criteria and only the type:feature tasks; if it blocks on a gap, feed it back to the dialogue and repeat until approved.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4b",
+      "action": "Show the human the proposed split and each spec (decisions, dependencies, prerequisites, PM check), then feed their reply back into the dialogue, updating the same scratch comment each round, and repeat until approved.",
+      "waits_for_human": true
+     },
+     {
+      "step": "4c",
+      "action": "Final consolidation pass: the dialogue re-reads the whole split and every spec and fixes cross-round incoherences.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Apply the result: create the task sub-issues linked natively to #80, each level:task with its own type:, the story's workflow: label if any, its spec and status:dev-ready, with 'Depends on #N' lines for dependencies. Run `pilot.py event <tasks> --action created --phase spec`. Set the parent with `pilot.py set 80 --status split --unassign --remove priority:P<n>`. Reduce the scratch comment to a one-line pointer. Also handle any prerequisite tickets, a won't-do or a needs-human flag, if the outcome called for one.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5b",
+      "action": "Wiki module on and the story was split: call pilot-pm with pilot-task-wiki-entries.md (target status specified), apply on branch wiki/spec-80 with --status specified, and list story 80 and its feature/tech tasks on each entry. Put any conflicts question to the human; commit, push, open one PR, never merge. (If the story was closed as won't-do instead, remove its proposed entries.)",
+      "waits_for_human": true
+     },
+     {
+      "step": "5c",
+      "action": "Architecture module on: only if the architect marked a decision ADR, run /pilot-architecture --adr steps 2-4 per decision on branch architecture/spec-80 with the human validating the draft; commit, push, open one PR, never merge. Otherwise skip.",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Report the outcome to the human: tasks created and specced, dependencies recorded, prerequisites spun out or won't-do, plus the wiki PR and architecture PR if opened.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.113798,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1713,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 24166
+   },
+   "ms": 10896,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "0",
+      "action": "Skip preflight: doctor already reported ok: true in this conversation.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve spec 80` (no --auto, since --human is never unattended). It returns claim-fresh. Read story #80 with issue_read, plus its parent Epic and any Blocks/Depends-on tickets, for context.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Claim the ticket: `python3 .pilot/pilot.py claim spec 80 --mode fresh`. It sets the assignee and status:in-spec. On lost-race, stand down; on any other refusal, report and stop.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Best-effort dashboard push of the claim event/activity via ArtifactData, since dashboardUrl is set.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-techlead with pilot-task-analyze-existing.md, pilot-link-existing-analysis.md in full and ticket #80. Keep the analysis for the run and post no comment of its own.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Show the human the analysis's 'Touched by this input' and 'Not covered' parts. Then ask once for their proposal: the split, the decisions, dependencies and priorities.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Run `python3 .pilot/pilot.py workflow show --ticket 80` (spec.architect: leads, e2e_task false, notes, designer flag). Read the scope-story, write-spec, bug-tickets, agent-dialogue, knowledge and architecture docs.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Run the architect and tech lead dialogue with alternating Agent calls. Pass the human's proposal, the analysis, the rules, the notes and the ticket body. They challenge the proposal and write the specs, adding no decision of their own. Keep one scratch checkpoint comment on story #80, created once and then edited as the split and each spec settle.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "Receive the dialogue result: a type:feature split into dev tasks (no e2e task, since rules.e2e_task is false), each with its spec, dependencies and priority, plus any prerequisite needs. A type:feature story is never left unsplit.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4a",
+      "action": "Call Agent pilot-pm with pilot-task-check-split-coverage.md, the acceptance criteria and only the type:feature tasks. If the PM reports a gap, feed it back into the dialogue and repeat until approved.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4b",
+      "action": "Show the human the proposed split, each spec, decisions, dependencies, prerequisites and the PM's coverage check. Feed their reply back into the dialogue and update the scratch comment each round, repeating until they approve.",
+      "waits_for_human": true
+     },
+     {
+      "step": "4c",
+      "action": "Final consolidation: have the dialogue re-read the whole story and every task spec, and fix anything that no longer holds together across rounds.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Create the sub-issues, linked as native sub-issues. Each gets level:task, its own type: label, the story's workflow: label if it has one, its written spec, status:dev-ready and any 'Depends on #N' line, one per line. Run `pilot.py event <tasks> --action created --phase spec` and push the dashboard events (step 2a).",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Run `pilot.py set 80 --status split --unassign --remove priority:P<n>`. Edit the scratch comment down to one line, 'Split into #A, #B… see each for its spec'.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "If prerequisite tech or bug needs were flagged, create each directly at status:backlog (never a sub-issue). Add a 'Blocks #M' comment on it and a Depends-on line in #80 for a hard blocker. Comment on the parent Epic if one exists.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5b",
+      "action": "Wiki module is on and #80 was split: call Agent pilot-pm with pilot-task-wiki-entries.md (target status specified). Apply the entries on branch wiki/spec-80 with --status specified, listing #80 and its feature/tech tasks (not e2e) on each entry. Commit with the required Co-Authored-By trailer, push and open one PR, never merging it. Put any 'conflicts' question to the human.",
+      "waits_for_human": true
+     },
+     {
+      "step": "5c",
+      "action": "Architecture module is on: if the architect marked any decision ADR, run /pilot-architecture --adr steps 2-4 for each on branch architecture/spec-80. The human validates each draft. Commit, push and open one PR, never merging it. Skip if no decision is marked ADR.",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Report the outcome to the human: the tasks created and spec'd, the dependencies recorded, any prerequisite tickets, the wiki PR and the architecture PR if opened.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.0342533,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2282,
+    "cache_read_input_tokens": 21853,
+    "cache_creation_input_tokens": 2311
+   },
+   "ms": 15371,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve spec 80` (no --auto; --human is not passed to resolve); it returns action claim-fresh",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Read story #80 (mcp__github__issue_read), its parent Epic if linked, and tickets referenced via Blocks/Depends on or sub-issues, as context; mode = fresh",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Claim: `python3 .pilot/pilot.py claim spec 80 --mode fresh` (assignee + status:in-spec, re-read to confirm; on lost-race stand down)",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Best-effort dashboard push of the claim event/activity via ArtifactData (dashboardUrl is set; ToolSearch loads the tool if deferred)",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-techlead with pilot-task-analyze-existing.md, pilot-link-existing-analysis.md in full and the ticket; keep the analysis in the session (no comment of its own)",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Show the human the analysis's 'Touched by this input' and 'Not covered' parts, then ask once for their proposal (the split, decisions, dependencies, priorities)",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Run `python3 .pilot/pilot.py workflow show --ticket 80` once (spec.architect=leads, rules.e2e_task=false, notes, designer flag), and read the scope-story, write-spec, bug-tickets, knowledge and architecture docs to pass into the calls",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Run the architect-led dialogue (alternating Agent pilot-architect and pilot-techlead turns), passing the analysis, the human's proposal, the task docs, workflow rules, the story and project standards; they challenge the proposal and write the split and specs without adding their own decisions",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Checkpoint as the dialogue progresses: create then edit one scratch comment on story #80 with the agreed split shape and each task's spec",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "Collect the dialogue's result: a set of proposed type:feature/type:tech tasks, each with spec, decisions, dependencies and priority (no e2e task since e2e_task is false), plus any prerequisite needs or a won't-do verdict",
+      "waits_for_human": false
+     },
+     {
+      "step": "4a",
+      "action": "Call Agent pilot-pm with pilot-task-check-split-coverage.md, the acceptance criteria and only the type:feature tasks; if it blocks on a gap, feed it back to the dialogue and repeat until approved",
+      "waits_for_human": false
+     },
+     {
+      "step": "4b",
+      "action": "Show the human the proposed split, each spec, decisions, dependencies, prerequisites and the PM coverage check; wait for their response, feed it back into the dialogue, update the scratch comment, repeat until approved",
+      "waits_for_human": true
+     },
+     {
+      "step": "4c",
+      "action": "Final consolidation pass: the dialogue re-reads the whole story, every task and spec, and fixes any cross-round inconsistency",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Create the sub-issues, linked as native sub-issues of #80, each with level:task, its own type:, the story's workflow: label if any, its written spec and status:dev-ready; add 'Depends on #N' lines (one per line) for task dependencies",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Run `pilot.py event <tasks...> --action created --phase spec` and push the dashboard events (step 2a)",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Run `python3 .pilot/pilot.py set 80 --status split --unassign --remove priority:P<n>` and edit the scratch comment down to one line ('Split into #A, #B... — see each for its own spec')",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "If prerequisite tech/bug needs were flagged: create each directly at status:backlog (never a sub-issue, no live drafting loop), add the 'Blocks #M' comment and 'Depends on #N' line in #80 as needed, and comment on the parent Epic if there is one",
+      "waits_for_human": false
+     },
+     {
+      "step": "5b",
+      "action": "Wiki module on and #80 is a split type:feature: call Agent pilot-pm with pilot-task-wiki-entries.md (status specified), apply on branch wiki/spec-80 with --status specified, add --add-ticket for the story and its feature/tech tasks (not e2e), commit, push, open one PR, never merge; a conflicts question is put to the human",
+      "waits_for_human": false
+     },
+     {
+      "step": "5c",
+      "action": "Architecture module on: only if the architect marked a decision ADR, run /pilot-architecture --adr steps 2-4 on branch architecture/spec-80 (human validates the draft), commit, push, open one PR, never merge",
+      "waits_for_human": false
+     },
+     {
+      "step": "6",
+      "action": "Report the outcome to the human: tasks created and specced, dependencies recorded, prerequisites spun out, plus the wiki PR and architecture PR if opened",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.03635530000000001,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2491,
+    "cache_read_input_tokens": 21853,
+    "cache_creation_input_tokens": 2314
+   },
+   "ms": 16261,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve spec 80` (no --auto, --human is not passed to it) and get action claim-fresh.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Read issue #80 (mcp__github__issue_read), its parent Epic if linked, and any Blocks/Depends on or sub-issue references, as context.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Claim the ticket: `python3 .pilot/pilot.py claim spec 80 --mode fresh` (assignee + status:in-spec). On lost-race, stand down; on another refusal, report and stop.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Best-effort dashboard push of the returned event/activity with ArtifactData (ToolSearch if deferred), since dashboardUrl is set.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-techlead with pilot-task-analyze-existing.md, pilot-link-existing-analysis.md in full and the ticket. Keep the analysis in the session and post no comment of its own.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Show the human the analysis parts \"Touched by this input\" and \"Not covered\", then ask once for their proposal: the split, the decisions, dependencies and priorities. The personas do not add decisions of their own.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Run `python3 .pilot/pilot.py workflow show --ticket 80` (spec.architect: leads, rules.e2e_task false, plus notes and designer flag). Read scope-story, write-spec, bug-tickets, knowledge and architecture docs.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Run the architect-led dialogue, alternating pilot-architect and pilot-techlead Agent calls. Pass the human's proposal and the analysis, with the personas challenging the proposal and writing the specs. Each call gets the task docs, workflow rules, ticket body, Epic and pointers to standards. Do not pass the conversation history. Do not use --multi, which is invalid with --human.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Checkpoint into one scratch comment on story #80 (create it once, then edit it) each time the split shape or a task spec settles.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "Collect the dialogue's result: a split into type:feature/type:tech tasks, each with its own spec, dependencies and priority, with no e2e task. Note any prerequisite tickets flagged.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4a",
+      "action": "Call Agent pilot-pm with check-split-coverage.md, the acceptance criteria and only the type:feature tasks. Feed any gap back into the dialogue and repeat until approved.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4b",
+      "action": "Show the human the proposed split, each spec, decisions, dependencies, prerequisites and the PM's coverage check. Feed their reply back into the dialogue, and update the scratch comment each round. Repeat until approved.",
+      "waits_for_human": true
+     },
+     {
+      "step": "4c",
+      "action": "Run the final consolidation pass: the dialogue re-reads the whole split and every spec, and fixes any inconsistency between rounds.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Create the task sub-issues. Link them as native sub-issues. Label each level:task plus its own type: (no workflow label unless the story has one). Give each its written spec, its own priority, \"Depends on #N\" lines where needed, and status:dev-ready directly.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Run `pilot.py event <tasks> --action created --phase spec` and push the dashboard events (step 2a).",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Run `pilot.py set 80 --status split --unassign --remove priority:P<n>`. Edit the scratch comment down to one line (\"Split into #A, #B … see each for its spec\").",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "If prerequisite tech or bug needs were flagged, create them at status:backlog (never as sub-issues, with no live drafting loop). Add the \"Blocks #M\" comment and the \"Depends on #N\" or reference line in the story body, and comment on the parent Epic if there is one.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5b",
+      "action": "Wiki module on and story split: call Agent pilot-pm with wiki-entries (target status specified), the project language, knowledge, wiki docs, the story and its tasks. Apply on branch wiki/spec-80 with --status specified and --add-ticket for the story and its feature/tech tasks (never e2e).",
+      "waits_for_human": false
+     },
+     {
+      "step": "5b",
+      "action": "If a wiki `conflicts` question arises, put it to the human and apply their answer.",
+      "waits_for_human": true
+     },
+     {
+      "step": "5b",
+      "action": "Commit (with the Co-Authored-By and Claude-Session trailer lines) and push the wiki branch, then open one PR (description ending with the Generated with Claude Code line and session link). Do not merge it.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5c",
+      "action": "Only if the architect marked an architecture decision as ADR: run /pilot-architecture --adr steps 2-4 on branch architecture/spec-80 with `arch add --ticket`. The human validates the draft. Commit, push and open one PR, never merged. Skipped if there is no ADR.",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Report the outcome to the human: story split and tasks spec'd, dependencies and prerequisites recorded, plus the wiki PR and the architecture PR if opened.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.0371573,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2570,
+    "cache_read_input_tokens": 21853,
+    "cache_creation_input_tokens": 2317
+   },
+   "ms": 21411,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve spec 80` (no --auto, human is live); it returns claim-fresh",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Read issue #80 (mcp__github__issue_read) plus its parent Epic and any Blocks/Depends-on or sub-issue references as context",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Claim the ticket: `python3 .pilot/pilot.py claim spec 80 --mode fresh` (assignee + status:in-spec, re-read to confirm; stand down if lost-race)",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Push the claim's event/activity to the dashboard via ArtifactData (ToolSearch if deferred), best-effort since dashboardUrl is set",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-techlead with pilot-task-analyze-existing.md, pilot-link-existing-analysis.md in full and ticket #80 to produce the analysis; keep it in session (no comment)",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Show the human the analysis's 'Touched by this input' and 'Not covered' parts, and ask once for their proposal (the split, decisions, dependencies, priorities)",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Run `python3 .pilot/pilot.py workflow show --ticket 80` once (spec.architect=leads, rules.e2e_task=false, notes, designer flag)",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Run the architect+techlead dialogue via alternating Agent calls (pilot-architect with scope-story, pilot-techlead with write-spec, plus agent-dialogue, bug-tickets link, workflow rules, ticket body, architecture/knowledge docs, the analysis and the human's proposal). They challenge the human's proposal with sourced objections and write up the split and specs, adding no decision of their own. Keep one scratch checkpoint comment on story #80, creating it then editing it as the split and each spec settle; ask the human if a gap is found",
+      "waits_for_human": true
+     },
+     {
+      "step": "4",
+      "action": "Collect the dialogue's result: a split into dev tasks (type:feature/type:tech, no e2e task since e2e_task is false) each with its own spec, dependencies and priority, any prerequisite needs, or a won't-do verdict",
+      "waits_for_human": false
+     },
+     {
+      "step": "4a",
+      "action": "Call Agent pilot-pm with pilot-task-check-split-coverage.md, the acceptance criteria and only the type:feature tasks; feed any gap back to the dialogue and repeat until approved",
+      "waits_for_human": false
+     },
+     {
+      "step": "4b",
+      "action": "Show the human the proposed split, each spec, decisions, dependencies, prerequisites and PM coverage check; wait for their reply, feed it back into the dialogue, update the scratch comment, and repeat until approved",
+      "waits_for_human": true
+     },
+     {
+      "step": "4c",
+      "action": "Final consolidation pass: have the dialogue re-read the story and all tasks and specs as a whole and fix any cross-round inconsistencies",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Create the task sub-issues linked as native sub-issues, each with level:task, its own type:, the story's workflow: label if any, its written spec and status:dev-ready, with 'Depends on #N' lines for dependencies",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Run `python3 .pilot/pilot.py event <tasks...> --action created --phase spec` and push the dashboard events (step 2a)",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Run `python3 .pilot/pilot.py set 80 --status split --unassign --remove priority:P<n>` to turn the parent into a tracker",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Edit the scratch comment down to one line ('Split into #A, #B… see each for its spec')",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "If prerequisite tech or bug needs were flagged, create each directly at status:backlog (never as a sub-issue), add 'Blocks #M' comment, add Depends on #N lines to the story body for hard blockers, and comment on the parent Epic if one exists",
+      "waits_for_human": false
+     },
+     {
+      "step": "5b",
+      "action": "Wiki module on and story was split: call Agent pilot-pm with pilot-task-wiki-entries.md (target status specified) and the required docs; apply entries on branch wiki/spec-80 with --status specified, add story and type:feature/type:tech tasks via wiki set --add-ticket; put any conflicts question to the human; commit, push, open one PR, never merge",
+      "waits_for_human": true
+     },
+     {
+      "step": "5c",
+      "action": "Architecture module on: for each decision the architect marked ADR, run /pilot-architecture --adr steps 2-4 on branch architecture/spec-80, the human validating each draft; commit, push, open one PR, never merge (skipped if no ADR was marked)",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Report the outcome to the human: tasks created and specced, dependencies recorded, prerequisites spun out, plus the wiki PR and architecture PR if opened",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.034819300000000004,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2337,
+    "cache_read_input_tokens": 21853,
+    "cache_creation_input_tokens": 2315
+   },
+   "ms": 15544,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "0",
+      "action": "Preflight skipped: doctor already reported ok:true earlier in this conversation.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve spec 80` (no --auto, since --human). It returns claim-fresh. Read issue #80 with mcp__github__issue_read, plus its parent Epic and any Blocks/Depends-on or sub-issue links, as context.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Claim: `python3 .pilot/pilot.py claim spec 80 --mode fresh` (assignee + status:in-spec, re-read to confirm). If lost-race, stand down; any other refusal, report and stop.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Best-effort dashboard push of the event/activity returned by claim, using ArtifactData (load it with ToolSearch if deferred). dashboardUrl is set.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Call Agent pilot-techlead with pilot-task-analyze-existing.md, pilot-link-existing-analysis.md in full and ticket #80. Keep the analysis in the session with no comment of its own.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Show the human the analysis's 'Touched by this input' and 'Not covered' parts (--human).",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Ask the human once for their proposal (the split, the decisions, dependencies, priorities). The personas will challenge it and write it up, adding no decisions of their own.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Run `python3 .pilot/pilot.py workflow show --ticket 80` once. spec.architect=leads means the architect+tech lead dialogue. Keep its notes for every prompt and its rules (e2e_task false). Note whether designer:true.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Run the architect+tech lead dialogue (not --multi) as alternating Agent calls to pilot-architect and pilot-techlead. Pass scope-story or write-spec, link-bug-tickets, the workflow rules/notes, the analysis, the human's proposal, the ticket body, the parent Epic, the coding standards, and the knowledge and architecture links (architecture module on). Pass the existing-analysis link into each call. Pass no conversation history.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3",
+      "action": "Checkpoint as the dialogue progresses: create one scratch comment on story #80 (mcp__github__update_issue_comment), then edit that same comment each time the split shape or a task spec settles.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "Collect the dialogue's result: for type:feature, always a set of tasks, each with its own type, spec, dependencies and priority, and no e2e task since e2e_task is false. It may also flag prerequisite tech/bug needs or a won't-do verdict.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4a",
+      "action": "Call Agent pilot-pm with check-split-coverage.md, the acceptance criteria and only the type:feature tasks. If it blocks with a gap, feed it back into the dialogue and repeat until approved. This runs regardless of mode.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4b",
+      "action": "Show the human the proposed split and each spec, with decisions, dependencies, prerequisites and the PM check. Feed their reply back into the dialogue, update the scratch comment each round, and repeat until approved.",
+      "waits_for_human": true
+     },
+     {
+      "step": "4c",
+      "action": "Final consolidation pass: the dialogue re-reads the whole split and every spec, and fixes anything incoherent across rounds.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Create the sub-issues with mcp__github__issue_write and link them as native sub-issues via sub_issue_write. Each gets level:task, its own type:, the story's workflow: label if it has one, its written spec, and status:dev-ready. Add 'Depends on #N' lines (one per line) for recorded dependencies. Then run `pilot.py event <tasks> --action created --phase spec`.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Run `python3 .pilot/pilot.py set 80 --status split --unassign --remove priority:P<n>`. Edit the scratch comment down to one line ('Split into #A, #B… — see each for its spec').",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "If prerequisite tech or bug needs were flagged: create each directly at status:backlog (not a sub-issue and with no live drafting loop). Add a 'Blocks #M' comment on it, and a 'Depends on #N' line in #80 if it is a hard blocker. Comment on the parent Epic if there is one. If won't-do or needs-human was the result, apply that outcome per the skill instead.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Push the dashboard events/activity returned by the event and set calls, best-effort.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5b",
+      "action": "Wiki module on and type:feature story split: call Agent pilot-pm with task-wiki-entries.md (target status specified), the project language, link-knowledge, link-wiki, the story, its tasks and the domains. On branch wiki/spec-80, apply the entries with --status specified, add --add-ticket for the story and each feature/tech task (never e2e), commit, push and open one PR without merging. Put any 'conflicts' question to the human.",
+      "waits_for_human": true
+     },
+     {
+      "step": "5c",
+      "action": "Only if the architect marked an architecture decision as ADR: run /pilot-architecture --adr steps 2-4 per decision on branch architecture/spec-80 with arch add --ticket 80. The human validates the draft. Commit, push and open one PR without merging. Skipped if no ADR was marked.",
+      "waits_for_human": true
+     },
+     {
+      "step": "6",
+      "action": "Report the outcome to the human: the tasks created and specified, dependencies recorded, any prerequisites spun out, and the wiki PR and architecture PR if opened.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.037395300000000006,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2595,
+    "cache_read_input_tokens": 21853,
+    "cache_creation_input_tokens": 2314
+   },
+   "ms": 16485,
+   "judged": {}
+  }
+ ]
+}

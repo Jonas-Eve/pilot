@@ -1,0 +1,566 @@
+{
+ "case": "L-S6",
+ "model": "sonnet",
+ "fingerprint": "dc9d4571dcfe4843",
+ "trials": [
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "layer-dependencies",
+      "text": "`accessplaces/search.py` now starts with `from .cli import format_distance`. The accepted guideline says never to import `cli.py` from `search.py`, and the logic layer must stay free of input and output. This is a direct break, and it also creates a circular dependency, because `cli.py` imports `search.py`. Fix: move `format_distance` and `describe` into `search.py` with no `cli` import, or keep both in `cli.py`. `search.py` should depend on nothing in `cli.py`."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The `Verified:` line reads \"I read the code and it looks right\". That is not a replayable command from the project's own tests or CLI, so the stamp has no proof. Add a real `Verified: names-only — <command> → <result>` line. For example, run the CLI with `--names-only` and check one name per line, with no distance and no count line. If the proof is not by command, say so and drop the stamp."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The stamp is invalid. `pilot.verifiedCommit: 4f9e2ab` is followed by changes to `accessplaces/cli.py` and `accessplaces/search.py`, and a stamp stays valid only while files under `wiki/` alone change. The stamp must be made on a commit that includes the final code, or cleared and re-made once the layering fix is in."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The PR changes no file under `tests/`. The 10 passing tests I re-ran do not exercise `--names-only`, so the entry's claims are untested. Those claims are one name per line, no distance, no count line, and unchanged output without the option. The default printing path now goes through `describe`, which makes the \"output unchanged\" regression risk real. Add tests for both behaviors. Commit the failing tests before the implementation so the history shows test-first work. Without that history, TDD is not demonstrated."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "layer-dependencies",
+      "result": "change"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.08152308000000001,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1507,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 16362
+   },
+   "ms": 11430,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "layer-dependencies",
+      "text": "`accessplaces/search.py` now starts with `from .cli import format_distance`. The guideline says never to import `cli.py` from `search.py`, and to keep `search.py` free of input and output. Fix: move `describe` and `format_distance` into `cli.py`, which is where printing belongs. Alternatively, keep only pure logic in `search.py` and have `cli.py` import it. `search.py` must not depend on `cli.py` in either case."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The `Verified:` line reads \"I read the code and it looks right\". That is not a command I can replay, and it is not a `not by command` line with a valid reason. The entry is behavioral, so a test or a CLI call can check it. Replace it with a real command, for example a unittest that runs the CLI with `--names-only` and checks one name per line with no distance and no count line. The command must test every detail the entry states. A proof like that is what makes the stamp valid."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The stamp is invalid for a second reason. `git diff --name-only 4f9e2ab..HEAD` shows `accessplaces/cli.py` and `accessplaces/search.py` changed after the stamped commit. A stamp stands only if just files under `wiki/` changed since its commit. Re-stamp at the commit that holds the final code, after the fixes above, once the proof replays."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "No file under `tests/` is in the diff. The 10 passing tests (`python -m unittest discover -s tests` -> OK) therefore cannot cover `--names-only`. Add tests for both halves of the entry. First, with `--names-only` the output is one name per line, with no distance and no count line. Second, without the option the output is unchanged. The second matters because the PR also routes normal printing through the new `describe`. Commit the failing tests before the implementation so the history shows TDD. I can't see any test-first commit here."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "layer-dependencies",
+      "result": "change"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.026469580000000003,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1487,
+    "cache_read_input_tokens": 14048,
+    "cache_creation_input_tokens": 2313
+   },
+   "ms": 11200,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "layer-dependencies",
+      "text": "search.py now does `from .cli import format_distance`. This breaks the rule that search.py never imports cli.py and stays free of I/O. Move `format_distance` and `describe` into cli.py (or have cli.py own the formatting). search.py must not import from cli.py. The 10 passing tests do not catch this."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The `Verified:` line reads 'I read the code and it looks right'. It is not a replayable command from the project's own tests or CLI, and it is not a `not by command` line with a valid reason. The stamp (`verified: by process:pilot-dev`, `verifiedCommit: 4f9e2ab`) therefore does not stand. Remove the stamp, or add a real proof. For example, run the CLI with `--names-only` and check that it prints one name per line with no distance and no count. Add a test that asserts that exact output and also that output without the option is unchanged. Then replay that command and record it as `Verified: names-only — <command> → <result>`."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The stamp commit 4f9e2ab is older than the code changes. `git diff 4f9e2ab..HEAD` shows cli.py and search.py changed since the stamp, and a stamp is valid only if just files under wiki/ changed. Re-stamp at the right commit after the fixes above."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "Spec conformance and tests: the PR makes the default output go through `describe`. The entry requires that output without the option is unchanged. No test is shown that checks the default output, or that `--names-only` prints no distance and no count line. Add tests for both, written test-first. Also confirm the commit history shows a failing-test commit before the implementation. The description does not show this."
+     },
+     {
+      "tag": "change",
+      "entry": "stdlib-only",
+      "text": "The architecture guidelines conform here, but ADR 0001 is only `proposed`. The conclusion is not changed by that: `stdlib-only` itself is accepted and binding, and the PR adds no dependency. No action is needed on this point beyond the fixes above."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "layer-dependencies",
+      "result": "change"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "0001-stdlib-only-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.02086548,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 920,
+    "cache_read_input_tokens": 14048,
+    "cache_creation_input_tokens": 2311
+   },
+   "ms": 6582,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "layer-dependencies",
+      "text": "`accessplaces/search.py` now starts with `from .cli import format_distance`. This breaks the accepted guideline: \"never import `cli.py` from `search.py`\". It also makes the import cyclic, since `cli.py` imports `search.py`. Fix: move `format_distance` into `search.py` (or a neutral module that imports neither file), or keep `describe` in `cli.py`. Presentation and printing belong in `cli.py`. `search.py` should stay free of I/O and of any dependency on the CLI."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The `Verified:` line (\"I read the code and it looks right\") is not a replayable command. The entry therefore has no valid proof, and the stamp (`verified: by process:pilot-dev`, `verifiedCommit: 4f9e2ab`) cannot stand. The stamp also fails because `accessplaces/cli.py` and `accessplaces/search.py` changed since 4f9e2ab, and a stamp only survives changes under `wiki/`. Fix: add a command that tests the entry, such as a unittest run or a CLI call with `--names-only` showing one name per line, no distance and no count line. Re-stamp at the commit that holds the final code. If no command can test it, state `not by command` with a reason that holds, and leave no stamp."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The PR changes no test file. The 10 passing tests are existing ones, so nothing exercises `--names-only`, and the commit history shows no failing-test commit before the implementation. Add tests, written first, for these cases: (a) with `--names-only` the output is one name per line, with no distance and no count line; (b) without the option the output is byte-for-byte unchanged. Case (b) matters because printing now goes through the new `describe`."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The entry moves to `implemented` but the proof is missing and the tests are absent (see the two points above), so the status change is not yet justified. Keep it `specified` and unstamped until a replayable proof exists. Once the cycle is fixed, tests exist and the proof replays, it can move to `implemented`."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "layer-dependencies",
+      "result": "change"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.02709478,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1547,
+    "cache_read_input_tokens": 14048,
+    "cache_creation_input_tokens": 2314
+   },
+   "ms": 11004,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "layer-dependencies",
+      "text": "`accessplaces/search.py` now starts with `from .cli import format_distance`. The guideline says never to import `cli.py` from `search.py`, and the tool needs no exception, so this is a plain violation. Move `format_distance` into `search.py` (or a neutral module that both import), or have `cli.py` do the distance formatting. Keep `describe` pure, with no I/O and no import of `cli`, or drop it from `search.py` and print in `cli.py`."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The `Verified:` line reads \"I read the code and it looks right\". That is not a replayable run of the project's tests or its own CLI, so the proof is invalid and I cannot replay it. Replace it with a command that tests every detail of the entry, for example `python -m accessplaces --names-only` run against the catalog. The output should show one name per line, no distance and no count line, and the output without the option should be unchanged. If the entry cannot be proven by command, use a `not by command` line with its reason and leave the entry without a stamp."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The stamp does not stand. `pilot.verifiedCommit` is 4f9e2ab, and `git diff --name-only 4f9e2ab..HEAD` lists `accessplaces/cli.py` and `accessplaces/search.py`. A stamp is valid only while files under `wiki/` alone changed since its commit, so it should be re-made at the commit that contains the final code, with a valid proof. Both code files also have to change for the layering fix above, which will invalidate the stamp again."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The re-run of `python -m unittest discover -s tests` (10 tests, OK) does not show that `--names-only` is tested. The PR lists no test file, and the files changed contain no test for the option. Add tests that check three things: with the option the output is one name per line, with no distance and no count line; without it the output is unchanged; and the distance formatting is unchanged now that places are printed through `describe`. The history must also show a failing-test commit before the implementation commit, which this PR does not show. Add or split the commits so test-first is visible."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The entry says that without the option the output is unchanged, but the PR reroutes the default printing through `describe`. Nothing demonstrates that the default output stays byte-for-byte the same, including the farthest-first order. A test covering the default output (see the previous point) settles this."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "layer-dependencies",
+      "result": "change"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.027754180000000003,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1608,
+    "cache_read_input_tokens": 14048,
+    "cache_creation_input_tokens": 2314
+   },
+   "ms": 12648,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "layer-dependencies",
+      "text": "search.py starts with `from .cli import format_distance`. This breaks the rule that search.py never imports cli.py. It also creates a circular dependency, because cli.py imports search.py. Fix: move `format_distance` and `describe` out of search.py, or put them in cli.py. If both layers need `format_distance`, put it in a neutral module with no I/O. Keep search.py free of any presentation or I/O code."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The `Verified:` line is 'I read the code and it looks right'. It has no command and cannot be replayed, so the stamp (`process:pilot-dev`, commit 4f9e2ab) is invalid. Fix: add a test that runs the CLI with `--names-only`. It must check one name per line, with no distance and no count line. It must also check that the output without the option is unchanged. Then write `Verified: names-only — python -m unittest ... → OK` in the PR body. If no command can test it, write a `not by command` line with a reason and remove the stamp."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The stamp is also invalid on a second ground. `git diff --name-only 4f9e2ab..HEAD` shows `accessplaces/cli.py` and `accessplaces/search.py` changed since the stamped commit. A stamp stays valid only if files under `wiki/` alone changed. Re-stamp at the commit that contains the final code, together with a replayable proof."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The existing 10 tests pass, but the PR adds no test for `--names-only`, and the history shows no failing-test commit before the implementation. This means TDD was not followed and the claimed behavior is untested. Fix: add the failing test first, then the implementation, as separate commits. Cover both the option and the unchanged default output. The PR also changes printing to go through `describe`, so the default-output check matters."
+     },
+     {
+      "tag": "change",
+      "entry": "stdlib-only",
+      "text": "I found no violation, because the diff adds only stdlib code and `argparse` is used for the option. Nothing is required here. The remaining points concern the layering, the stamp and the tests."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "change"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     }
+    ]
+   },
+   "cost": 0.02052128,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 890,
+    "cache_read_input_tokens": 14048,
+    "cache_creation_input_tokens": 2313
+   },
+   "ms": 6884,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "layer-dependencies",
+      "text": "search.py now does `from .cli import format_distance`, which breaks the accepted rule that search.py never imports cli.py. It also pulls display formatting into the logic layer. Move `format_distance` and `describe` into cli.py, or put a pure helper in search.py that does not import cli. Print only in cli.py."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The `Verified:` line reads 'I read the code and it looks right'. That is not a replayable command, and it is not a 'not by command' line with a valid reason. The entry is testable by command, so the stamp is invalid. Replace it with a real test or CLI call, for example `python -m accessplaces.cli --names-only ...` or a unit test. The test must check one name per line, no distance, no count line, and unchanged output without the option. Then re-stamp."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The entry is stamped `verified` with verifiedCommit 4f9e2ab, but code files (cli.py, search.py) changed since that commit. The stamp is therefore not valid, because it only holds while files under wiki/ alone have changed. Re-stamp at the right commit once the proof is replayable. The 10 tests I re-ran pass, but nothing shows any of them covers `--names-only` or the unchanged default output. Add tests for both, written test-first."
+     },
+     {
+      "tag": "change",
+      "entry": "stdlib-only",
+      "text": "Commit history was not shown to contain a failing-test commit before the implementation. Make sure the new tests are committed red first, then the implementation. If the history is squashed or mixed, state it and split it so TDD is visible."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "layer-dependencies",
+      "result": "change"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     },
+     {
+      "entry": "0001-stdlib-only-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.019266079999999998,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 760,
+    "cache_read_input_tokens": 14048,
+    "cache_creation_input_tokens": 2316
+   },
+   "ms": 6109,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "layer-dependencies",
+      "text": "search.py now does `from .cli import format_distance`. This breaks the rule that search.py never imports cli.py. It also creates a circular dependency, because cli.py imports search. Move `format_distance` and `describe` into cli.py, or keep search.py free of presentation and let cli.py do the formatting. Remove the import from search.py."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The PR body's `Verified:` line reads 'I read the code and it looks right'. It has no command and no result, so I cannot replay it. The stamp (`process:pilot-dev`, commit 4f9e2ab) is therefore unproven. Either add a replayable proof, such as a test or a CLI call that checks one name per line with no distance and no count line, and that output without the option is unchanged, or drop the stamp and the `implemented` status. The 10 passing tests do not show that any of them covers `--names-only`. Add tests for the option (output exactly one name per line, no distance, no count line) and for unchanged default output."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The change moves default printing through `describe`. That risks changing the default output, which the entry says must stay unchanged. A test must pin the default output before and after. Also, the commit history was not shown to contain a failing-test commit ahead of the implementation. If it does not, TDD was not followed, so please split the history or show the red test commit."
+     },
+     {
+      "tag": "change",
+      "entry": "stdlib-only",
+      "text": "Conforms: no new dependency was added and the code uses only argparse and the standard library. No action needed."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "change"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     }
+    ]
+   },
+   "cost": 0.018499579999999998,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 691,
+    "cache_read_input_tokens": 14048,
+    "cache_creation_input_tokens": 2316
+   },
+   "ms": 5552,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "layer-dependencies",
+      "text": "accessplaces/search.py now does `from .cli import format_distance` and `describe(place)` calls it. The guideline forbids importing cli.py from search.py, and it also keeps formatting and output out of the logic layer. Remove the import. Put `describe` and `format_distance` in cli.py, or move the formatting helper to a neutral module that does not depend on cli.py, and keep search.py free of any presentation code."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The `Verified:` line reads \"I read the code and it looks right\". That is not a command I can replay, and it does not test the entry. The entry says the output has one name per line, with no distance and no count line, and is unchanged without the option. Add real tests (CLI output with and without `--names-only`, including no distance and no count line) and give a `Verified: names-only — python -m unittest ... → OK` line. The 10 passing tests I re-ran do not show that any of them exercises `--names-only`."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The stamp (`process:pilot-dev`, commit 4f9e2ab) is invalid. Code files (cli.py, search.py) changed since the stamped commit, and the stamp stands only if just files under wiki/ changed. Without a valid proof the entry should not carry a stamp. Re-stamp at the final commit once the proof is replayable."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The history does not show TDD. I found no evidence of a failing-test commit before the implementation, and the PR changes no test file, so the new option has no test. Add a failing test first, then the implementation, covering `--names-only` and the unchanged default output (farthest-first order, distance and count line still printed)."
+     },
+     {
+      "tag": "change",
+      "entry": "stdlib-only",
+      "text": "This guideline is not broken, since `--names-only` uses only argparse. I am listing it only to confirm the check. No fix needed beyond keeping `--names-only` on argparse."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "layer-dependencies",
+      "result": "change"
+     },
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     }
+    ]
+   },
+   "cost": 0.020067879999999996,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 844,
+    "cache_read_input_tokens": 14048,
+    "cache_creation_input_tokens": 2307
+   },
+   "ms": 6467,
+   "judged": {}
+  },
+  {
+   "output": {
+    "verdict": "request_changes",
+    "points": [
+     {
+      "tag": "change",
+      "entry": "layer-dependencies",
+      "text": "`accessplaces/search.py` now starts with `from .cli import format_distance`. This breaks the guideline: search.py must never import cli.py. Fix: move `format_distance` (and `describe`, if it stays) into search.py, or keep `describe` in cli.py. search.py must stay free of I/O and must not depend on cli.py."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "The stamp is invalid and the `Verified:` line is not a proof. 'I read the code and it looks right' is not a replayable command. Without a command I cannot check that the entry's details hold: one name per line, no distance, no count line, and output unchanged without the option. The stamp is also not valid for another reason: `git diff --name-only 4f9e2ab..HEAD` shows `cli.py` and `search.py` changed since the stamped commit, and only changes under `wiki/` leave a stamp valid. Fix: add a `Verified: names-only — <project test or CLI command> → <result>` line that checks the entry's details, and re-stamp at the commit that holds the final code. A manual check would need a `not by command` line with a reason, and then the entry must carry no stamp."
+     },
+     {
+      "tag": "change",
+      "entry": "names-only",
+      "text": "No test file changed in this PR, so the `--names-only` behavior has no test. The 10 passing tests I re-ran predate it, which means 'OK' proves nothing about this change. The history also shows no failing-test commit before the implementation, so TDD was not followed. Fix: add tests, with a red commit first, for these cases. (a) With `--names-only`, the output is exactly one name per line, with no distance and no count line. (b) Without the option, the output is byte-for-byte unchanged. The second case matters because places are now printed through the new `describe`, which could alter the default output."
+     }
+    ],
+    "checked_against": [
+     {
+      "entry": "stdlib-only",
+      "result": "conforms"
+     },
+     {
+      "entry": "layer-dependencies",
+      "result": "change"
+     },
+     {
+      "entry": "0001-stdlib-only-dependencies",
+      "result": "conforms"
+     },
+     {
+      "entry": "overview",
+      "result": "conforms"
+     },
+     {
+      "entry": "names-only",
+      "result": "change"
+     }
+    ]
+   },
+   "cost": 0.02479928,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1319,
+    "cache_read_input_tokens": 14048,
+    "cache_creation_input_tokens": 2311
+   },
+   "ms": 9861,
+   "judged": {}
+  }
+ ]
+}
