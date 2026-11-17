@@ -1,0 +1,103 @@
+{
+ "id": "L-S6e",
+ "scenario": "S6",
+ "title": "Review: 'not by command' for a behavior a command can test",
+ "persona": "pilot-techlead",
+ "docs": [
+  "assets/docs/pilot-task-review-spec-conformance.md",
+  "assets/docs/pilot-link-review-consensus.md",
+  "assets/docs/pilot-link-knowledge.md",
+  "assets/docs/pilot-link-wiki.md",
+  "assets/docs/pilot-link-architecture.md",
+  "assets/docs/pilot-link-existing-analysis.md"
+ ],
+ "situation": "Project: `accessplaces`, a small Python command-line tool that searches accessible places by name, filters on step-free access and sorts by distance. Wiki and architecture modules are on; the workflow profile is `lean`. Source: `accessplaces/search.py` (logic, no I/O), `accessplaces/cli.py` (arguments and printing), `accessplaces/data.py` (the catalog), `tests/`.\n\nBinding entries (read from `architecture/`):\n- guideline `stdlib-only` (accepted): \"Add no third-party dependency: use only the Python standard library (`argparse` for the command line, `json` for machine-readable output). The tool must run offline, without installing anything.\"\n- guideline `layer-dependencies` (accepted): \"Keep the logic in `search.py` free of any input or output, never import `cli.py` from `search.py`, and read arguments and print only in `cli.py`.\"\n- ADR `0001-stdlib-only-dependencies` (proposed): the reasoning behind `stdlib-only`; names `click` and `rich` as rejected.\n- `overview`: \"Stack: Python, standard library only. Build: none, nothing to install.\"\nCatalog (`data.py`): Cafe Lumiere (cafe, step-free, 120 m); Cafe du Pont (cafe, not step-free, 300 m); Gare Centrale (station, step-free, 850 m); Musee des Arts (museum, step-free, 1500 m); Librairie Rivage (shop, not step-free, 450 m). Today `search()` returns results sorted by distance, **farthest first**.\n\nMode: `--auto`. You review pull request #12 (ticket #74, `type:tech`), the only reviewer of this `type:tech` ticket. The pull request body:\n\n> ## Summary\n> Adds `--names-only`, with a unit test.\n>\n> Verified: names-only — not by command: it is a trivial option\n>\n> Closes #74\n\nFiles changed: `accessplaces/cli.py`, `tests/test_cli.py`, `wiki/output/names-only.md`. The relevant hunks:\n- `accessplaces/cli.py` gains `--names-only` (prints each place name) and keeps the other output as before; `search.py` is untouched, no layer rule is broken.\n- `tests/test_cli.py` gains `NamesOnlyTests.test_prints_only_names`: for the query `cafe` it asserts the output is exactly the two lines `Cafe du Pont` and `Cafe Lumiere`, with no distance and no count line.\n- `wiki/output/names-only.md` moves from `specified` to `implemented`; it carries no stamp.\n\nThe entry `names-only` says: \"With the `--names-only` option, the search prints one place name per line, with no distance and no count line. Without the option the output is unchanged.\"\nYou re-ran `python -m unittest discover -s tests` on the PR branch -> `Ran 10 tests ... OK`. There is no CI. `wiki lint` and `arch lint` report nothing.",
+ "question": "Give your review: the verdict, each point with its tag and the entry it is about, and the entries you checked against with the result for each. Write in English.",
+ "schema": {
+  "type": "object",
+  "properties": {
+   "verdict": {
+    "type": "string",
+    "enum": [
+     "approve",
+     "request_changes"
+    ]
+   },
+   "points": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "tag": {
+       "type": "string",
+       "enum": [
+        "change",
+        "decision"
+       ]
+      },
+      "entry": {
+       "type": "string",
+       "description": "the entry id exactly as written above, with nothing added"
+      },
+      "text": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "tag",
+      "entry",
+      "text"
+     ]
+    }
+   },
+   "checked_against": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "properties": {
+      "entry": {
+       "type": "string",
+       "description": "the entry id exactly as written above, with nothing added"
+      },
+      "result": {
+       "type": "string",
+       "enum": [
+        "conforms",
+        "change",
+        "decision"
+       ]
+      }
+     },
+     "required": [
+      "entry",
+      "result"
+     ]
+    }
+   }
+  },
+  "required": [
+   "verdict",
+   "points",
+   "checked_against"
+  ]
+ },
+ "checks": [
+  {
+   "name": "requests-changes",
+   "path": "verdict",
+   "equals": "request_changes"
+  },
+  {
+   "name": "flags-the-entry-as-a-change",
+   "path": "points",
+   "any": {
+    "tag": "change",
+    "entry": "names-only"
+   }
+  },
+  {
+   "name": "says-the-reason-for-not-verifying-does-not-hold",
+   "judge": "Does one of the points say that the reason given for not verifying the entry by command (\"it is a trivial option\") does not hold, because the behavior can be checked by running a command or a test, as the pull request's own test does? A point that only says a stamp is missing does not meet the criterion."
+  }
+ ]
+}
