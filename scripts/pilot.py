@@ -236,10 +236,9 @@ MODULES = {
 }
 WIKI_SNAPSHOT_MAX_BYTES = 240_000  # a database document holds at most 256 KiB
 WIKI_STATUSES = ("proposed", "specified", "implemented")  # the only ones a file holds
-WIKI_LEGACY_STATUSES = ("deprecated",)  # still read for one version (`lint` warns): a retired entry is now deleted
 OKF_VERSION = "0.2"  # the Open Knowledge Format the wiki follows (https://github.com/GoogleCloudPlatform/open-knowledge-format)
 WIKI_RESERVED = ("index.md", "log.md")  # OKF: never concept files
-WIKI_OKF_STATUS = {"proposed": "draft", "specified": "draft", "implemented": "stable", "deprecated": "deprecated"}
+WIKI_OKF_STATUS = {"proposed": "draft", "specified": "draft", "implemented": "stable"}
 WIKI_VERIFIER = "process:pilot-wiki"
 WIKI_VERIFIERS = ("process:pilot-wiki", "process:pilot-dev", "process:pilot-qa")  # who verified: a lint, a Dev PR, a QA run
 WIKI_DEFAULT_TYPE = "Behavior"
@@ -1363,7 +1362,6 @@ class Bundle:
     OKF_STATUS = WIKI_OKF_STATUS
     DEFAULT_TYPE = WIKI_DEFAULT_TYPE
     DERIVED_NAMES = ("in-dev", "in-review", "in-qa", "verified")  # in-flight names a file never holds
-    LEGACY_STATUSES = WIKI_LEGACY_STATUSES
     STATUSLESS = ("Vision", "Persona")  # types that carry no status: they promise no behavior
     NEVER_STAMPED = ("Vision", "Persona", "UserFlow")  # nothing in the code verifies them
     STAMP_STATUS = "implemented"  # a stamp is written only on an entry in this status
@@ -1433,8 +1431,6 @@ class Bundle:
         if not status:
             if entry["type"] not in self.STATUSLESS:
                 add(("missing-status", "no `pilot.status`"))
-        elif status in self.LEGACY_STATUSES:
-            entry["status"] = status  # tolerated for one version more: `lint` warns, the entry is to be deleted
         elif status not in self.STATUSES:
             add(("bad-status", f"status {status!r} is not one of {', '.join(self.STATUSES)}"
                  + (" (derived, never written)" if status in self.DERIVED_NAMES else "")))
@@ -1805,9 +1801,6 @@ class Bundle:
             findings += [{**where, "code": c, "message": m} for c, m in e["problems"]]
             if len(seen[e["id"]]) > 1:
                 findings.append({**where, "code": "duplicate-id", "message": "this id is used by %d files" % len(seen[e["id"]])})
-            if e["status"] in self.LEGACY_STATUSES:
-                findings.append({**where, "level": "warn", "code": "legacy-status",
-                                 "message": f"status {e['status']!r} is gone: delete the entry (a retired entry is not kept)"})
             if not e["managed"] or e["status"] not in ("proposed", "specified", "implemented"):
                 continue
             if e["status"] in ("proposed", "specified") and not e["tickets"]:
@@ -2067,8 +2060,7 @@ class Wiki(Bundle):
 
 
 ARCH_STATUSES = ("proposed", "accepted", "superseded")
-ARCH_LEGACY_STATUSES = ("deprecated",)  # still read for one version (`lint` warns): a retired entry is now deleted
-ARCH_OKF_STATUS = {"proposed": "draft", "accepted": "stable", "deprecated": "deprecated", "superseded": "deprecated"}
+ARCH_OKF_STATUS = {"proposed": "draft", "accepted": "stable", "superseded": "deprecated"}  # OKF has no "superseded": a replaced entry is `deprecated` there
 
 
 class Architecture(Bundle):
@@ -2167,14 +2159,13 @@ class Architecture(Bundle):
         return {"ok": True, "next": "%04d" % (max(used, default=0) + 1)}
     DIR = ARCH_DIR
     STATUSES = ARCH_STATUSES
-    LEGACY_STATUSES = ARCH_LEGACY_STATUSES
     STATUSLESS = ()
     NEVER_STAMPED = ()
     STAMP_STATUS = "accepted"
     OKF_STATUS = ARCH_OKF_STATUS
     DEFAULT_TYPE = "Guideline"
     DERIVED_NAMES = ()
-    LIVE = ("deprecated", "superseded")
+    LIVE = ("superseded",)
 
     def _removal_refusal(self, entry):
         if entry["id"] == "overview":
@@ -2250,9 +2241,6 @@ class Architecture(Bundle):
             findings += [{**where, "code": c, "message": m} for c, m in e["problems"]]
             if len(seen[e["id"]]) > 1:
                 findings.append({**where, "code": "duplicate-id", "message": "this id is used by %d files" % len(seen[e["id"]])})
-            if e["status"] in self.LEGACY_STATUSES:
-                findings.append({**where, "level": "warn", "code": "legacy-status",
-                                 "message": f"status {e['status']!r} is gone: delete the entry (a retired entry is not kept)"})
             if not e["managed"]:
                 continue
             pilot = e["fm"]["pilot"]

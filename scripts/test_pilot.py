@@ -1106,18 +1106,20 @@ class WikiTests(unittest.TestCase):
             self.wiki.set("f", stamp="abc")
         self.assertEqual(caught.exception.payload["reason"], "never-stamped")
 
-    def test_a_deprecated_entry_written_before_is_read_and_lint_asks_to_delete_it(self):
+    def test_there_is_no_deprecated_status_any_more(self):
         self.entry("search/old.md", "implemented", [3])
         old = self.root / "search" / "old.md"
         old.write_text(old.read_text().replace("status: implemented", "status: deprecated").replace("status: stable", "status: deprecated"))
         self.wiki.reindex()
         report = self.lint(issue(3, ["status:done"], state="closed"), issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]))
-        warn = [f for f in report["findings"] if f["code"] == "legacy-status"]
-        self.assertEqual([(f["entry"], f["level"]) for f in warn], [("old", "warn")])
-        self.assertTrue(report["ok"])
-        self.wiki.remove("old")
-        with self.assertRaises(pilot.Refused):
-            self.wiki.set("search-filter", status="deprecated")
+        self.assertIn("bad-status", self.codes(report))
+        self.assertFalse(report["ok"])
+        for call in (lambda: self.wiki.set("search-filter", status="deprecated"),
+                     lambda: self.wiki.add("search/new.md", "N", "d", "deprecated")):
+            with self.assertRaises(pilot.Refused) as caught:
+                call()
+            self.assertEqual(caught.exception.payload["reason"], "bad-status")
+        self.assertNotIn("deprecated", pilot.WIKI_STATUSES + pilot.ARCH_STATUSES)
 
     # ---- derived status ---------------------------------------------------------------------
     def derived(self, entry_id, *issues):
@@ -1384,13 +1386,10 @@ class ArchitectureTests(unittest.TestCase):
         self.add("adr/0002-b.md", "proposed")
         self.arch.supersede("0002-b", "0001-a")
         self.add("guidelines/layering.md", "accepted", description="Domain never imports adapters.")
-        self.add("guidelines/old.md", "accepted")
-        old = self.root / "guidelines" / "old.md"  # an entry written before the status went away
-        old.write_text(old.read_text().replace("status: stable", "status: deprecated").replace("status: accepted", "status: deprecated"))
         rows = self.arch.index(active=True)["entries"]
         self.assertEqual(sorted(r["id"] for r in rows), ["layering"])
         self.assertTrue(all(set(r) == {"id", "path", "description", "status"} for r in rows))
-        self.assertEqual(len(self.arch.index()["entries"]), 4)
+        self.assertEqual(len(self.arch.index()["entries"]), 3)
 
     def test_remove_deletes_what_is_not_history_and_refuses_the_rest(self):
         self.add("adr/0001-a.md", "accepted")

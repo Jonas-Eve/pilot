@@ -160,4 +160,4 @@ from a previous run — the whole point is picking up upstream changes.
    `pilot-labels` check means step 5's label sync did not complete; a failed `wiki` check means the module is on but `wiki/` is missing, step 5c). Summarize what changed across steps 2-5: skills/agents added, updated,
    flagged as orphaned (and whether removed), each root file added, updated, flagged as
    orphaned (and whether removed), or left as-is and why, intro blocks resynced or
-   skipped, labels created/updated. With the `wiki` or `architecture` module on, run `python3 .pilot/pilot.py wiki lint` and `arch lint` and list any `legacy-status` finding (an entry still `deprecated`, to be deleted) so the human can act before the tolerance ends (`docs/deprecations.md` in the PILOT source).
+   skipped, labels created/updated.

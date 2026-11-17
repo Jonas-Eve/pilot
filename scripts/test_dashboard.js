@@ -1082,7 +1082,7 @@ const STUB = (opts) => `
     { id: 'search-by-name', title: 'Search places by name', description: 'A traveler searches places by name.', path: 'search/search-by-name.md', status: 'implemented', derived: 'verified', display: 'implemented · verified', tickets: [1], verifiedAt: iso(30), text: 'A traveler searches places <img src=x onerror="window.__pwn=1"> by part of their name.' },
     { id: 'sort-by-distance', title: 'Results are sorted by distance', description: 'Nearest first.', path: 'search/sort-by-distance.md', status: 'implemented', derived: '', display: 'implemented', tickets: [3], verifiedAt: '', text: 'Nearest place first.' },
     { id: 'default-text-output', title: 'Default output', description: 'One line per place.', path: 'output/default-text-output.md', status: 'specified', derived: 'in-review', display: 'specified · in-review', tickets: [12, 14], verifiedAt: '', text: 'One line per place.' },
-    { id: 'old-rule', title: 'Old rule', description: 'Retired.', path: 'old-rule.md', status: 'deprecated', derived: '', display: 'deprecated', tickets: [], verifiedAt: '', text: '' }] };
+    { id: 'old-rule', title: 'Old rule', description: 'Not built yet.', path: 'old-rule.md', status: 'proposed', derived: '', display: 'proposed', tickets: [], verifiedAt: '', text: '' }] };
   { let page = await open({ preload: [BASE] });
   await page.goto(FILE + '#wiki'); await page.waitForTimeout(350);
   check('wiki tab: empty state names the commands, no ticket banner', /Aucun wiki publié/.test(await text(page, '#view')) && /pilot-wiki --bootstrap/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Wiki');
@@ -1091,7 +1091,7 @@ const STUB = (opts) => `
   check('wiki tab: the tab counts the entries, the page shows them grouped by page', (await page.$$eval('#tabs a', (a) => a.map((x) => x.textContent))).includes('Wiki (4)') && /search/.test(wv) && /Search places by name/.test(wv) && /A traveler searches places by name\./.test(wv) && /output/.test(wv), wv);
   check('wiki sub-tabs: Tous, then one per functional domain with its count',
         JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))) === JSON.stringify(['Tous (4)', 'général (1)', 'output (1)', 'search (2)']), JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))));
-  check('wiki summary: one chip per status', /2 implémenté/.test(wv) && /1 spécifié/.test(wv) && /1 déprécié/.test(wv), wv);
+  check('wiki summary: one chip per status', /2 implémenté/.test(wv) && /1 spécifié/.test(wv) && /1 proposé/.test(wv) && !/déprécié/.test(wv), wv);
   check('wiki entry chips: stamp, never verified, in-flight status, ticket link',
         /vérifié il y a|vérifié /.test(wv) && /non vérifié/.test(wv) && /en review/.test(wv) && (await page.$eval('#view a[href$="/issues/12"]', (a) => a.getAttribute('href'))) === 'https://github.com/' + REPO + '/issues/12');
   check('wiki: HTML in an entry stays text', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && (await page.$eval('#view .row details', (d) => d.textContent)).includes('<img src=x'));

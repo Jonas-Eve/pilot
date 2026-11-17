@@ -291,7 +291,6 @@ the skill files) — never a fixed path, there is no installed location.
   project's own doc-maintenance burden, not a gap in this rule.
 
 ## 4. GIT WORKFLOW
-- **A Tolerance Is Dated:** keeping an old flag, status or format working for one release is listed in `docs/deprecations.md` with the major version that removes it, in the PR that introduces it.
 - **Version Every Change Projects Would Copy (`VERSION`, SemVer):** `VERSION` holds PILOT's
   `MAJOR.MINOR.PATCH`; `/pilot-init` and `/pilot-update` record it in the project's
   `.pilot/state.json` (`pilotVersion`) and the dashboard footer shows it. A PR that changes
