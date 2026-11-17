@@ -1219,7 +1219,7 @@ const STUB = (opts) => `
     check('wiki: a flow can be edited and removed through /pilot-flow', c.includes('/pilot-flow --edit find-a-place') && c.includes('/pilot-flow --remove find-a-place'), JSON.stringify(c));
     await pg.goto(FILE + '#wiki/persona'); await pg.waitForTimeout(300);
     c = await cmdsHere();
-    check('wiki: a persona is edited and deprecated through /pilot-flow, never checked against the code', c.includes('/pilot-flow --edit marie-senior') && c.includes('/pilot-flow --deprecate marie-senior') && !c.some((x) => /--lint marie-senior/.test(x)), JSON.stringify(c));
+    check('wiki: a persona is edited and removed through /pilot-flow, never checked against the code', c.includes('/pilot-flow --edit marie-senior') && c.includes('/pilot-flow --remove marie-senior') && !c.some((x) => /--lint marie-senior/.test(x)), JSON.stringify(c));
     check('wiki entries: no page errors', pg.errors.length === 0, pg.errors.join('|'));
     await pg.close(); }
   { const DOC = { kind: 'wiki', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
@@ -1231,7 +1231,7 @@ const STUB = (opts) => `
     await pg.goto(FILE + '#wiki'); await pg.waitForTimeout(350);
     const c = (await hrefs(pg, '#view .row a.btn')).map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]).trim());
     check('wiki: an implemented behavior is checked, edited, never retired from here', c.includes('/pilot-wiki --lint filter-a11y') && c.includes('/pilot-wiki --edit filter-a11y') && !c.some((x) => /--deprecate filter-a11y/.test(x)), JSON.stringify(c));
-    check('wiki: a proposed behavior can be edited or removed, not checked against the code', c.includes('/pilot-wiki --edit saved-places') && c.includes('/pilot-wiki --deprecate saved-places') && !c.some((x) => /--lint saved-places/.test(x)), JSON.stringify(c));
+    check('wiki: a proposed behavior can be edited or removed, not checked against the code', c.includes('/pilot-wiki --edit saved-places') && c.includes('/pilot-wiki --remove saved-places') && !c.some((x) => /--lint saved-places/.test(x)), JSON.stringify(c));
     check('wiki: the vision has no action from here', !c.some((x) => /vision/.test(x)), JSON.stringify(c));
     check('wiki: a specified behavior is only edited', c.includes('/pilot-wiki --edit planned') && !c.some((x) => /--(lint|deprecate) planned/.test(x)), JSON.stringify(c));
     await pg.close(); }
