@@ -2934,6 +2934,21 @@ class LabTests(unittest.TestCase):
         self.assertFalse(check("claim", "claim"))      # the same item twice is not a sequence
         self.assertFalse(self.lab.run_check({"path": "calls", "order": ["x"]}, {"calls": "not a list"}))
 
+    def test_the_sequence_check_matches_on_the_step_and_or_the_action_and_regrade_needs_no_model(self):
+        calls = [{"step": "2", "action": "claim the ticket"}, {"step": "3", "action": "Agent for the analysis turn"}, {"step": "3", "action": "ask the human"}]
+        ok = lambda *ms: self.lab.run_check({"path": "calls", "sequence": list(ms)}, {"calls": calls})
+        self.assertTrue(ok({"action": "claim"}, {"step": "^3$", "action": "analysis"}, {"action": "ask"}))
+        self.assertFalse(ok({"action": "ask"}, {"action": "claim"}))
+        self.assertFalse(ok({"step": "^9$"}))
+        self.assertTrue(ok({"action": "ask"}, {"action": "ask"}))  # one merged item can carry two steps
+        case = {"id": "c", "checks": [{"name": "order", "path": "calls", "sequence": [{"action": "claim"}, {"action": "ask"}]},
+                                      {"name": "meaning", "judge": "?"}]}
+        data = {"trials": [{"case": "c", "arm": "cand", "output": {"calls": calls}, "checks": {"order": False, "meaning": True}},
+                           {"case": "c", "arm": "cand", "output": None, "checks": {}}]}
+        done = self.lab.regrade({"c": case}, data)
+        self.assertEqual(done[0]["checks"], {"order": True, "meaning": True})  # re-graded, the judged result kept
+        self.assertEqual(done[1]["checks"], {})
+
     def test_a_plan_case_has_no_persona_and_its_prompt_is_the_skill_then_the_situation(self):
         case = self.lab.load_case("P-DEV-HUMAN")
         system, user, missing = self.lab.assemble(case, str(self.lab.ROOT), self.lab.WORKTREE)

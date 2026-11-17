@@ -62,6 +62,15 @@ scenario depends on a file that changed between the two revisions.
 What it tells: per check, the passing share with a 95 % Wilson interval, and between base and candidate the difference with a Newcombe
 interval and a plain verdict. With ten trials only a large change is detectable ("no detectable difference" is not "identical").
 
+Order of a skill's steps: a **plan case** (`P-*`) gives the model the skill text as the session sees it and asks for the ordered list of
+actions it would take; a `sequence` check matches an action to each expected step, in order. It tests that the skill's text leads to
+the right order (the new steps in the right place), not that the tools run. A plan is a summary, so a pattern can miss a rewording or a merged line:
+read a failing plan before concluding, then fix the pattern and `lab.py regrade DIR` the saved answers (no model call). First plans on
+4.2.0, six per case, about 1 $ in all: Dev `--human` (claim, analysis, the human's approach, code, hand-over to review) 6/6, Discovery `--human`
+(analysis, the human's proposal, the story, the drafts) 6/6, Review `--human` (what to check, the reviewer, the human decides, submit) 6/6,
+Spec `--human` (analysis, the proposal, the dialogue, the PM's check, apply) 5/6. `scripts/test_pilot.py` also lints the numbered steps of every
+skill (in order, no duplicate, every cited step exists): it found `pilot-update`'s steps 5b and 5c written in the wrong order.
+
 How to read it, learned on the first runs:
 - A check is informative only if the base can fail it. A check the base passes trivially (it never stamps, so "does not stamp a drift"
   holds) says nothing about the base; it still guards the candidate.

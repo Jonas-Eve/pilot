@@ -42,28 +42,27 @@
  },
  "checks": [
   {
-   "name": "claims-then-analyzes",
+   "name": "claims-analyzes-asks-then-the-dialogue-the-pm-check-and-the-apply",
    "path": "calls",
-   "order": [
-    "claim",
-    "analy"
-   ]
-  },
-  {
-   "name": "asks-the-human-for-the-proposal-before-the-dialogue",
-   "path": "calls",
-   "order": [
-    "analy",
-    "(ask|request).{0,60}(human|proposal|split)|human.{0,40}(proposal|split)",
-    "(architect|dialogue|tech lead)"
-   ]
-  },
-  {
-   "name": "the-pm-checks-the-split-before-applying-it",
-   "path": "calls",
-   "order": [
-    "(pm|product manager)",
-    "(apply|create|sub-issue|dev-ready)"
+   "sequence": [
+    {
+     "action": "claim"
+    },
+    {
+     "action": "Agent.{0,80}analy|pilot-task-analyze-existing|analy[sz]e the existing"
+    },
+    {
+     "action": "ask the human.{0,60}proposal|human.{0,40}proposal"
+    },
+    {
+     "action": "alternating Agent|dialogue by alternating|Run the architect"
+    },
+    {
+     "action": "pilot-pm.{0,100}coverage|check-split-coverage"
+    },
+    {
+     "action": "Apply the result|create .{0,30}(task|sub-issue)|sub-issues"
+    }
    ]
   },
   {
