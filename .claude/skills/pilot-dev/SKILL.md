@@ -76,7 +76,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    reads the rest itself, following the guidelines that bear on the ticket.
    - **Analysis first** (a fresh claim or a paused-pair resume, never a reclaim, in every mode): call `Agent` for `pilot-dev` (`pilot-e2e` for a `type:e2e` task) with
      `.pilot/pilot-task-analyze-existing.md`, `.pilot/pilot-link-existing-analysis.md` in full and the ticket's spec; post the result on the ticket as the comment opening with
-     `<!-- PILOT:ANALYSIS -->` and `mode: <pair|auto|human>`, and pass it into the call below. Step 5 edits it down to one line with the scratch comment.
+     `<!-- PILOT:ANALYSIS -->` and `mode: <pair|auto|human>`, and pass it into the calls below. Step 5 edits it down to one line with the scratch comment.
    - **Without `--multi`** (or on a reclaim, where `--multi` has no effect either way):
      **with `--human`**, after the analysis ask the human, once, for the approach they want (what to change where, the pieces, the order) and pass it as the human's proposal: the dev challenges it
      (sourced), writes it up as the approach and shows it back as the checkpoint below, adding no decision of its own; then implements once approved.

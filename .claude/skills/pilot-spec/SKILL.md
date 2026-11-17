@@ -86,8 +86,8 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
    stand down and return to step 1 for a different ticket (bare pool only); any other
    refusal → report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag|event` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
-3. Branch on `level:`. First the analysis: call `Agent` for `pilot-techlead` with `.pilot/pilot-task-analyze-existing.md`, `.pilot/pilot-link-existing-analysis.md` in full and the ticket (skipped for
-   the no-ticket entry, whose analysis step 1a already ran); post it on the ticket as the comment opening with `<!-- PILOT:ANALYSIS -->` and `mode: <pair|auto|human>`, show the human its "Touched by
+3. Branch on `level:`. First the analysis: call `Agent` for `pilot-techlead` with `.pilot/pilot-task-analyze-existing.md`, `.pilot/pilot-link-existing-analysis.md` in full and the ticket (for
+   the no-ticket entry, the analysis step 1a already ran: only post it); post it on the ticket as the comment opening with `<!-- PILOT:ANALYSIS -->` and `mode: <pair|auto|human>`, show the human its "Touched by
    this input" and "Not covered" parts (pair and `--human`), and pass it into every call below. With `--human`, then ask the human, once, for their proposal — the split (or none), the decisions,
    dependencies and priorities — and pass it into the dialogue as the human's proposal: the personas challenge it and write the specs, adding no decision of their own.
    - **`level:story`**: first `python3 .pilot/pilot.py workflow show --ticket <story>` once: its `spec.architect` says how the pass runs, its
