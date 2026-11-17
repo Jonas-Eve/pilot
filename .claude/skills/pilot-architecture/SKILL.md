@@ -1,7 +1,7 @@
 ---
 name: pilot-architecture
-description: "The project's architecture (architecture/ at the project root, .pilot/pilot-link-architecture.md): overview of the apps, the technical guidelines AIs and developers must respect, the reference of how the code is built today (stack and versions, data model, structure), and the architecture decision records (ADR: why a choice was made). No flag, or a question in free text → answers from it with citations (path, status), and says when it does not cover it. --guideline \"<rule>\" → drafts one rule with the architect and a human, one PR. --adr \"<decision>\" → drafts an ADR, one PR; one that replaces an accepted ADR supersedes it. --edit <id> \"<change>\" → rewrites an entry, one PR (an accepted ADR is replaced, never edited). --deprecate <id> → deprecates an entry or removes a proposed one, one PR. --verify [<id>] → checks the reference entries against the code, stamps those that hold, a human arbitrates each divergence, one PR. --bootstrap → drafts overview, guidelines and reference from the existing apps/, docs and code, one PR. --scaffold → creates the apps' skeletons and the overview. --lint → mechanical checks. Never merges a PR, never claims a ticket. When the module is off it proposes to turn it on first. Use to ask how the project is built and why, to add a rule, to record a decision, or to set the architecture up."
-argument-hint: "[<question>] | --guideline \"<rule>\" | --adr \"<decision>\" | --edit <id> \"<change>\" | --deprecate <id> | --verify [<id>] | --bootstrap | --scaffold [<free-text apps and tech>] | --lint"
+description: "The project's architecture (architecture/ at the project root, .pilot/pilot-link-architecture.md): overview of the apps, the technical guidelines AIs and developers must respect, the reference of how the code is built today (stack and versions, data model, structure), and the architecture decision records (ADR: why a choice was made). No flag, or a question in free text → answers from it with citations (path, status), and says when it does not cover it. --guideline \"<rule>\" → drafts one rule with the architect and a human, one PR. --adr \"<decision>\" → drafts an ADR, one PR; one that replaces an accepted ADR supersedes it. --edit <id> \"<change>\" → rewrites an entry, one PR (an accepted ADR is replaced, never edited). --remove <id> (alias --deprecate for one more version) → deletes an entry nothing cites, one PR. --verify [<id>] → checks the reference entries against the code, stamps those that hold, a human arbitrates each divergence, one PR. --bootstrap → drafts overview, guidelines and reference from the existing apps/, docs and code, one PR. --scaffold → creates the apps' skeletons and the overview. --lint → mechanical checks. Never merges a PR, never claims a ticket. When the module is off it proposes to turn it on first. Use to ask how the project is built and why, to add a rule, to record a decision, or to set the architecture up."
+argument-hint: "[<question>] | --guideline \"<rule>\" | --adr \"<decision>\" | --edit <id> \"<change>\" | --remove <id> | --verify [<id>] | --bootstrap | --scaffold [<free-text apps and tech>] | --lint"
 ---
 
 # PILOT architecture — `pilot-architecture`
@@ -44,7 +44,7 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 
 ## `--edit <id> "<change>"`
 
-1. `arch show <id>`. An `accepted` ADR is never edited: say so and point at `--adr` (a new ADR that supersedes it), then stop. A `deprecated` or
+1. `arch show <id>`. An `accepted` ADR is never edited: say so and point at `--adr` (a new ADR that supersedes it), then stop. A
    `superseded` entry is history: say so and stop. Anything else goes on.
 2. Call `Agent` for `pilot-architect` with `.pilot/pilot-task-architecture-edit.md`,
    `.pilot/pilot-link-architecture.md`, the entry (kind, title, description, text, stamp), the change, `.pilot/pilot-link-knowledge.md` (the architect reads the entries that bear on it itself), the entry's language and the
@@ -54,12 +54,12 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 4. Write the text under the frontmatter (the only hand-edited part), `arch set <id> --title … --description …` when they changed, and, when the entry was
    stamped, `arch set <id> --clear-stamp`: a changed `reference` entry or overview is offered `--verify <id>` after this run. Branch `architecture/edit-<id>`, commit, push, open one PR.
 
-## `--deprecate <id>`
+## `--remove <id>`
 
-1. `arch show <id>`. The root `overview.md` is never deprecated (edit it with `--edit`); an app's own overview only when the app is gone. Tell the human which entries cite it (`backlinks`), and, for an ADR, that `--adr` is the way when a new decision replaces it.
+`--deprecate` is accepted as an alias for one more version.
+1. `arch show <id>`. The root `overview.md` is never removed (edit it with `--edit`); an app's own overview only when the app is gone. An `accepted` ADR is never removed: a new decision supersedes it (`--adr`, even one that only abandons the old decision), and a `superseded` entry stays as history. Tell the human which entries cite it (`backlinks`).
 2. The human confirms (pair); `--auto` is not offered.
-3. A `proposed` entry is removed (`arch remove <id>`); an `accepted` one becomes `deprecated` (`arch set <id> --status deprecated`); another status: say so and stop.
-   Branch `architecture/deprecate-<id>`, commit, push, open one PR.
+3. `arch remove <id>` (refused while another entry cites it: edit those first). Branch `architecture/remove-<id>`, commit, push, open one PR.
 
 ## `--verify [<id>]`
 

@@ -147,7 +147,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
 
 9b. **Create the wiki** (only when the wiki module is on). If the project has no `wiki/` yet, run
     `python3 .pilot/pilot.py wiki reindex`: it creates `wiki/` with its root `index.md`, then create the vision from
-    step 2's text: `python3 .pilot/pilot.py wiki add product/vision.md --type Vision --status implemented --title Vision
+    step 2's text: `python3 .pilot/pilot.py wiki add product/vision.md --type Vision --title Vision
     --description "<one sentence>" --body "<the vision>"` (in the wiki's language). From here it is
     project-owned: `/pilot-update` never touches it. When the project already has closed tickets or code to
     document, tell the human to run `/pilot-wiki --bootstrap` to fill it.

@@ -15,7 +15,7 @@ target status, and the project's functional domains (the folders of `wiki/`).
    source; never add behavior they do not state.
 2. **Reuse before adding.** A story that changes or extends a behavior an entry already states
    revises that entry (same id, new text); a new entry is for new behavior only; never write
-   the same behavior twice. A story that removes behavior deprecates the entry that states it.
+   the same behavior twice. A story that removes behavior marks the entry that states it with `remove` (the entry stays, listing the story, until the Dev PR that removes the behavior deletes it).
 3. **Place each entry in a functional domain**: an existing folder that fits, else a new
    lowercase folder named for the product area. One entry is one file `<domain>/<id>.md`, the id in lowercase
    letters, digits and dashes.
@@ -33,10 +33,10 @@ target status, and the project's functional domains (the folders of `wiki/`).
 Return one JSON object, nothing else:
 
 ```json
-{"entries": [{"action": "add|update|deprecate", "id": "", "title": "", "path": "<domain>/<id>.md", "description": "", "body": ""}],
+{"entries": [{"action": "add|update|remove", "id": "", "title": "", "path": "<domain>/<id>.md", "description": "", "body": ""}],
  "conflicts": [{"id": "", "question": ""}]}
 ```
 
 `description` is one sentence (it is the entry's line in the index), `body` the prose only (both empty for
-`deprecate`); the skill writes the ticket numbers and
+`remove`); the skill writes the ticket numbers and
 the status.

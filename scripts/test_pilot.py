@@ -999,13 +999,13 @@ class WikiTests(unittest.TestCase):
         self.assertEqual(pilot.parse_frontmatter(pilot.split_frontmatter(after)[0])["pilot"]["tickets"], [21])
 
     def test_set_stamp_records_time_and_commit_and_clear_stamp_forgets_them(self):
-        out = self.wiki.set("search-filter", stamp="deadbeef")
+        out = self.wiki.set("search-sort", stamp="deadbeef")
         self.assertEqual(out["verifiedCommit"], "deadbeef")
         self.assertRegex(out["verifiedAt"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
-        self.assertIn("by: process:pilot-wiki", self.text("search/search-filter.md"))
-        out = self.wiki.set("search-filter", status="specified", clear_stamp=True)
+        self.assertIn("by: process:pilot-wiki", self.text("search/search-sort.md"))
+        out = self.wiki.set("search-sort", status="specified", clear_stamp=True)
         self.assertEqual((out["verifiedAt"], out["verifiedCommit"]), ("", ""))
-        self.assertNotIn("verified", self.text("search/search-filter.md"))
+        self.assertNotIn("verified", self.text("search/search-sort.md"))
         self.assertEqual(self.wiki.index()["problems"], 0)
 
     def test_set_updates_title_and_description_and_the_index_follows(self):
@@ -1049,14 +1049,64 @@ class WikiTests(unittest.TestCase):
                 self.wiki.add(*args)
             self.assertEqual(caught.exception.payload["reason"], reason, args)
 
-    def test_remove_deletes_a_proposed_entry_and_its_empty_folder(self):
+    def test_remove_deletes_an_entry_of_any_status_and_its_empty_folder(self):
         self.wiki.add("tmp/one.md", "One", "d", "proposed", [7])
         self.wiki.remove("one")
         self.assertFalse((self.root / "tmp").exists())
         self.assertNotIn("tmp", self.text("index.md"))
+        self.wiki.remove("search-sort")  # implemented: a retired entry is deleted, not kept
+        self.assertFalse((self.root / "search" / "search-sort.md").exists())
+
+    def test_remove_is_refused_while_another_entry_cites_it_and_for_the_vision(self):
+        self.wiki.add("search/by-name.md", "By name", "d", "proposed", [9], body="See [filter](search-filter.md).")
         with self.assertRaises(pilot.Refused) as caught:
-            self.wiki.remove("search-sort")
-        self.assertEqual((caught.exception.payload["reason"], caught.exception.payload["status"]), ("not-removable", "implemented"))
+            self.wiki.remove("search-filter")
+        self.assertEqual((caught.exception.payload["reason"], caught.exception.payload["citedBy"]), ("cited", ["by-name"]))
+        self.wiki.remove("by-name")
+        self.wiki.remove("search-filter")
+        self.wiki.add("product/vision.md", "Vision", "What it is.", typ="Vision", body="Why.")
+        with self.assertRaises(pilot.Refused) as caught:
+            self.wiki.remove("vision")
+        self.assertEqual(caught.exception.payload["reason"], "vision-never-removed")
+
+    def test_a_persona_a_flow_names_is_not_removed(self):
+        self.wiki.add("persona/marie.md", "Marie", "A user.", typ="Persona", body="Low vision.")
+        self.wiki.add("user-flow/find.md", "Find", "Search.", "implemented", typ="UserFlow", body="Personas: marie")
+        with self.assertRaises(pilot.Refused) as caught:
+            self.wiki.remove("marie")
+        self.assertEqual((caught.exception.payload["reason"], caught.exception.payload["citedBy"]), ("cited", ["find"]))
+
+    def test_a_vision_and_a_persona_carry_no_status(self):
+        for args in (("product/vision.md", "V", "d", "implemented"), ("persona/p.md", "P", "d", "implemented")):
+            with self.assertRaises(pilot.Refused) as caught:
+                self.wiki.add(*args, typ="Vision" if "vision" in args[0] else "Persona")
+            self.assertEqual(caught.exception.payload["reason"], "status-not-allowed")
+        with self.assertRaises(pilot.Refused) as caught:
+            self.wiki.add("persona/q.md", "Q", "d", "proposed", typ="Persona")
+        self.assertEqual(caught.exception.payload["reason"], "status-not-allowed")
+
+    def test_a_stamp_is_written_only_on_an_implemented_entry_that_code_verifies(self):
+        with self.assertRaises(pilot.Refused) as caught:
+            self.wiki.set("search-filter", stamp="abc")  # specified
+        self.assertEqual(caught.exception.payload["reason"], "stamp-needs-status")
+        self.wiki.set("search-filter", status="implemented", stamp="abc")
+        self.wiki.add("user-flow/f.md", "F", "d", "implemented", typ="UserFlow")
+        with self.assertRaises(pilot.Refused) as caught:
+            self.wiki.set("f", stamp="abc")
+        self.assertEqual(caught.exception.payload["reason"], "never-stamped")
+
+    def test_a_deprecated_entry_written_before_is_read_and_lint_asks_to_delete_it(self):
+        self.entry("search/old.md", "implemented", [3])
+        old = self.root / "search" / "old.md"
+        old.write_text(old.read_text().replace("status: implemented", "status: deprecated").replace("status: stable", "status: deprecated"))
+        self.wiki.reindex()
+        report = self.lint(issue(3, ["status:done"], state="closed"), issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]))
+        warn = [f for f in report["findings"] if f["code"] == "legacy-status"]
+        self.assertEqual([(f["entry"], f["level"]) for f in warn], [("old", "warn")])
+        self.assertTrue(report["ok"])
+        self.wiki.remove("old")
+        with self.assertRaises(pilot.Refused):
+            self.wiki.set("search-filter", status="deprecated")
 
     # ---- derived status ---------------------------------------------------------------------
     def derived(self, entry_id, *issues):
@@ -1098,7 +1148,7 @@ class WikiTests(unittest.TestCase):
         self.assertEqual(report, {"ok": True, "entries": 2, "findings": []})
 
     def test_a_vision_entry_needs_no_ticket_and_lints_clean(self):
-        self.wiki.add("product/vision.md", "Vision", "What the product is, for whom and by which principles.", "implemented",
+        self.wiki.add("product/vision.md", "Vision", "What the product is, for whom and by which principles.",
                       body="A travel assistant for people with disabilities.", typ="Vision")
         self.assertIn("type: Vision", self.text("product/vision.md"))
         report = self.lint(issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]), issue(3, ["status:done"], state="closed"))
@@ -1323,11 +1373,31 @@ class ArchitectureTests(unittest.TestCase):
         self.add("adr/0002-b.md", "proposed")
         self.arch.supersede("0002-b", "0001-a")
         self.add("guidelines/layering.md", "accepted", description="Domain never imports adapters.")
-        self.add("guidelines/old.md", "deprecated")
+        self.add("guidelines/old.md", "accepted")
+        old = self.root / "guidelines" / "old.md"  # an entry written before the status went away
+        old.write_text(old.read_text().replace("status: stable", "status: deprecated").replace("status: accepted", "status: deprecated"))
         rows = self.arch.index(active=True)["entries"]
         self.assertEqual(sorted(r["id"] for r in rows), ["layering"])
         self.assertTrue(all(set(r) == {"id", "path", "description", "status"} for r in rows))
         self.assertEqual(len(self.arch.index()["entries"]), 4)
+
+    def test_remove_deletes_what_is_not_history_and_refuses_the_rest(self):
+        self.add("adr/0001-a.md", "accepted")
+        self.add("adr/0002-b.md", "proposed")
+        self.add("adr/0003-c.md", "proposed")
+        self.add("guidelines/layering.md", "accepted", description="Domain never imports adapters.")
+        self.add("overview.md", "accepted", description="The apps.")
+        self.arch.supersede("0002-b", "0001-a")
+        for entry, reason in (("0001-a", "superseded-is-history"), ("overview", "overview-never-removed")):
+            with self.assertRaises(pilot.Refused) as caught:
+                self.arch.remove(entry)
+            self.assertEqual(caught.exception.payload["reason"], reason)
+        self.arch.set("0003-c", status="accepted")
+        with self.assertRaises(pilot.Refused) as caught:
+            self.arch.remove("0003-c")  # an accepted ADR is retired by a new one that supersedes it
+        self.assertEqual(caught.exception.payload["reason"], "accepted-adr")
+        self.arch.remove("layering")
+        self.assertFalse((self.root / "guidelines" / "layering.md").exists())
 
     def test_a_proposed_entry_is_not_in_force_so_a_phase_prompt_does_not_carry_it(self):
         self.add("guidelines/layering.md", "accepted", description="Domain never imports adapters.")
@@ -2280,7 +2350,7 @@ class FlowRunDocTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.wiki = pilot.Wiki(root=self.tmp.name)
         for pid in ("marie", "paul"):
-            self.wiki.add(f"persona/{pid}.md", pid.title(), "A user.", "implemented", body="Low vision.", typ="Persona")
+            self.wiki.add(f"persona/{pid}.md", pid.title(), "A user.", body="Low vision.", typ="Persona")
         self.wiki.add("user-flow/find.md", "Find a place", "Search.", "implemented", body="Personas: marie, paul", typ="UserFlow")
         self.wiki.add("search/sort.md", "Sort", "Sorted.", "implemented")
 
@@ -2337,11 +2407,18 @@ class FlowRunDocTests(unittest.TestCase):
         self.assertEqual(self.wiki.show("x", FakeGh([]))["type"], "UserFlow")
 
     def test_the_folder_sets_the_type_of_a_new_entry(self):
-        self.wiki.add("persona/zoe.md", "Zoe", "A user.", "implemented")
+        self.wiki.add("persona/zoe.md", "Zoe", "A user.")
         self.wiki.add("user-flow/buy.md", "Buy", "A journey.", "proposed", tickets=[3])
         self.wiki.add("top-level.md", "Top", "A rule.", "implemented")
         kinds = {e["id"]: e["type"] for e in self.wiki.parse()}
         self.assertEqual((kinds["zoe"], kinds["buy"], kinds["top-level"], kinds["sort"]), ("Persona", "UserFlow", "Behavior", "Behavior"))
+
+    def test_only_an_implemented_flow_is_played(self):
+        for status in ("proposed", "specified"):
+            self.wiki.add(f"user-flow/{status}.md", status, "Not built yet.", status, body="Personas: marie", typ="UserFlow")
+            with self.assertRaises(pilot.Refused) as refused:
+                self.doc(self.run_of("marie", "passed"), flow=status)
+            self.assertEqual(refused.exception.payload["reason"], "flow-not-playable")
 
     def test_it_refuses_what_is_not_a_flow_or_a_persona_or_has_no_run(self):
         for flow, runs, reason in (("nope", [self.run_of("marie", "passed")], "not-a-user-flow"), ("sort", [self.run_of("marie", "passed")], "not-a-user-flow"),

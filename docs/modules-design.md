@@ -79,7 +79,7 @@ a YAML frontmatter, an `index.md` per folder, so an agent reads the index and op
   at a commit, stamps the ones that hold and has a human arbitrate each divergence (the wiki's `--lint` mechanism), and a PR that changes a stated fact updates the entry. Added in 3.13.0
   after finding that a version number or a table layout modelled as an ADR goes stale: an accepted ADR is never edited.
 - `adr/NNNN-title.md` — architecture decision records: context, decision, alternatives rejected,
-  consequences, status (`proposed`, `accepted`, `deprecated`, `superseded`), and the ADR it supersedes.
+  consequences, status (`proposed`, `accepted`, `superseded`), and the ADR it supersedes.
   An ADR is never edited once accepted: a later one supersedes it.
 - `runbooks/<id>.md` — how to operate the product (deploy, provision, onboard a client): procedures step by step, read on
   demand and never carried in a phase's prompt (`index --active` leaves them out). Added in 3.9.0 so that a project can retire its
