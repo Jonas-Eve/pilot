@@ -3001,3 +3001,72 @@ class LabJudgeTests(unittest.TestCase):
             self.assertIn("Write in English.", self.lab.load_case(cid)["question"])
         props = self.lab.load_case("L-S6")["schema"]["properties"]
         self.assertIn("exactly", props["checked_against"]["items"]["properties"]["entry"]["description"])
+
+
+class SkillStepsTests(unittest.TestCase):
+    """The numbered steps of every skill: in order within a section, no duplicate, and every `step N` a skill cites exists."""
+
+    ROOT = pathlib.Path(__file__).resolve().parent.parent
+    STEP = re.compile(r"^(\d+(?:-bis|[a-z])?)\.\s")
+    REF = re.compile(r"(?<![\w`/.-])steps? (\d+(?:-bis|[a-z])?)(?:\s*[-–]\s*(\d+[a-z]?))?")
+
+    @staticmethod
+    def key(step):
+        m = re.match(r"(\d+)(-bis|[a-z])?$", step)
+        suffix = m.group(2) or ""
+        return (int(m.group(1)), 0 if not suffix else 1 if suffix == "-bis" else 2 + ord(suffix))
+
+    def sections(self, text):
+        """Each `## ` section of a skill with the step ids it numbers, in file order."""
+        out, current = [], ("", [])
+        for line in text.splitlines():
+            if line.startswith("## "):
+                out.append(current)
+                current = (line, [])
+            m = self.STEP.match(line)
+            if m:
+                current[1].append(m.group(1))
+        out.append(current)
+        return [(title, ids) for title, ids in out if ids]
+
+    def skills(self):
+        return sorted(self.ROOT.glob(".claude/skills/pilot-*/SKILL.md"))
+
+    def test_steps_are_numbered_in_order_with_no_duplicate_in_each_section(self):
+        bad = []
+        for path in self.skills():
+            for title, ids in self.sections(path.read_text(encoding="utf-8")):
+                if len(set(ids)) != len(ids):
+                    bad.append(f"{path.parent.name} {title!r}: a step number is used twice: {ids}")
+                keys = [self.key(i) for i in ids]
+                if keys != sorted(keys):
+                    bad.append(f"{path.parent.name} {title!r}: steps out of order: {ids}")
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_every_step_a_skill_cites_exists_in_it(self):
+        bad = []
+        for path in self.skills():
+            text = path.read_text(encoding="utf-8")
+            sections = self.sections(text)
+            ids = [i for _t, group in sections for i in group]
+            if len(sections) != 1 or len(set(ids)) != len(ids):
+                continue  # several numbered sections (`--edit`, `--remove`…): "step 2" is ambiguous, order is still checked above
+            known = set(ids)
+            body = text.split("\n## ", 1)[1] if "\n## " in text else text
+            for m in self.REF.finditer(body):
+                before = body[max(0, m.start() - 70):m.start()]
+                if re.search(r"(SKILL\.md|\.md`?)[^.\n]{0,40}$", before) or "`pilot-" in before[-30:]:
+                    continue  # another skill's or a doc's step
+                for ref in (m.group(1), m.group(2)):
+                    if ref and ref not in known:
+                        bad.append(f"{path.parent.name}: cites step {ref}, which it does not number (…{body[max(0, m.start() - 40):m.end() + 10]!r})")
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_the_check_catches_an_order_a_duplicate_and_a_missing_step(self):
+        text = "## Steps\n\n1. a\n2. b\n2b. c\n2a. d\n2a. e\n3. see step 9\n"
+        (_title, ids), = self.sections(text)
+        self.assertEqual(ids, ["1", "2", "2b", "2a", "2a", "3"])
+        self.assertNotEqual([self.key(i) for i in ids], sorted(self.key(i) for i in ids))
+        self.assertEqual(len(set(ids)), 5)
+        self.assertLess(self.key("2"), self.key("2-bis"))
+        self.assertLess(self.key("2-bis"), self.key("2a"))

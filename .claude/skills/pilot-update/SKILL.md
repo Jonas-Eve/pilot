@@ -43,10 +43,10 @@ from a previous run — the whole point is picking up upstream changes.
   inside otherwise project-owned files —
   see step 4.
 - **The dashboard artifact**, when `.pilot/state.json` has a `dashboardUrl`, is PILOT-owned
-  too: it is republished from the current template at the same address (step 5b); its data
+  too: it is republished from the current template at the same address (step 5c); its data
   (snapshot, events, activity) is kept, and anything edited in the page itself is lost.
 - **`wiki/`** is project-owned content, never touched here; the `wiki` module itself is the project's
-  choice (`modules` in `state.json`, step 5c).
+  choice (`modules` in `state.json`, step 5b).
 - **GitHub labels** are re-applied idempotently (create-or-update, never delete) — safe
   to always re-run.
 - **`.github/pull_request_template.md`** is explicitly **not** PILOT-owned, even though
@@ -126,7 +126,7 @@ from a previous run — the whole point is picking up upstream changes.
    exact command to run themselves later — don't block steps 2-4 or 6 on it, and leave
    `lastLabelsSyncAt` as whatever it already was.
 
-5c. **Check the modules.** `python3 .pilot/pilot.py module list`. A `state.json` with no `modules` field predates them:
+5b. **Check the modules.** `python3 .pilot/pilot.py module list`. A `state.json` with no `modules` field predates them:
    record in step 6 what the project already uses, so nothing it relies on disappears — `dashboard` on when it has a
    `dashboardUrl`, and `design` and `proto` on with it (they only worked with it), `wiki` off. A `state.json` with no `language` means English: leave it, and mention `language` (the text of wiki and architecture entries) if the project writes them in another language. Say which modules exist
    (`.pilot/pilot-process.md` §8) and that each is turned on by its own skill (`/pilot-wiki`, `/pilot-architecture`, `/pilot-dashboard`,
@@ -140,7 +140,7 @@ from a previous run — the whole point is picking up upstream changes.
    `architecture/` in one PR. Leave `archInitialized` and `apps` in place (the personas read `apps`); `archInitialized` is no longer written or read.
    The `/pilot-init-archi` skill is gone upstream, so step 3 flags it as orphaned: offer to delete it once nothing needs it.
 
-5b. **Update the dashboard.** Only when `.pilot/state.json` has a `dashboardUrl`: run
+5c. **Update the dashboard.** Only when `.pilot/state.json` has a `dashboardUrl`: run
    `/pilot-dashboard` (reusing this `$PILOT_SRC`), after asking the human whether to
    republish — it does nothing if the rendered page is unchanged, and a refusal or failure
    there (e.g. the current user can't edit the artifact) never blocks the rest of the update.
@@ -149,7 +149,7 @@ from a previous run — the whole point is picking up upstream changes.
 
 6. **Update the state marker.** Set `lastSkillsSyncAt` (if step 2 changed anything),
    `lastProcessDocSyncAt` (if step 3 changed any of its files), and
-   `lastIntroSyncAt` (if step 4 changed anything) in `.pilot/state.json` to now, `modules` (step 5c, only when it was absent), and
+   `lastIntroSyncAt` (if step 4 changed anything) in `.pilot/state.json` to now, `modules` (step 5b, only when it was absent), and
    `pilotVersion` to the contents of `$PILOT_SRC/VERSION` (remember the previous value for
    the report; a project without one predates versioning).
    `lastLabelsSyncAt` needs no action here — step 5's script bumps it itself when it runs
@@ -157,7 +157,7 @@ from a previous run — the whole point is picking up upstream changes.
 
 7. **Report.** Say which PILOT version the project moved from and to (`pilotVersion`). Run
    `python3 .pilot/pilot.py doctor` and include its result (a failed
-   `pilot-labels` check means step 5's label sync did not complete; a failed `wiki` check means the module is on but `wiki/` is missing, step 5c). Summarize what changed across steps 2-5: skills/agents added, updated,
+   `pilot-labels` check means step 5's label sync did not complete; a failed `wiki` check means the module is on but `wiki/` is missing, step 5b). Summarize what changed across steps 2-5: skills/agents added, updated,
    flagged as orphaned (and whether removed), each root file added, updated, flagged as
    orphaned (and whether removed), or left as-is and why, intro blocks resynced or
    skipped, labels created/updated.
