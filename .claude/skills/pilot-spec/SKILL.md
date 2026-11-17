@@ -87,7 +87,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
    refusal → report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag|event` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Branch on `level:`. First the analysis: call `Agent` for `pilot-techlead` with `.pilot/pilot-task-analyze-existing.md`, `.pilot/pilot-link-existing-analysis.md` in full and the ticket (for
-   the no-ticket entry, the analysis step 1a already ran: only post it); post it on the ticket as the comment opening with `<!-- PILOT:ANALYSIS -->` and `mode: <pair|auto|human>`, show the human its "Touched by
+   the no-ticket entry, the analysis step 1a already ran: only post it); unless `--auto` (which posts nothing and holds the analysis for the run), post it on the ticket as the comment opening with `<!-- PILOT:ANALYSIS -->` and `mode: <pair|human>`, show the human its "Touched by
    this input" and "Not covered" parts (pair and `--human`), and pass it into every call below. With `--human`, then ask the human, once, for their proposal — the split (or none), the decisions,
    dependencies and priorities — and pass it into the dialogue as the human's proposal: the personas challenge it and write the specs, adding no decision of their own.
    - **`level:story`**: first `python3 .pilot/pilot.py workflow show --ticket <story>` once: its `spec.architect` says how the pass runs, its
@@ -168,7 +168,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
     that no longer holds together across rounds (an earlier security decision at
     odds with a later one, a spec that no longer matches a since-revised split). Do this
     for both pair and `--auto`.
-5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`); in every case also edit the ticket's analysis comment down to one line (`.pilot/pilot-link-existing-analysis.md`):
+5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`); in every case also edit the ticket's analysis comment (none under `--auto`) down to one line (`.pilot/pilot-link-existing-analysis.md`):
    - No split (`type:tech` `level:story` only, or a `level:task` needing just a spec —
      a `type:feature` story is never this case, step 4): update the ticket body with the
      spec and decisions, write the reconfirmed/revised `priority:` (for a `level:story` —

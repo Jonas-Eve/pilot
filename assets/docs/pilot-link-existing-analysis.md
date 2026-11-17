@@ -25,9 +25,9 @@ and the project's `CLAUDE.md`. Written as:
 - **Touched by this input** — what the input would change or rely on;
 - **Not covered** — what was not checked or has no source.
 
-It lives in one comment on the ticket opened by `<!-- PILOT:ANALYSIS -->`, kept up to date in place; its second line records the run's mode (`mode: pair|auto|human`), which a `--resume` without a
-mode flag reads. Before a ticket exists (framing) it is held in the conversation and posted when the ticket is created. A later round or a persona joining adds only the delta its point needs, with sources,
-in its own turn. When the phase finalizes, edit it down to one line: it goes stale and is never reused by the next phase.
+In pair and `--human` it lives in one comment on the ticket opened by `<!-- PILOT:ANALYSIS -->`, kept up to date in place (it is what `--resume` rebuilds from and what the human reads); its second line
+records the run's mode (`mode: pair|human`), which a `--resume` without a mode flag reads. In `--auto` no comment is posted: the skill passes the analysis from one call to the next within the run. Before a ticket exists (framing) it is held in the conversation and posted when the ticket is created. A later round or a persona joining adds only the delta its point needs, with sources,
+in its own turn. When the phase finalizes, edit the comment (when there is one) down to one line: it goes stale and is never reused by the next phase.
 
 ## The challenge
 
