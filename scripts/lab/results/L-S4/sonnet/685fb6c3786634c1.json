@@ -1,0 +1,167 @@
+{
+ "case": "L-S4",
+ "model": "sonnet",
+ "fingerprint": "685fb6c3786634c1",
+ "trials": [
+  {
+   "output": {
+    "entry_action": "leave_unstamped_not_by_command",
+    "pr_body_line": "Wiki: `names-only` moved from `specified` to `implemented` (`wiki set names-only --status implemented`), since #70 is the only ticket listing it and this PR completes it. The entry text is unchanged and it is not stamped. Only a lint that finds it conforming stamps it.",
+    "comment": "`wiki status names-only` shows every other ticket closed, so #70 completes the entry. I ran `wiki set names-only --status implemented` and left the text alone. It matches the behavior I checked: `--names-only` prints one name per line with no distance and no count line, and the output without the option is unchanged. No binding entry is contradicted: the change adds no dependency, and the logic and printing stay in their layers. I did not stamp the entry, because only a lint (`wiki set --stamp <commit>`) or an init may write the stamp. My manual run is not that check. ADR 0001 is only `proposed`, so it does not bind. `stdlib-only` still holds."
+   },
+   "cost": 0.074514,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 735,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 16790
+   },
+   "ms": 5905,
+   "judged": {}
+  },
+  {
+   "output": {
+    "entry_action": "leave_unstamped_not_by_command",
+    "pr_body_line": "Wiki: `names-only` moved from `specified` to `implemented` (`python3 .pilot/pilot.py wiki set names-only --status implemented`), since this ticket (#70) was the last open ticket it lists. The entry text is unchanged and it carries no stamp. I checked the behavior by running it: `--names-only` prints one name per line with no distance and no count line, and the output without the option is unchanged. Stamping is left to a later `/pilot-wiki --lint`.",
+    "comment": "The change matches the entry as written, so the text stays as it is. I ran the code: `cafe --names-only` prints two bare name lines, and `cafe` without the option still prints distances plus the count line. All 9 tests pass. Every other ticket the entry lists is closed (`wiki status names-only`), so this PR completes it. Step 6a therefore requires moving it to `implemented` in the same PR, which I do with `wiki set names-only --status implemented`. No `--clear-stamp` is needed because the text didn't change and the entry has no stamp. I don't stamp it myself. Only a lint that finds the entry conforming writes the stamp (`wiki set --stamp <commit>`), and a developer's manual check doesn't count as one. The entry doesn't specify order, so the existing farthest-first sort isn't a contradiction, and nothing binding conflicts. `stdlib-only` and `layer-dependencies` aren't affected, and the ADR is only `proposed`, so it doesn't bind. Nothing here needs a human decision."
+   },
+   "cost": 0.0201401,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 944,
+    "cache_read_input_tokens": 14481,
+    "cache_creation_input_tokens": 2312
+   },
+   "ms": 7127,
+   "judged": {}
+  },
+  {
+   "output": {
+    "entry_action": "leave_unstamped_not_by_command",
+    "pr_body_line": "Wiki: `names-only` moved from `specified` to `implemented` (`python3 .pilot/pilot.py wiki set names-only --status implemented`), because #70 is the only ticket it lists and this PR completes it. Not stamped: a stamp is written only by a wiki lint.",
+    "comment": "Every other ticket listed on `names-only` is closed, so this PR completes the entry. I run `wiki set names-only --status implemented` in the same PR, as step 6a requires. I do not stamp it. Only a lint that finds the entry conforming writes a stamp, and a dev run does not. The entry's text is not edited. The checks I ran match it: `--names-only` prints `Cafe du Pont` then `Cafe Lumiere`, one name per line with no distance and no count line, and the output without the option is unchanged. No binding entry is contradicted. `search.py` stays free of I/O and the change adds no dependency. The farthest-first sort order is not something this entry covers."
+   },
+   "cost": 0.018206100000000003,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 751,
+    "cache_read_input_tokens": 14481,
+    "cache_creation_input_tokens": 2311
+   },
+   "ms": 5500,
+   "judged": {}
+  },
+  {
+   "output": {
+    "entry_action": "leave_unstamped_not_by_command",
+    "pr_body_line": "Wiki: `names-only` moved from `specified` to `implemented` (`wiki set names-only --status implemented`), since this PR completes it (#70 was its last open ticket). It is not stamped: only a lint stamps an entry.",
+    "comment": "Step 6a applies: `wiki status names-only` says every other ticket is closed, so this change completes the entry. I ran the CLI and the output matches the entry's text. With `--names-only` it prints one name per line, with no distance and no count line. Without the option the output is unchanged. All 9 tests pass. So the entry moves to `implemented` in this PR, using `python3 .pilot/pilot.py wiki set names-only --status implemented`. I don't edit its prose, because it already matches the behavior. I don't write a stamp, because only a lint that checks the entry against the code does that. Nothing here contradicts a binding entry. The change touches only `search.py` and `cli.py`, uses no third-party dependency, and keeps I/O in `cli.py`. The entry doesn't specify an order, so the farthest-first order is not a deviation. The proposed ADR 0001 doesn't bind, and the code doesn't conflict with it anyway. No `needs-human` is needed."
+   },
+   "cost": 0.0193341,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 863,
+    "cache_read_input_tokens": 14481,
+    "cache_creation_input_tokens": 2313
+   },
+   "ms": 6410,
+   "judged": {}
+  },
+  {
+   "output": {
+    "entry_action": "leave_unstamped_not_by_command",
+    "pr_body_line": "Wiki: `names-only` moved from `specified` to `implemented` (`python3 .pilot/pilot.py wiki set names-only --status implemented`), since #70 is the last open ticket it lists. Text unchanged and no stamp added. Only a lint or init writes a stamp.",
+    "comment": "Ticket #70 is the only open ticket on `names-only`, and `wiki status` shows every other ticket closed. This change therefore completes the entry, and step 6a says to set it to `implemented` in the same PR. The entry's text already matches the behavior I ran. With `--names-only`, `cafe` prints only `Cafe du Pont` and `Cafe Lumiere`, one name per line, with no distance and no count line. Without the option the output is unchanged. The 9 tests pass. The entry says nothing about order, so the current farthest-first order is not a deviation. No binding entry is contradicted. `stdlib-only` is respected because the option uses `argparse`, and `layer-dependencies` is respected if argument parsing and printing stay in `cli.py`. ADR 0001 is only `proposed`, so it does not bind. I do not stamp the entry, because a stamp is written only by a lint that found the entry conforming, or by an init. The entry has no stamp today and stays that way. I leave the text untouched and make no `--clear-stamp` call."
+   },
+   "cost": 0.0192941,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 859,
+    "cache_read_input_tokens": 14481,
+    "cache_creation_input_tokens": 2313
+   },
+   "ms": 6354,
+   "judged": {}
+  },
+  {
+   "output": {
+    "entry_action": "leave_unstamped_not_by_command",
+    "pr_body_line": "Wiki: `names-only` moved from `specified` to `implemented` (`python3 .pilot/pilot.py wiki set names-only --status implemented`), because this PR completes it (#70 was the last open ticket). The entry text is unchanged and the entry is not stamped. Checked by running the tests (9 OK) and the CLI: `--names-only` prints one name per line with no distance and no count line, and the output without the option is unchanged.",
+    "comment": "Ticket #70 is the only ticket still open on `names-only`, so this change completes the entry. Under step 6a I run `wiki set names-only --status implemented` in this PR. I do not stamp it: only a lint or an init writes the stamp (`wiki set --stamp`), and a dev does not. The entry text stays as it is. The behavior I ran matches it: `cafe --names-only` printed two names, one per line, with no distance and no count line, and `cafe` without the option printed the same output as before. The entry says nothing about order, so the farthest-first sort is not a contradiction. No binding entry conflicts with the work. `stdlib-only` and `layer-dependencies` are respected. ADR 0001 is only `proposed`, so it does not bind. Nothing to escalate. The architecture reference needs no edit, since no fact it states has changed."
+   },
+   "cost": 0.0191061,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 839,
+    "cache_read_input_tokens": 14481,
+    "cache_creation_input_tokens": 2316
+   },
+   "ms": 6613,
+   "judged": {}
+  },
+  {
+   "output": {
+    "entry_action": "leave_unstamped_not_by_command",
+    "pr_body_line": "Wiki: entry `names-only` moved from `specified` to `implemented` (`python3 .pilot/pilot.py wiki set names-only --status implemented`) because this PR completes it (#70 was its only open ticket). The entry text is unchanged and I did not stamp it, because only a lint writes the stamp.",
+    "comment": "Entry `names-only` says that with `--names-only` the search prints one name per line, with no distance and no count line, and that output without the option is unchanged. I ran both cases and they match: `cafe --names-only` printed two bare name lines, and `cafe` without the option printed the same distances and count line as before. `wiki status` shows every other ticket on the entry is closed, so this PR completes it. Under step 6a that means I run `wiki set names-only --status implemented` in this PR. I did not edit the entry's prose, so there is no stamp to clear. I did not run `wiki set --stamp`, because a stamp is only written by a lint that checks the entry against the code, and the entry has never been stamped. Nothing contradicts a binding entry: the change uses only the standard library and keeps logic and printing in their layers (`stdlib-only`, `layer-dependencies`). ADR 0001 is only proposed, so it doesn't bind. The entry doesn't specify an order, so the current farthest-first order is not a deviation. I didn't change it, and no human decision is needed."
+   },
+   "cost": 0.019158100000000004,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 845,
+    "cache_read_input_tokens": 14481,
+    "cache_creation_input_tokens": 2314
+   },
+   "ms": 7003,
+   "judged": {}
+  },
+  {
+   "output": {
+    "entry_action": "leave_unstamped_not_by_command",
+    "pr_body_line": "Wiki: `names-only` moved from `specified` to `implemented` (`python3 .pilot/pilot.py wiki set names-only --status implemented`). Ticket #70 was the last open ticket on it, and the `--names-only` output matches the entry text. The entry is left unstamped, because only a wiki lint writes the stamp.",
+    "comment": "Ticket #70 is the only ticket listed on `names-only`, and `wiki status` shows every other ticket closed, so this PR completes the entry. Step 6a therefore applies: move it to `implemented` with `wiki set names-only --status implemented`, in the same PR.\n\nThe entry says `--names-only` prints one name per line, with no distance and no count line, and that output without the option is unchanged. I ran both cases:\n- `python -m accessplaces cafe --names-only` printed `Cafe du Pont` and `Cafe Lumiere`, two lines and nothing else.\n- `python -m accessplaces cafe` still printed `Cafe du Pont (300 m)`, `Cafe Lumiere (120 m)` and `2 places found`.\n- `python -m unittest discover -s tests` ran 9 tests, all OK.\n\nThe entry says nothing about order, so printing farthest first, as `search()` already does, does not conflict with it.\n\nI made no edit to the entry's text, so there is no stamp to clear. I did not stamp it either. A stamp is only written by a wiki lint that finds the entry conforming, never by Dev. The entry stays `implemented` and unstamped until a lint does that.\n\nThe binding architecture entries are respected, so nothing needs a human decision:\n- `stdlib-only`: the change uses only `argparse` and adds no dependency.\n- `layer-dependencies`: argument reading and printing stay in `cli.py`, and `search.py` has no I/O.\n- ADR `0001` is `proposed`, so it does not bind.\n\nNo architecture reference entry states a fact that this change alters, so none is updated."
+   },
+   "cost": 0.021308100000000003,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 1060,
+    "cache_read_input_tokens": 14481,
+    "cache_creation_input_tokens": 2314
+   },
+   "ms": 8362,
+   "judged": {}
+  },
+  {
+   "output": {
+    "entry_action": "leave_unstamped_not_by_command",
+    "pr_body_line": "Wiki: `names-only` moved from `specified` to `implemented` (`python3 .pilot/pilot.py wiki set names-only --status implemented`), because this PR completes it (#70 was the last open ticket it listed). It is not stamped: only a lint stamps an entry.",
+    "comment": "Every other ticket the `names-only` entry lists is closed, so this PR completes it. Step 6a therefore sets it to `implemented` with `wiki set names-only --status implemented`, in the same PR. I ran the change and it matches the entry. `--names-only` prints one name per line with no distance and no count line, and the output without the option is unchanged. The entry says nothing about order, so keeping the existing farthest-first order doesn't contradict it. No binding architecture entry is broken: the change adds no dependency and keeps I/O in `cli.py`. I don't stamp the entry. The stamp is written only by a wiki lint that finds the entry conforming (`wiki set --stamp <commit>`), never by Dev, so the entry stays unstamped. I edit no entry text."
+   },
+   "cost": 0.0180021,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 731,
+    "cache_read_input_tokens": 14481,
+    "cache_creation_input_tokens": 2310
+   },
+   "ms": 5740,
+   "judged": {}
+  },
+  {
+   "output": {
+    "entry_action": "leave_unstamped_not_by_command",
+    "pr_body_line": "Wiki: `names-only` moved from `specified` to `implemented` (`wiki set names-only --status implemented`); this PR completes it, as #70 was its only open ticket. It is not stamped: only a lint stamps an entry.",
+    "comment": "Step 6a. `wiki status names-only` shows every other ticket closed, so #70 completes the entry. I run `python3 .pilot/pilot.py wiki set names-only --status implemented` in the PR and leave the entry text as it is. It matches what I ran: `--names-only` prints one name per line with no distance and no count line, and without the option the output is unchanged (`Cafe du Pont (300 m)`, `Cafe Lumiere (120 m)`, `2 places found`). I add no stamp. Only a lint that finds the entry conforming writes `verified` and `verifiedCommit`, and my own run is not that check. Nothing contradicts a binding entry. The `stdlib-only` and `layer-dependencies` guidelines are not touched by this wiki change. The ADR is `proposed`, so it does not bind. The farthest-first order in the output is existing behavior and the entry does not mention it, so I leave it alone."
+   },
+   "cost": 0.0185981,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 789,
+    "cache_read_input_tokens": 14481,
+    "cache_creation_input_tokens": 2314
+   },
+   "ms": 5855,
+   "judged": {}
+  }
+ ]
+}
