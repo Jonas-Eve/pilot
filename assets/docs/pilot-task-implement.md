@@ -110,9 +110,10 @@ spec).
    what they say; an entry that contradicts the spec or cannot be followed is not yours to edit — stop
    with `needs-human`. In the same PR, an entry this change completes — every other ticket it lists
    with `level` `task` is closed (`python3 .pilot/pilot.py wiki status <id>`) — moves to
-   `implemented`: `wiki set <id> --status implemented`, and verified: check the behavior holds as the entry states it, in every detail it states, reading the code and running a test or a CLI call rather than
-   trusting names. It holds → commit, then `wiki set <id> --stamp <that commit>` (the stamp, never written otherwise in a PR). The code does something else → stop with `needs-human` quoting the statement and what the
-   code does. An entry this change removes (the story's ticket lists it for removal) is deleted once the behavior is gone: `wiki remove <id>` (refused while another entry cites it: edit that entry in the same PR when the change is yours, else stop with `needs-human`). Any other entry stays as it is; never stamp one.
+   `implemented`: `wiki set <id> --status implemented`, and verified by running something, not by trusting names: a test or a CLI call that shows the behavior holds as the entry states it, in every detail it states.
+   Put the proof in the PR body, one line per entry: `Verified: <id> — <command> → <result>`. It holds → commit, then `wiki set <id> --stamp <that commit> --by process:pilot-dev` (the stamp, never written otherwise in a PR).
+   No command can test it (a rendering, a journey, something asynchronous) → no stamp, a line `Verified: <id> — not by command: <why>`: the entry stays `implemented` and unstamped, QA verifies it in phase 5 (a project without QA leaves it
+   unverified). The code does something else than the entry states → stop with `needs-human` quoting the statement and what the code does. An entry this change removes (the story's ticket lists it for removal) is deleted once the behavior is gone: `wiki remove <id>` (refused while another entry cites it: edit that entry in the same PR when the change is yours, else stop with `needs-human`). Any other entry stays as it is; never stamp one.
 6b. **Architecture reference** (only when the prompt carries the architecture index): a change to a fact a
    `reference` entry states (a dependency version, a table, a folder, a command) updates that entry in the same PR
    (`arch show <id>`, edit the text, `arch set <id> --clear-stamp`). A rule or an ADR is never edited here.

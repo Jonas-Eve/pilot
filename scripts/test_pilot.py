@@ -1085,6 +1085,17 @@ class WikiTests(unittest.TestCase):
             self.wiki.add("persona/q.md", "Q", "d", "proposed", typ="Persona")
         self.assertEqual(caught.exception.payload["reason"], "status-not-allowed")
 
+    def test_a_stamp_says_who_verified_and_only_a_known_verifier_is_accepted(self):
+        self.wiki.set("search-sort", stamp="abc", by="process:pilot-qa")
+        self.assertIn("by: process:pilot-qa", self.text("search/search-sort.md"))
+        self.wiki.set("search-sort", stamp="def")
+        self.assertIn("by: process:pilot-wiki", self.text("search/search-sort.md"))
+        with self.assertRaises(pilot.Refused) as caught:
+            self.wiki.set("search-sort", stamp="ghi", by="somebody")
+        self.assertEqual(caught.exception.payload["reason"], "bad-verifier")
+        parse = pilot.build_parser().parse_args
+        self.assertEqual(parse(["wiki", "set", "x", "--stamp", "abc", "--by", "process:pilot-dev"]).by, "process:pilot-dev")
+
     def test_a_stamp_is_written_only_on_an_implemented_entry_that_code_verifies(self):
         with self.assertRaises(pilot.Refused) as caught:
             self.wiki.set("search-filter", stamp="abc")  # specified
@@ -2527,12 +2538,25 @@ class BehaviorGradeTests(unittest.TestCase):
         self.wiki.set("by-name", stamp=self.base)
         self.commit("stamp")
         record = self.record(stamped=["by-name"])
+        record["pr"] = {"number": 5, "body": "## Summary\nVerified: by-name — python -m unittest tests.test_search → OK, nearest first"}
         self.assertTrue(self.gb.grade(record, self.dir)["ok"])
         pathlib.Path(self.dir, "code.py").write_text("x = 1\n")
         self.commit("code after the stamp")
         report = self.gb.grade(record, self.dir)
         self.assertFalse(report["ok"])
         self.assertIn("code.py", report["checks"][0]["detail"])
+
+    def test_a_stamp_needs_its_proof_in_the_pr_and_a_behavior_no_command_tests_stays_unstamped_and_says_why(self):
+        self.wiki.set("by-name", stamp=self.base)
+        self.commit("stamp")
+        record = self.record(stamped=["by-name"])
+        record["pr"] = {"number": 5, "body": "Verified: by-name — I read the code"}
+        self.assertEqual(self.names(self.gb.grade(record, self.dir))["proof-in-pr:by-name"], False)
+        record = self.record(not_by_command=["old"])
+        record["pr"] = {"number": 5, "body": "Verified: old — not by command: a rendering"}
+        self.assertTrue(self.gb.grade(record, self.dir)["ok"])
+        record["pr"]["body"] = "nothing"
+        self.assertFalse(self.gb.grade(record, self.dir)["ok"])
 
     def test_a_stamp_on_a_commit_that_does_not_exist_or_no_stamp_fails(self):
         self.assertFalse(self.gb.grade(self.record(stamped=["by-name"]), self.dir)["ok"])
@@ -2596,7 +2620,7 @@ class ScenarioSelectionTests(unittest.TestCase):
 
     def test_a_dev_task_doc_selects_the_dev_scenarios_only(self):
         out = self.pick("assets/docs/pilot-task-implement.md")
-        self.assertEqual(out["selected"], ["S3", "S4", "S5", "S7"])
+        self.assertEqual(out["selected"], ["S3", "S4", "S5", "S7", "S10"])
         self.assertEqual(out["reasons"]["S3"], ["assets/docs/pilot-task-implement.md"])
 
     def test_a_review_task_doc_selects_the_review_scenario_only(self):
@@ -2646,3 +2670,63 @@ class ScenarioSelectionTests(unittest.TestCase):
             pathlib.Path(tmp, "b.txt").write_text("2")
             run("add", "-A"); run("commit", "-qm", "two")
             self.assertEqual(self.sel.changed_files(tmp, "HEAD~1", "HEAD"), ["b.txt"])
+
+
+class DocsMatchTheEngineTests(unittest.TestCase):
+    """What the skills and docs tell an agent to run is what `pilot.py` accepts: a command, a sub-command, a flag, a status."""
+
+    ROOT = pathlib.Path(__file__).resolve().parent.parent
+    SNIPPET = re.compile(r"`([^`\n]*\bpilot\.py\s+[^`\n]+)`")
+
+    @staticmethod
+    def sub_parsers(parser):
+        import argparse
+        for action in parser._actions:
+            if isinstance(action, argparse._SubParsersAction):
+                return action.choices
+        return None
+
+    def problems(self, snippet, parser):
+        text = re.sub(r'"[^"]*"|\'[^\']*\'', " ", snippet.split("pilot.py", 1)[1]).replace("…", " ")
+        if "|" in text.split("--")[0]:
+            return []  # a family of commands written once (`claim|set|flag`)
+        tokens = text.split()
+        node, path, out = parser, [], []
+        i = 0
+        while i < len(tokens) and not tokens[i].startswith(("-", "<", "[", "$", "(")):
+            subs = self.sub_parsers(node)
+            if not subs:
+                break
+            word = tokens[i].rstrip(",.;:)")
+            if word not in subs:
+                if not re.fullmatch(r"[a-z][a-z-]*", word):
+                    break
+                return [f"`{' '.join(path + [word])}` is not a command"]
+            node, path, i = subs[word], path + [word], i + 1
+        known = {o for a in node._actions for o in a.option_strings} | {"--repo"}
+        for flag in re.findall(r"(?<![\w-])--[a-z][a-z-]*", text):
+            if flag not in known:
+                out.append(f"`{' '.join(path)}` has no {flag}")
+        for action in node._actions:
+            if "--status" in action.option_strings and action.choices:
+                m = re.search(r"--status\s+([a-z]+)\b", text)
+                if m and m.group(1) not in action.choices:
+                    out.append(f"`{' '.join(path)} --status {m.group(1)}`: not one of {', '.join(action.choices)}")
+        return out
+
+    def test_every_pilot_py_command_a_skill_or_doc_names_exists(self):
+        parser = pilot.build_parser()
+        found, bad = 0, []
+        for path in sorted(self.ROOT.glob(".claude/skills/*/SKILL.md")) + sorted(self.ROOT.glob("assets/docs/*.md")):
+            for snippet in self.SNIPPET.findall(path.read_text(encoding="utf-8")):
+                found += 1
+                bad += [f"{path.relative_to(self.ROOT)}: {p}  ({snippet.strip()[:90]})" for p in self.problems(snippet, parser)]
+        self.assertGreater(found, 80, "the scan found too few commands: the pattern no longer matches the docs")
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_the_check_catches_a_removed_flag_a_wrong_command_and_a_gone_status(self):
+        parser = pilot.build_parser()
+        self.assertEqual(self.problems("python3 .pilot/pilot.py wiki set <id> --status implemented --stamp <commit>", parser), [])
+        self.assertEqual(len(self.problems("python3 .pilot/pilot.py wiki set <id> --status deprecated", parser)), 1)
+        self.assertEqual(len(self.problems("python3 .pilot/pilot.py wiki deprecate <id>", parser)), 1)
+        self.assertEqual(len(self.problems("python3 .pilot/pilot.py wiki remove <id> --force", parser)), 1)

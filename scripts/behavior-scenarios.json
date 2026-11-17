@@ -44,6 +44,16 @@
    "id": "S9",
    "skill": "pilot-discovery",
    "title": "Discovery --human: a lookup question in the middle of the dialogue"
+  },
+  {
+   "id": "S10",
+   "skill": "pilot-dev",
+   "title": "Dev --auto: an entry no command can test, not stamped and says why"
+  },
+  {
+   "id": "S11",
+   "skill": "pilot-qa",
+   "title": "QA: every case of an entry passes, one stamp PR by process:pilot-qa; a failed case, none"
   }
  ],
  "smoke": [
@@ -73,7 +83,6 @@
   "architecture/*"
  ],
  "untested": [
-  ".claude/agents/pilot-qa.md",
   ".claude/skills/pilot-architecture/SKILL.md",
   ".claude/skills/pilot-auto/SKILL.md",
   ".claude/skills/pilot-dashboard/SKILL.md",
@@ -82,7 +91,6 @@
   ".claude/skills/pilot-help/SKILL.md",
   ".claude/skills/pilot-init/SKILL.md",
   ".claude/skills/pilot-proto/SKILL.md",
-  ".claude/skills/pilot-qa/SKILL.md",
   ".claude/skills/pilot-update/SKILL.md",
   ".claude/skills/pilot-wiki/SKILL.md",
   "assets/docs/pilot-process-companion.md",
@@ -98,7 +106,6 @@
   "assets/docs/pilot-task-flow-report.md",
   "assets/docs/pilot-task-flow-run.md",
   "assets/docs/pilot-task-frame-proto.md",
-  "assets/docs/pilot-task-human-qa.md",
   "assets/docs/pilot-task-wiki-bootstrap.md",
   "assets/docs/pilot-task-wiki-edit.md",
   "assets/docs/pilot-task-wiki-lint.md",
