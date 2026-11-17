@@ -2730,3 +2730,44 @@ class DocsMatchTheEngineTests(unittest.TestCase):
         self.assertEqual(len(self.problems("python3 .pilot/pilot.py wiki set <id> --status deprecated", parser)), 1)
         self.assertEqual(len(self.problems("python3 .pilot/pilot.py wiki deprecate <id>", parser)), 1)
         self.assertEqual(len(self.problems("python3 .pilot/pilot.py wiki remove <id> --force", parser)), 1)
+
+
+class CompareRunsTests(unittest.TestCase):
+    """scripts/compare_runs.py: a regression is two of three runs lost, a cost alert is a median far above the base's."""
+
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location("compare_runs", pathlib.Path(__file__).with_name("compare_runs.py"))
+        cls.cr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.cr)
+
+    @staticmethod
+    def runs(scenario, results, tokens):
+        return [{"scenario": scenario, "mode": "auto", "checks": [{"name": "stops", "ok": ok}], "effort": {"tokens": t}} for ok, t in zip(results, tokens)]
+
+    def test_one_failed_run_is_noise_two_are_a_regression(self):
+        base = self.runs("S3", [True, True, True], [100, 100, 100])
+        noise = self.cr.compare(base, self.runs("S3", [True, False, True], [100, 100, 100]))
+        self.assertTrue(noise["ok"], noise)
+        lost = self.cr.compare(base, self.runs("S3", [True, False, False], [100, 100, 100]))
+        self.assertFalse(lost["ok"])
+        self.assertIn("S3/auto: stops passes 100% of runs on the base, 33% on the candidate", lost["regressions"])
+
+    def test_a_cost_alert_uses_the_median_and_the_threshold(self):
+        base = self.runs("S3", [True] * 3, [100, 100, 100])
+        out = self.cr.compare(base, self.runs("S3", [True] * 3, [130, 140, 900]))  # median 140: x1.4
+        self.assertEqual(out["cost_alerts"], ["S3/auto: median tokens x1.4 (100 -> 140)"])
+        self.assertTrue(self.cr.compare(base, self.runs("S3", [True] * 3, [110, 120, 900]))["ok"])  # median 120: x1.2
+        self.assertTrue(self.cr.compare(base, self.runs("S3", [True] * 3, [130, 140, 900]), cost_threshold=1.5)["ok"])
+
+    def test_a_scenario_in_one_side_only_is_listed_not_judged(self):
+        out = self.cr.compare(self.runs("S1", [True] * 3, [1, 1, 1]), self.runs("S2", [True] * 3, [1, 1, 1]))
+        self.assertEqual([(r["scenario"], r["only_in"]) for r in out["scenarios"]], [("S1/auto", "base"), ("S2/auto", "candidate")])
+        self.assertTrue(out["ok"])
+
+    def test_load_reads_the_reports_of_a_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for i, r in enumerate(self.runs("S3", [True, False, True], [1, 2, 3])):
+                pathlib.Path(tmp, f"run{i}.json").write_text(json.dumps(r))
+            pathlib.Path(tmp, "notes.json").write_text("{}")
+            self.assertEqual(len(self.cr.load(tmp)), 3)
