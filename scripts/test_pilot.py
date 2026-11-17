@@ -2975,9 +2975,9 @@ class LabJudgeTests(unittest.TestCase):
         def judge_backend(system, user, schema, model):
             seen.append((model, "Is it kind?" in user, '"a": 1' in user))
             return {"output": {"pass": True, "reason": "yes"}, "cost": 0.002}
-        ok, cost = self.lab.call_judge(case, {"a": 1}, "Is it kind?", backend=judge_backend)
-        self.assertEqual((ok, cost, seen), (True, 0.002, [("haiku", True, True)]))
-        graded = self.lab.grade(case, {"a": 1}, lambda c, o, crit: (True, 0.002))
+        ok, cost, reason = self.lab.call_judge(case, {"a": 1}, "Is it kind?", backend=judge_backend)
+        self.assertEqual((ok, cost, reason, seen), (True, 0.002, "yes", [("haiku", True, True)]))
+        graded = self.lab.grade(case, {"a": 1}, lambda c, o, check: (True, 0.002))
         self.assertEqual(graded, {"equals": True, "meaning": True})
         self.assertEqual(self.lab.grade(case, {"a": 1}), {"equals": True, "meaning": False})  # no judge, no pass
         self.assertEqual(self.lab.grade(case, None, lambda *a: (True, 0)), {"equals": False, "meaning": False})
@@ -2987,12 +2987,13 @@ class LabJudgeTests(unittest.TestCase):
 
         def backend(system, user, schema, model):
             if "strict grader" in system:
-                return {"output": {"pass": True, "reason": ""}, "cost": 0.002}
+                return {"output": {"pass": True, "reason": "because"}, "cost": 0.002}
             return {"output": {"questions_to_human": ["q"], "decisions_you_make": [], "contradictions_flagged": ["nearest first"]}, "cost": 0.02, "tokens": {}, "ms": 1}
         trials, spent = self.lab.run_trials([case], {"base": self.lab.WORKTREE}, 1, "m", str(self.lab.ROOT), 1, None, backend)
         self.assertEqual(len(trials), 1)
         self.assertTrue(all(trials[0]["checks"].values()), trials[0]["checks"])
         self.assertAlmostEqual(trials[0]["cost"], 0.02 + 2 * 0.002)  # two judged checks
+        self.assertEqual(set(trials[0]["judged"].values()), {"because"})  # the judge's reasons are kept, to audit it
         self.assertAlmostEqual(spent, trials[0]["cost"])
 
     def test_the_prompts_ask_for_english_and_exact_ids(self):
