@@ -1,6 +1,6 @@
 ---
 name: pilot-wiki
-description: "The project's wiki (wiki/ at the project root, .pilot/pilot-link-wiki.md): the source of truth for what the product does and what is promised, read by agents and humans. No flag, or a question in free text → answers from the wiki with citations (path, status — including the in-flight status derived from the tickets), and says when the wiki does not cover it. --lint [domain|entry-id] → checks implemented entries against the code, stamps the conforming ones, and has a human arbitrate each divergence (the wiki is right, the code conforms); one PR per run. --edit <id> \"<change>\" → corrects an entry's wording or precision, one PR; a behavior change goes back to /pilot-discovery. --remove <id> (alias --deprecate for one more version) → deletes an entry nothing cites, one PR. --bootstrap [domain] → drafts the wiki from closed tickets, accepted prototypes and the code, one PR per domain, entries where tickets and code agree already stamped, divergences left to the human. Pair by default (a human arbitrates live); --auto lists divergences in the PR instead and decides nothing. Never merges a PR, never claims a ticket. When the wiki module is off it proposes to turn it on first (and to bootstrap, if the project has tickets or code to document). Use to ask what the product does, to verify, correct or retire an entry, or to create the wiki."
+description: "The project's wiki (wiki/ at the project root, .pilot/pilot-link-wiki.md): the source of truth for what the product does and what is promised, read by agents and humans. No flag, or a question in free text → answers from the wiki with citations (path, status — including the in-flight status derived from the tickets), and says when the wiki does not cover it. --lint [domain|entry-id] → checks implemented entries against the code, stamps the conforming ones, and has a human arbitrate each divergence (the wiki is right, the code conforms); one PR per run. --edit <id> \"<change>\" → corrects an entry's wording or precision, one PR; a behavior change goes back to /pilot-discovery. --remove <id> → deletes an entry nothing cites, one PR. --bootstrap [domain] → drafts the wiki from closed tickets, accepted prototypes and the code, one PR per domain, entries where tickets and code agree already stamped, divergences left to the human. Pair by default (a human arbitrates live); --auto lists divergences in the PR instead and decides nothing. Never merges a PR, never claims a ticket. When the wiki module is off it proposes to turn it on first (and to bootstrap, if the project has tickets or code to document). Use to ask what the product does, to verify, correct or retire an entry, or to create the wiki."
 argument-hint: "[<question>] | --lint [<domain or entry id>] [--auto] | --edit <id> \"<change>\" | --remove <id> | --bootstrap [<domain>] [--auto]"
 ---
 
@@ -37,7 +37,7 @@ When the project has closed tickets or code to document, offer `--bootstrap` rig
 ## `--edit <id> "<change>"`
 
 Pair only: a human is live (`--auto` is not offered).
-1. `wiki show <id>`. A `Persona` or `UserFlow` → point at `/pilot-flow --edit <id> "<change>"` and stop. The `Vision` is not edited here: it changes in the PR of the ticket that changes the product's direction, in the human's own wording; say so and stop. A legacy `deprecated` entry: say so and offer `--remove`.
+1. `wiki show <id>`. A `Persona` or `UserFlow` → point at `/pilot-flow --edit <id> "<change>"` and stop. The `Vision` is not edited here: it changes in the PR of the ticket that changes the product's direction, in the human's own wording; say so and stop.
 2. Call `Agent` for `pilot-pm` with `.pilot/pilot-task-wiki-edit.md`, `.pilot/pilot-link-wiki.md` in full, the entry (status, tickets, text), the change and the wiki's language (`pilot.py module list`)
    — nothing else from this conversation. Validate the returned JSON; fix or call again.
 3. `behavior-change` → give the human the reason and point at `/pilot-discovery "<change>"`; write nothing and stop. `correction` → show the new text against the old and
@@ -47,7 +47,7 @@ Pair only: a human is live (`--auto` is not offered).
 
 ## `--remove <id>`
 
-`--deprecate` is accepted as an alias for one more version. Pair only: a human is live.
+Pair only: a human is live.
 1. `wiki show <id>`; tell the human which entries cite it (`backlinks`). The `Vision` is never removed. A `Persona` or `UserFlow` is removed once nothing cites it (a flow's `Personas:` line counts: revise that flow with `/pilot-flow --edit` first).
    A `proposed` entry whose tickets are all closed or absent is removed. A `proposed` entry with an open ticket: point at that ticket (its story is `wont-do`) and stop.
    A `specified` or `implemented` entry: a product decision, not a button — point at `/pilot-discovery` (a story that removes a behavior lists the entry; the Dev PR that removes the behavior deletes it) and stop.

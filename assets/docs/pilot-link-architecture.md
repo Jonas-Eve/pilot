@@ -47,7 +47,7 @@ a wrong or stale entry, with the reason.
 **Statuses.** `pilot.status` is `proposed`, `accepted` or `superseded` (OKF `status`: `draft`,
 `stable`, `deprecated`). An accepted ADR is never edited and never deleted: a later one supersedes it, the old one stays as the history of the
 decision (`arch supersede <new> <old>` sets both sides). Any other retired entry — a guideline, a reference, a runbook, a `proposed` ADR — is deleted (`arch remove`, refused while another entry
-cites it; the root `overview.md` never), never kept as `deprecated`; an entry still `deprecated` from an earlier version is read and `lint` warns. Create and change entries only with `python3 .pilot/pilot.py arch
+cites it; the root `overview.md` never), never kept as `deprecated`. Create and change entries only with `python3 .pilot/pilot.py arch
 add|set|remove|supersede`, never by hand; the prose below the frontmatter is the only hand-edited part. Only an
 `accepted` entry is in force: `index --active`, which a phase prompt carries, leaves out `proposed` and
 `superseded` entries (`search` and `show` still find them).

@@ -443,7 +443,6 @@ var EN={
 "dev en cours": "dev in progress",
 "découpée en tâches": "split into tasks",
 "démarré ": "started ",
-"déprécié": "deprecated",
 "en cours": "in progress",
 "en dev": "in dev",
 "en pause": "paused",
@@ -1413,8 +1412,8 @@ function vDesign(){
 }
 
 /* ---------- wiki tab: the project's `wiki` document (built by `pilot.py wiki snapshot`), read-only ---------- */
-var WIKI_FR={proposed:'proposé',specified:'spécifié',implemented:'implémenté',deprecated:'déprécié'};
-var WIKI_CLS={proposed:'',specified:'acc',implemented:'ok',deprecated:'warn'};
+var WIKI_FR={proposed:'proposé',specified:'spécifié',implemented:'implémenté'};
+var WIKI_CLS={proposed:'',specified:'acc',implemented:'ok'};
 var WIKI_DERIVED_FR={'in-dev':'en dev','in-review':'en review','in-qa':'en QA'};
 function wikiEntries(){return S.wiki&&Array.isArray(S.wiki.entries)?S.wiki.entries.slice(0,2000):[];}
 function wikiDomain(e){var p=str(e.path,200).split('/'); return p.length>1?p[0]:'général';}
@@ -1496,7 +1495,6 @@ function flowLastRun(e){
 function wikiActions(e){
   var id=str(e.id,80); if(!FLOW_ID.test(id))return null;
   var k=wikiKind(e), pf=(k==='Persona'||k==='UserFlow'), acts=[];
-  if(e.status==='deprecated')return h('div',{class:'refresh'},openLink((pf?'/pilot-flow':'/pilot-wiki')+' --remove '+id,'Retirer')); /* an entry written before the status went away: to be deleted */
   if(e.status==='implemented'&&!runChecked(e)&&k!=='Vision')acts.push(openLink('/pilot-wiki --lint '+id,'Vérifier'));
   if(k!=='Vision')acts.push(openLink((pf?'/pilot-flow':'/pilot-wiki')+' --edit '+id+' ','Modifier'));
   if(pf)acts.push(openLink('/pilot-flow --remove '+id,'Retirer'));
@@ -1555,8 +1553,8 @@ function vWiki(){
 }
 
 /* ---------- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ---------- */
-var ARCH_FR={proposed:'proposé',accepted:'accepté',deprecated:'déprécié',superseded:'remplacé'};
-var ARCH_CLS={proposed:'',accepted:'ok',deprecated:'warn',superseded:'warn'};
+var ARCH_FR={proposed:'proposé',accepted:'accepté',superseded:'remplacé'};
+var ARCH_CLS={proposed:'',accepted:'ok',superseded:'warn'};
 var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',reference:'Référence',adr:'Décisions',runbooks:'Procédures'};
 /* a reference entry states what the code is today: it is checked against the code (`--verify`), a rule or a decision is not */
 function archIsRef(e){return /(^|\/)reference\//.test(str(e.path,200));}
@@ -1575,7 +1573,7 @@ function archActions(e){
   if(archIsRef(e)||/(^|\/|-)overview\.md$/.test(str(e.path,200)))acts.push(openLink('/pilot-architecture --verify '+id,'Vérifier'));
   if(e.status==='proposed'||(e.status==='accepted'&&!adr))acts.push(openLink('/pilot-architecture --edit '+id+' ','Modifier'));
   if(e.status==='accepted'&&adr)acts.push(openLink('/pilot-architecture --adr "remplace '+id+' : "','Remplacer'));
-  if((e.status==='proposed'||(e.status==='accepted'&&!adr)||e.status==='deprecated')&&str(e.path,200)!=='overview.md')acts.push(openLink('/pilot-architecture --remove '+id,'Retirer'));
+  if((e.status==='proposed'||(e.status==='accepted'&&!adr))&&str(e.path,200)!=='overview.md')acts.push(openLink('/pilot-architecture --remove '+id,'Retirer'));
   return acts.length?h('div',{class:'refresh'},acts):null;
 }
 function archEntry(e){

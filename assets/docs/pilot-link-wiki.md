@@ -40,7 +40,7 @@ changes. A pure correction (wording, precision) keeps the entry's status and tic
 
 **Statuses.** `pilot.status` is `proposed` (validated in Discovery), `specified` (validated in Spec),
 or `implemented` (merged in code); the OKF `status` is `draft`, `draft`, `stable` accordingly. A retired entry is deleted
-(`wiki remove`, refused while another entry cites it), never kept as `deprecated`; an entry still `deprecated` from an earlier version is read and `lint` warns. `in-dev`, `in-review`, `in-qa` and `verified` are derived
+(`wiki remove`, refused while another entry cites it), never kept as `deprecated`. `in-dev`, `in-review`, `in-qa` and `verified` are derived
 (`wiki status`/`wiki show`), never written: the first three from the tickets' labels, `verified` for an `implemented` entry that carries a
 stamp and whose feature story is done. The stamp — `verified` (who, when) and `pilot.verifiedCommit` — verifies an entry against the code and is written
 (`wiki set --stamp <commit> --by <who>`, `who` one of `process:pilot-dev`, `process:pilot-qa`, `process:pilot-wiki`) only on an `implemented` entry: by the Dev PR that moves it to `implemented`, with its proof (a `Verified: <id> — <command> → <result>` line in the PR body, replayed by Review;

@@ -1,6 +1,6 @@
 ---
 name: pilot-flow
-description: "Tests one user flow of the project's wiki (wiki/user-flow/) as one or several user personas (wiki/persona/), in a browser against an environment URL, on demand only. --new persona|flow drafts a new persona or user flow with a human and opens one wiki PR; --edit <id> \"<change>\" revises one, --remove <id> deletes one (`--deprecate` is an alias for one more version). Each persona runs in its own isolated browser session with its own test account, in parallel when isolation holds; each step is passed, failed or untestable, with the friction that persona meets. A defect becomes a type:bug ticket (never duplicated across personas); friction and non-bugs go in a report kept as one private Artifact per flow, a new run added to its history. The dashboard shows each flow's last run: who played it, the steps, the tickets created. Claims no ticket, sets no status, never --auto. Use to check a journey end to end the way a given kind of user lives it."
+description: "Tests one user flow of the project's wiki (wiki/user-flow/) as one or several user personas (wiki/persona/), in a browser against an environment URL, on demand only. --new persona|flow drafts a new persona or user flow with a human and opens one wiki PR; --edit <id> \"<change>\" revises one, --remove <id> deletes one. Each persona runs in its own isolated browser session with its own test account, in parallel when isolation holds; each step is passed, failed or untestable, with the friction that persona meets. A defect becomes a type:bug ticket (never duplicated across personas); friction and non-bugs go in a report kept as one private Artifact per flow, a new run added to its history. The dashboard shows each flow's last run: who played it, the steps, the tickets created. Claims no ticket, sets no status, never --auto. Use to check a journey end to end the way a given kind of user lives it."
 argument-hint: "<user-flow id> [--as <persona id>[,<persona id>...]] [--url <environment URL>] | --new persona|flow <description> | --edit <id> \"<change>\" | --remove <id>"
 disable-model-invocation: true
 ---
@@ -56,6 +56,6 @@ step 1 reads the entry itself too (`wiki show <id>`), the description is the cha
 
 ## `--remove <id>`
 
-`--deprecate` is accepted as an alias for one more version. Pair only. `wiki show <id>` must be a `Persona` or a `UserFlow`. List the entries that cite it (`backlinks`; a flow's `Personas:` line counts): a persona a flow names is not removed until
+Pair only. `wiki show <id>` must be a `Persona` or a `UserFlow`. List the entries that cite it (`backlinks`; a flow's `Personas:` line counts): a persona a flow names is not removed until
 that flow is revised (`--edit`). The human confirms, then `wiki remove <id>`, branch `wiki/remove-<id>`, commit, push, open one PR. Never merge it.
 
