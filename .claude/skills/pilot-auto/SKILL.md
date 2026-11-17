@@ -48,7 +48,7 @@ For each phase in the subset (all three for a ticket number or no argument), in 
    (`.pilot/pilot-process.md` §4 "Picking the next ticket..."). Nothing to do → next phase; otherwise stop.
 3. `/pilot-spec` the same way. Nothing to do → report that nothing in the requested subset (or: this ticket belongs to none of the three) needed attention this run; otherwise stop.
 
-Never invoke `/pilot-discovery` or `/pilot-qa`, in any mode: Discovery is pair-only and QA's `--browser` needs an environment URL a human supplies (`.pilot/pilot-process.md` §4 "Interaction modes"), so neither is a valid subset token or target. A ticket that is
+Never invoke `/pilot-discovery` or `/pilot-qa`, in any mode: Discovery has no `--auto` and QA's `--browser` needs an environment URL a human supplies (`.pilot/pilot-process.md` §4 "Interaction modes"), so neither is a valid subset token or target. A ticket that is
 `status:draft` or a phase-5 candidate simply gets "nothing to do" from all three: report it, do not guess why.
 
 ## Repeating a run: `--again` and `--next`
@@ -80,6 +80,6 @@ phase that just ran flagged `needs-human`; a phase reports the ticket looks orph
 
 Each phase skill is meant to also run **bare, on a timer**: a Routine whose prompt is the literal command. `/pilot-spec`, `/pilot-dev` and `/pilot-review` default to pair mode
 (`.pilot/pilot-process.md` §4 "Interaction modes"), so that command must include `--auto` (still no ticket number computed by the Routine), since pair needs a live human. `/pilot-discovery`
-is pair-only and never driven by a Routine; `/pilot-qa --browser --url <URL>` is a Routine of its own when one is wanted, never one of these three. Beyond that flag nothing is special-cased: "picking the next ticket when none is specified" (`.pilot/pilot-process.md` §4) covers fresh
+has no `--auto` and is never driven by a Routine; `/pilot-qa --browser --url <URL>` is a Routine of its own when one is wanted, never one of these three. Beyond that flag nothing is special-cased: "picking the next ticket when none is specified" (`.pilot/pilot-process.md` §4) covers fresh
 and resumed work alike. Use three independent Routines, one each for `/pilot-spec --auto`, `/pilot-dev --auto` and `/pilot-review --auto` (add `--merge` if the Routine should also merge once
 every reviewer approves, `.pilot/pilot-process.md` §3 "`status:approved`"), each on its own schedule, so a slow or failing phase never delays the others.

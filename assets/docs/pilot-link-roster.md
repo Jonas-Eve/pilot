@@ -46,6 +46,7 @@ leads, an optional validator, and personas the human may summon:
   validator, run in sequence; an objection sends the validator and lead(s) into the
   turn-taking dialogue of `.pilot/pilot-link-agent-dialogue.md` (no round cap),
   `needs-human` only for the genuine disagreement that doc describes.
+- **`--human`** (Discovery and Spec): the human proposes; the leads analyze and challenge it, the validator joins as usual, summon and dismiss work as in pair.
 - **Review** keeps its parallel, isolated reviewers (`.pilot/pilot-link-review-consensus.md`): `--with` there extends the
   reviewer set at the start (`--only` instead fixes the exact set), and nothing can be summoned mid-run.
 
