@@ -90,6 +90,8 @@ seconds). `RECORD.json` is what the harness collected for one run (fields in the
 
 ## Reading the result
 
+`python3 scripts/compare_runs.py BASE_DIR CANDIDATE_DIR` reads the graded runs of the two versions (one JSON report per run) and prints, per scenario, each check's share of passing runs on both sides and the median tokens; it lists a **regression** (a check the candidate fails in two of three runs more than the base) and a **cost alert** (median tokens above the base's by more than a threshold, 25 % by default) and exits 1 on either.
+
 Report, per selected scenario and arm: the rate of runs passing each mechanical check, the judged scores, and the median cost per phase.
 A check the candidate fails in more than one of three runs where the base passes is a regression of the prompts, not of the run; fix it
 and replay that scenario. A change whose cost is not paid back by the scenarios it touches should be simplified, not the protocol.

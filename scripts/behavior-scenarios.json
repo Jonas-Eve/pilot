@@ -70,7 +70,7 @@
   "CLAUDE.md",
   "VERSION",
   "scripts/test_*",
-  "scripts/grade_*",
+  "scripts/grade_*","scripts/compare_runs.py",
   "scripts/select_scenarios.py",
   "scripts/behavior-scenarios.json",
   "scripts/demo_snapshot.py",
