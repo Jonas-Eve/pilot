@@ -2,6 +2,7 @@
 name: pilot-dashboard
 description: "Publishes or updates the project's PILOT dashboard: one private Claude Artifact with its own data — tickets by phase, each role's queue, live sessions, the Design and Prototypes tabs (untouched by --refresh) and, when those modules are on, read-only Wiki and Architecture tabs. Renders the project's name and repo into the template, publishes it, records dashboardUrl in .pilot/state.json and seeds the ticket snapshot; run again (or via /pilot-update) to republish at the same address with the data kept; --refresh re-reads tickets, wiki and architecture and prunes obsolete events. Run only when asked: it publishes a page. Needs the Artifact tool."
 argument-hint: "[--refresh]"
+disable-model-invocation: true
 ---
 
 # PILOT dashboard — `pilot-dashboard`

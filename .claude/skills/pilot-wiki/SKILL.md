@@ -2,6 +2,7 @@
 name: pilot-wiki
 description: "The project's wiki (wiki/ at the project root, .pilot/pilot-link-wiki.md): the source of truth for what the product does and what is promised, read by agents and humans. No flag, or a question in free text → answers from the wiki with citations (path, status — including the in-flight status derived from the tickets), and says when the wiki does not cover it. --lint [domain|entry-id] → checks implemented entries against the code, stamps the conforming ones, and has a human arbitrate each divergence (the wiki is right, the code conforms); one PR per run. --edit <id> \"<change>\" → corrects an entry's wording or precision, one PR; a behavior change goes back to /pilot-discovery. --remove <id> → deletes an entry nothing cites, one PR. --bootstrap [domain] → drafts the wiki from closed tickets, accepted prototypes and the code, one PR per domain, entries where tickets and code agree already stamped, divergences left to the human. Pair by default (a human arbitrates live); --auto lists divergences in the PR instead and decides nothing. Never merges a PR, never claims a ticket. When the wiki module is off it proposes to turn it on first (and to bootstrap, if the project has tickets or code to document). Use to ask what the product does, to verify, correct or retire an entry, or to create the wiki."
 argument-hint: "[<question>] | --lint [<domain or entry id>] [--auto] | --edit <id> \"<change>\" | --remove <id> | --bootstrap [<domain>] [--auto]"
+disable-model-invocation: true
 ---
 
 # PILOT wiki — `pilot-wiki`
