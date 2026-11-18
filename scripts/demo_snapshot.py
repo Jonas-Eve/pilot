@@ -108,7 +108,10 @@ def live_documents():
 
 def flow_documents():
     """The `flowRuns` documents, one per user flow that has been played."""
-    return {"flowrun-trouver-un-lieu": flow_run_document()}
+    rows = {e["id"]: e for e in wiki_document()["entries"]}
+    passed = {"kind": "flowRun", "repo": REPO, "flow": "lire-un-lieu", "at": iso(20), "hash": rows["lire-un-lieu"]["hash"], "result": "passed", "bugs": [], "report": "",
+              "personas": [{"id": "marie-senior", "hash": rows["marie-senior"]["hash"], "result": "passed", "steps": {"passed": 1, "failed": 0, "untestable": 0}}]}
+    return {"flowrun-trouver-un-lieu": flow_run_document(), "flowrun-lire-un-lieu": passed}
 
 
 def flow_run_document():
@@ -172,13 +175,13 @@ body.big{font-size:22px}button{min-height:48px;padding:0 18px;border:0;border-ra
 
 def architecture_document():
     """The `architecture/Jonas-Eve__pilot` document `pilot.py arch snapshot` would have written."""
-    def entry(eid, title, path, status, tickets, text, supersedes="", superseded_by="", verified=""):
+    def entry(eid, title, path, status, tickets, text, supersedes="", superseded_by="", verified="", by=""):
         return {"id": eid, "title": title, "description": text.split(".")[0] + ".", "path": path, "status": status,
-                "tickets": tickets, "supersedes": supersedes, "supersededBy": superseded_by, "verifiedAt": verified, "text": text}
+                "tickets": tickets, "supersedes": supersedes, "supersededBy": superseded_by, "verifiedAt": verified, "verifiedBy": by, "text": text}
     entries = [
         entry("overview", "Vue d'ensemble", "overview.md", "accepted", [], "Une application en ligne de commande, sans service distant."),
         entry("layering", "Couches", "guidelines/layering.md", "accepted", [], "Le domaine n'importe jamais les adaptateurs."),
-        entry("data-model", "Modèle de données", "reference/data-model.md", "accepted", [], "Table catalogue(id, nom, version) et table etapes(id, catalogue_id, rang).", verified=iso(180)),
+        entry("data-model", "Modèle de données", "reference/data-model.md", "accepted", [], "Table catalogue(id, nom, version) et table etapes(id, catalogue_id, rang).", verified=iso(180), by="process:pilot-wiki"),
         entry("stack", "Pile technique", "reference/stack.md", "accepted", [], "Node 22, TypeScript 5.6, Vitest 2."),
         entry("0001-compute", "Catalogue calculé", "adr/0001-compute.md", "superseded", [5], "Le catalogue est recalculé à chaque appel.", "", "0002-store"),
         entry("0002-store", "Catalogue stocké", "adr/0002-store.md", "accepted", [12], "Le catalogue est stocké, pas calculé.", "0001-compute"),
@@ -190,28 +193,32 @@ def architecture_document():
 
 def wiki_document():
     """The `wiki/Jonas-Eve__pilot` document `pilot.py wiki snapshot` would have written."""
-    def entry(eid, title, path, status, derived, tickets, verified, text, typ="Behavior"):
+    def entry(eid, title, path, status, derived, tickets, verified, text, typ="Behavior", by=""):
         shown = status + (" · " + derived if derived else "")
         return {"id": eid, "type": typ, "hash": hashlib.sha256((title + "\n" + text).encode("utf-8")).hexdigest()[:12], "title": title, "description": text.split(".")[0] + ".", "path": path, "status": status,
                 "derived": derived, "display": shown, "tickets": tickets,
-                "verifiedAt": iso(verified) if verified else "", "text": text}
+                "verifiedAt": iso(verified) if verified else "", "verifiedBy": by if verified else "", "text": text}
     entries = [
+        entry("vision", "Vision du produit", "product/vision.md", "", "", [], 0,
+              "Aider chacun à se déplacer sans mauvaise surprise : le produit vérifie l'état réel des équipements avant le départ.", "Vision"),
         entry("search-by-name", "Rechercher un lieu par son nom", "recherche/search-by-name.md", "implemented", "verified", [1], 40,
-              "On cherche un lieu par une partie de son nom, sans tenir compte des majuscules."),
+              "On cherche un lieu par une partie de son nom, sans tenir compte des majuscules.", by="process:pilot-qa"),
         entry("filter-step-free", "Filtrer sur l'accès de plain-pied", "recherche/filter-step-free.md", "implemented", "", [2], 40,
-              "Avec l'option, seuls les lieux dont l'accès de plain-pied est confirmé sont proposés."),
+              "Avec l'option, seuls les lieux dont l'accès de plain-pied est confirmé sont proposés.", by="process:pilot-dev"),
         entry("sort-by-distance", "Trier par distance, le plus proche d'abord", "recherche/sort-by-distance.md", "implemented", "", [3], 0,
               "Les résultats sont triés du plus proche au plus éloigné."),
         entry("km-display", "Afficher les longues distances en km", "affichage/km-display.md", "specified", "in-review", [12, 14], 0,
               "Une distance de 1000 m ou plus est affichée en kilomètres avec une décimale."),
         entry("csv-export", "Exporter le résultat en CSV", "export/csv-export.md", "proposed", "", [4], 0,
               "Une option affiche le résultat en CSV avec une ligne d'en-tête."),
-        entry("marie-senior", "Marie, 74 ans, malvoyante", "persona/marie-senior.md", "implemented", "", [], 0,
+        entry("marie-senior", "Marie, 74 ans, malvoyante", "persona/marie-senior.md", "", "", [], 0,
               "Elle utilise son téléphone avec un zoom à 200 %. Compte de test : marie.", "Persona"),
-        entry("paul-aidant", "Paul, aidant de sa mère", "persona/paul-aidant.md", "implemented", "", [], 0,
+        entry("paul-aidant", "Paul, aidant de sa mère", "persona/paul-aidant.md", "", "", [], 0,
               "Il prépare les trajets de sa mère depuis son ordinateur. Compte de test : paul.", "Persona"),
         entry("trouver-un-lieu", "Trouver un lieu accessible", "user-flow/trouver-un-lieu.md", "implemented", "", [], 0,
               "Objectif : trouver un lieu de plain-pied près de soi.\nPersonas : marie-senior, paul-aidant\n1. Ouvrir la recherche → le champ est visible.\n2. Filtrer sur l'accès de plain-pied → la liste se réduit.", "UserFlow"),
+        entry("lire-un-lieu", "Lire la fiche d'un lieu", "user-flow/lire-un-lieu.md", "implemented", "", [], 0,
+              "Objectif : lire l'accessibilité d'un lieu avant de partir.\nPersonas : marie-senior\n1. Ouvrir une fiche → le nom et la distance sont lus.", "UserFlow"),
     ]
     return {"kind": "wiki", "repo": REPO, "at": iso(3), "total": len(entries), "truncated": False, "entries": entries}
 
