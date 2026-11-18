@@ -116,7 +116,8 @@ itself.
   change the page, change that test. **While developing the page, publish it to the demo
   artifact "Cockpit pilot (démo)" (private, fake data from `scripts/demo_snapshot.py`; find it
   with the `Artifact` tool's `list`), never to a real project's dashboard** — those are only
-  republished by `/pilot-update`, or when the human asks for it explicitly. Refresh the demo
+  republished by `/pilot-update`, or when the human asks for it explicitly. The "i" page (Principes, Modes, Tickets, Connaissances, Cas particuliers, Modules, Agents, Steps) is how a user learns how PILOT works: when a phase, a module, a tab or a
+  command changes, update its texts (`HOW_PHASES`, `HOW_TABS`, the `vHow*` functions, `AGENTS`, `ROSTER`) in the same PR. Refresh the demo
   data with `python3 scripts/demo_snapshot.py --dir DIR` and `ArtifactData` (`snapshots`
   `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, `wiki` `Jonas-Eve__pilot` (`wiki.json`), `architecture` `Jonas-Eve__pilot` (`architecture.json`), plus the `activity`/`events`/`protos`/`protoHtml` files it writes).
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
