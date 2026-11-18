@@ -147,7 +147,7 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
 <div class="wrap">
   <div class="top">
     <div>
-      <div class="ttl"><h1>Cockpit {{PROJECT_NAME}}</h1><a class="info" id="helpLink" href="#aide" title="Agents et steps" aria-label="Agents et steps">i</a><span class="chip" id="profileChip" hidden></span></div>
+      <div class="ttl"><h1>Cockpit {{PROJECT_NAME}}</h1><a class="info" id="helpLink" href="#aide" title="Aide : principes, modules, agents et steps" aria-label="Aide : principes, modules, agents et steps">i</a><span class="chip" id="profileChip" hidden></span></div>
       <p class="sub">Tickets par phase et file d’actions selon votre rôle, avec la commande PILOT prête à copier.</p>
     </div>
     <div class="controls">
@@ -282,6 +282,9 @@ var EN={
 "Décrivez ce que vous voulez créer ou changer (facultatif).": "Describe what you want to create or change (optional).",
 "Décrivez la fonction à tester : le PM vous aide à la cadrer, puis le designer la construit avec vous.": "Describe the feature to test: the PM helps you frame it, then the designer builds it with you.",
 "Décrivez l’idée, le besoin technique ou le bug.": "Describe the idea, the technical need or the bug.",
+"Principes": "Principles",
+"Connaissances": "Knowledge",
+"Cas particuliers": "Special cases",
 "Déroule avec vous le plan de test d’une story et rend le verdict.": "Walks you through a story’s test plan and gives the verdict.",
 "E2E pour une tâche e2e": "E2E for an e2e task",
 "En cours": "In progress",
@@ -525,7 +528,7 @@ var EN={
 "▾ Masquer": "▾ Hide",
 " sur ": " of ",
 "Tickets par phase et file d’actions selon votre rôle, avec la commande PILOT prête à copier.": "Tickets by phase and action queue by your role, with the PILOT command ready to copy.",
-"Agents et steps": "Agents and steps",
+"Aide : principes, modules, agents et steps": "Help: principles, modules, agents and steps",
 "Mon identifiant GitHub": "My GitHub username",
 "Rôle": "Role",
 "État des connecteurs": "Connectors state",
@@ -652,7 +655,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'agents',ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'principes',ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -1720,11 +1723,252 @@ function agentsOn(){
   return AGENTS.filter(function(a){return !r||!((a[0]==='qa'&&r.qa===false)||(a[0]==='e2e'&&r.e2e_task===false));});
 }
 function agentName(k){var a=AGENTS.filter(function(x){return x[0]===k;})[0];return a?a[1]:k;}
+/* the "how PILOT works" pages: content in both languages (picked by LANG), following the project's phases and modules */
+function L(fr,en){return LANG==='fr'?fr:en;}
+var HOW_PHASES={
+  discovery:['Discovery','Une idée brute devient une story claire, avec ses critères d’acceptation.','Le PM la cadre avec vous, l’architecte anticipe l’architecture.','Évite de construire la mauvaise chose.','A raw idea becomes a clear story with acceptance criteria.','The PM frames it with you, the architect anticipates the architecture.','Avoids building the wrong thing.'],
+  spec:['Spec','La story est découpée en tâches de taille dev, chacune avec sa spec technique.','L’architecte et le tech lead, en dialogue, vérifient le besoin dans le code.','Le dev reçoit une tâche sans ambiguïté, les dépendances sont connues.','The story is split into dev-sized tasks, each with a technical spec.','The architect and tech lead, in dialogue, check the need against the code.','The dev gets an unambiguous task, dependencies are known.'],
+  dev:['Dev','Une tâche spécifiée est implémentée et livrée en pull request.','Le dev se relit lui-même ; s’il est bloqué il s’arrête et vous le dit.','Un changement petit, testé, relisible.','A specified task is implemented and delivered as a pull request.','The dev reviews its own diff; if blocked it stops and tells you.','A small, tested, reviewable change.'],
+  review:['Review','Une relecture indépendante de la PR : conformité à la spec, qualité, critères produit.','Les relecteurs du profil, en parallèle, un seul avis GitHub ; vous mergez (ou --merge).','Un second regard avant que ça n’arrive dans le code.','An independent review of the PR: spec conformance, quality, product criteria.','The profile’s reviewers, in parallel, one GitHub review; you merge (or --merge).','A second pair of eyes before it reaches the code.'],
+  qa:['QA humaine','Une feature terminée est testée par un humain, plan de test fourni.','L’agent QA déroule le plan avec vous (ou seul dans un navigateur avec --browser).','Un défaut devient un ticket bug, pas un oubli.','A finished feature is tested by a human, with a test plan provided.','The QA agent walks the plan with you (or alone in a browser with --browser).','A defect becomes a bug ticket, not an oversight.']
+};
+function helpCard(title,badge,rows){
+  return h('div',{class:'row'},h('div',{class:'main'},
+    h('div',{class:'t'},title,badge?h('span',{class:'chip'},badge):null),
+    rows.map(function(r){return h('p',{class:'note'},h('strong',{},r[0]+' '),r[1]);})));
+}
+function wfRules(){var w=S.gh&&S.gh.workflow; return w&&w.rules||null;}
+/* the phases' "how" follows the project's workflow rules, as the Steps table does */
+function howOf(key,d){
+  var r=wfRules(), out=L(d[2],d[5]);
+  var rev=function(k){return arr(r&&r.review&&r.review[k]).map(function(x){return tr(agentName(String(x).replace(/^pilot-/,'')));}).join(' + ');};
+  if(key==='review'&&r&&r.review){
+    var f=rev('feature'), t=rev('tech');
+    out=(f===t?(L('Relecture par : ','Reviewed by: ')+t):(L('Relecture par : ','Reviewed by: ')+'feature, e2e → '+f+' ; tech, bug → '+t))+L('. Un seul avis GitHub ; vous mergez (ou --merge).','. One GitHub review; you merge (or --merge).');
+  }
+  if(key==='dev'&&!(r&&r.e2e_task===false))out+=' '+L('Une tâche e2e est confiée à l’agent E2E.','An e2e task goes to the E2E agent.');
+  return out;
+}
+function statusChain(){
+  var seq=[]; phasesOn().forEach(function(p){p.statuses.forEach(function(x){if(seq.indexOf(x)<0)seq.push(x);});});
+  return seq.concat(['done']);
+}
+function simpleTable(head,rows,id){
+  return h('div',{class:'ref'},h('table',id?{id:id}:{},
+    h('thead',{},h('tr',{},head.map(function(t){return h('th',{scope:'col'},t);}))),
+    h('tbody',{},rows.filter(Boolean).map(function(r){return h('tr',{},h('th',{scope:'row',style:typeof r[0]==='string'&&/^--/.test(r[0])?'white-space:nowrap':null},r[0]),h('td',{},r[1]));}))));
+}
+function phOn(k){return phasesOn().some(function(p){return p.key===k;});}
+function e2eOn(){var r=wfRules(); return !(r&&r.e2e_task===false);}
+function mOn(m){var x=S.gh&&S.gh.modules; return !x||x[m]===true;}
+var MTAB={wiki:'wiki',architecture:'architecture',design:'design',proto:'prototypes'};
+function mv(m){return mOn(m)&&roleShows(MTAB[m]);} /* a module that is on and that the chosen role looks at */
+function rv(k){return phasesView().some(function(p){return p.key===k;});}
+function forRole(rows){return rows.filter(function(r){return r&&(!r[2]||S.role==='tous'||r[2]===S.role);});}
+function roleNote(){
+  if(S.role==='tous')return null;
+  var p=S.role==='produit';
+  return para('Vue filtrée pour le rôle '+(p?'Produit':'Tech')+' : seuls les phases, les commandes et les modules de ce rôle sont montrés. Choisissez Tous (en haut de la page) pour tout voir.','View filtered for the '+(p?'Product':'Tech')+' role: only this role’s phases, commands and modules are shown. Pick All (top of the page) to see everything.');
+}
+function sec(fr,en){return h('h2',{},L(fr,en));}
+function para(fr,en,pre){return h('p',{class:'note'},(pre||'')+L(fr,en));}
+function code(x){return h('code',{},x);}
+function kv(head,rows){return simpleTable(head,rows.filter(Boolean));}
+var H2=function(){return [L('Notion','Notion'),L('Sens','Meaning')];};
+function autoOn(){return phOn('review')||phOn('dev')||phOn('spec');}
+
+/* ---- Principes: what PILOT is, this project's phases and profile, where to start ---- */
+function vHowPrinciples(){
+  var ph=phasesView();
+  var start=[
+    phOn('discovery')?[L('transformer une idée en story','turn an idea into a story'),code('/pilot-discovery "…"'),'produit']:null,
+    phOn('spec')?[L('un besoin technique ou un bug sans ticket','a technical need or a bug with no ticket'),code('/pilot-spec --tech "…" · /pilot-spec --bug "…"'),'tech']:null,
+    autoOn()?[L('faire avancer un ticket, sans savoir où il en est','move a ticket forward without knowing its phase'),code('/pilot-auto <n°>'),'tech']:null,
+    autoOn()?[L('traiter tout ce qui est prêt, sans moi','process everything ready, without me'),code('/pilot-auto --again'),'tech']:null,
+    autoOn()?[L('suivre un ticket de bout en bout','follow a ticket end to end'),code('/pilot-auto <n°> --next'),'tech']:null,
+    mv('proto')?[L('tester une fonction avec un prototype','try a feature with a prototype'),code('/pilot-proto')]:null,
+    mv('wiki')||mv('architecture')?[L('savoir ce que fait le produit ou pourquoi','know what the product does or why'),code([mv('wiki')?'/pilot-wiki':null,mv('architecture')?'/pilot-architecture':null].filter(Boolean).join(' · '))]:null,
+    mv('wiki')?[L('tester un parcours utilisateur','test a user flow'),code('/pilot-flow <id>')]:null,
+    mv('design')?[L('créer ou changer le design system','create or change the design system'),code('/pilot-design')]:null,
+    [L('adopter PILOT sur un projet, ou le mettre à jour','adopt PILOT on a project, or update it'),code('/pilot-init · /pilot-update'),'tech'],
+    [L('rafraîchir le cockpit','refresh the cockpit'),code('/pilot-dashboard --refresh'),'tech'],
+    [L('trouver la bonne commande','find the right command'),code('/pilot-help …')]
+  ];
+  start=forRole(start);
+  return h('div',{class:'list'},
+    roleNote(),
+    para('PILOT conduit un changement de l’idée à la livraison vérifiée, en phases courtes. Des agents (PM, architecte, tech lead, dev…) préparent et proposent ; vous décidez. Les tickets et leurs labels GitHub sont la seule source de vérité : ce cockpit n’en est que le reflet. Chaque phase tourne dans son propre contexte d’agent : d’une phase à l’autre, ce qui se transmet est le ticket (corps, commentaires, labels), jamais la mémoire d’un agent.','PILOT carries a change from idea to verified delivery in short phases. Agents (PM, architect, tech lead, dev…) prepare and propose; you decide. GitHub tickets and labels are the only source of truth: this cockpit just reflects them. Each phase runs in its own agent context: what passes from one phase to the next is the ticket (body, comments, labels), never an agent’s memory.'),
+    para('Une phase est une des étapes du process ci-dessous. Un step est une ligne de l’onglet Steps : une phase, ou une variante d’une phase (Spec · feature, Spec · bug…), avec ses trois rôles d’agent — lead, validateur, convocable. Les autres onglets de cette page détaillent les modes, les tickets, les connaissances, les cas particuliers et le cockpit lui-même.','A phase is one of the process stages below. A step is a row of the Steps tab: a phase, or a variant of one (Spec · feature, Spec · bug…), with its three agent roles — lead, validator, summonable. The other tabs of this page detail the modes, the tickets, the knowledge, the special cases and the cockpit itself.'),
+    sec('Les phases de ce projet','This project’s phases'),
+    h('div',{class:'agents'},ph.map(function(p){var d=HOW_PHASES[p.key]; return helpCard(p.n+'. '+tr(d[0]),'',[[L('Produit :','Produces:'),L(d[1],d[4])],[L('Comment :','How:'),howOf(p.key,d)],[L('Intérêt :','Why:'),L(d[3],d[6])]]);})),
+    sec('Le profil du projet','The project’s profile'),
+    para('Le profil de workflow choisit les phases que le projet fait, le mode par défaut et les relecteurs : standard garde toute la chaîne, lean en retire. La pastille Profil en haut du cockpit le rappelle. Un signal de risque que le projet déclare peut rendre un ticket pair seulement, et un ticket peut porter son propre profil (label workflow:<profil>) tant qu’il n’est pas entré en Dev.','The workflow profile chooses the phases the project runs, the default mode and the reviewers: standard keeps the whole chain, lean drops some. The Profile chip at the top of the cockpit recalls it. A risk signal the project declares can make a ticket pair only, and a ticket can carry its own profile (workflow:<profile> label) until it enters Dev.',S.gh&&S.gh.workflow?profileSummary(S.gh.workflow)+' ':''),
+    sec('Par où commencer','Where to start'),
+    simpleTable([L('Je veux…','I want…'),L('Je lance','I run')],start));
+}
+
+/* ---- Modes: who proposes, the cycle, summoning agents ---- */
+function vHowModes(){
+  var r=wfRules(), dm=r&&r.default_mode;
+  var modeNow=dm==='auto'||dm==='pair'?L('Mode par défaut de ce projet : ','This project’s default mode: ')+(dm==='auto'?L('auto (sans vous).','auto (without you).'):L('pair (avec vous).','pair (with you).')):L('Le mode par défaut est celui du profil du projet.','The default mode is the project profile’s.');
+  var humanFor=[rv('discovery')?'Discovery':null,rv('spec')?'Spec':null,rv('dev')?'Dev':null,rv('review')?'Review':null,mv('design')?'/pilot-design':null,mv('proto')?'/pilot-proto':null].filter(Boolean).join(', ');
+  var noAuto=[phOn('discovery')?'Discovery':null,phOn('qa')?L('la QA (qui a --browser : l’agent déroule les cas seul dans un navigateur)','QA (which has --browser: the agent runs the cases alone in a browser)'):null].filter(Boolean);
+  var dlg=[rv('discovery')?'Discovery':null,rv('spec')?'Spec':null,rv('dev')?'Dev':null].filter(Boolean).join(', ');
+  var multi=(dlg?L('Dans '+dlg+' : N instances du même agent (ou deux agents différents) conversent entre elles jusqu’à converger. ','In '+dlg+': N instances of the same agent (or two different agents) converse until they converge. '):'')+(rv('review')?L('Dans Review : N relecteurs isolés, comparés ensuite par le skill, avec un plafond de tours et une escalade vers vous. ','In Review: N isolated reviewers, compared afterwards by the skill, with a round cap and an escalation to you. '):'')+L('Jamais avec --resume ni --human'+(phOn('qa')?', ni en QA':'')+'.','Never with --resume nor --human'+(phOn('qa')?', nor in QA':'')+'.');
+  return h('div',{class:'list'},
+    roleNote(),
+    sec('Trois modes : qui propose','Three modes: who proposes'),
+    para('Chaque phase se lance dans l’un de ces modes. Le mode ne change qu’une chose : qui fait la proposition.','Each phase runs in one of these modes. The mode changes one thing only: who makes the proposal.'),
+    simpleTable([L('Mode','Mode'),L('Qui propose, et comment ça se passe','Who proposes, and how it goes')],[
+      ['--pair',L('L’agent propose et vous itérez avec lui à chaque point d’arrêt (story rédigée, découpage, plan d’implémentation) jusqu’à votre accord. Il faut un humain dans la session.','The agent proposes and you iterate with it at each checkpoint (drafted story, split, implementation plan) until you agree. A human must be in the session.')],
+      humanFor?['--human',L('C’est vous qui proposez : le plan et les décisions sont les vôtres. L’agent analyse l’existant, challenge ce que vous proposez et écrit les tickets, sans jamais ajouter une décision de lui-même ni combler un trou à votre place : il vous le demande. Disponible pour : '+humanFor+'.','You propose: the plan and the decisions are yours. The agent analyzes the existing, challenges what you propose and writes the tickets, never adding a decision of its own nor filling a gap for you: it asks. Available for: '+humanFor+'.')]:null,
+      autoOn()?['--auto',L('Les agents décident seuls et le résultat est appliqué en une passe, sans point d’arrêt : c’est le mode d’une routine planifiée.'+(noAuto.length?' Pas pour '+noAuto.join(' ni pour ')+'.':''),'The agents decide alone and the result is applied in one pass, with no checkpoint: this is the mode of a scheduled routine.'+(noAuto.length?' Not for '+noAuto.join(' nor for ')+'.':''))]:null
+    ]),
+    para(' Les modes s’excluent : un seul par lancement. Tout ce qui demande un jugement humain reçoit needs-human avec un commentaire, et l’agent s’arrête jusqu’à votre réponse, quel que soit le mode.',' The modes are exclusive: one per run. Anything needing human judgment gets needs-human with a comment, and the agent stops until you answer, whatever the mode.',modeNow),
+    sec('Le cycle de chaque phase : analyser, proposer, challenger','Each phase’s cycle: analyze, propose, challenge'),
+    para('Quel que soit le mode, le travail sur un ticket suit le même cycle, répété jusqu’à ce que tout le monde soit d’accord.','Whatever the mode, the work on a ticket follows the same cycle, repeated until everyone agrees.'),
+    simpleTable([L('Étape','Step'),L('Ce qui se passe','What happens')],[
+      [L('1. Analyser l’existant','1. Analyze the existing'),L('L’agent lit ce que la demande touche, et seulement cela : le wiki, l’architecture, le code et le CLAUDE.md du projet. Il écrit ce qui existe (chaque affirmation avec sa source), ce qui est touché par la demande, et ce qui n’est pas couvert. L’analyse reste dans la session et vous est montrée ; elle n’est jamais réutilisée par la phase suivante.','The agent reads what the request touches, and only that: the wiki, the architecture, the code and the project’s CLAUDE.md. It writes what exists (each statement with its source), what the request touches, and what is not covered. The analysis stays in the session and is shown to you; the next phase never reuses it.')],
+      [L('2. Proposer','2. Propose'),L('La seule étape que le mode change : vous (--human), l’agent avec vous (--pair) ou l’agent seul (--auto).','The only step the mode changes: you (--human), the agent with you (--pair) or the agent alone (--auto).')],
+      [L('3. Challenger','3. Challenge'),L('Le lead cherche les trous et les incohérences de la proposition face à l’existant, d’où qu’elle vienne. Chaque objection cite sa source, sinon elle est écartée ; pas de « ça me semble bon » global, et une passe sans objection sourcée met fin à l’échange. En --human, il challenge votre proposition avec la conséquence concrète et une alternative ; une fois que vous confirmez en connaissance de cause, c’est tranché et il n’y revient pas. En pair et en auto il relit sa propre proposition : l’indépendance vient du validateur.','The lead looks for holes and inconsistencies in the proposal against the existing, wherever it comes from. Each objection cites its source, otherwise it is dropped; no global “looks fine”, and a round with no sourced objection ends the exchange. In --human it challenges your proposal with the concrete consequence and an alternative; once you confirm knowing it, it is decided and not reopened. In pair and auto it reviews its own proposal: independence comes from the validator.')],
+      [L('Qui fait quoi','Who does what'),L('Le lead passe par les trois étapes ; le validateur analyse et rend son avis (verdict, objections, amendements), sans challenger ; un agent convoqué ne traite que le point pour lequel on l’a appelé.','The lead goes through all three steps; the validator analyzes and gives its opinion (verdict, objections, amendments) without challenging; a summoned agent only handles the point it was called on.')]
+    ]),
+    sec('Convoquer plusieurs agents','Bringing in more agents'),
+    simpleTable([L('Option','Option'),L('Effet','Effect')],[
+      ['--with <agent>',L('Convoque un agent dès le départ (par exemple --with designer). Vous pouvez aussi le demander en cours de discussion (« convoque l’architecte ») et en congédier un à tout moment (« congédie le designer »). Un agent convoqué conseille : il ne décide jamais et ne bloque jamais seul. Qui est lead, validateur ou convocable à chaque step : onglets Agents et Steps.','Brings in an agent from the start (for example --with designer). You can also ask for it mid-discussion (“summon the architect”) and dismiss one at any time (“dismiss the designer”). A summoned agent advises: it never decides and never blocks alone. Who leads, validates or can be summoned at each step: Agents and Steps tabs.')],
+      dlg||rv('review')?['--multi <N>',L(multi,multi)]:null
+    ]));
+}
+
+/* ---- Tickets: levels, types, statuses, priority, claim, flags, end of life ---- */
+function vHowTickets(){
+  var r=wfRules();
+  var types=[
+    ['feature',L('Une évolution produit, vue de l’utilisateur.','A product change, seen by the user.'),'produit'],
+    ['tech',L('Un besoin technique (enabler, refonte), sans valeur utilisateur directe.','A technical need (enabler, refactoring) with no direct user value.'),'tech'],
+    ['bug',L('Un défaut du code déjà livré. Toujours une task, jamais découpé.','A defect in shipped code. Always a task, never split.')]
+  ];
+  if(e2eOn())types.push(['e2e',L('Le test de bout en bout qu’une feature découpée exige, une task de plus.','The end-to-end test a split feature requires, one more task.'),'tech']);
+  if(mv('proto'))types.push(['poc',L('Un prototype, construit avec /pilot-proto avant toute Discovery ; hors des phases.','A prototype, built with /pilot-proto before any Discovery; outside the phases.'),'produit']);
+  types=forRole(types);
+  var end=L('done est posé par le workflow GitHub à la fusion de la PR ; une story découpée et un epic se ferment tout seuls quand toutes leurs tasks, puis leurs stories, sont terminées.','done is set by the GitHub workflow when the PR merges; a split story and an epic close by themselves once all their tasks, then their stories, are done.')+(phOn('qa')?L(' Une feature passe par la QA humaine avant done.',' A feature goes through human QA before done.'):'')+L(' wont-do écarte un ticket avant tout code.',' wont-do drops a ticket before any code.');
+  return h('div',{class:'list'},
+    roleNote(),
+    para('Ce que vous voyez sur un ticket, et ce que chaque mot veut dire.','What you see on a ticket, and what each word means.'),
+    simpleTable(H2(),[
+      [L('Niveau','Level'),L('epic (groupe des stories) → story (l’unité que Discovery ou Spec produit) → task (de taille dev). Pas plus profond. Un epic n’a pas de statut et ne bouge pas dans le pipeline.','epic (groups stories) → story (what Discovery or Spec produces) → task (dev-sized). No deeper. An epic has no status and never moves through the pipeline.')],
+      [L('Type','Type'),types.map(function(x){return h('div',{},h('strong',{},x[0]+' : '),x[1]);})],
+      [L('Statut','Status'),[h('span',{id:'statusChain'},statusChain().join(' → ')),h('br'),L('Un ticket n’a qu’un statut à la fois. split : une story découpée, qui suit ses tasks ; changes-requested : la relecture a demandé des corrections sur la même PR.','A ticket has one status at a time. split: a story that was cut up, which follows its tasks; changes-requested: the review asked for fixes on the same PR.')]],
+      [L('Fin de vie','End of life'),end],
+      [L('Priorité','Priority'),L('P0 (un vrai trou : sécurité, correction — bientôt), P1 (valeur solide, pas urgent), P2 (confort ou conditionnel). Sans consigne de ticket, un balayage prend d’abord la priorité la plus haute, puis un ticket qui en bloque un autre, puis le plus ancien.','P0 (a real gap: security, correctness — soon), P1 (solid value, not urgent), P2 (nice-to-have or conditional). With no ticket given, a sweep takes the highest priority first, then a ticket that blocks another, then the oldest.')],
+      [L('Prise en charge','Claim'),L('Un agent qui prend un ticket se l’assigne et passe son statut à « en cours » : personne d’autre ne le prend. Un ticket en pause, en attente d’un humain ou qui dépend d’un ticket encore ouvert n’est jamais pris.','An agent that takes a ticket assigns it to itself and moves its status to “in progress”: nobody else takes it. A ticket on hold, waiting on a human, or depending on a still-open ticket is never taken.')],
+      [L('Drapeaux','Flags'),L('needs-human : un humain doit trancher (le commentaire dit pourquoi et quoi). on-hold : en pause pour un chantier plus grand. can-resume : un travail interrompu peut être repris seul. « Depends on #N » dans le corps, un numéro par ligne : le ticket attend que #N soit fermé.','needs-human: a human must decide (the comment says why and what). on-hold: paused for something bigger. can-resume: interrupted work can be picked up alone. “Depends on #N” in the body, one number per line: the ticket waits until #N is closed.')]
+    ]));
+}
+
+/* ---- Connaissances: wiki, architecture, design, prototypes, user flows (only the modules the project has on) ---- */
+function vHowKnowledge(){
+  var all=[['wiki','Wiki'],['architecture','Architecture'],['design','Design'],['proto','Prototypes']];
+  var off=all.filter(function(m){return !mOn(m[0]);}), hid=all.filter(function(m){return mOn(m[0])&&!roleShows(MTAB[m[0]]);});
+  var out=[];
+  if(mv('wiki')||mv('architecture')){
+    out.push(sec('Comment les agents s’en servent','How agents use them'),
+      para('Les agents lisent ces fonds par commandes, du général au particulier (aperçu, recherche, ouverture de quelques entrées), jamais en bloc. Là où un fonds se tait, ils disent « non couvert » au lieu de combler avec le code. Une entrée proposée ou spécifiée est une promesse, pas un comportement ; une entrée remplacée n’est que de l’historique. Ce qui s’impose : les décisions acceptées de l’architecture et les entrées de comportement du wiki. Si une idée, une spec ou un code en contredit une, l’agent ne tranche jamais seul, quel que soit le mode : il vous la montre, et la règle est mise à jour dans le même flux si vous autorisez l’écart. Les entrées sont écrites dans la langue du projet.','Agents read these bodies through commands, from the general to the particular (overview, search, opening a few entries), never in bulk. Where a body is silent they say “not covered” instead of filling in from the code. A proposed or specified entry is a promise, not behavior; a superseded one is only history. What binds: accepted architecture decisions and the wiki’s behavior entries. If an idea, a spec or code contradicts one, the agent never decides alone, whatever the mode: it shows you, and the rule is updated in the same flow if you authorize the deviation. Entries are written in the project’s language.'));
+  }
+  if(mv('wiki'))out.push(sec('Wiki : ce que fait le produit','Wiki: what the product does'),
+    simpleTable(H2(),[
+      [L('Contenu','Content'),L('Par domaine : la vision, les personas, les comportements fonctionnels et les parcours utilisateur.','By domain: the vision, the personas, the functional behaviors and the user flows.')],
+      [L('Statut d’une entrée','Entry status'),L('proposée (validée en Discovery), spécifiée (validée en Spec), implémentée (fusionnée dans le code) ; une entrée implémentée peut être vérifiée contre le code.','proposed (validated in Discovery), specified (validated in Spec), implemented (merged in code); an implemented entry can be verified against the code.')],
+      [L('L’utiliser','Using it'),L('/pilot-wiki « question » répond avec ses sources. --lint vérifie les entrées implémentées contre le code, et vous arbitrez chaque écart (le wiki a raison, le code se conforme). --edit <id> corrige un libellé ; un changement de comportement repasse par /pilot-discovery. --remove <id> supprime une entrée que rien ne cite. --bootstrap amorce le wiki depuis les tickets fermés, les prototypes acceptés et le code. Chaque écriture ouvre une PR.','/pilot-wiki “question” answers with its sources. --lint checks implemented entries against the code, and you arbitrate each divergence (the wiki is right, the code conforms). --edit <id> fixes wording; a behavior change goes back through /pilot-discovery. --remove <id> deletes an entry nothing cites. --bootstrap seeds the wiki from closed tickets, accepted prototypes and the code. Each write opens a PR.')]
+    ]),
+    sec('Parcours utilisateur : tester comme un persona','User flows: testing as a persona'),
+    simpleTable(H2(),[
+      [L('Principe','Principle'),L('/pilot-flow <id> joue un parcours du wiki comme un ou plusieurs personas, dans un navigateur, contre un environnement. Chaque persona tourne dans sa propre session avec son propre compte de test ; chaque étape est passée, échouée ou non testable, avec la friction rencontrée. À la demande seulement : il ne prend aucun ticket, ne change aucun statut et n’a jamais de mode auto.','/pilot-flow <id> plays a wiki flow as one or several personas, in a browser, against an environment. Each persona runs in its own session with its own test account; each step is passed, failed or untestable, with the friction met. On demand only: it claims no ticket, sets no status and never has an auto mode.')],
+      [L('Résultat','Result'),L('Un défaut devient un ticket bug (jamais en double entre personas) ; la friction et le reste vont dans un rapport. Le dernier lancement de chaque parcours s’affiche dans l’onglet Wiki du cockpit.','A defect becomes a bug ticket (never duplicated across personas); friction and the rest go in a report. Each flow’s last run shows in the cockpit’s Wiki tab.')],
+      [L('Options','Options'),L('--as <persona> choisit qui joue, --url <environnement> où. --new persona|flow rédige un persona ou un parcours avec vous ; --edit et --remove les révisent ou les retirent.','--as <persona> picks who plays, --url <environment> where. --new persona|flow drafts a persona or a flow with you; --edit and --remove revise or retire them.')]
+    ]));
+  if(mv('architecture'))out.push(sec('Architecture : comment le produit est construit','Architecture: how the product is built'),
+    simpleTable(H2(),[
+      [L('Contenu','Content'),L('Une vue d’ensemble des apps, les règles techniques que tout le monde respecte, la référence de la façon dont le code est construit aujourd’hui (stack, modèle de données, structure), les décisions (ADR : pourquoi un choix a été fait) et les runbooks (comment opérer, lus à la demande). Un monorepo peut garder les règles propres à une app à part.','An overview of the apps, the technical rules everyone follows, the reference for how the code is built today (stack, data model, structure), the decisions (ADRs: why a choice was made) and the runbooks (how to operate, read on demand). A monorepo can keep an app’s own rules apart.')],
+      [L('Règles de vie','How it lives'),L('Une décision acceptée n’est jamais modifiée : elle est remplacée par une nouvelle qui la supersede. La référence est vérifiée contre le code, et vous arbitrez chaque écart (ni l’un ni l’autre n’a automatiquement raison).','An accepted decision is never edited: it is replaced by a new one that supersedes it. The reference is checked against the code, and you arbitrate each divergence (neither automatically wins).')],
+      [L('L’utiliser','Using it'),L('/pilot-architecture « question » répond avec ses sources. --guideline rédige une règle, --adr une décision, avec l’architecte et vous. --edit <id>, --remove <id>. --verify vérifie la référence contre le code. --bootstrap amorce depuis les apps existantes, --scaffold depuis une description d’apps et de technos, --lint contrôle le fonds. Chaque écriture ouvre une PR.','/pilot-architecture “question” answers with its sources. --guideline drafts a rule, --adr a decision, with the architect and you. --edit <id>, --remove <id>. --verify checks the reference against the code. --bootstrap seeds from the existing apps, --scaffold from a description of apps and tech, --lint checks the body. Each write opens a PR.')]
+    ]));
+  if(mv('design'))out.push(sec('Design : à quoi le produit ressemble','Design: what the product looks like'),
+    simpleTable(H2(),[
+      [L('Contenu','Content'),L('La charte, les couleurs, la typographie, les espacements, les composants et les règles d’accessibilité, affichés dans l’onglet Design.','The charter, colors, typography, spacing, components and accessibility rules, shown in the Design tab.')],
+      [L('L’utiliser','Using it'),L('/pilot-design : le designer mène la discussion avec vous (pair ou --human, jamais auto) à partir des documents du projet et de ce que vous lui donnez, jusqu’à votre approbation. --section limite la session à une section ; le PM et l’architecte sont convocables avec --with. Nécessite le module dashboard.','/pilot-design: the designer leads the discussion with you (pair or --human, never auto) from the project’s documents and what you hand over, until you approve. --section limits the session to one section; the PM and the architect can be summoned with --with. Needs the dashboard module.')]
+    ]));
+  if(mv('proto'))out.push(sec('Prototypes : décider sur du concret','Prototypes: deciding on something concrete'),
+    simpleTable(H2(),[
+      [L('Principe','Principle'),L('/pilot-proto construit avec vous une maquette cliquable d’une fonction, avant toute Discovery : le PM cadre le brief, le designer mène la discussion qui construit la maquette, le PM la contrôle contre le brief. Pair ou --human. Elle s’affiche dans l’onglet Prototypes. Nécessite le module dashboard.','/pilot-proto builds with you a clickable mockup of a feature, before any Discovery: the PM frames the brief, the designer leads the discussion that builds the mockup, the PM checks it against the brief. Pair or --human. It shows in the Prototypes tab. Needs the dashboard module.')],
+      [L('Cycle de vie','Lifecycle'),L('Un ticket de type poc : en construction (poc-draft), à décider (poc-review), puis accepté (poc-validated) ou rejeté (poc-rejected). Il ne passe jamais par Spec, Dev, Review ni QA.','A ticket of type poc: under construction (poc-draft), to decide (poc-review), then accepted (poc-validated) or rejected (poc-rejected). It never goes through Spec, Dev, Review nor QA.')],
+      [L('Décider','Deciding'),L('<n°> --accept valide le prototype : /pilot-discovery --from-proto <n°> peut alors partir de lui. <n°> --reject [raison] le ferme. --from-artifact <url> importe un artefact Claude autonome, --resume <n°> reprend, --with architect convoque l’architecte.','<n°> --accept validates the prototype: /pilot-discovery --from-proto <n°> may then start from it. <n°> --reject [reason] closes it. --from-artifact <url> imports a self-contained Claude artifact, --resume <n°> resumes, --with architect summons the architect.')]
+    ]));
+  if(off.length)out.push(para('Modules désactivés pour ce projet : '+off.map(function(m){return m[1];}).join(', ')+'. Activez-en un avec python3 .pilot/pilot.py module enable <module> (wiki, architecture, design, proto).','Modules off for this project: '+off.map(function(m){return m[1];}).join(', ')+'. Enable one with python3 .pilot/pilot.py module enable <module> (wiki, architecture, design, proto).'));
+  if(hid.length)out.push(para('Masqués par le rôle : '+hid.map(function(m){return m[1];}).join(', ')+'. Choisissez Tous pour les voir.','Hidden by the role: '+hid.map(function(m){return m[1];}).join(', ')+'. Pick All to see them.'));
+  return h('div',{class:'list'},roleNote(),out);
+}
+
+/* ---- Cas particuliers: what to do off the usual path (only what the project's phases allow) ---- */
+function vHowCases(){
+  var finders=[tr(agentName('dev'))].concat(e2eOn()?[tr(agentName('e2e'))]:[]).concat(phOn('qa')?[tr(agentName('qa'))]:[]);
+  var rows=[
+    phOn('spec')?[L('Un besoin technique ou un bug, sans ticket','A technical need or a bug, with no ticket'),code('/pilot-spec --tech "…" · /pilot-spec --bug "…"'),'tech']:null,
+    [L('Un défaut découvert en cours de travail','A defect found mid-work'),L(finders.join(', ')+' créent eux-mêmes un ticket bug (type:bug) ; vous ne passez pas par Discovery.',finders.join(', ')+' create a bug ticket (type:bug) themselves; you do not go through Discovery.')],
+    [L('Un ticket attend un humain (needs-human)','A ticket waits on a human (needs-human)'),L('Répondez sur le ticket puis retirez le label : cette suppression est tout le signal. Ajoutez can-resume pour qu’une routine reprenne seule ; sinon le ticket n’est atteignable que par son numéro.','Reply on the ticket then remove the label: that removal is the whole signal. Add can-resume so a routine resumes alone; otherwise the ticket is only reachable by number.')],
+    [L('Un ticket est mis en pause (on-hold)','A ticket is put on hold (on-hold)'),L('Pour un chantier plus grand ou une dépendance floue. Un humain le pose avec un commentaire qui dit ce qu’on attend, et seul un humain le retire.','For something bigger or a fuzzy dependency. A human sets it with a comment saying what is awaited, and only a human removes it.')],
+    [L('Un ticket dépend d’un autre','A ticket depends on another'),L('« Depends on #N » dans le corps, un numéro par ligne. Le ticket est exclu des balayages tant que #N est ouvert, et redevient candidat dès sa fermeture, sans rien retirer à la main.','“Depends on #N” in the body, one number per line. The ticket is left out of sweeps while #N is open, and is a candidate again as soon as it closes, with nothing removed by hand.'),'tech'],
+    [L('Un travail s’est interrompu en cours de route','Work was interrupted midway'),L('/pilot-<phase> --resume <n°> après avoir vérifié vous-même que le travail est bien mort ; ou can-resume pour la prochaine routine. L’agent relit le ticket entier pour repartir.','/pilot-<phase> --resume <n°> after checking yourself that the work is really dead; or can-resume for the next routine. The agent rereads the whole ticket to restart.')],
+    phOn('dev')&&phOn('review')?[L('Une PR a reçu des corrections demandées','A PR got changes requested'),L('/pilot-dev reprend la même PR (jamais une seconde). Si la relecture attend aussi une décision, needs-human bloque la reprise jusqu’à votre réponse.','/pilot-dev picks up the same PR (never a second one). If the review also awaits a decision, needs-human blocks the resume until you answer.'),'tech']:null,
+    phOn('review')?[L('Une PR approuvée','An approved PR'),L('Elle n’est fusionnée que par vous, ou par /pilot-review --merge. Un commit ajouté après l’approbation ne déclenche aucune relecture : relancez /pilot-review avant de fusionner.','It is merged only by you, or by /pilot-review --merge. A commit added after approval triggers no review: rerun /pilot-review before merging.'),'tech']:null,
+    autoOn()?[L('Un epic ou une story découpée','An epic or a split story'),L('/pilot-auto <n°> descend dans ses sous-tickets et travaille le meilleur candidat ; --next enchaîne jusqu’à la fin ou un blocage.','/pilot-auto <n°> descends into its sub-tickets and works the best candidate; --next keeps going until the end or a block.'),'tech']:null,
+    [L('Écarter un ticket','Drop a ticket'),L('wont-do, seulement avant toute spec ou code. À partir de dev-ready, écarter est une décision humaine : needs-human avec le raisonnement.','wont-do, only before any spec or code. From dev-ready on, dropping is a human decision: needs-human with the reasoning.')],
+    S.gh&&S.gh.workflow?[L('Un ticket est « pair seulement »','A ticket is “pair only”'),L('Un signal de risque déclaré par le projet le rend interactif : il n’est jamais traité en routine, et le cockpit l’indique.','A risk signal the project declares makes it interactive: it is never handled in a routine, and the cockpit says so.'),'tech']:null,
+    [L('Un second avis sur un choix','A second opinion on a choice'),L('--with <agent> pour convoquer un agent, --multi pour plusieurs agents qui convergent (onglet Modes).','--with <agent> to summon an agent, --multi for several agents converging (Modes tab).')]
+  ];
+  return h('div',{class:'list'},
+    roleNote(),
+    para('Ce qu’il faut faire quand un ticket sort du chemin habituel.','What to do when a ticket leaves the usual path.'),
+    simpleTable([L('Situation','Situation'),L('Que faire','What to do')],forRole(rows)));
+}
+var HOW_TABS=[
+  ['file',0,'Ma file','Les tickets qui vous attendent : à valider, bloqués par un drapeau, ou à reprendre. Le formulaire du haut lance une idée.','Ouvrez-la chaque matin ; filtrez par rôle (Produit / Tech) ; indiquez votre login pour voir « mes » tickets.','Vous voyez en un coup d’œil ce qui dépend de vous, sans parcourir GitHub.','My queue','The tickets waiting for you: to approve, blocked by a flag, or to resume. The form at the top starts an idea.','Open it each morning; filter by role (Product / Tech); enter your login to see “my” tickets.','You see at a glance what depends on you, without browsing GitHub.'],
+  ['ensemble',0,'Vue d’ensemble','Le tableau de tous les tickets ouverts par phase, avec les commandes à lancer pour chaque phase.','Choisissez une phase ; lancez-la depuis le bloc de commandes, en pair ou en auto.','Vous pilotez le flux : où ça s’accumule, ce qui est bloqué.','Overview','The board of all open tickets by phase, with the commands to run for each phase.','Pick a phase; run it from the command block, in pair or auto mode.','You steer the flow: where work piles up, what is blocked.'],
+  ['recherche',0,'Recherche','Une recherche dans les tickets, avec filtres par niveau, type, statut, drapeau et assigné.','Tapez un mot ou un numéro, affinez avec les filtres.','Retrouver un ticket ou une décision sans fouiller.','Search','A search across tickets, filtered by level, type, status, flag and assignee.','Type a word or a number, narrow with filters.','Find a ticket or a decision without digging.'],
+  ['activite',0,'Activité','Les sessions d’agents en cours et l’historique des changements de statut.','Consultez-la pour savoir qui travaille sur quoi en ce moment, ou ce qui a bougé.','Évite deux agents sur le même ticket et rend le travail des agents visible.','Activity','Running agent sessions and the history of status changes.','Check it to see who is working on what right now, or what moved.','Prevents two agents on one ticket and makes agent work visible.'],
+  ['prototypes','proto','Prototypes','Des maquettes cliquables de fonctions à tester, construites avec le PM puis le designer, à accepter ou rejeter.','Décrivez la fonction dans l’onglet, puis acceptez ou rejetez la maquette ; une Discovery peut partir d’un prototype accepté (/pilot-proto).','On décide sur du concret avant d’écrire de la spec ou du code.','Prototypes','Clickable mockups of features to try, built with the PM then the designer, to accept or reject.','Describe the feature in the tab, then accept or reject the mockup; a Discovery can start from an accepted prototype (/pilot-proto).','You decide on something concrete before any spec or code is written.'],
+  ['design','design','Design','La charte, les couleurs, la typographie, les espacements, les composants et l’accessibilité du produit.','Lisez-la pour rester cohérent ; faites-la évoluer avec /pilot-design.','Les prototypes et les interfaces restent cohérents d’une feature à l’autre.','Design','The product’s charter, colors, typography, spacing, components and accessibility.','Read it to stay consistent; evolve it with /pilot-design.','Prototypes and interfaces stay consistent from one feature to the next.'],
+  ['wiki','wiki','Wiki','Ce que fait le produit : vision, personas, comportements, parcours utilisateur, par domaine ; chaque entrée dit si elle est en place ou seulement prévue.','Parcourez par domaine ou cherchez ; posez une question, corrigez ou amorcez le wiki avec /pilot-wiki ; testez un parcours avec /pilot-flow.','Un référentiel fonctionnel unique : les agents le lisent avant de spécifier ou relire, et ne contredisent pas un comportement établi.','Wiki','What the product does: vision, personas, behaviors, user flows, by domain; each entry says whether it is in place or only planned.','Browse by domain or search; ask a question, fix or bootstrap the wiki with /pilot-wiki; test a flow with /pilot-flow.','A single functional reference: agents read it before specifying or reviewing, and do not contradict established behavior.'],
+  ['architecture','architecture','Architecture','Comment le produit est construit : vue d’ensemble, règles techniques, référence du code, décisions (ADR) et runbooks.','Consultez avant une décision technique ; posez une question, ajoutez une règle ou un ADR, vérifiez la référence contre le code avec /pilot-architecture.','Les décisions et leurs raisons survivent aux personnes ; une spec ou une PR qui les enfreint est signalée, pas laissée passer.','Architecture','How the product is built: overview, technical rules, code reference, decisions (ADRs) and runbooks.','Check it before a technical decision; ask a question, add a rule or an ADR, verify the reference against the code with /pilot-architecture.','Decisions and their reasons outlive people; a spec or PR that breaks them is flagged, not waved through.']
+];
+function vHowModules(){
+  return h('div',{class:'list'},
+    h('p',{class:'note'},L('Chaque onglet du cockpit, à quoi il sert et pourquoi l’utiliser. Wiki, architecture, design et prototypes sont des modules optionnels : désactivés, leur onglet disparaît et les agents ne les consultent plus. Le filtre de rôle (Produit / Tech / Tous) masque aussi des onglets : choisissez Tous pour tout voir.','Each cockpit tab, what it is for and why to use it. Wiki, architecture, design and prototypes are optional modules: when off, their tab disappears and the agents no longer consult them. The role filter (Product / Tech / All) also hides tabs: pick All to see everything.')),
+    h('div',{class:'agents'},HOW_TABS.map(function(t){
+      var on=moduleOn(t[0]), hid=on&&!roleShows(t[0]);
+      var badge=t[1]?(on?(hid?L('masqué par le rôle','hidden by role'):L('actif','on')):L('désactivé','off')):(hid?L('masqué par le rôle','hidden by role'):'');
+      var rows=[[L('Rôle :','What:'),L(t[3],t[7])],[L('Comment :','How:'),L(t[4],t[8])],[L('Intérêt :','Why:'),L(t[5],t[9])]];
+      if(t[1]&&!on)rows.push([L('Activer :','Enable:'),'python3 .pilot/pilot.py module enable '+t[1]]);
+      return helpCard(L(t[2],t[6]),badge,rows);
+    })),
+    sec('D’où viennent les données du cockpit','Where the cockpit’s data comes from'),
+    para('GitHub reste la vérité. Le cockpit lit un instantané de vos tickets, pris par /pilot-dashboard --refresh, et y ajoute en direct les événements que les agents lui envoient : sessions en cours, changements de statut. Ces envois sont faits au mieux, un échec ne bloque jamais une phase ; un instantané ancien se rafraîchit. Tant qu’aucun instantané n’existe, des données d’exemple sont affichées.','GitHub remains the truth. The cockpit reads a snapshot of your tickets, taken by /pilot-dashboard --refresh, and adds the events agents send it live: running sessions, status changes. These pushes are best-effort, a failure never blocks a phase; an old snapshot is refreshed. Until a snapshot exists, sample data is shown.'));
+}
+function agentRoles(k){
+  var rows=rosterRows(), cols=[['lead',L('Lead :','Lead:')],['val',L('Validateur :','Validator:')],['sum',L('Convocable :','Summonable:')]];
+  return cols.map(function(c){
+    var st=rows.filter(function(r){return r[c[0]].indexOf(k)>-1;}).map(function(r){return tr(r.step);});
+    return h('p',{class:'note'},h('strong',{},c[1]+' '),st.length?st.join(' · '):'—');
+  });
+}
 function vHelp(){
   function names(ks,note){return ks.length?ks.map(agentName).join(' + ')+(note?' ('+note+')':''):'—';}
-  var steps=S.sub.aide==='steps';
+  var sub=S.sub.aide, steps=sub==='steps';
+  var lang=h('div',{class:'pair'},h('span',{class:'note'},'Langue'),h('div',{class:'seg',role:'group','aria-label':'Langue',id:'langSeg'},['fr','en'].map(function(l){return h('button',{type:'button',lang:l,'aria-pressed':String(LANG===l),onclick:function(){setLang(l,true);}},l.toUpperCase());})));
+  var HOW={principes:vHowPrinciples,modes:vHowModes,tickets:vHowTickets,connaissances:vHowKnowledge,cas:vHowCases,modules:vHowModules};
+  if(HOW[sub])return h('div',{class:'list'},lang,HOW[sub]());
   return h('div',{class:'list'},
-    h('div',{class:'pair'},h('span',{class:'note'},'Langue'),h('div',{class:'seg',role:'group','aria-label':'Langue',id:'langSeg'},['fr','en'].map(function(l){return h('button',{type:'button',lang:l,'aria-pressed':String(LANG===l),onclick:function(){setLang(l,true);}},l.toUpperCase());}))),
+    lang,
     steps&&S.gh&&S.gh.workflow?h('p',{class:'note',id:'profileNote'},profileSummary(S.gh.workflow)):null,
     steps&&S.gh&&S.gh.workflow?h('p',{class:'note',id:'signalNote'},'Un signal de risque que le projet déclare peut rendre un ticket pair seulement ; un ticket peut aussi porter son propre profil (label workflow:<profil>).'):null,
     steps?h('p',{class:'note'},'À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.'):null,
@@ -1732,9 +1976,9 @@ function vHelp(){
       h('thead',{},h('tr',{},['Step','Lead','Validateur','Convocable'].map(function(t){return h('th',{scope:'col'},t);}))),
       h('tbody',{},rosterRows().map(function(r){
         return h('tr',{},h('th',{scope:'row'},r.step),h('td',{},names(r.lead,r.leadNote)),h('td',{},names(r.val,r.valNote)),h('td',{},names(r.sum)));
-      })))):h('div',{class:'agents'},agentsOn().map(function(a){return h('div',{class:'row'},h('div',{class:'main'},h('div',{class:'t'},a[1]),h('p',{class:'note'},a[2])));})));
+      })))):h('div',{class:'agents'},agentsOn().map(function(a){return h('div',{class:'row'},h('div',{class:'main'},h('div',{class:'t'},a[1]),h('p',{class:'note'},a[2]),agentRoles(a[0])));})));
 }
-var HELP_SUBS=[['agents','Agents'],['steps','Steps']];
+var HELP_SUBS=[['principes','Principes'],['modes','Modes'],['tickets','Tickets'],['connaissances','Connaissances'],['cas','Cas particuliers'],['modules','Modules'],['agents','Agents'],['steps','Steps']];
 
 /* ---------- boot ---------- */
 function fromHash(){

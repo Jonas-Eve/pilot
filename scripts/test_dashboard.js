@@ -1054,12 +1054,86 @@ const STUB = (opts) => `
   await page.evaluate(() => { location.hash = 'file'; }); await page.waitForTimeout(100);
   check('reference page: a discreet info button, and the tab is untouched until it is used',
         (await text(page, '#helpLink')) === 'i' && (await page.$eval('#helpLink', (a) => a.getAttribute('href'))) === '#aide' && !(await page.$eval('#idea', (e) => e.hidden)));
+  await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(100);
   await page.click('#helpLink'); await page.waitForTimeout(150);
-  check('reference page: its own page (#aide) with the 7 agents, replacing the tab content, no tab marked current',
-        (await page.$$('#view .agents .row')).length === 7 && (await page.$$('#view button:not(#langSeg button), #view a.btn')).length === 0 && (await page.$$('#langSeg button')).length === 2 && (await page.$eval('#idea', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)) &&
-        (await page.$$('#tabs a[aria-current="page"]')).length === 0 && (await page.$eval('#helpLink', (a) => a.getAttribute('aria-current'))) === 'page');
-  check('reference page: sub-tabs Agents (open) and Steps; the agents are not mixed with the table',
-        JSON.stringify(await page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent + (a.getAttribute('aria-current') ? '*' : '')))) === JSON.stringify(['Agents*', 'Steps']) && (await page.$$('#view table')).length === 0);
+  check('reference page: opens on Principes (#aide), replacing the tab content, no tab marked current, its sub-tabs',
+        (await page.$$('#langSeg button')).length === 2 && (await page.$eval('#idea', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)) &&
+        (await page.$$('#tabs a[aria-current="page"]')).length === 0 && (await page.$eval('#helpLink', (a) => a.getAttribute('aria-current'))) === 'page' &&
+        JSON.stringify(await page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent + (a.getAttribute('aria-current') ? '*' : '')))) === JSON.stringify(['Principes*', 'Modes', 'Tickets', 'Connaissances', 'Cas particuliers', 'Modules', 'Agents', 'Steps']));
+  const tabText = {}; let phaseCards = 0;
+  for (const sub of ['principes', 'modes', 'tickets', 'connaissances', 'cas']) {
+    await page.evaluate((s) => { location.hash = 'aide/' + s; }, sub); await page.waitForTimeout(120);
+    tabText[sub] = await page.$eval('#view', (e) => e.innerText);
+    if (sub === 'principes') phaseCards = (await page.$$('#view .agents .row')).length;
+  }
+  const how = Object.values(tabText).join('\n');
+  check('reference page: Principes explains the 5 phases of the project, who decides, the knowledge bundles and where to start',
+        phaseCards === 5 && /Discovery/.test(how) && /QA humaine/.test(how) && /needs-human/.test(how) && /Wiki : ce que fait le produit/i.test(how) && /Architecture : comment le produit est construit/i.test(how) && /Design : à quoi le produit ressemble/i.test(how) && /Prototypes : décider sur du concret/i.test(how) && /Parcours utilisateur/i.test(how) && /\/pilot-discovery/.test(how) && /\/pilot-help/.test(how), how.slice(0, 200));
+  check('reference page: the tabs are separate (a section lives in one tab only)',
+        /Le profil du projet/i.test(tabText.principes) && !/Le profil du projet/i.test(tabText.tickets) && /Trois modes/i.test(tabText.modes) && !/Trois modes/i.test(tabText.principes) && /Priorité/.test(tabText.tickets) && /Cas particuliers|sort du chemin habituel/.test(tabText.cas) && /Wiki : ce que fait/i.test(tabText.connaissances), Object.keys(tabText).join());
+  check('reference page: Principes explains levels, types, the status chain, flags, the off-path cases and the mode',
+        /epic .*story .*task/.test(how) && /feature :/.test(how) && /bug :/.test(how) && /needs-human/.test(how) && /Depends on #N/.test(how) && /--resume/.test(how) && /--tech/.test(how) && /--multi/.test(how) && /[Mm]ode par défaut/.test(how) && /--human/.test(how) && /--pair/.test(how) && /Analyser l’existant/.test(how) && /Challenger/.test(how) && /qui propose/.test(how) && /Priorité/.test(how) && /Prise en charge/.test(how) && /Le profil du projet/i.test(how) && /--refresh/.test(how) && /ticket bug/.test(how), how.slice(0, 200));
+  // the page and /pilot-help describe the same system: every command, flag, status and module it cites exists in the skills and the process
+  const ROOT = path.resolve(__dirname, '..');
+  const skillsDir = path.join(ROOT, '.claude/skills');
+  const skillText = fs.readdirSync(skillsDir).map((d) => fs.readFileSync(path.join(skillsDir, d, 'SKILL.md'), 'utf8')).join('\n');
+  const processText = fs.readFileSync(path.join(ROOT, 'assets/docs/pilot-process.md'), 'utf8');
+  const pyText = fs.readFileSync(path.join(ROOT, 'scripts/pilot.py'), 'utf8');
+  const cited = { cmds: new Set(), flags: new Set(), statuses: [], mods: new Set() };
+  for (const sub of ['principes', 'modes', 'tickets', 'connaissances', 'cas', 'modules', 'agents', 'steps']) {
+    await page.evaluate((s) => { location.hash = 'aide/' + s; }, sub); await page.waitForTimeout(120);
+    const t = await page.$eval('#view', (e) => e.innerText);
+    (t.match(/\/pilot-[a-z]+/g) || []).forEach((c) => cited.cmds.add(c.slice(1)));
+    (t.match(/(?<![\w-])--[a-z]+/g) || []).forEach((f) => cited.flags.add(f));
+    (t.match(/module enable (\w+)/g) || []).forEach((m) => cited.mods.add(m.split(' ')[2]));
+    if (sub === 'tickets') cited.statuses = (await text(page, '#statusChain')).split(' → ');
+  }
+  const noCmd = [...cited.cmds].filter((c) => !fs.existsSync(path.join(skillsDir, c, 'SKILL.md')));
+  const noFlag = [...cited.flags].filter((f) => !skillText.includes(f) && !processText.includes(f));
+  const noStatus = cited.statuses.filter((st) => !processText.includes('status:' + st));
+  check('reference page: every command it cites is an installed skill', noCmd.length === 0 && cited.cmds.size >= 8, noCmd.join(','));
+  check('reference page: every flag it cites exists in a skill or in the process', noFlag.length === 0 && cited.flags.size >= 5, noFlag.join(','));
+  check('reference page: every status of its chain is a status of the process', noStatus.length === 0 && cited.statuses.length >= 9, noStatus.join(','));
+  check('reference page: every module it tells to enable is a module of pilot.py', cited.mods.size === 0 || [...cited.mods].every((m) => new RegExp("'" + m + "'").test(pyText)), [...cited.mods].join(','));
+  await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(100);
+  await page.evaluate(() => { location.hash = 'aide/modules'; }); await page.waitForTimeout(150);
+  const mods = await page.$eval('#view', (e) => e.innerText);
+  check('reference page: Modules explains where the cockpit data comes from', /D’où viennent les données du cockpit/i.test(mods) && /instantané/.test(mods));
+  check('reference page: Modules gives one card per cockpit tab, each with what, how and why; the optional ones say they are on',
+        (await page.$$('#view .agents .row')).length === 8 && (mods.match(/Rôle :/g) || []).length === 8 && (mods.match(/Comment :/g) || []).length === 8 && (mods.match(/Intérêt :/g) || []).length === 8 &&
+        (mods.match(/actif/g) || []).length === 1 && (mods.match(/masqué par le rôle/g) || []).length === 3 && /python3 \.pilot\/pilot\.py module enable/.test(mods) === false && /Wiki/.test(mods) && /Architecture/.test(mods) && /\/pilot-architecture/.test(mods), mods.slice(0, 200));
+  // the role filter (Produit / Tech / Tous) applies to the help pages too
+  const roleTab = async (role, sub) => { await page.click('#roleSeg >> text=' + role); await page.evaluate((s) => { location.hash = 'aide/' + s; }, sub); await page.waitForTimeout(150); return page.$eval('#view', (e) => e.innerText); };
+  {
+    const P = { pr: await roleTab('Produit', 'principes') };
+    P.mo = await roleTab('Produit', 'modes'); P.ti = await roleTab('Produit', 'tickets'); P.kn = await roleTab('Produit', 'connaissances'); P.ca = await roleTab('Produit', 'cas');
+    check('role Produit: Principes shows Discovery and QA, the product commands and a note, not Spec, Dev nor /pilot-auto',
+          /Vue filtrée pour le rôle Produit/.test(P.pr) && /1\. Discovery/.test(P.pr) && /5\. QA humaine/.test(P.pr) && !/2\. Spec/.test(P.pr) && !/3\. Dev/.test(P.pr) && /\/pilot-discovery/.test(P.pr) && /\/pilot-proto/.test(P.pr) && !/\/pilot-auto/.test(P.pr), P.pr.slice(0, 200));
+    check('role Produit: Modes offers --human on Discovery, /pilot-design and /pilot-proto only',
+          /Disponible pour : Discovery, \/pilot-design, \/pilot-proto\./.test(P.mo), P.mo.slice(0, 300));
+    check('role Produit: Tickets shows the product types, not tech nor e2e', /feature :/.test(P.ti) && /poc :/.test(P.ti) && /bug :/.test(P.ti) && !/(^|\n)tech :/.test(P.ti) && !/e2e :/.test(P.ti), P.ti.slice(0, 300));
+    check('role Produit: Connaissances shows wiki, design and prototypes, and says the architecture is hidden by the role',
+          /Wiki : ce que fait/i.test(P.kn) && /Design : à quoi/i.test(P.kn) && /Prototypes : décider/i.test(P.kn) && !/Architecture : comment/i.test(P.kn) && /Masqués par le rôle : Architecture/.test(P.kn), P.kn.slice(0, 200));
+    check('role Produit: Special cases leave out the tech-only rows', !/--tech/.test(P.ca) && !/Une PR approuvée/.test(P.ca) && /needs-human/.test(P.ca) && /Un défaut découvert/.test(P.ca), P.ca.slice(0, 200));
+    const T = { pr: await roleTab('Tech', 'principes') };
+    T.mo = await roleTab('Tech', 'modes'); T.ti = await roleTab('Tech', 'tickets'); T.kn = await roleTab('Tech', 'connaissances'); T.ca = await roleTab('Tech', 'cas');
+    check('role Tech: Principes shows Spec, Dev and Review and /pilot-auto, not Discovery',
+          /Vue filtrée pour le rôle Tech/.test(T.pr) && /2\. Spec/.test(T.pr) && /3\. Dev/.test(T.pr) && /4\. Review/.test(T.pr) && !/1\. Discovery/.test(T.pr) && /\/pilot-auto/.test(T.pr) && !/\/pilot-discovery/.test(T.pr), T.pr.slice(0, 200));
+    check('role Tech: Modes offers --human on Spec, Dev and Review', /Disponible pour : Spec, Dev, Review\./.test(T.mo), T.mo.slice(0, 300));
+    check('role Tech: Tickets shows the tech types, not feature', /(^|\n)tech :/.test(T.ti) && /e2e :/.test(T.ti) && !/feature :/.test(T.ti), T.ti.slice(0, 300));
+    check('role Tech: Connaissances shows the architecture, not the wiki, design nor prototypes', /Architecture : comment/i.test(T.kn) && !/Wiki : ce que fait/i.test(T.kn) && !/Prototypes : décider/i.test(T.kn) && /Masqués par le rôle : Wiki, Design, Prototypes/.test(T.kn), T.kn.slice(0, 200));
+    check('role Tech: Special cases keep the tech rows', /--tech/.test(T.ca) && /Une PR approuvée/.test(T.ca), T.ca.slice(0, 200));
+    const A = await roleTab('Tous', 'principes');
+    check('role Tous: no filter note and every phase', !/Vue filtrée/.test(A) && /1\. Discovery/.test(A) && /4\. Review/.test(A), A.slice(0, 100));
+    await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(100);
+  }
+  await page.click('#subtabs >> text=Agents'); await page.waitForTimeout(150);
+  const agentsTxt = await text(page, '#view');
+  check('reference page: each agent lists the steps where it is Lead, Validateur and Convocable',
+        (agentsTxt.match(/Lead :/g) || []).length === 7 && (agentsTxt.match(/Validateur :/g) || []).length === 7 && (agentsTxt.match(/Convocable :/g) || []).length === 7 &&
+        /Lead : Dev/.test(agentsTxt) && /Validateur : Discovery/.test(agentsTxt), agentsTxt.slice(0, 300));
+  check('reference page: Agents shows the 7 agents and no table, no button but the language',
+        (await page.$$('#view .agents .row')).length === 7 && (await page.$$('#view button:not(#langSeg button), #view a.btn')).length === 0 && (await page.$$('#view table')).length === 0);
   await page.click('#subtabs >> text=Steps'); await page.waitForTimeout(150);
   check('reference page: Steps shows the table and the rule, #aide/steps, no agent cards',
         (await page.evaluate(() => location.hash)) === '#aide/steps' && (await page.$$('#view table')).length === 1 && (await page.$$('#view .agents .row')).length === 0 && /le lead ouvre la discussion/.test(await text(page, '#view')));
@@ -1299,6 +1373,17 @@ const STUB = (opts) => `
     await page.evaluate((d) => window.__push('snapshots', 'Jonas-Eve__myavimobility', d), withMods({ dashboard: true, wiki: true, architecture: false, design: false, proto: true })); await page.waitForTimeout(250);
     check('modules: turning a module on shows its tab at the next snapshot, the others stay hidden',
           JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Activité', 'Wiki']), JSON.stringify(await tabs(page)));
+    {
+      const off = withMods({ dashboard: true, wiki: false, architecture: false, design: false, proto: false });
+      const p2 = await open({ preload: [off] });
+      const get = async (sub) => { await p2.goto(FILE + '#aide/' + sub); await p2.waitForTimeout(250); return p2.$eval('#view', (e) => e.innerText); };
+      const k = await get('connaissances'), pr2 = await get('principes'), md = await get('modes');
+      check('modules off: Connaissances shows no section of a module that is off, only how to enable them',
+            !/Wiki : ce que fait/i.test(k) && !/Architecture : comment/i.test(k) && !/Design : à quoi/i.test(k) && !/Prototypes : décider/i.test(k) && /Modules désactivés pour ce projet : Wiki, Architecture, Design, Prototypes/.test(k) && /module enable/.test(k), k.slice(0, 300));
+      check('modules off: Principes does not suggest the commands of a module that is off, and Modes does not offer --human on them',
+            !/\/pilot-wiki|\/pilot-architecture|\/pilot-proto|\/pilot-design|\/pilot-flow/.test(pr2) && !/\/pilot-design|\/pilot-proto/.test(md), pr2.slice(0, 200));
+      await p2.close();
+    }
     check('modules: no page errors', page.errors.length === 0, page.errors.join('|'));
     await page.close();
     page = await open({ preload: [BASE] });
@@ -1343,6 +1428,14 @@ const STUB = (opts) => `
     check('profile: lean has no human QA row, and a tech Spec is the tech lead alone',
           !/QA humaine/.test(table) && /Spec · tech\s*Tech lead/.test(table) && /Spec · feature/.test(table) && !/Spec · feature ou tech/.test(table), table);
     check('profile: lean reviews with the tech lead alone, in one row', /Review\s*Tech lead/.test(table) && !/Review · feature/.test(table), table);
+    const helpTab = async (pg, sub) => { await pg.goto(FILE + '#aide/' + sub); await pg.waitForTimeout(250); return pg.$eval('#view', (e) => e.innerText); };
+    const lp = await helpTab(page, 'principes'), lm = await helpTab(page, 'modes'), lt = await helpTab(page, 'tickets');
+    const chain = await text(page, '#statusChain');
+    const lc = await helpTab(page, 'cas');
+    check('profile: Principes of lean follow the rules (tech lead alone reviews, no QA phase, no QA row to start)', /Relecture par : Tech lead\./.test(lp) && !/5\. QA humaine/.test(lp), lp.slice(0, 300));
+    check('profile: Modes of lean state the default mode auto and no QA exception', /Mode par défaut de ce projet : auto/.test(lm) && !/la QA/.test(lm), lm.slice(0, 300));
+    check('profile: Tickets of lean have no e2e type, no QA in the end of life and no qa statuses', !/e2e :/.test(lt) && !/QA humaine/.test(lt) && !/in-qa/.test(chain), lt.slice(0, 300));
+    check('profile: Special cases of lean have no QA nor E2E agent as a bug finder', /Dev créent|Dev crée/.test(lc) && !/QA/.test(lc.split('Un défaut découvert')[1].split('\n')[0]) && !/E2E/.test(lc.split('Un défaut découvert')[1].split('\n')[0]), lc.slice(0, 300));
     await page.goto(FILE + '#aide/agents'); await page.waitForTimeout(250);
     const agents = await text(page, '#view');
     check('profile: lean shows neither the QA nor the E2E persona', !/Déroule avec vous le plan de test/.test(agents) && !/test de bout en bout/.test(agents) && /Implémente un ticket spécifié/.test(agents), agents.slice(0, 200));
@@ -1433,7 +1526,7 @@ const STUB = (opts) => `
   // every tab and sub-tab fits a phone, in both themes, with no script error
   const ROUTES = ['file', 'ensemble', 'ensemble/discovery', 'ensemble/spec', 'ensemble/dev', 'ensemble/review', 'ensemble/qa',
     'prototypes/encours', 'prototypes/acceptes/alancer', 'prototypes/acceptes/encours', 'prototypes/acceptes/termines', 'prototypes/rejetes', 'proto/702',
-    'recherche', 'activite/sessions', 'activite/changements', 'aide/agents', 'aide/steps',
+    'recherche', 'activite/sessions', 'activite/changements', 'aide/principes', 'aide/modes', 'aide/tickets', 'aide/connaissances', 'aide/cas', 'aide/modules', 'aide/agents', 'aide/steps',
     'design/charter', 'design/colors', 'design/type', 'design/space', 'design/components', 'design/a11y'];
   const wide = [];
   for (const scheme of ['light', 'dark']) {
