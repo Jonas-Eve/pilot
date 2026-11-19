@@ -2319,10 +2319,10 @@ class DemoSnapshotTests(unittest.TestCase):
         doc = self.demo.wiki_document()
         self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "Jonas-Eve/pilot", len(doc["entries"]), False))
         self.assertLessEqual(len(json.dumps(doc, ensure_ascii=False).encode()), pilot.WIKI_SNAPSHOT_MAX_BYTES)
-        keys = {"id", "type", "hash", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "text"}
+        keys = {"id", "type", "hash", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "verifiedBy", "text"}
         for row in doc["entries"]:
             self.assertEqual(set(row), keys)
-            self.assertIn(row["status"], pilot.WIKI_STATUSES)
+            self.assertIn(row["status"], (*pilot.WIKI_STATUSES, ""))  # "" : an entry with no status yet
             self.assertIn(row["derived"], ("", "in-dev", "in-review", "in-qa", "verified"))
 
     def test_document_has_the_snapshot_shape_and_fits_a_database_document(self):
