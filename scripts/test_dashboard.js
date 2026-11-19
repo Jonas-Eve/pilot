@@ -1092,6 +1092,10 @@ const STUB = (opts) => `
   const noFlag = [...cited.flags].filter((f) => !skillText.includes(f) && !processText.includes(f));
   const noStatus = cited.statuses.filter((st) => !processText.includes('status:' + st));
   check('reference page: every command it cites is an installed skill', noCmd.length === 0 && cited.cmds.size >= 8, noCmd.join(','));
+  const uncitedSkills = fs.readdirSync(skillsDir).filter((d) => !cited.cmds.has(d));
+  check('reference page: every installed skill is cited at least once (the page and /pilot-help list the same commands)', uncitedSkills.length === 0, uncitedSkills.join(','));
+  check('reference page: every phase card carries its command, and the chain keeps changes-requested out of the line',
+        (/Commande :/.test(how)) && cited.statuses.indexOf('changes-requested') < 0 && /changes-requested : la relecture/.test(how), how.slice(0, 100));
   check('reference page: every flag it cites exists in a skill or in the process', noFlag.length === 0 && cited.flags.size >= 5, noFlag.join(','));
   check('reference page: every status of its chain is a status of the process', noStatus.length === 0 && cited.statuses.length >= 9, noStatus.join(','));
   check('reference page: every module it tells to enable is a module of pilot.py', cited.mods.size === 0 || [...cited.mods].every((m) => new RegExp("'" + m + "'").test(pyText)), [...cited.mods].join(','));

@@ -1726,12 +1726,23 @@ function agentName(k){var a=AGENTS.filter(function(x){return x[0]===k;})[0];retu
 /* the "how PILOT works" pages: content in both languages (picked by LANG), following the project's phases and modules */
 function L(fr,en){return LANG==='fr'?fr:en;}
 var HOW_PHASES={
-  discovery:['Discovery','Une idée brute devient une story claire, avec ses critères d’acceptation.','Le PM la cadre avec vous, l’architecte anticipe l’architecture.','Évite de construire la mauvaise chose.','A raw idea becomes a clear story with acceptance criteria.','The PM frames it with you, the architect anticipates the architecture.','Avoids building the wrong thing.'],
-  spec:['Spec','La story est découpée en tâches de taille dev, chacune avec sa spec technique.','L’architecte et le tech lead, en dialogue, vérifient le besoin dans le code.','Le dev reçoit une tâche sans ambiguïté, les dépendances sont connues.','The story is split into dev-sized tasks, each with a technical spec.','The architect and tech lead, in dialogue, check the need against the code.','The dev gets an unambiguous task, dependencies are known.'],
-  dev:['Dev','Une tâche spécifiée est implémentée et livrée en pull request.','Le dev se relit lui-même ; s’il est bloqué il s’arrête et vous le dit.','Un changement petit, testé, relisible.','A specified task is implemented and delivered as a pull request.','The dev reviews its own diff; if blocked it stops and tells you.','A small, tested, reviewable change.'],
-  review:['Review','Une relecture indépendante de la PR : conformité à la spec, qualité, critères produit.','Les relecteurs du profil, en parallèle, un seul avis GitHub ; vous mergez (ou --merge).','Un second regard avant que ça n’arrive dans le code.','An independent review of the PR: spec conformance, quality, product criteria.','The profile’s reviewers, in parallel, one GitHub review; you merge (or --merge).','A second pair of eyes before it reaches the code.'],
-  qa:['QA humaine','Une feature terminée est testée par un humain, plan de test fourni.','L’agent QA déroule le plan avec vous (ou seul dans un navigateur avec --browser).','Un défaut devient un ticket bug, pas un oubli.','A finished feature is tested by a human, with a test plan provided.','The QA agent walks the plan with you (or alone in a browser with --browser).','A defect becomes a bug ticket, not an oversight.']
+  discovery:{name:"Discovery",cmd:"/pilot-discovery \"…\"",
+    fr:{what:"Une idée brute devient une story claire, avec ses critères d’acceptation.",how:"Le PM la cadre avec vous, l’architecte anticipe l’architecture.",why:"Évite de construire la mauvaise chose."},
+    en:{what:"A raw idea becomes a clear story with acceptance criteria.",how:"The PM frames it with you, the architect anticipates the architecture.",why:"Avoids building the wrong thing."}},
+  spec:{name:"Spec",cmd:"/pilot-spec [n°]",
+    fr:{what:"La story est découpée en tâches de taille dev, chacune avec sa spec technique.",how:"L’architecte et le tech lead, en dialogue, vérifient le besoin dans le code.",why:"Le dev reçoit une tâche sans ambiguïté, les dépendances sont connues."},
+    en:{what:"The story is split into dev-sized tasks, each with a technical spec.",how:"The architect and tech lead, in dialogue, check the need against the code.",why:"The dev gets an unambiguous task, dependencies are known."}},
+  dev:{name:"Dev",cmd:"/pilot-dev [n°]",
+    fr:{what:"Une tâche spécifiée est implémentée et livrée en pull request.",how:"Le dev se relit lui-même ; s’il est bloqué il s’arrête et vous le dit.",why:"Un changement petit, testé, relisible."},
+    en:{what:"A specified task is implemented and delivered as a pull request.",how:"The dev reviews its own diff; if blocked it stops and tells you.",why:"A small, tested, reviewable change."}},
+  review:{name:"Review",cmd:"/pilot-review [n°]",
+    fr:{what:"Une relecture indépendante de la PR : conformité à la spec, qualité, critères produit.",how:"Le PM et le tech lead pour une feature ou un e2e, le tech lead seul pour une tech ou un bug, l’architecte en option (--with architect) ; en parallèle, un seul avis GitHub ; vous mergez (ou --merge).",why:"Un second regard avant que ça n’arrive dans le code."},
+    en:{what:"An independent review of the PR: spec conformance, quality, product criteria.",how:"The PM and the tech lead for a feature or an e2e, the tech lead alone for a tech or a bug, the architect optional (--with architect); in parallel, one GitHub review; you merge (or --merge).",why:"A second pair of eyes before it reaches the code."}},
+  qa:{name:"QA humaine",cmd:"/pilot-qa [n°]",
+    fr:{what:"Une feature terminée est testée par un humain, plan de test fourni.",how:"L’agent QA déroule le plan avec vous (ou seul dans un navigateur avec --browser).",why:"Un défaut devient un ticket bug, pas un oubli."},
+    en:{what:"A finished feature is tested by a human, with a test plan provided.",how:"The QA agent walks the plan with you (or alone in a browser with --browser).",why:"A defect becomes a bug ticket, not an oversight."}}
 };
+function hw(o){return LANG==='fr'?o.fr:o.en;} /* the texts of one language */
 function helpCard(title,badge,rows){
   return h('div',{class:'row'},h('div',{class:'main'},
     h('div',{class:'t'},title,badge?h('span',{class:'chip'},badge):null),
@@ -1740,7 +1751,7 @@ function helpCard(title,badge,rows){
 function wfRules(){var w=S.gh&&S.gh.workflow; return w&&w.rules||null;}
 /* the phases' "how" follows the project's workflow rules, as the Steps table does */
 function howOf(key,d){
-  var r=wfRules(), out=L(d[2],d[5]);
+  var r=wfRules(), out=hw(d).how;
   var rev=function(k){return arr(r&&r.review&&r.review[k]).map(function(x){return tr(agentName(String(x).replace(/^pilot-/,'')));}).join(' + ');};
   if(key==='review'&&r&&r.review){
     var f=rev('feature'), t=rev('tech');
@@ -1750,11 +1761,11 @@ function howOf(key,d){
   return out;
 }
 function statusChain(){
-  var seq=[]; phasesOn().forEach(function(p){p.statuses.forEach(function(x){if(seq.indexOf(x)<0)seq.push(x);});});
+  var seq=[]; phasesOn().forEach(function(p){p.statuses.forEach(function(x){if(x!=='changes-requested'&&seq.indexOf(x)<0)seq.push(x);});}); /* changes-requested is a loop back to dev, told apart */
   return seq.concat(['done']);
 }
-function simpleTable(head,rows,id){
-  return h('div',{class:'ref'},h('table',id?{id:id}:{},
+function simpleTable(head,rows){
+  return h('div',{class:'ref'},h('table',{},
     h('thead',{},h('tr',{},head.map(function(t){return h('th',{scope:'col'},t);}))),
     h('tbody',{},rows.filter(Boolean).map(function(r){return h('tr',{},h('th',{scope:'row',style:typeof r[0]==='string'&&/^--/.test(r[0])?'white-space:nowrap':null},r[0]),h('td',{},r[1]));}))));
 }
@@ -1773,7 +1784,6 @@ function roleNote(){
 function sec(fr,en){return h('h2',{},L(fr,en));}
 function para(fr,en,pre){return h('p',{class:'note'},(pre||'')+L(fr,en));}
 function code(x){return h('code',{},x);}
-function kv(head,rows){return simpleTable(head,rows.filter(Boolean));}
 var H2=function(){return [L('Notion','Notion'),L('Sens','Meaning')];};
 function autoOn(){return phOn('review')||phOn('dev')||phOn('spec');}
 
@@ -1786,11 +1796,13 @@ function vHowPrinciples(){
     autoOn()?[L('faire avancer un ticket, sans savoir où il en est','move a ticket forward without knowing its phase'),code('/pilot-auto <n°>'),'tech']:null,
     autoOn()?[L('traiter tout ce qui est prêt, sans moi','process everything ready, without me'),code('/pilot-auto --again'),'tech']:null,
     autoOn()?[L('suivre un ticket de bout en bout','follow a ticket end to end'),code('/pilot-auto <n°> --next'),'tech']:null,
+    phOn('review')?[L('relire une PR prête','review a ready PR'),code('/pilot-review [n°]'),'tech']:null,
+    phOn('qa')?[L('tester une feature terminée','test a finished feature'),code('/pilot-qa [n°]'),'produit']:null,
     mv('proto')?[L('tester une fonction avec un prototype','try a feature with a prototype'),code('/pilot-proto')]:null,
     mv('wiki')||mv('architecture')?[L('savoir ce que fait le produit ou pourquoi','know what the product does or why'),code([mv('wiki')?'/pilot-wiki':null,mv('architecture')?'/pilot-architecture':null].filter(Boolean).join(' · '))]:null,
     mv('wiki')?[L('tester un parcours utilisateur','test a user flow'),code('/pilot-flow <id>')]:null,
     mv('design')?[L('créer ou changer le design system','create or change the design system'),code('/pilot-design')]:null,
-    [L('adopter PILOT sur un projet, ou le mettre à jour','adopt PILOT on a project, or update it'),code('/pilot-init · /pilot-update'),'tech'],
+    [L('adopter PILOT sur un projet, ou le mettre à jour','adopt PILOT on a project, or update it'),code('/pilot-init [--modules …] [--language …] · /pilot-update'),'tech'],
     [L('rafraîchir le cockpit','refresh the cockpit'),code('/pilot-dashboard --refresh'),'tech'],
     [L('trouver la bonne commande','find the right command'),code('/pilot-help …')]
   ];
@@ -1800,7 +1812,7 @@ function vHowPrinciples(){
     para('PILOT conduit un changement de l’idée à la livraison vérifiée, en phases courtes. Des agents (PM, architecte, tech lead, dev…) préparent et proposent ; vous décidez. Les tickets et leurs labels GitHub sont la seule source de vérité : ce cockpit n’en est que le reflet. Chaque phase tourne dans son propre contexte d’agent : d’une phase à l’autre, ce qui se transmet est le ticket (corps, commentaires, labels), jamais la mémoire d’un agent.','PILOT carries a change from idea to verified delivery in short phases. Agents (PM, architect, tech lead, dev…) prepare and propose; you decide. GitHub tickets and labels are the only source of truth: this cockpit just reflects them. Each phase runs in its own agent context: what passes from one phase to the next is the ticket (body, comments, labels), never an agent’s memory.'),
     para('Une phase est une des étapes du process ci-dessous. Un step est une ligne de l’onglet Steps : une phase, ou une variante d’une phase (Spec · feature, Spec · bug…), avec ses trois rôles d’agent — lead, validateur, convocable. Les autres onglets de cette page détaillent les modes, les tickets, les connaissances, les cas particuliers et le cockpit lui-même.','A phase is one of the process stages below. A step is a row of the Steps tab: a phase, or a variant of one (Spec · feature, Spec · bug…), with its three agent roles — lead, validator, summonable. The other tabs of this page detail the modes, the tickets, the knowledge, the special cases and the cockpit itself.'),
     sec('Les phases de ce projet','This project’s phases'),
-    h('div',{class:'agents'},ph.map(function(p){var d=HOW_PHASES[p.key]; return helpCard(p.n+'. '+tr(d[0]),'',[[L('Produit :','Produces:'),L(d[1],d[4])],[L('Comment :','How:'),howOf(p.key,d)],[L('Intérêt :','Why:'),L(d[3],d[6])]]);})),
+    h('div',{class:'agents'},ph.map(function(p){var d=HOW_PHASES[p.key], x=hw(d); return helpCard(p.n+'. '+tr(d.name),'',[[L('Produit :','Produces:'),x.what],[L('Comment :','How:'),howOf(p.key,d)],[L('Intérêt :','Why:'),x.why],[L('Commande :','Command:'),code(d.cmd)]]);})),
     sec('Le profil du projet','The project’s profile'),
     para('Le profil de workflow choisit les phases que le projet fait, le mode par défaut et les relecteurs : standard garde toute la chaîne, lean en retire. La pastille Profil en haut du cockpit le rappelle. Un signal de risque que le projet déclare peut rendre un ticket pair seulement, et un ticket peut porter son propre profil (label workflow:<profil>) tant qu’il n’est pas entré en Dev.','The workflow profile chooses the phases the project runs, the default mode and the reviewers: standard keeps the whole chain, lean drops some. The Profile chip at the top of the cockpit recalls it. A risk signal the project declares can make a ticket pair only, and a ticket can carry its own profile (workflow:<profile> label) until it enters Dev.',S.gh&&S.gh.workflow?profileSummary(S.gh.workflow)+' ':''),
     sec('Par où commencer','Where to start'),
@@ -1810,7 +1822,7 @@ function vHowPrinciples(){
 /* ---- Modes: who proposes, the cycle, summoning agents ---- */
 function vHowModes(){
   var r=wfRules(), dm=r&&r.default_mode;
-  var modeNow=dm==='auto'||dm==='pair'?L('Mode par défaut de ce projet : ','This project’s default mode: ')+(dm==='auto'?L('auto (sans vous).','auto (without you).'):L('pair (avec vous).','pair (with you).')):L('Le mode par défaut est celui du profil du projet.','The default mode is the project profile’s.');
+  var modeNow=dm==='auto'||dm==='pair'?L('Mode par défaut de ce projet : ','This project’s default mode: ')+(dm==='auto'?L('auto (sans vous).','auto (without you).'):L('pair (avec vous).','pair (with you).')):L('Le mode par défaut est pair, sauf si le profil du projet en décide autrement.','The default mode is pair, unless the project’s profile decides otherwise.');
   var humanFor=[rv('discovery')?'Discovery':null,rv('spec')?'Spec':null,rv('dev')?'Dev':null,rv('review')?'Review':null,mv('design')?'/pilot-design':null,mv('proto')?'/pilot-proto':null].filter(Boolean).join(', ');
   var noAuto=[phOn('discovery')?'Discovery':null,phOn('qa')?L('la QA (qui a --browser : l’agent déroule les cas seul dans un navigateur)','QA (which has --browser: the agent runs the cases alone in a browser)'):null].filter(Boolean);
   var dlg=[rv('discovery')?'Discovery':null,rv('spec')?'Spec':null,rv('dev')?'Dev':null].filter(Boolean).join(', ');
@@ -1921,6 +1933,7 @@ function vHowCases(){
     [L('Un travail s’est interrompu en cours de route','Work was interrupted midway'),L('/pilot-<phase> --resume <n°> après avoir vérifié vous-même que le travail est bien mort ; ou can-resume pour la prochaine routine. L’agent relit le ticket entier pour repartir.','/pilot-<phase> --resume <n°> after checking yourself that the work is really dead; or can-resume for the next routine. The agent rereads the whole ticket to restart.')],
     phOn('dev')&&phOn('review')?[L('Une PR a reçu des corrections demandées','A PR got changes requested'),L('/pilot-dev reprend la même PR (jamais une seconde). Si la relecture attend aussi une décision, needs-human bloque la reprise jusqu’à votre réponse.','/pilot-dev picks up the same PR (never a second one). If the review also awaits a decision, needs-human blocks the resume until you answer.'),'tech']:null,
     phOn('review')?[L('Une PR approuvée','An approved PR'),L('Elle n’est fusionnée que par vous, ou par /pilot-review --merge. Un commit ajouté après l’approbation ne déclenche aucune relecture : relancez /pilot-review avant de fusionner.','It is merged only by you, or by /pilot-review --merge. A commit added after approval triggers no review: rerun /pilot-review before merging.'),'tech']:null,
+    phOn('review')?[L('Relancer seulement certains relecteurs','Rerun only some reviewers'),L('/pilot-review <n°> --only pm,techlead : possible après une première relecture, en pair.','/pilot-review <n°> --only pm,techlead: possible after a first review, in pair.'),'tech']:null,
     autoOn()?[L('Un epic ou une story découpée','An epic or a split story'),L('/pilot-auto <n°> descend dans ses sous-tickets et travaille le meilleur candidat ; --next enchaîne jusqu’à la fin ou un blocage.','/pilot-auto <n°> descends into its sub-tickets and works the best candidate; --next keeps going until the end or a block.'),'tech']:null,
     [L('Écarter un ticket','Drop a ticket'),L('wont-do, seulement avant toute spec ou code. À partir de dev-ready, écarter est une décision humaine : needs-human avec le raisonnement.','wont-do, only before any spec or code. From dev-ready on, dropping is a human decision: needs-human with the reasoning.')],
     S.gh&&S.gh.workflow?[L('Un ticket est « pair seulement »','A ticket is “pair only”'),L('Un signal de risque déclaré par le projet le rend interactif : il n’est jamais traité en routine, et le cockpit l’indique.','A risk signal the project declares makes it interactive: it is never handled in a routine, and the cockpit says so.'),'tech']:null,
@@ -1932,27 +1945,43 @@ function vHowCases(){
     simpleTable([L('Situation','Situation'),L('Que faire','What to do')],forRole(rows)));
 }
 var HOW_TABS=[
-  ['file',0,'Ma file','Les tickets qui vous attendent : à valider, bloqués par un drapeau, ou à reprendre. Le formulaire du haut lance une idée.','Ouvrez-la chaque matin ; filtrez par rôle (Produit / Tech) ; indiquez votre login pour voir « mes » tickets.','Vous voyez en un coup d’œil ce qui dépend de vous, sans parcourir GitHub.','My queue','The tickets waiting for you: to approve, blocked by a flag, or to resume. The form at the top starts an idea.','Open it each morning; filter by role (Product / Tech); enter your login to see “my” tickets.','You see at a glance what depends on you, without browsing GitHub.'],
-  ['ensemble',0,'Vue d’ensemble','Le tableau de tous les tickets ouverts par phase, avec les commandes à lancer pour chaque phase.','Choisissez une phase ; lancez-la depuis le bloc de commandes, en pair ou en auto.','Vous pilotez le flux : où ça s’accumule, ce qui est bloqué.','Overview','The board of all open tickets by phase, with the commands to run for each phase.','Pick a phase; run it from the command block, in pair or auto mode.','You steer the flow: where work piles up, what is blocked.'],
-  ['recherche',0,'Recherche','Une recherche dans les tickets, avec filtres par niveau, type, statut, drapeau et assigné.','Tapez un mot ou un numéro, affinez avec les filtres.','Retrouver un ticket ou une décision sans fouiller.','Search','A search across tickets, filtered by level, type, status, flag and assignee.','Type a word or a number, narrow with filters.','Find a ticket or a decision without digging.'],
-  ['activite',0,'Activité','Les sessions d’agents en cours et l’historique des changements de statut.','Consultez-la pour savoir qui travaille sur quoi en ce moment, ou ce qui a bougé.','Évite deux agents sur le même ticket et rend le travail des agents visible.','Activity','Running agent sessions and the history of status changes.','Check it to see who is working on what right now, or what moved.','Prevents two agents on one ticket and makes agent work visible.'],
-  ['prototypes','proto','Prototypes','Des maquettes cliquables de fonctions à tester, construites avec le PM puis le designer, à accepter ou rejeter.','Décrivez la fonction dans l’onglet, puis acceptez ou rejetez la maquette ; une Discovery peut partir d’un prototype accepté (/pilot-proto).','On décide sur du concret avant d’écrire de la spec ou du code.','Prototypes','Clickable mockups of features to try, built with the PM then the designer, to accept or reject.','Describe the feature in the tab, then accept or reject the mockup; a Discovery can start from an accepted prototype (/pilot-proto).','You decide on something concrete before any spec or code is written.'],
-  ['design','design','Design','La charte, les couleurs, la typographie, les espacements, les composants et l’accessibilité du produit.','Lisez-la pour rester cohérent ; faites-la évoluer avec /pilot-design.','Les prototypes et les interfaces restent cohérents d’une feature à l’autre.','Design','The product’s charter, colors, typography, spacing, components and accessibility.','Read it to stay consistent; evolve it with /pilot-design.','Prototypes and interfaces stay consistent from one feature to the next.'],
-  ['wiki','wiki','Wiki','Ce que fait le produit : vision, personas, comportements, parcours utilisateur, par domaine ; chaque entrée dit si elle est en place ou seulement prévue.','Parcourez par domaine ou cherchez ; posez une question, corrigez ou amorcez le wiki avec /pilot-wiki ; testez un parcours avec /pilot-flow.','Un référentiel fonctionnel unique : les agents le lisent avant de spécifier ou relire, et ne contredisent pas un comportement établi.','Wiki','What the product does: vision, personas, behaviors, user flows, by domain; each entry says whether it is in place or only planned.','Browse by domain or search; ask a question, fix or bootstrap the wiki with /pilot-wiki; test a flow with /pilot-flow.','A single functional reference: agents read it before specifying or reviewing, and do not contradict established behavior.'],
-  ['architecture','architecture','Architecture','Comment le produit est construit : vue d’ensemble, règles techniques, référence du code, décisions (ADR) et runbooks.','Consultez avant une décision technique ; posez une question, ajoutez une règle ou un ADR, vérifiez la référence contre le code avec /pilot-architecture.','Les décisions et leurs raisons survivent aux personnes ; une spec ou une PR qui les enfreint est signalée, pas laissée passer.','Architecture','How the product is built: overview, technical rules, code reference, decisions (ADRs) and runbooks.','Check it before a technical decision; ask a question, add a rule or an ADR, verify the reference against the code with /pilot-architecture.','Decisions and their reasons outlive people; a spec or PR that breaks them is flagged, not waved through.']
+  {id:"file",mod:"",
+    fr:{title:"Ma file",what:"Les tickets qui vous attendent : à valider, bloqués par un drapeau, ou à reprendre. Le formulaire du haut lance une idée.",how:"Ouvrez-la chaque matin ; filtrez par rôle (Produit / Tech) ; indiquez votre login pour voir « mes » tickets.",why:"Vous voyez en un coup d’œil ce qui dépend de vous, sans parcourir GitHub."},
+    en:{title:"My queue",what:"The tickets waiting for you: to approve, blocked by a flag, or to resume. The form at the top starts an idea.",how:"Open it each morning; filter by role (Product / Tech); enter your login to see “my” tickets.",why:"You see at a glance what depends on you, without browsing GitHub."}},
+  {id:"ensemble",mod:"",
+    fr:{title:"Vue d’ensemble",what:"Le tableau de tous les tickets ouverts par phase, avec les commandes à lancer pour chaque phase.",how:"Choisissez une phase ; lancez-la depuis le bloc de commandes, en pair ou en auto.",why:"Vous pilotez le flux : où ça s’accumule, ce qui est bloqué."},
+    en:{title:"Overview",what:"The board of all open tickets by phase, with the commands to run for each phase.",how:"Pick a phase; run it from the command block, in pair or auto mode.",why:"You steer the flow: where work piles up, what is blocked."}},
+  {id:"recherche",mod:"",
+    fr:{title:"Recherche",what:"Une recherche dans les tickets, avec filtres par niveau, type, statut, drapeau et assigné.",how:"Tapez un mot ou un numéro, affinez avec les filtres.",why:"Retrouver un ticket ou une décision sans fouiller."},
+    en:{title:"Search",what:"A search across tickets, filtered by level, type, status, flag and assignee.",how:"Type a word or a number, narrow with filters.",why:"Find a ticket or a decision without digging."}},
+  {id:"activite",mod:"",
+    fr:{title:"Activité",what:"Les sessions d’agents en cours et l’historique des changements de statut.",how:"Consultez-la pour savoir qui travaille sur quoi en ce moment, ou ce qui a bougé.",why:"Évite deux agents sur le même ticket et rend le travail des agents visible."},
+    en:{title:"Activity",what:"Running agent sessions and the history of status changes.",how:"Check it to see who is working on what right now, or what moved.",why:"Prevents two agents on one ticket and makes agent work visible."}},
+  {id:"prototypes",mod:"proto",
+    fr:{title:"Prototypes",what:"Des maquettes cliquables de fonctions à tester, construites avec le PM puis le designer, à accepter ou rejeter.",how:"Décrivez la fonction dans l’onglet, puis acceptez ou rejetez la maquette ; une Discovery peut partir d’un prototype accepté (/pilot-proto).",why:"On décide sur du concret avant d’écrire de la spec ou du code."},
+    en:{title:"Prototypes",what:"Clickable mockups of features to try, built with the PM then the designer, to accept or reject.",how:"Describe the feature in the tab, then accept or reject the mockup; a Discovery can start from an accepted prototype (/pilot-proto).",why:"You decide on something concrete before any spec or code is written."}},
+  {id:"design",mod:"design",
+    fr:{title:"Design",what:"La charte, les couleurs, la typographie, les espacements, les composants et l’accessibilité du produit.",how:"Lisez-la pour rester cohérent ; faites-la évoluer avec /pilot-design.",why:"Les prototypes et les interfaces restent cohérents d’une feature à l’autre."},
+    en:{title:"Design",what:"The product’s charter, colors, typography, spacing, components and accessibility.",how:"Read it to stay consistent; evolve it with /pilot-design.",why:"Prototypes and interfaces stay consistent from one feature to the next."}},
+  {id:"wiki",mod:"wiki",
+    fr:{title:"Wiki",what:"Ce que fait le produit : vision, personas, comportements, parcours utilisateur, par domaine ; chaque entrée dit si elle est en place ou seulement prévue.",how:"Parcourez par domaine ou cherchez ; posez une question, corrigez ou amorcez le wiki avec /pilot-wiki ; testez un parcours avec /pilot-flow.",why:"Un référentiel fonctionnel unique : les agents le lisent avant de spécifier ou relire, et ne contredisent pas un comportement établi."},
+    en:{title:"Wiki",what:"What the product does: vision, personas, behaviors, user flows, by domain; each entry says whether it is in place or only planned.",how:"Browse by domain or search; ask a question, fix or bootstrap the wiki with /pilot-wiki; test a flow with /pilot-flow.",why:"A single functional reference: agents read it before specifying or reviewing, and do not contradict established behavior."}},
+  {id:"architecture",mod:"architecture",
+    fr:{title:"Architecture",what:"Comment le produit est construit : vue d’ensemble, règles techniques, référence du code, décisions (ADR) et runbooks.",how:"Consultez avant une décision technique ; posez une question, ajoutez une règle ou un ADR, vérifiez la référence contre le code avec /pilot-architecture.",why:"Les décisions et leurs raisons survivent aux personnes ; une spec ou une PR qui les enfreint est signalée, pas laissée passer."},
+    en:{title:"Architecture",what:"How the product is built: overview, technical rules, code reference, decisions (ADRs) and runbooks.",how:"Check it before a technical decision; ask a question, add a rule or an ADR, verify the reference against the code with /pilot-architecture.",why:"Decisions and their reasons outlive people; a spec or PR that breaks them is flagged, not waved through."}}
 ];
 function vHowModules(){
   return h('div',{class:'list'},
     h('p',{class:'note'},L('Chaque onglet du cockpit, à quoi il sert et pourquoi l’utiliser. Wiki, architecture, design et prototypes sont des modules optionnels : désactivés, leur onglet disparaît et les agents ne les consultent plus. Le filtre de rôle (Produit / Tech / Tous) masque aussi des onglets : choisissez Tous pour tout voir.','Each cockpit tab, what it is for and why to use it. Wiki, architecture, design and prototypes are optional modules: when off, their tab disappears and the agents no longer consult them. The role filter (Product / Tech / All) also hides tabs: pick All to see everything.')),
     h('div',{class:'agents'},HOW_TABS.map(function(t){
-      var on=moduleOn(t[0]), hid=on&&!roleShows(t[0]);
-      var badge=t[1]?(on?(hid?L('masqué par le rôle','hidden by role'):L('actif','on')):L('désactivé','off')):(hid?L('masqué par le rôle','hidden by role'):'');
-      var rows=[[L('Rôle :','What:'),L(t[3],t[7])],[L('Comment :','How:'),L(t[4],t[8])],[L('Intérêt :','Why:'),L(t[5],t[9])]];
-      if(t[1]&&!on)rows.push([L('Activer :','Enable:'),'python3 .pilot/pilot.py module enable '+t[1]]);
-      return helpCard(L(t[2],t[6]),badge,rows);
+      var x=hw(t), on=moduleOn(t.id), hid=on&&!roleShows(t.id);
+      var badge=t.mod?(on?(hid?L('masqué par le rôle','hidden by role'):L('actif','on')):L('désactivé','off')):(hid?L('masqué par le rôle','hidden by role'):'');
+      var rows=[[L('Rôle :','What:'),x.what],[L('Comment :','How:'),x.how],[L('Intérêt :','Why:'),x.why]];
+      if(t.mod&&!on)rows.push([L('Activer :','Enable:'),'python3 .pilot/pilot.py module enable '+t.mod]);
+      return helpCard(x.title,badge,rows);
     })),
     sec('D’où viennent les données du cockpit','Where the cockpit’s data comes from'),
-    para('GitHub reste la vérité. Le cockpit lit un instantané de vos tickets, pris par /pilot-dashboard --refresh, et y ajoute en direct les événements que les agents lui envoient : sessions en cours, changements de statut. Ces envois sont faits au mieux, un échec ne bloque jamais une phase ; un instantané ancien se rafraîchit. Tant qu’aucun instantané n’existe, des données d’exemple sont affichées.','GitHub remains the truth. The cockpit reads a snapshot of your tickets, taken by /pilot-dashboard --refresh, and adds the events agents send it live: running sessions, status changes. These pushes are best-effort, a failure never blocks a phase; an old snapshot is refreshed. Until a snapshot exists, sample data is shown.'));
+    para('GitHub reste la vérité. Le cockpit lit un instantané de vos tickets, pris par /pilot-dashboard --refresh, et y ajoute en direct les événements que les agents lui envoient : sessions en cours, changements de statut. Ces envois sont faits au mieux, un échec ne bloque jamais une phase ; un instantané ancien se rafraîchit. Tant qu’aucun instantané n’existe, des données d’exemple sont affichées. La pastille Instantané en haut du cockpit dit son âge, la pastille Profil rappelle le profil du projet.','GitHub remains the truth. The cockpit reads a snapshot of your tickets, taken by /pilot-dashboard --refresh, and adds the events agents send it live: running sessions, status changes. These pushes are best-effort, a failure never blocks a phase; an old snapshot is refreshed. Until a snapshot exists, sample data is shown. The Snapshot chip at the top of the cockpit tells its age, the Profile chip recalls the project’s profile.'));
 }
 function agentRoles(k){
   var rows=rosterRows(), cols=[['lead',L('Lead :','Lead:')],['val',L('Validateur :','Validator:')],['sum',L('Convocable :','Summonable:')]];
