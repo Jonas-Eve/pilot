@@ -52,8 +52,8 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
      `resume-mismatch`; `wrong-status`; `assigned`; `closed`; `not-found`).
    Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
    `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
-2. **Claim** it: `python3 .pilot/pilot.py claim review <issue> --mode <mode> [--auto]` (the mode named
-   in step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
+2. **Claim** it: `python3 .pilot/pilot.py claim review <issue> --mode <mode> [--auto] [--merge]` (the mode named
+   in step 1; `--merge` whenever this run was given `--merge`, which is what lets the merge guard hook allow step 12) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-review`, re-read to confirm). Exit 1 with `reason: lost-race` → stand down and
    return to step 1 for a different candidate (bare pool only — report nothing to do if a
    specific ticket was requested). Any other refusal → report `reason` and stop.

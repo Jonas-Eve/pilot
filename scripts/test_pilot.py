@@ -729,7 +729,7 @@ class DoctorTests(unittest.TestCase):
 
     def test_the_registry_lists_every_module_with_its_state(self):
         reg = pilot.module_registry({"dashboard": True})
-        self.assertEqual(sorted(reg), ["architecture", "dashboard", "design", "proto", "wiki"])
+        self.assertEqual(sorted(reg), ["architecture", "dashboard", "design", "hooks", "proto", "wiki"])
         self.assertEqual((reg["architecture"]["use"], reg["architecture"]["bootstrap"]), ("/pilot-architecture", "/pilot-architecture --bootstrap"))
         self.assertEqual((reg["dashboard"]["enabled"], reg["design"]["enabled"], reg["design"]["requires"], reg["wiki"]["bootstrap"]),
                          (True, False, ["dashboard"], "/pilot-wiki --bootstrap"))
@@ -2592,15 +2592,26 @@ class HooksTests(unittest.TestCase):
         pilot.track_run(self.claim_payload(merge=True))
         self.assertTrue(pilot.read_run(self.session)["merge"])
 
-    def test_a_set_that_moves_the_claimed_ticket_on_ends_the_run(self):
+    def test_a_later_claim_replaces_the_run_and_a_set_does_not_end_it(self):
         pilot.track_run(self.claim_payload())
-        other = {"session_id": self.session, "tool_name": "Bash",
-                 "tool_input": {"command": "python3 .pilot/pilot.py set 9 --status done"}}
-        self.assertIsNone(pilot.track_run(other))
+        done = {"session_id": self.session, "tool_name": "Bash",
+                "tool_input": {"command": "python3 .pilot/pilot.py set 7 --status approved --unassign"}}
+        self.assertIsNone(pilot.track_run(done))
         self.assertIsNotNone(pilot.read_run(self.session))
-        mine = {**other, "tool_input": {"command": "python3 .pilot/pilot.py set 7 --status approved --unassign"}}
-        self.assertEqual(pilot.track_run(mine), "end")
-        self.assertIsNone(pilot.read_run(self.session))
+        self.assertIsNone(pilot.guard_decision(self.payload("Bash", command="gh pr view 7")))
+        self.assertEqual(pilot.guard_decision(self.payload("Bash", command="gh pr merge 7"))["decision"], "deny")
+        pilot.track_run(self.claim_payload(merge=True))
+        self.assertTrue(pilot.read_run(self.session)["merge"])
+
+    def test_doctor_checks_the_hooks_only_when_the_module_is_on(self):
+        with unittest.mock.patch.object(pilot, "SETTINGS_PATH", self.settings):
+            off = pilot.Machine(FakeGh([])).doctor(str(pathlib.Path(self.dir.name) / "none"), {})
+            self.assertNotIn("hooks", [c["name"] for c in off["checks"]])
+            on = pilot.Machine(FakeGh([])).doctor(str(pathlib.Path(self.dir.name) / "none"), {"hooks": True})
+            self.assertIn("hooks", [c["name"] for c in on["failed"]])
+            self.install()
+            fixed = pilot.Machine(FakeGh([])).doctor(str(pathlib.Path(self.dir.name) / "none"), {"hooks": True})
+            self.assertNotIn("hooks", [c["name"] for c in fixed["failed"]])
 
     # ---- entry point --------------------------------------------------------------------
     def test_the_entry_point_fails_open(self):

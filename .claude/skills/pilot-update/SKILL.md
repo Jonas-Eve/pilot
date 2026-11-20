@@ -147,6 +147,11 @@ from a previous run — the whole point is picking up upstream changes.
    Without a `dashboardUrl`, don't create one here: mention in the report that
    `/pilot-dashboard` can.
 
+5d. **Refresh the hooks.** Only when the `hooks` module is on: run `python3 .pilot/pilot.py hooks install` (it merges PILOT's current
+   entries into `.claude/settings.json` and keeps the project's own); report whether it changed anything. `reason: invalid-json` → leave the file
+   and tell the human. With the module off, mention once that `python3 .pilot/pilot.py module enable hooks` turns it on, then
+   `/pilot-update` installs it; never enable it here.
+
 6. **Update the state marker.** Set `lastSkillsSyncAt` (if step 2 changed anything),
    `lastProcessDocSyncAt` (if step 3 changed any of its files), and
    `lastIntroSyncAt` (if step 4 changed anything) in `.pilot/state.json` to now, `modules` (step 5b, only when it was absent), and

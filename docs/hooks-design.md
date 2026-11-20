@@ -1,10 +1,10 @@
 # PILOT — hooks (design proposal)
 
-Status: **engine implemented in `scripts/pilot.py` (v4.4.0), not yet wired**: `pilot.py hook guard|track` and
-`pilot.py hooks install|check|remove` exist with their tests, but there is no `hooks` module yet, `/pilot-init` and
-`/pilot-update` do not run `install`, and no skill passes `--merge` to `claim`. This repo's own maintainer hooks are
-separate (`.claude/settings.json`, `scripts/hooks/repo_hook.py`). Human-only document: no skill or agent reads it, and it
-is not copied into consuming projects.
+Status: **implemented in v4.4.0**: `pilot.py hook guard|track`, `pilot.py hooks install|check|remove`, the opt-in `hooks`
+module (`module enable hooks`; `/pilot-init` step 9d and `/pilot-update` step 5d run `install`; `doctor` checks it), and
+`claim --merge` passed by the review skill. Not done: the guards for `wiki/` and `architecture/` PRs, a Stop hook, and the
+prose the hooks make redundant (kept while the module is opt-in). This repo's own maintainer hooks are separate
+(`.claude/settings.json`, `scripts/hooks/repo_hook.py`).
 
 ## 1. Goal
 
@@ -56,8 +56,8 @@ A hook must know a PILOT run is active, and whether it may merge.
 - **Keyed by session**: a second Claude session on the same checkout has its own file, so is never guarded by
   another's run. A sub-agent's payload carries the **same `session_id`** as its parent (measured), plus `agent_id`
   and `agent_type`, so one file covers the whole run.
-- **Ends** when a `pilot.py set` on the claimed ticket changes its status, unassigns it or closes it, or after a TTL
-  of 4 h. A marker lives outside the repository (nothing to git-ignore); a cloud session resumed in a new container
+- **Ends** after a TTL of 4 h, or when a later `claim` replaces it. A `set` does not end it: the merge that follows a
+  review's approving `set` must still be guarded. A marker lives outside the repository (nothing to git-ignore); a cloud session resumed in a new container
   loses it, which is the fail-open side.
 
 ## 5. Installation: merging into `settings.json`
@@ -72,8 +72,8 @@ A hook must know a PILOT run is active, and whether it may merge.
   `.pilot/pilot.py" hook `; every other key, group and handler is kept as it was.
 - Idempotent; writes atomically; prints one JSON object (`changed`). `check` is read-only (`installed`).
 
-`/pilot-init` and `/pilot-update` are to ask before running `install`, since it edits a project-owned file, and to
-run it silently afterwards when the module is on. Not wired yet.
+`/pilot-init` (step 9d) installs when the module is chosen, and says it edits `.claude/settings.json` when asking;
+`/pilot-update` (step 5d) refreshes the entries when the module is on and only mentions the module when it is off.
 
 ## 6. The guards
 
@@ -106,8 +106,7 @@ architecture, flow), "`.pilot/` is never edited". A rule stays in prose only if 
 
 ## 9. Versioning
 
-The engine shipped as **4.4.0** (minor: new commands, inert until installed). Wiring `install` into `/pilot-init` and
-`/pilot-update`, the `hooks` module and the review skill's `--merge` are the next slice, minor again.
+Shipped as **4.4.0** (minor: new commands and an opt-in module, inert until enabled).
 
 ## 10. Open questions
 

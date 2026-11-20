@@ -238,6 +238,7 @@ MODULES = {
     "dashboard": {"skills": ["pilot-dashboard"], "requires": [], "use": "/pilot-dashboard"},
     "design": {"skills": ["pilot-design"], "requires": ["dashboard"], "use": "/pilot-design"},
     "proto": {"skills": ["pilot-proto"], "requires": ["dashboard"], "use": "/pilot-proto"},
+    "hooks": {"skills": [], "requires": [], "use": "/pilot-update"},  # no skill of its own: init and update run `hooks install`
 }
 WIKI_SNAPSHOT_MAX_BYTES = 240_000  # a database document holds at most 256 KiB
 WIKI_STATUSES = ("proposed", "specified", "implemented")  # the only ones a file holds
@@ -916,6 +917,13 @@ class Machine:
                 check(name, os.path.isdir(folder),
                       f"{folder}/ found" if os.path.isdir(folder) else
                       f"the {name} module is enabled but {folder}/ is missing: run {meta['use']}")
+        if modules.get("hooks"):
+            try:
+                installed = run_hooks(argparse.Namespace(action="check", path=SETTINGS_PATH))["installed"]
+                check("hooks", installed, f"installed in {SETTINGS_PATH}" if installed else
+                      f"the hooks module is enabled but {SETTINGS_PATH} lacks PILOT's entries: run python3 .pilot/pilot.py hooks install")
+            except Refused as refused:
+                check("hooks", False, f"{SETTINGS_PATH}: {refused.payload.get('reason')}")
         failed = [c for c in checks if not c["ok"]]
         return {"ok": not failed, "login": login, "failed": failed, "checks": checks}
 
@@ -2624,7 +2632,7 @@ HOOK_ENTRIES = {
     "PreToolUse": {"matcher": HOOK_GUARD_TOOLS, "name": "guard"},
     "PostToolUse": {"matcher": "Bash", "name": "track"},
 }
-RUN_TTL_SECONDS = 4 * 3600  # a run marker older than this is ignored
+RUN_TTL_SECONDS = 4 * 3600  # a run marker older than this is ignored; a new claim replaces it
 OWNED_DIR = ".pilot/"
 OWNED_EXEMPT = (".pilot/state.json",)  # the one file of that folder a skill may write by hand
 LABEL_EDIT_FLAGS = ("--add-label", "--remove-label", "--add-assignee", "--remove-assignee")
@@ -2798,8 +2806,8 @@ def guard_decision(payload, now=None):
 
 
 def track_run(payload, now=None):
-    """PostToolUse on Bash: a successful `pilot.py claim` opens this session's run; a `set` that moves the claimed ticket on,
-    unassigns it or closes it ends it. Returns what it did (for the tests)."""
+    """PostToolUse on Bash: a successful `pilot.py claim` opens this session's run (a later claim replaces it); nothing ends it
+    but the TTL, so the merge that follows a review's approving `set` is still guarded. Returns what it did (for the tests)."""
     session = payload.get("session_id")
     command = str((payload.get("tool_input") or {}).get("command", ""))
     call = pilot_call(command)
@@ -2819,13 +2827,6 @@ def track_run(payload, now=None):
         write_run(session, {"phase": phase, "ticket": result.get("issue"), "status": result.get("status"),
                             "merge": "--merge" in rest, "at": now or time.time()})
         return "start"
-    if sub == "set" and read_run(session, now):
-        run = read_run(session, now)
-        ticket = next((w for w in rest if w.isdigit()), None)
-        if ticket and int(ticket) == run.get("ticket") and (
-                "--unassign" in rest or "--close" in rest or "--status" in rest):
-            end_run(session)
-            return "end"
     return None
 
 
