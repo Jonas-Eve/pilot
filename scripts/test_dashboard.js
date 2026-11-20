@@ -1106,6 +1106,7 @@ const STUB = (opts) => `
   check('reference page: Modules gives one card per cockpit tab, each with what, how and why; the optional ones say they are on',
         (await page.$$('#view .agents .row')).length === 8 && (mods.match(/Rôle :/g) || []).length === 8 && (mods.match(/Comment :/g) || []).length === 8 && (mods.match(/Intérêt :/g) || []).length === 8 &&
         (mods.match(/actif/g) || []).length === 1 && (mods.match(/masqué par le rôle/g) || []).length === 3 && /python3 \.pilot\/pilot\.py module enable/.test(mods) === false && /Wiki/.test(mods) && /Architecture/.test(mods) && /\/pilot-architecture/.test(mods), mods.slice(0, 200));
+  check('reference page: Modules explains the hooks module and shows whether it is on', /Garde-fous : le module hooks/i.test(mods) && /(activé|désactivé)\./.test(mods), mods.slice(0, 120));
   // the role filter (Produit / Tech / Tous) applies to the help pages too
   const roleTab = async (role, sub) => { await page.click('#roleSeg >> text=' + role); await page.evaluate((s) => { location.hash = 'aide/' + s; }, sub); await page.waitForTimeout(150); return page.$eval('#view', (e) => e.innerText); };
   {

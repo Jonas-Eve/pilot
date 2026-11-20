@@ -1,4 +1,4 @@
-# PILOT — hooks (design proposal)
+# PILOT — hooks
 
 Status: **implemented in v4.4.0**: `pilot.py hook guard|track`, `pilot.py hooks install|check|remove`, the opt-in `hooks`
 module (`module enable hooks`; `/pilot-init` step 9d and `/pilot-update` step 5d run `install`; `doctor` checks it), and

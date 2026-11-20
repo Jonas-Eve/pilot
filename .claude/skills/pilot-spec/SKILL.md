@@ -171,10 +171,10 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
 5. Apply the result (`mcp__github__issue_write`, `mcp__github__sub_issue_write`):
    - No split (`type:tech` `level:story` only, or a `level:task` needing just a spec —
      a `type:feature` story is never this case, step 4): update the ticket body with the
-     spec and decisions, write the reconfirmed/revised `priority:` (for a `level:story` —
-     still the ticket's own, since it's still the one leaf), then `python3 .pilot/pilot.py
-     set <issue> --status dev-ready --unassign` (a claimed ticket must be unassigned to
-     enter phase 3's pool). Edit step 3's scratch comment down to one line (e.g. "Spec written,
+     spec and decisions (`issue_write`, the body only), then `python3 .pilot/pilot.py
+     set <issue> --status dev-ready --unassign` with `--add priority:<new> --remove priority:<old>` when the
+     reconfirmed `priority:` changes (for a `level:story` — still the ticket's own, since it's still the one leaf);
+     a claimed ticket must be unassigned to enter phase 3's pool. Edit step 3's scratch comment down to one line (e.g. "Spec written,
      status:dev-ready"): the content now lives in the ticket body.
    - Split into tasks: create the sub-issues, link to the parent as native
      sub-issues, each labeled `level:task` plus its own `type:` as decided in step 4
