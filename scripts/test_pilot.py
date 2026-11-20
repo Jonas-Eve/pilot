@@ -5,10 +5,12 @@ import importlib.util
 import json
 import pathlib
 import re
+import shutil
 import contextlib
 import io
 import os
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -17,6 +19,9 @@ import unittest.mock
 spec = importlib.util.spec_from_file_location("pilot", pathlib.Path(__file__).with_name("pilot.py"))
 pilot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pilot)
+hook_spec = importlib.util.spec_from_file_location("pilot_hook", pathlib.Path(__file__).with_name("pilot_hook.py"))
+hook = importlib.util.module_from_spec(hook_spec)
+hook_spec.loader.exec_module(hook)
 
 
 _CWD, _TMP = None, None
@@ -2275,7 +2280,7 @@ class VersionBumpTests(unittest.TestCase):
     skipped where that ref or git is not available."""
 
     ROOT = pathlib.Path(__file__).resolve().parent.parent
-    SHIPPED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/setup-github-labels.sh")
+    SHIPPED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/pilot_hook.py", "scripts/setup-github-labels.sh")
 
     def git(self, *args):
         out = subprocess.run(["git", *args], cwd=self.ROOT, capture_output=True, text=True)
@@ -2456,7 +2461,7 @@ class HooksTests(unittest.TestCase):
         self.settings = os.path.join(self.dir.name, "settings.json")
         self.session = f"test-{os.getpid()}-{id(self)}"
         self.addCleanup(self.dir.cleanup)
-        self.addCleanup(pilot.end_run, self.session)
+        self.addCleanup(hook.end_run, self.session)
 
     def install(self):
         return pilot.run_hooks(argparse_ns(action="install", path=self.settings))
@@ -2469,7 +2474,7 @@ class HooksTests(unittest.TestCase):
         return {"session_id": self.session, "tool_name": tool, "tool_input": params}
 
     def start_run(self, merge=False, ticket=7, now=None):
-        pilot.write_run(self.session, {"phase": "review", "ticket": ticket, "status": "status:in-review",
+        hook.write_run(self.session, {"phase": "review", "ticket": ticket, "status": "status:in-review",
                                        "merge": merge, "at": now or time.time()})
 
     # ---- install ------------------------------------------------------------------------
@@ -2498,7 +2503,7 @@ class HooksTests(unittest.TestCase):
 
     def test_install_replaces_a_stale_entry_and_remove_takes_only_pilots(self):
         stale = {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [
-            {"type": "command", "command": 'python3 "$CLAUDE_PROJECT_DIR/.pilot/pilot.py" hook old-name'},
+            {"type": "command", "command": 'python3 "$CLAUDE_PROJECT_DIR/.pilot/pilot_hook.py" old-name'},
             {"type": "command", "command": "mine.sh"}]}]}}
         with open(self.settings, "w", encoding="utf-8") as handle:
             json.dump(stale, handle)
@@ -2527,27 +2532,27 @@ class HooksTests(unittest.TestCase):
 
     # ---- guard --------------------------------------------------------------------------
     def test_outside_a_run_nothing_is_refused_but_a_write_to_pilot_owned_files(self):
-        self.assertIsNone(pilot.guard_decision(self.payload("Bash", command="gh pr merge 5")))
-        self.assertIsNone(pilot.guard_decision(self.payload("Bash", command="gh issue edit 5 --add-label status:done")))
-        self.assertIsNone(pilot.guard_decision(self.payload("mcp__github__merge_pull_request", pullNumber=5)))
+        self.assertIsNone(hook.guard_decision(self.payload("Bash", command="gh pr merge 5")))
+        self.assertIsNone(hook.guard_decision(self.payload("Bash", command="gh issue edit 5 --add-label status:done")))
+        self.assertIsNone(hook.guard_decision(self.payload("mcp__github__merge_pull_request", pullNumber=5)))
         with unittest.mock.patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": self.dir.name}):
-            self.assertEqual(pilot.guard_decision(self.payload("Write", file_path=".pilot/pilot.py"))["decision"], "deny")
-            self.assertIsNone(pilot.guard_decision(self.payload("Write", file_path=".pilot/state.json")))
-            self.assertIsNone(pilot.guard_decision(self.payload("Edit", file_path="src/app.py")))
+            self.assertEqual(hook.guard_decision(self.payload("Write", file_path=".pilot/pilot.py"))["decision"], "deny")
+            self.assertIsNone(hook.guard_decision(self.payload("Write", file_path=".pilot/state.json")))
+            self.assertIsNone(hook.guard_decision(self.payload("Edit", file_path="src/app.py")))
 
     def test_a_run_never_merges_unless_started_with_merge(self):
         self.start_run()
         for call in (("Bash", {"command": "gh pr merge 5 --squash"}),
                      ("mcp__github__merge_pull_request", {"pullNumber": 5}),
                      ("mcp__github__enable_pr_auto_merge", {"pullNumber": 5})):
-            self.assertEqual(pilot.guard_decision(self.payload(call[0], **call[1]))["decision"], "deny", call)
+            self.assertEqual(hook.guard_decision(self.payload(call[0], **call[1]))["decision"], "deny", call)
         self.start_run(merge=True)
-        self.assertIsNone(pilot.guard_decision(self.payload("Bash", command="gh pr merge 5 --squash")))
+        self.assertIsNone(hook.guard_decision(self.payload("Bash", command="gh pr merge 5 --squash")))
 
     def test_the_mcp_server_name_does_not_matter(self):
         self.start_run()
-        self.assertEqual(pilot.guard_decision(self.payload("mcp__GitHub__merge_pull_request", pullNumber=5))["decision"], "deny")
-        self.assertEqual(pilot.guard_decision(self.payload(
+        self.assertEqual(hook.guard_decision(self.payload("mcp__GitHub__merge_pull_request", pullNumber=5))["decision"], "deny")
+        self.assertEqual(hook.guard_decision(self.payload(
             "mcp__GitHub__issue_write", method="update", labels=["x"]))["decision"], "deny")
         self.install()
         matcher = self.load()["hooks"]["PreToolUse"][-1]["matcher"]
@@ -2560,7 +2565,7 @@ class HooksTests(unittest.TestCase):
                      ("Bash", {"command": "gh api -X PATCH repos/o/r/issues/7 -f labels[]=status:done"}),
                      ("mcp__github__issue_write", {"method": "update", "issue_number": 7, "labels": ["status:done"]}),
                      ("mcp__github__issue_write", {"method": "update", "issue_number": 7, "assignees": ["me"]})):
-            verdict = pilot.guard_decision(self.payload(call[0], **call[1]))
+            verdict = hook.guard_decision(self.payload(call[0], **call[1]))
             self.assertEqual(verdict["decision"], "deny", call)
             self.assertIn("pilot.py", verdict["message"])
 
@@ -2571,23 +2576,23 @@ class HooksTests(unittest.TestCase):
                      ("Bash", {"command": "gh issue view 7"}),
                      ("Bash", {"command": "gh issue comment 7 --body hi"}),
                      ("Bash", {"command": "python3 .pilot/pilot.py set 7 --status review-ready"})):
-            self.assertIsNone(pilot.guard_decision(self.payload(call[0], **call[1])), call)
+            self.assertIsNone(hook.guard_decision(self.payload(call[0], **call[1])), call)
 
     def test_text_that_merely_mentions_a_command_is_not_that_command(self):
         self.start_run()
         for command in ('gh pr create --body "never run gh pr merge here"',
                         "cat <<'EOF'\ngh pr merge 5\ngh issue edit 7 --add-label x\nEOF",
                         "echo 'gh issue edit 7 --add-label status:done'"):
-            self.assertIsNone(pilot.guard_decision(self.payload("Bash", command=command)), command)
+            self.assertIsNone(hook.guard_decision(self.payload("Bash", command=command)), command)
         for command in ("cd repo && gh pr merge 5", "echo hi; gh pr merge 5", "gh pr merge 5 | cat"):
-            self.assertEqual(pilot.guard_decision(self.payload("Bash", command=command))["decision"], "deny", command)
+            self.assertEqual(hook.guard_decision(self.payload("Bash", command=command))["decision"], "deny", command)
 
     def test_an_expired_run_or_another_session_is_not_guarded(self):
-        self.start_run(now=time.time() - pilot.RUN_TTL_SECONDS - 5)
-        self.assertIsNone(pilot.guard_decision(self.payload("Bash", command="gh pr merge 5")))
+        self.start_run(now=time.time() - hook.RUN_TTL_SECONDS - 5)
+        self.assertIsNone(hook.guard_decision(self.payload("Bash", command="gh pr merge 5")))
         self.start_run()
         other = {**self.payload("Bash", command="gh pr merge 5"), "session_id": self.session + "-other"}
-        self.assertIsNone(pilot.guard_decision(other))
+        self.assertIsNone(hook.guard_decision(other))
 
     # ---- track --------------------------------------------------------------------------
     def claim_payload(self, claimed=True, merge=False):
@@ -2597,10 +2602,10 @@ class HooksTests(unittest.TestCase):
                 "tool_response": {"stdout": out, "stderr": ""}}
 
     def test_a_successful_claim_opens_the_run_and_a_failed_one_does_not(self):
-        self.assertIsNone(pilot.track_run(self.claim_payload(claimed=False)))
-        self.assertIsNone(pilot.read_run(self.session))
-        self.assertEqual(pilot.track_run(self.claim_payload()), "start")
-        run = pilot.read_run(self.session)
+        self.assertIsNone(hook.track_run(self.claim_payload(claimed=False)))
+        self.assertIsNone(hook.read_run(self.session))
+        self.assertEqual(hook.track_run(self.claim_payload()), "start")
+        run = hook.read_run(self.session)
         self.assertEqual((run["phase"], run["ticket"], run["merge"]), ("review", 7, False))
 
     def test_claim_accepts_the_merge_flag_the_hook_reads(self):
@@ -2608,19 +2613,19 @@ class HooksTests(unittest.TestCase):
         self.assertTrue(args.merge)
 
     def test_the_merge_flag_of_the_claim_is_recorded(self):
-        pilot.track_run(self.claim_payload(merge=True))
-        self.assertTrue(pilot.read_run(self.session)["merge"])
+        hook.track_run(self.claim_payload(merge=True))
+        self.assertTrue(hook.read_run(self.session)["merge"])
 
     def test_a_later_claim_replaces_the_run_and_a_set_does_not_end_it(self):
-        pilot.track_run(self.claim_payload())
+        hook.track_run(self.claim_payload())
         done = {"session_id": self.session, "tool_name": "Bash",
                 "tool_input": {"command": "python3 .pilot/pilot.py set 7 --status approved --unassign"}}
-        self.assertIsNone(pilot.track_run(done))
-        self.assertIsNotNone(pilot.read_run(self.session))
-        self.assertIsNone(pilot.guard_decision(self.payload("Bash", command="gh pr view 7")))
-        self.assertEqual(pilot.guard_decision(self.payload("Bash", command="gh pr merge 7"))["decision"], "deny")
-        pilot.track_run(self.claim_payload(merge=True))
-        self.assertTrue(pilot.read_run(self.session)["merge"])
+        self.assertIsNone(hook.track_run(done))
+        self.assertIsNotNone(hook.read_run(self.session))
+        self.assertIsNone(hook.guard_decision(self.payload("Bash", command="gh pr view 7")))
+        self.assertEqual(hook.guard_decision(self.payload("Bash", command="gh pr merge 7"))["decision"], "deny")
+        hook.track_run(self.claim_payload(merge=True))
+        self.assertTrue(hook.read_run(self.session)["merge"])
 
     def test_doctor_checks_the_hooks_only_when_the_module_is_on(self):
         with unittest.mock.patch.object(pilot, "SETTINGS_PATH", self.settings):
@@ -2636,16 +2641,40 @@ class HooksTests(unittest.TestCase):
     def test_the_entry_point_fails_open(self):
         for raw in ("", "not json", "[]", json.dumps({"tool_name": 3})):
             with unittest.mock.patch("sys.stdin", io.StringIO(raw)):
-                self.assertEqual(pilot.run_hook("guard"), 0, raw)
+                self.assertEqual(hook.run_hook("guard"), 0, raw)
             with unittest.mock.patch("sys.stdin", io.StringIO(raw)):
-                self.assertEqual(pilot.run_hook("track"), 0, raw)
+                self.assertEqual(hook.run_hook("track"), 0, raw)
+
+    def test_the_script_exits_2_on_a_refusal_and_0_on_anything_else(self):
+        self.start_run()
+        script = pathlib.Path(__file__).with_name("pilot_hook.py")
+        run = lambda raw, mode="guard": subprocess.run([sys.executable, str(script), mode], input=raw, capture_output=True, text=True)
+        refused = run(json.dumps(self.payload("Bash", command="gh pr merge 5")))
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("--merge", refused.stderr)
+        self.assertEqual(run(json.dumps(self.payload("Bash", command="ls"))).returncode, 0)
+        self.assertEqual(run("garbage").returncode, 0)
+        self.assertEqual(run("{}", "nope").returncode, 0)
+
+    def test_the_installed_command_exits_0_when_the_script_is_missing(self):
+        command = pilot.hook_command("guard")
+        done = subprocess.run(["sh", "-c", command], input="{}", capture_output=True, text=True,
+                              env={**os.environ, "CLAUDE_PROJECT_DIR": self.dir.name})
+        self.assertEqual(done.returncode, 0)
+        shutil.copy(pathlib.Path(__file__).with_name("pilot_hook.py"), self.dir.name + "/pilot_hook.py")
+        os.makedirs(self.dir.name + "/.pilot")
+        os.replace(self.dir.name + "/pilot_hook.py", self.dir.name + "/.pilot/pilot_hook.py")
+        self.start_run()
+        refused = subprocess.run(["sh", "-c", command], input=json.dumps(self.payload("Bash", command="gh pr merge 5")),
+                                 capture_output=True, text=True, env={**os.environ, "CLAUDE_PROJECT_DIR": self.dir.name})
+        self.assertEqual(refused.returncode, 2)
 
     def test_the_entry_point_exits_2_with_the_reason_on_stderr(self):
         self.start_run()
         raw = json.dumps(self.payload("Bash", command="gh pr merge 5"))
         err = io.StringIO()
         with unittest.mock.patch("sys.stdin", io.StringIO(raw)), contextlib.redirect_stderr(err):
-            self.assertEqual(pilot.run_hook("guard"), 2)
+            self.assertEqual(hook.run_hook("guard"), 2)
         self.assertIn("--merge", err.getvalue())
 
 

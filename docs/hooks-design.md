@@ -1,6 +1,6 @@
 # PILOT — hooks
 
-Status: **implemented in v4.4.0**: `pilot.py hook guard|track`, `pilot.py hooks install|check|remove`, the opt-in `hooks`
+Status: **implemented in v4.4.0**: `pilot_hook.py guard|track` (the lightweight entry point), `pilot.py hooks install|check|remove`, the opt-in `hooks`
 module (`module enable hooks`; `/pilot-init` step 9d and `/pilot-update` step 5d run `install`; `doctor` checks it), and
 `claim --merge` passed by the review skill. Not done: the guards for `wiki/` and `architecture/` PRs, a Stop hook, and the
 prose the hooks make redundant (kept while the module is opt-in). This repo's own maintainer hooks are separate
@@ -34,8 +34,11 @@ by default in cloud, or workspace trust never accepted; the outcome is the same)
 
 ## 3. Principles
 
-1. **One entry point, in `pilot.py`**: `python3 .pilot/pilot.py hook <name>`, reads the hook payload on stdin.
-   Decisions are code with offline tests (`scripts/test_pilot.py`), like every other mechanic.
+1. **One lightweight entry point, `pilot_hook.py`** (copied as `.pilot/pilot_hook.py`): `guard` and `track`, the hook payload on
+   stdin. A hook runs on every tool call, so the file imports a handful of stdlib modules and nothing else (about 25 ms
+   instead of about 88 ms when it was part of `pilot.py`, which is recompiled at each run). Decisions are code with offline tests
+   (`scripts/test_pilot.py`), like every other mechanic. The installed command exits 0 when the file is missing: a Python that
+   cannot open its script exits 2, which a hook reads as a refusal.
 2. **Inert outside a PILOT run**, except the write guard on `.pilot/`, which always applies. A project's own work is
    never touched. No active run → exit 0.
 3. **Fail open.** Missing script, bad payload, any exception → exit 0. A hook never blocks the project because
@@ -51,7 +54,7 @@ by default in cloud, or workspace trust never accepted; the outcome is the same)
 
 A hook must know a PILOT run is active, and whether it may merge.
 
-- **Written by a hook, not by `claim`**: the `claim` process does not know the Claude session. `hook track`
+- **Written by a hook, not by `claim`**: the `claim` process does not know the Claude session. `track`
   (PostToolUse on `Bash`) sees a successful `pilot.py claim` and writes `<tmpdir>/pilot-run-<session_id>.json`:
   `{phase, ticket, status, merge, at}`. `merge` is true when the command line carried `--merge` (the flag exists on
   `claim` for that purpose; the review skill must pass it).
@@ -68,10 +71,10 @@ A hook must know a PILOT run is active, and whether it may merge.
 
 `pilot.py hooks install|check|remove [--path P]`:
 - Reads the file (absent → `{}`); **refuses** with `invalid-json` and leaves it untouched when it cannot be read.
-- Drops every PILOT handler, then adds the current two: `PreToolUse` → `hook guard` on
+- Drops every PILOT handler, then adds the current two: `PreToolUse` → `guard` on
   `Bash|Edit|Write|mcp__.*__(issue_write|merge_pull_request|enable_pr_auto_merge)` (any GitHub MCP server name),
-  `PostToolUse` → `hook track` on `Bash`. A handler is PILOT's when its command holds
-  `.pilot/pilot.py" hook `; every other key, group and handler is kept as it was.
+  `PostToolUse` → `track` on `Bash`. A handler is PILOT's when its command holds
+  `.pilot/pilot_hook.py`; every other key, group and handler is kept as it was.
 - Idempotent; writes atomically; prints one JSON object (`changed`). `check` is read-only (`installed`).
 
 `/pilot-init` (step 9d) installs when the module is chosen, and says it edits `.claude/settings.json` when asking;
@@ -79,7 +82,7 @@ A hook must know a PILOT run is active, and whether it may merge.
 
 ## 6. The guards
 
-One handler, `hook guard`, decides by tool; all but the first act only during a run of this session.
+One handler, `guard`, decides by tool; all but the first act only during a run of this session.
 
 | Guard | Tools | Refuses |
 |---|---|---|

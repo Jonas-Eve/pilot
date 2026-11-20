@@ -22,10 +22,10 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 OWNED = (".pilot/", ".github/workflows/pilot-status-on-merge.yml")
-LINTED = (".claude/skills/", ".claude/agents/", "assets/docs/", "assets/templates/", "scripts/pilot.py", "CLAUDE.md")
+LINTED = (".claude/skills/", ".claude/agents/", "assets/docs/", "assets/templates/", "scripts/pilot.py", "scripts/pilot_hook.py", "CLAUDE.md")
 
 
-REVIEWED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/setup-github-labels.sh",
+REVIEWED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/pilot_hook.py", "scripts/setup-github-labels.sh",
             "CLAUDE.md", "README.md", "VERSION")  # what a PR must have had reviewed
 REVIEW_DOC = "docs/maintainer-review.md"
 
@@ -57,9 +57,9 @@ def review_scope(root):
 
 
 def engine(root):
-    """scripts/pilot.py of this checkout, for its shell-command parser (one implementation of "is this command run")."""
+    """scripts/pilot_hook.py of this checkout, for its shell-command parser (one implementation of "is this command run")."""
     import importlib.util
-    spec = importlib.util.spec_from_file_location("pilot_engine", ROOT / "scripts" / "pilot.py")
+    spec = importlib.util.spec_from_file_location("pilot_hook", ROOT / "scripts" / "pilot_hook.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

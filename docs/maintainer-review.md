@@ -35,7 +35,7 @@ and read what turns up. Then:
 
 ### 2. Completeness (the holes)
 - **Version:** any file projects copy changed (`.claude/skills/`, `.claude/agents/`, `assets/`, `scripts/pilot.py`,
-  `scripts/setup-github-labels.sh`) → `VERSION` raised, at the right level (CLAUDE.md §4: patch / minor / major).
+  `scripts/pilot_hook.py`, `scripts/setup-github-labels.sh`) → `VERSION` raised, at the right level (CLAUDE.md §4: patch / minor / major).
 - **A new or renamed label, status, flag, command, module or skill → every place that names it:** `pilot-process.md`,
   `pilot.py` docstring and `--help`, the CLAUDE.md §2 `pilot.py` paragraph, `pilot-help`, `/pilot-init` and `/pilot-update`,
   the dashboard "i" page (`HOW_PHASES`, `HOW_TABS`, `vHow*`, `AGENTS`, `ROSTER`) and `scripts/test_dashboard.js`,

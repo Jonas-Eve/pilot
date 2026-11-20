@@ -35,7 +35,8 @@ from a previous run — the whole point is picking up upstream changes.
   persona files carry only identity, never a duty's mechanics),
   **`.pilot/pilot.py`** (the script the `pilot-spec`/`pilot-dev`/`pilot-review`/
   `pilot-qa` skills run for ticket selection, claiming and status transitions, from
-  `$PILOT_SRC/scripts/pilot.py`), and
+  `$PILOT_SRC/scripts/pilot.py`), **`.pilot/pilot_hook.py`** (the lightweight entry point
+  of the `hooks` module's hooks, from `$PILOT_SRC/scripts/pilot_hook.py`), and
   **`.github/workflows/pilot-status-on-merge.yml`** are the same kind of PILOT-owned
   file, made by `pilot-init` from `$PILOT_SRC`.
 - **The `<!-- PILOT:INTRO:START -->`/`END` and `<!-- PILOT:MAINTENANCE:START -->`/`END`
@@ -77,7 +78,7 @@ from a previous run — the whole point is picking up upstream changes.
 3. **Diff the PILOT-owned root files.** Compare the project's `.pilot/pilot-process.md`,
    every `.pilot/pilot-process-*.md`, `.pilot/pilot-link-*.md`, and `.pilot/pilot-task-*.md` the
    project has, `.pilot/pilot.py` (against `$PILOT_SRC/scripts/pilot.py`; new
-   upstream if missing, `chmod +x` after copying), and
+   upstream if missing, `chmod +x` after copying), `.pilot/pilot_hook.py` (against `$PILOT_SRC/scripts/pilot_hook.py`, the same way), and
    `.github/workflows/pilot-status-on-merge.yml` against `$PILOT_SRC`'s
    copies (for the three glob sets, that means every such file currently under
    `$PILOT_SRC/assets/docs/` — treat each as its own set, not a fixed list of names,
