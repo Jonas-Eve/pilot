@@ -2627,7 +2627,7 @@ def run_flow(args):
 # ---- hooks: the constraints on what the model does during a PILOT run (design: docs/hooks-design.md) ----------------
 SETTINGS_PATH = os.path.join(".claude", "settings.json")
 HOOK_MARK = '.pilot/pilot.py" hook '  # a handler whose command holds this is PILOT's; the others are the project's
-HOOK_GUARD_TOOLS = "Bash|Edit|Write|mcp__github__issue_write|mcp__github__merge_pull_request|mcp__github__enable_pr_auto_merge"
+HOOK_GUARD_TOOLS = "Bash|Edit|Write|mcp__.*__(issue_write|merge_pull_request|enable_pr_auto_merge)"  # any GitHub MCP server name
 HOOK_ENTRIES = {
     "PreToolUse": {"matcher": HOOK_GUARD_TOOLS, "name": "guard"},
     "PostToolUse": {"matcher": "Bash", "name": "track"},
@@ -2811,6 +2811,8 @@ def guard_decision(payload, now=None):
     """What the PreToolUse guard says about one tool call: None to let it through, or a refusal. Inert outside a PILOT run,
     except the write guard on `.pilot/`; never raises (a hook that breaks must not block the project)."""
     tool, params = payload.get("tool_name", ""), payload.get("tool_input") or {}
+    if tool.startswith("mcp__"):  # the server's name varies (github, GitHub…): the tool is what counts
+        tool = "mcp__github__" + tool.rsplit("__", 1)[-1].lower()
     if tool in ("Edit", "Write"):
         raw = str(params.get("file_path", ""))
         root = os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd()

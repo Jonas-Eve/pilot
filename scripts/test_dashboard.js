@@ -1098,7 +1098,7 @@ const STUB = (opts) => `
         (/Commande :/.test(how)) && cited.statuses.indexOf('changes-requested') < 0 && /changes-requested : la relecture/.test(how), how.slice(0, 100));
   check('reference page: every flag it cites exists in a skill or in the process', noFlag.length === 0 && cited.flags.size >= 5, noFlag.join(','));
   check('reference page: every status of its chain is a status of the process', noStatus.length === 0 && cited.statuses.length >= 9, noStatus.join(','));
-  check('reference page: every module it tells to enable is a module of pilot.py', cited.mods.size === 0 || [...cited.mods].every((m) => new RegExp("'" + m + "'").test(pyText)), [...cited.mods].join(','));
+  check('reference page: every module it tells to enable is a module of pilot.py', cited.mods.size === 0 || [...cited.mods].every((m) => new RegExp("['\"]" + m + "['\"]").test(pyText)), [...cited.mods].join(','));
   await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(100);
   await page.evaluate(() => { location.hash = 'aide/modules'; }); await page.waitForTimeout(150);
   const mods = await page.$eval('#view', (e) => e.innerText);

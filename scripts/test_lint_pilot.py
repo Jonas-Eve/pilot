@@ -118,6 +118,12 @@ class ReviewGateTests(unittest.TestCase):
         self.edit("notes.txt")
         self.assertEqual(self.gate(), 0)
 
+    def test_the_pr_tool_is_gated_whatever_the_server_is_called(self):
+        self.edit()
+        self.assertEqual(self.gate("mcp__GitHub__create_pull_request"), 2)
+        self.assertEqual(self.gate("mcp__github__create_pull_request"), 2)
+        self.assertEqual(self.gate("mcp__github__get_file_contents"), 0)
+
     def test_a_shipped_change_is_refused_until_a_review_passed(self):
         self.edit()
         self.assertEqual(self.gate(), 2)

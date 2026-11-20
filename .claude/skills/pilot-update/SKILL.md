@@ -162,7 +162,7 @@ from a previous run — the whole point is picking up upstream changes.
 
 7. **Report.** Say which PILOT version the project moved from and to (`pilotVersion`). Run
    `python3 .pilot/pilot.py doctor` and include its result (a failed
-   `pilot-labels` check means step 5's label sync did not complete; a failed `wiki` check means the module is on but `wiki/` is missing, step 5b). Summarize what changed across steps 2-5: skills/agents added, updated,
+   `pilot-labels` check means step 5's label sync did not complete; a failed `wiki` check means the module is on but `wiki/` is missing, step 5b; a failed `hooks` check means PILOT's entries are missing from `.claude/settings.json`, step 5d). Summarize what changed across steps 2-5: skills/agents added, updated,
    flagged as orphaned (and whether removed), each root file added, updated, flagged as
    orphaned (and whether removed), or left as-is and why, intro blocks resynced or
    skipped, labels created/updated.

@@ -2544,6 +2544,16 @@ class HooksTests(unittest.TestCase):
         self.start_run(merge=True)
         self.assertIsNone(pilot.guard_decision(self.payload("Bash", command="gh pr merge 5 --squash")))
 
+    def test_the_mcp_server_name_does_not_matter(self):
+        self.start_run()
+        self.assertEqual(pilot.guard_decision(self.payload("mcp__GitHub__merge_pull_request", pullNumber=5))["decision"], "deny")
+        self.assertEqual(pilot.guard_decision(self.payload(
+            "mcp__GitHub__issue_write", method="update", labels=["x"]))["decision"], "deny")
+        self.install()
+        matcher = self.load()["hooks"]["PreToolUse"][-1]["matcher"]
+        for tool in ("mcp__github__merge_pull_request", "mcp__GitHub__issue_write"):
+            self.assertRegex(tool, matcher)
+
     def test_a_run_does_not_change_labels_or_assignees_by_hand(self):
         self.start_run()
         for call in (("Bash", {"command": "gh issue edit 7 --add-label status:done"}),

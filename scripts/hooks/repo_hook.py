@@ -85,7 +85,7 @@ def review_track(payload, root=ROOT):
 
 def pr_gate(payload, root=ROOT):
     tool, params = payload.get("tool_name"), payload.get("tool_input") or {}
-    if not (tool == "mcp__github__create_pull_request"
+    if not ((str(tool).startswith("mcp__") and str(tool).lower().endswith("__create_pull_request"))
             or (tool == "Bash" and engine(root).runs_command(str(params.get("command", "")), "gh", "pr", "create"))):
         return 0
     scope = review_scope(root)

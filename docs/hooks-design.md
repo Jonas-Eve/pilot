@@ -68,7 +68,7 @@ A hook must know a PILOT run is active, and whether it may merge.
 `pilot.py hooks install|check|remove [--path P]`:
 - Reads the file (absent → `{}`); **refuses** with `invalid-json` and leaves it untouched when it cannot be read.
 - Drops every PILOT handler, then adds the current two: `PreToolUse` → `hook guard` on
-  `Bash|Edit|Write|mcp__github__issue_write|mcp__github__merge_pull_request|mcp__github__enable_pr_auto_merge`,
+  `Bash|Edit|Write|mcp__.*__(issue_write|merge_pull_request|enable_pr_auto_merge)` (any GitHub MCP server name),
   `PostToolUse` → `hook track` on `Bash`. A handler is PILOT's when its command holds
   `.pilot/pilot.py" hook `; every other key, group and handler is kept as it was.
 - Idempotent; writes atomically; prints one JSON object (`changed`). `check` is read-only (`installed`).
@@ -103,7 +103,7 @@ architecture, flow), "`.pilot/` is never edited". A rule stays in prose only if 
   `merge` true/false, bad JSON, missing file); `hooks install` on an absent file, a file with the project's own
   hooks, a stale PILOT entry, invalid JSON, run twice.
 - A real session check, once: install into a scratch project, run a claim, see the refusal.
-- `lint_pilot.py`: the commands the hooks name exist in `pilot.py`'s argparse.
+- `lint_pilot.py`: the commands the hooks name exist in `pilot.py`'s argparse (not done).
 
 ## 9. Versioning
 
