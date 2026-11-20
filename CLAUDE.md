@@ -163,6 +163,11 @@ Within a skill file, reference this repo's own assets via a fresh clone of
 the skill files) — never a fixed path, there is no installed location.
 
 ## 3. CHANGE DISCIPLINE
+- **Deterministic first — code over prose:** whatever can be decided by code (a script, a test, a linter, a hook) is, and the
+  prose that explained it leaves the LLM-read files; it lightens the context and removes a source of drift. A rule written in a
+  `SKILL.md` or task doc that a command could compute or check is a candidate to move: into `scripts/pilot.py` (and its tests)
+  for ticket mechanics, into `scripts/lint_pilot.py` for this repo's coherence, into a hook for a constraint on what the model
+  does. Prose keeps only judgment. The test of a new rule: could a check fail on it? Then write the check.
 - **Mechanism vs. wording:** the phase names, label taxonomy, claim protocol, and
   skill-to-agent mapping in `assets/docs/pilot-process.md` are the actual product. Don't
   change them casually; a mechanism change here affects every project that has copied
