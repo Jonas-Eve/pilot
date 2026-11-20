@@ -125,8 +125,10 @@ itself.
   files. Runs in CI with the two test suites (`.github/workflows/lint-pilot.yml`); run it after any edit of the families §3's cross-reference check
   names (`python3 scripts/lint_pilot.py`, tests: `python3 -m unittest scripts/test_lint_pilot.py`).
 - `.claude/settings.json` + `scripts/hooks/repo_hook.py` — maintainers' hooks, never copied into a project: refuse an edit of a
-  PILOT-owned copy (`.pilot/`, the synced workflow), and run `lint_pilot.py` after an edit of a file it covers, handing its
-  errors back to the model.
+  PILOT-owned copy (`.pilot/`, the synced workflow), run `lint_pilot.py` after an edit of a file it covers, handing its
+  errors back to the model, and refuse `create_pull_request` / `gh pr create` while the diff touches what projects copy and no
+  maintainer review of that exact diff returned `VERDICT: PASS`. `docs/maintainer-review.md` is that review (coherence and
+  completeness, run by an isolated agent before the PR); it is read by no skill or agent of a project.
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot-init` and `/pilot-update`; also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
@@ -326,6 +328,9 @@ the skill files) — never a fixed path, there is no installed location.
   with `git rebase origin/main`, then push it with `--force-with-lease` (the branch is yours alone, and a
   branch that only carries already-merged history is restarted from `main` the same way), so its history stays
   linear and every commit stays meaningful. Never create a merge commit, on a branch or on `main`.
+- **Review A PILOT Change Before Opening Its PR:** a branch that touches what projects copy gets the maintainer review
+  (`docs/maintainer-review.md`) from an agent that did not write it: fix every finding and run it again until it returns
+  `VERDICT: PASS` on the current diff. The hook refuses `create_pull_request` until then.
 - **Trunk-Based Development:** `main` is the single trunk; short-lived branches merge
   back quickly, no long-lived feature branches.
 - **Conventional Commits:** `type(scope): description` (e.g.

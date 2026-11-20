@@ -40,7 +40,8 @@ by default in cloud, or workspace trust never accepted; the outcome is the same)
 3. **Fail open.** Missing script, bad payload, any exception → exit 0. A hook never blocks the project because
    PILOT is broken.
 4. **A refusal always names the command to use instead** (`pilot.py set …`), so the model recovers by itself.
-5. **Best effort, not security.** A hook that matches a command string can be bypassed (`gh api`, an alias).
+5. **Best effort, not security.** A hook that matches a command string can be bypassed (`gh api`, an alias). It matches a
+   command that is *run* (quoted text and here-document bodies are not commands: a PR body quoting `gh pr merge` passes).
    It stops the model's habit, not an adversary; the doc says so wherever a hook is listed.
 6. **Opt-in module.** Enabled like the others (`pilot.py module enable hooks`), asked at `/pilot-init` and
    `/pilot-update`. Off by default for existing projects.

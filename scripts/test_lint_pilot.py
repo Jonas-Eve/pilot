@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Tests for scripts/lint_pilot.py. Run: python3 -m unittest scripts/test_lint_pilot.py"""
+import contextlib
 import importlib.util
+import io
+import os
 import pathlib
 import shutil
+import subprocess
 import tempfile
 import unittest
 
@@ -75,6 +79,88 @@ class HookTests(unittest.TestCase):
     def test_lint_hook_passes_on_clean_repo(self):
         self.assertEqual(self.run_hook("lint", "CLAUDE.md"), 0)
         self.assertEqual(self.run_hook("lint", "README.md"), 0)
+
+
+class ReviewGateTests(unittest.TestCase):
+    """The PR gate refuses until a passing maintainer review of the exact diff was recorded."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("repo_hook", HERE / "hooks" / "repo_hook.py")
+        self.hook = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.hook)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = pathlib.Path(self.tmp.name)
+        self.session = f"gate-{os.getpid()}-{id(self)}"
+        self.addCleanup(lambda: self.hook.review_marker(self.session).unlink(missing_ok=True))
+        for cmd in (["init", "-q"], ["config", "user.email", "t@t"], ["config", "user.name", "t"]):
+            subprocess.run(["git", *cmd], cwd=self.root, check=True)
+        (self.root / "CLAUDE.md").write_text("base\n")
+        (self.root / "notes.txt").write_text("base\n")
+        subprocess.run(["git", "add", "-A"], cwd=self.root, check=True)
+        subprocess.run(["git", "commit", "-qm", "base"], cwd=self.root, check=True)
+        subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=self.root, check=True)
+
+    def gate(self, tool="mcp__github__create_pull_request", **params):
+        payload = {"session_id": self.session, "tool_name": tool, "tool_input": params}
+        with contextlib.redirect_stderr(io.StringIO()):
+            return self.hook.main_safe(payload, self.root)
+
+    def review(self, verdict, prompt="Read docs/maintainer-review.md and review the diff"):
+        payload = {"session_id": self.session, "tool_name": "Agent", "tool_input": {"prompt": prompt},
+                   "tool_response": {"content": [{"type": "text", "text": f"VERDICT: {verdict}\nnotes"}]}}
+        self.hook.review_track(payload, self.root)
+
+    def edit(self, name="CLAUDE.md", text="changed\n"):
+        (self.root / name).write_text(text)
+
+    def test_a_change_to_nothing_projects_copy_needs_no_review(self):
+        self.edit("notes.txt")
+        self.assertEqual(self.gate(), 0)
+
+    def test_a_shipped_change_is_refused_until_a_review_passed(self):
+        self.edit()
+        self.assertEqual(self.gate(), 2)
+        self.review("PASS")
+        self.assertEqual(self.gate(), 0)
+
+    def test_a_review_with_findings_does_not_open_the_gate(self):
+        self.edit()
+        self.review("FINDINGS")
+        self.assertEqual(self.gate(), 2)
+
+    def test_the_pass_counts_only_for_the_diff_it_saw(self):
+        self.edit()
+        self.review("PASS")
+        self.edit(text="changed again\n")
+        self.assertEqual(self.gate(), 2)
+
+    def test_an_untracked_new_file_is_part_of_the_diff(self):
+        self.edit("notes.txt")
+        (self.root / "assets").mkdir()
+        (self.root / "assets" / "new.md").write_text("x")
+        self.assertEqual(self.gate(), 2)
+
+    def test_an_agent_that_is_not_the_review_records_nothing(self):
+        self.edit()
+        self.review("PASS", prompt="Summarize the repository")
+        self.assertEqual(self.gate(), 2)
+
+    def test_only_a_real_pr_creation_command_is_gated(self):
+        self.edit()
+        self.assertEqual(self.gate("Bash", command="gh pr create --title x"), 2)
+        self.assertEqual(self.gate("Bash", command="cd x && gh pr create --title x"), 2)
+        self.assertEqual(self.gate("Bash", command="gh pr view 5"), 0)
+        self.assertEqual(self.gate("Bash", command="git push"), 0)
+        self.assertEqual(self.gate("Bash", command='echo "then run gh pr create"'), 0)
+        self.assertEqual(self.gate("Bash", command="cat <<'EOF'\ngh pr create\nEOF"), 0)
+
+    def test_without_git_history_the_gate_stays_open(self):
+        other = tempfile.TemporaryDirectory()
+        self.addCleanup(other.cleanup)
+        payload = {"session_id": self.session, "tool_name": "mcp__github__create_pull_request", "tool_input": {}}
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(self.hook.main_safe(payload, other.name), 0)
 
 
 if __name__ == "__main__":

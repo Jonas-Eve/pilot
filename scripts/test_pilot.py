@@ -2563,6 +2563,15 @@ class HooksTests(unittest.TestCase):
                      ("Bash", {"command": "python3 .pilot/pilot.py set 7 --status review-ready"})):
             self.assertIsNone(pilot.guard_decision(self.payload(call[0], **call[1])), call)
 
+    def test_text_that_merely_mentions_a_command_is_not_that_command(self):
+        self.start_run()
+        for command in ('gh pr create --body "never run gh pr merge here"',
+                        "cat <<'EOF'\ngh pr merge 5\ngh issue edit 7 --add-label x\nEOF",
+                        "echo 'gh issue edit 7 --add-label status:done'"):
+            self.assertIsNone(pilot.guard_decision(self.payload("Bash", command=command)), command)
+        for command in ("cd repo && gh pr merge 5", "echo hi; gh pr merge 5", "gh pr merge 5 | cat"):
+            self.assertEqual(pilot.guard_decision(self.payload("Bash", command=command))["decision"], "deny", command)
+
     def test_an_expired_run_or_another_session_is_not_guarded(self):
         self.start_run(now=time.time() - pilot.RUN_TTL_SECONDS - 5)
         self.assertIsNone(pilot.guard_decision(self.payload("Bash", command="gh pr merge 5")))

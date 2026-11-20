@@ -2758,6 +2758,42 @@ def command_words(command):
         return command.split()
 
 
+def shell_commands(command):
+    """The simple commands of a Bash command line, each a list of words. Quoted text stays one word and the body of a
+    here-document is not a command, so a PR body that quotes `gh pr merge` is not one."""
+    lines, closing = [], None
+    for line in command.splitlines():
+        if closing is not None:
+            if line.strip() == closing:
+                closing = None
+            continue
+        lines.append(line)
+        opened = re.search(r"<<-?\s*['\"]?(\w+)['\"]?", line)
+        if opened:
+            closing = opened.group(1)
+    try:
+        lexer = shlex.shlex(" ; ".join(lines), posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        words = list(lexer)
+    except ValueError:
+        return []
+    commands, current = [], []
+    for word in words:
+        if word and all(c in ";&|" for c in word):
+            if current:
+                commands.append(current)
+            current = []
+        else:
+            current.append(word)
+    if current:
+        commands.append(current)
+    return commands
+
+
+def runs_command(command, *prefix):
+    return any(c[:len(prefix)] == list(prefix) for c in shell_commands(command))
+
+
 def pilot_call(command):
     """(subcommand, args) when the Bash command runs `pilot.py <subcommand> ...`, else None."""
     words = command_words(command)
@@ -2788,7 +2824,7 @@ def guard_decision(payload, now=None):
         return None
     command = str(params.get("command", "")) if tool == "Bash" else ""
     if tool == "mcp__github__merge_pull_request" or tool == "mcp__github__enable_pr_auto_merge" or (
-            tool == "Bash" and re.search(r"\bgh\s+pr\s+merge\b", command)):
+            tool == "Bash" and runs_command(command, "gh", "pr", "merge")):
         if not run.get("merge"):
             return refusal("A PILOT run never merges a pull request unless it was started with --merge. "
                            "Leave the merge to the human.")
@@ -2798,10 +2834,14 @@ def guard_decision(payload, now=None):
             return refusal("Do not change a ticket's labels or assignees by hand during a PILOT run: use "
                            "`python3 .pilot/pilot.py set` (or claim / flag / unflag), which also keeps the status chain valid.")
         return None
-    if tool == "Bash" and re.search(r"\bgh\s+(issue\s+edit|api\b.*\bissues/\d+)", command):
-        if any(flag in command for flag in LABEL_EDIT_FLAGS) or re.search(r"labels|assignees", command):
-            return refusal("Do not change a ticket's labels or assignees by hand during a PILOT run: use "
-                           "`python3 .pilot/pilot.py set` (or claim / flag / unflag).")
+    if tool == "Bash":
+        for words in shell_commands(command):
+            edits = words[:3] == ["gh", "issue", "edit"] and any(w.split("=")[0] in LABEL_EDIT_FLAGS for w in words)
+            api = words[:2] == ["gh", "api"] and any(re.search(r"issues/\d+", w) for w in words) and any(
+                re.search(r"labels|assignees", w) for w in words)
+            if edits or api:
+                return refusal("Do not change a ticket's labels or assignees by hand during a PILOT run: use "
+                               "`python3 .pilot/pilot.py set` (or claim / flag / unflag).")
     return None
 
 
