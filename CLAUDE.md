@@ -120,6 +120,15 @@ itself.
   command changes, update its texts (`HOW_PHASES`, `HOW_TABS`, the `vHow*` functions, `AGENTS`, `ROSTER`) in the same PR. Refresh the demo
   data with `python3 scripts/demo_snapshot.py --dir DIR` and `ArtifactData` (`snapshots`
   `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, `wiki` `Jonas-Eve__pilot` (`wiki.json`), `architecture` `Jonas-Eve__pilot` (`architecture.json`), plus the `activity`/`events`/`protos`/`protoHtml` files it writes).
+- `scripts/lint_pilot.py` — maintainers' coherence linter, never copied into a project: doc references, orphan task/link
+  docs, persona duty lists, label vocabulary and `pilot.py` commands cited against `pilot.py`, `PILOT:` markers in the templates, size of the LLM-read
+  files. Runs in CI with the two test suites (`.github/workflows/lint-pilot.yml`); run it after any edit of the families §3's cross-reference check
+  names (`python3 scripts/lint_pilot.py`, tests: `python3 -m unittest scripts/test_lint_pilot.py`).
+- `.claude/settings.json` + `scripts/hooks/repo_hook.py` — maintainers' hooks, never copied into a project: refuse an edit of a
+  PILOT-owned copy (`.pilot/`, the synced workflow), run `lint_pilot.py` after an edit of a file it covers, handing its
+  errors back to the model, and refuse `create_pull_request` / `gh pr create` while the diff touches what projects copy and no
+  maintainer review of that exact diff returned `VERDICT: PASS`. `docs/maintainer-review.md` is that review (coherence and
+  completeness, run by an isolated agent before the PR); it is read by no skill or agent of a project. What was measured about hooks, and why none ships to projects: `docs/hooks-findings.md`.
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot-init` and `/pilot-update`; also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
@@ -156,6 +165,11 @@ Within a skill file, reference this repo's own assets via a fresh clone of
 the skill files) — never a fixed path, there is no installed location.
 
 ## 3. CHANGE DISCIPLINE
+- **Deterministic first — code over prose:** whatever can be decided by code (a script, a test, a linter, a hook) is, and the
+  prose that explained it leaves the LLM-read files; it lightens the context and removes a source of drift. A rule written in a
+  `SKILL.md` or task doc that a command could compute or check is a candidate to move: into `scripts/pilot.py` (and its tests)
+  for ticket mechanics, into `scripts/lint_pilot.py` for this repo's coherence, into this repo's own hooks (`.claude/settings.json`) for a constraint on what the model
+  does while working here (`docs/hooks-findings.md`: a hook cannot be shipped to projects cleanly). Prose keeps only judgment. The test of a new rule: could a check fail on it? Then write the check.
 - **Mechanism vs. wording:** the phase names, label taxonomy, claim protocol, and
   skill-to-agent mapping in `assets/docs/pilot-process.md` are the actual product. Don't
   change them casually; a mechanism change here affects every project that has copied
@@ -314,6 +328,9 @@ the skill files) — never a fixed path, there is no installed location.
   with `git rebase origin/main`, then push it with `--force-with-lease` (the branch is yours alone, and a
   branch that only carries already-merged history is restarted from `main` the same way), so its history stays
   linear and every commit stays meaningful. Never create a merge commit, on a branch or on `main`.
+- **Review A PILOT Change Before Opening Its PR:** a branch that touches what projects copy gets the maintainer review
+  (`docs/maintainer-review.md`) from an agent that did not write it: fix every finding and run it again until it returns
+  `VERDICT: PASS` on the current diff. The hook refuses `create_pull_request` until then.
 - **Trunk-Based Development:** `main` is the single trunk; short-lived branches merge
   back quickly, no long-lived feature branches.
 - **Conventional Commits:** `type(scope): description` (e.g.
