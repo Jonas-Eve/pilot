@@ -1106,7 +1106,7 @@ const STUB = (opts) => `
   check('reference page: Modules gives one card per cockpit tab, each with what, how and why; the optional ones say they are on',
         (await page.$$('#view .agents .row')).length === 8 && (mods.match(/Rôle :/g) || []).length === 8 && (mods.match(/Comment :/g) || []).length === 8 && (mods.match(/Intérêt :/g) || []).length === 8 &&
         (mods.match(/actif/g) || []).length === 1 && (mods.match(/masqué par le rôle/g) || []).length === 3 && /python3 \.pilot\/pilot\.py module enable/.test(mods) === false && /Wiki/.test(mods) && /Architecture/.test(mods) && /\/pilot-architecture/.test(mods), mods.slice(0, 200));
-  check('reference page: Modules explains the hooks module and shows whether it is on', /Garde-fous : le module hooks/i.test(mods) && /(activé|désactivé)\./.test(mods), mods.slice(0, 120));
+  check('reference page: Modules explains the hooks module', /Garde-fous : le module hooks/i.test(mods) && /État pour ce projet : (activé|désactivé)\./.test(mods), mods.slice(0, 120));
   // the role filter (Produit / Tech / Tous) applies to the help pages too
   const roleTab = async (role, sub) => { await page.click('#roleSeg >> text=' + role); await page.evaluate((s) => { location.hash = 'aide/' + s; }, sub); await page.waitForTimeout(150); return page.$eval('#view', (e) => e.innerText); };
   {
@@ -1383,6 +1383,11 @@ const STUB = (opts) => `
       const p2 = await open({ preload: [off] });
       const get = async (sub) => { await p2.goto(FILE + '#aide/' + sub); await p2.waitForTimeout(250); return p2.$eval('#view', (e) => e.innerText); };
       const k = await get('connaissances'), pr2 = await get('principes'), md = await get('modes');
+      check('modules off: the hooks module says it is off when the snapshot does not list it on',
+            /État pour ce projet : désactivé\./.test(await get('modules')));
+      const p3 = await open({ preload: [withMods({ dashboard: true, hooks: true })] });
+      await p3.goto(FILE + '#aide/modules'); await p3.waitForTimeout(250);
+      check('modules on: the hooks module says it is on once the snapshot lists it', /État pour ce projet : activé\./.test(await p3.$eval('#view', (e) => e.innerText)));
       check('modules off: Connaissances shows no section of a module that is off, only how to enable them',
             !/Wiki : ce que fait/i.test(k) && !/Architecture : comment/i.test(k) && !/Design : à quoi/i.test(k) && !/Prototypes : décider/i.test(k) && /Modules désactivés pour ce projet : Wiki, Architecture, Design, Prototypes/.test(k) && /module enable/.test(k), k.slice(0, 300));
       check('modules off: Principes does not suggest the commands of a module that is off, and Modes does not offer --human on them',

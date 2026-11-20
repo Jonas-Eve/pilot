@@ -130,7 +130,7 @@ from a previous run — the whole point is picking up upstream changes.
    record in step 6 what the project already uses, so nothing it relies on disappears — `dashboard` on when it has a
    `dashboardUrl`, and `design` and `proto` on with it (they only worked with it), `wiki` off. A `state.json` with no `language` means English: leave it, and mention `language` (the text of wiki and architecture entries) if the project writes them in another language. Say which modules exist
    (`.pilot/pilot-process.md` §8) and that each is turned on by its own skill (`/pilot-wiki`, `/pilot-architecture`, `/pilot-dashboard`,
-   `/pilot-design`, `/pilot-proto`); never enable anything else here, and never create or change anything under
+   `/pilot-design`, `/pilot-proto`), except `hooks`, which has none (step 5d); never enable anything else here, and never create or change anything under
    `wiki/` or `architecture/`. With the `wiki` module on but `wiki/` missing, say that `doctor` fails until `/pilot-wiki` repairs it; with
    it on and entries still in the earlier format (several per page, `wiki lint` reporting `no-frontmatter`), offer
    `python3 .pilot/pilot.py wiki migrate` (one PR). When the project has closed tickets or code to document, mention

@@ -17,6 +17,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SIZE_WARN = {"skill": 26000, "agent": 5000, "doc": 30000}  # bytes: past it, a file loaded on every run deserves a look
 LABEL_RE = re.compile(r"`((?:status|type|level|priority|workflow):[a-z0-9-]+)`")
 DOC_RE = re.compile(r"pilot-(?:task|link)-[a-z0-9-]+\.md")
+COMMAND_RE = re.compile(r"python3 \.pilot/pilot\.py\s+([a-z][a-z-]*)")
 MARKER_RE = re.compile(r"<!-- PILOT:([A-Z_]+):(START|END) -->")
 
 
@@ -112,6 +113,16 @@ class Linter:
                 if lab not in known:
                     self.add("error", "label", p, f"`{lab}` is not in the label taxonomy of scripts/pilot.py")
 
+    def check_commands(self, files):
+        """Every `python3 .pilot/pilot.py <command>` a skill, doc or refusal message tells to run is a command pilot.py has."""
+        mod = load_pilot(self.root)
+        parser = mod.build_parser()
+        known = set(next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction)).choices)
+        for p in files + [self.root / "scripts" / "pilot.py"]:
+            for cmd in sorted(set(COMMAND_RE.findall(p.read_text()))):
+                if cmd not in known:
+                    self.add("error", "command", p, f"`pilot.py {cmd}` is not a command of scripts/pilot.py")
+
     def check_templates(self):
         tdir = self.root / "assets/templates"
         for name in ("CLAUDE.md.tmpl", "README.md.tmpl"):
@@ -154,6 +165,7 @@ class Linter:
         self.check_doc_refs(skills, agents, docs)
         self.check_agents(agents, docs)
         self.check_labels(llm_read)
+        self.check_commands(llm_read)
         self.check_templates()
         self.check_sizes(skills, agents, docs)
         self.check_claude_md(skills)

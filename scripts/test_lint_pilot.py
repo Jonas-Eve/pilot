@@ -51,6 +51,10 @@ class LintTests(unittest.TestCase):
         self.edit("assets/docs/pilot-task-implement.md", lambda t: t + "\nSet `status:bogus`.\n")
         self.assertTrue(self.errors("label"))
 
+    def test_unknown_pilot_command(self):
+        self.edit(".claude/skills/pilot-dev/SKILL.md", lambda t: t + "\nRun `python3 .pilot/pilot.py nope --x`.\n")
+        self.assertTrue(self.errors("command"))
+
     def test_agent_duty_missing(self):
         self.edit(".claude/agents/pilot-dev.md", lambda t: t.replace("pilot-task-implement.md", "pilot-task-ghost.md"))
         self.assertTrue(self.errors("agent-duties"))

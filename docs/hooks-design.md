@@ -36,7 +36,8 @@ by default in cloud, or workspace trust never accepted; the outcome is the same)
 
 1. **One entry point, in `pilot.py`**: `python3 .pilot/pilot.py hook <name>`, reads the hook payload on stdin.
    Decisions are code with offline tests (`scripts/test_pilot.py`), like every other mechanic.
-2. **Inert outside a PILOT run.** A project's own work is never touched. No active run → exit 0.
+2. **Inert outside a PILOT run**, except the write guard on `.pilot/`, which always applies. A project's own work is
+   never touched. No active run → exit 0.
 3. **Fail open.** Missing script, bad payload, any exception → exit 0. A hook never blocks the project because
    PILOT is broken.
 4. **A refusal always names the command to use instead** (`pilot.py set …`), so the model recovers by itself.
@@ -103,7 +104,7 @@ architecture, flow), "`.pilot/` is never edited". A rule stays in prose only if 
   `merge` true/false, bad JSON, missing file); `hooks install` on an absent file, a file with the project's own
   hooks, a stale PILOT entry, invalid JSON, run twice.
 - A real session check, once: install into a scratch project, run a claim, see the refusal.
-- `lint_pilot.py`: the commands the hooks name exist in `pilot.py`'s argparse (not done).
+- `lint_pilot.py`: the commands the hooks name exist in `pilot.py`'s argparse (`check_commands`, done).
 
 ## 9. Versioning
 
