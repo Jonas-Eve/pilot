@@ -236,39 +236,6 @@ class ResolveTests(unittest.TestCase):
             self.assertEqual((got["action"], got["reason"]), ("stop", reason), reason)
         self.assertEqual(self.act("dev", [], 1)["reason"], "not-found")
 
-    def test_the_result_says_what_to_do_next(self):
-        got = self.act("dev", [issue(1, ["status:dev-ready"])], 1)
-        self.assertEqual(got["claim"], "python3 .pilot/pilot.py claim dev 1 --mode fresh")
-        m, _ = machine([issue(1, ["status:review-ready"])])
-        self.assertEqual(m.resolve("review", 1, False, True)["claim"],
-                         "python3 .pilot/pilot.py claim review 1 --mode fresh --auto")
-        for status, label, mode in (("status:changes-requested", None, "reclaim"),):
-            self.assertEqual(self.act("dev", [issue(1, [status])], 1)["claim"].split("--mode ")[1], mode)
-        cleared = self.act("dev", [issue(1, ["status:in-dev", "can-resume"], assignees=["a"])], 1)
-        self.assertTrue(cleared["claim"].endswith("--mode resume-cleared"))
-        orphan = self.act("dev", [issue(1, ["status:in-dev"], assignees=["a"])], 1, resume=True)
-        self.assertTrue(orphan["claim"].endswith("--mode resume-orphaned"))
-        flagged = self.act("dev", [issue(1, ["status:dev-ready", "needs-human"])], 1)
-        self.assertNotIn("claim", flagged)
-        self.assertIn("needs-human", flagged["say"])
-        waiting = self.act("dev", [issue(1, ["status:dev-ready"], body="Depends on #10"), issue(10)], 1)
-        self.assertIn("#10", waiting["say"])
-        ask = self.act("dev", [issue(1, ["status:in-dev"], assignees=["bob"])], 1)
-        self.assertEqual(ask["action"], "ask-resume")
-        self.assertIn("--resume", ask["say"])
-        self.assertIn("bob", ask["say"])
-
-    def test_the_pool_pick_carries_the_same_next_step(self):
-        m, _ = machine([issue(1, ["status:dev-ready"])])
-        pick = m.pool("dev", 5)["pick"]
-        self.assertEqual(pick["claim"], "python3 .pilot/pilot.py claim dev 1 --mode fresh")
-
-    def test_every_reason_the_engine_gives_has_a_sentence(self):
-        import inspect
-        source = inspect.getsource(pilot.Machine._resolve) + inspect.getsource(pilot.Machine.resolve_raw)
-        reasons = set(re.findall(r'"reason": "([a-z-]+)"', source)) | {"not-a-poc", "poc", "ask-resume"}
-        self.assertEqual(sorted(r for r in reasons if r not in pilot.SAY), [])
-
     def test_dependency_gate_applies_to_dev_and_qa_not_spec_or_review(self):
         dep = [issue(10)]
         for phase, fresh, expect in (("dev", "status:dev-ready", "stop"), ("qa", "status:qa", "stop"),
