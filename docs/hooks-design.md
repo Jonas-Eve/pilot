@@ -106,7 +106,9 @@ architecture, flow), "`.pilot/` is never edited". A rule stays in prose only if 
 - `test_pilot.py` (`HooksTests`, done): each hook against payload fixtures (no marker, matching marker, other session, expired,
   `merge` true/false, bad JSON, missing file); `hooks install` on an absent file, a file with the project's own
   hooks, a stale PILOT entry, invalid JSON, run twice.
-- A real session check, once: install into a scratch project, run a claim, see the refusal.
+- A real session check (`scripts/e2e_hooks.py`, done): a headless session in a scratch project with the hooks installed runs a claim, a
+  merge, a by-hand label change and two writes; the merge, the label change and the write under `.pilot/` are refused, the rest runs, and
+  a control project without the hooks runs everything. Main session only: sub-agents, the mobile app and an interactive trust prompt are not covered.
 - `lint_pilot.py`: the commands the hooks name exist in `pilot.py`'s argparse (`check_commands`, done).
 
 ## 9. Versioning

@@ -124,6 +124,8 @@ itself.
   docs, persona duty lists, label vocabulary and `pilot.py` commands cited against `pilot.py`, `PILOT:` markers in the templates, size of the LLM-read
   files. Runs in CI with the two test suites (`.github/workflows/lint-pilot.yml`); run it after any edit of the families §3's cross-reference check
   names (`python3 scripts/lint_pilot.py`, tests: `python3 -m unittest scripts/test_lint_pilot.py`).
+- `scripts/e2e_hooks.py` — maintainers' end-to-end check of the `hooks` module in a real headless session (`claude -p`, stub `gh`),
+  with a control arm without the hooks; a few cents, needs the `claude` CLI, so not in CI. Run it after a change to the hooks.
 - `.claude/settings.json` + `scripts/hooks/repo_hook.py` — maintainers' hooks, never copied into a project: refuse an edit of a
   PILOT-owned copy (`.pilot/`, the synced workflow), run `lint_pilot.py` after an edit of a file it covers, handing its
   errors back to the model, and refuse `create_pull_request` / `gh pr create` while the diff touches what projects copy and no

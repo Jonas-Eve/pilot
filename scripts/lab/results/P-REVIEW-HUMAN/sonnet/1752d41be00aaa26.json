@@ -1,0 +1,442 @@
+{
+ "case": "P-REVIEW-HUMAN",
+ "model": "sonnet",
+ "fingerprint": "1752d41be00aaa26",
+ "trials": [
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve review 9` (no --auto, no --resume); the pick is claim-fresh for ticket #70, so go to the claim (doctor is skipped, it already reported ok).",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Claim the ticket: `python3 .pilot/pilot.py claim review 70 --mode fresh` (no --merge, no --auto). Assignee and status:in-review are set and re-read. On lost-race or any other refusal, stop and report.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Push the claim's event/activity to the dashboard with ArtifactData (ToolSearch to load it if deferred). The dashboard URL is set.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3 (--human, before step 3 proper)",
+      "action": "Ask the human once whether anything specific should be checked in the PR. Keep the answer to pass to the reviewer in step 5.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Read ticket #70 and its own type:tech label. Fetch the PR's changed files (get_files) and run `pilot.py workflow show --ticket 70 --path <changed files>` to get the reviewer set. The lean workflow means pilot-techlead alone. Check get_reviews for a prior submitted review (none expected on a first round). No --with or --only.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "If the project has a CI workflow covering the affected area, check it is green on the PR head commit. Red or pending counts as an automatic `change` point. Otherwise this is a no-op.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Make one Agent call for pilot-techlead (no --multi). Pass pilot-link-review-consensus.md, pilot-link-existing-analysis.md and pilot-task-review-spec-conformance.md in full. Also pass the PR diff and description, the ticket spec, the knowledge/wiki/architecture link docs in full, the PR's wiki/ and architecture/ changes, the wiki entries for ticket #70 (wiki index --ticket 70, wiki show <id>), and the human's specific points from the earlier question.",
+      "waits_for_human": false
+     },
+     {
+      "step": "6",
+      "action": "Aggregate the tech lead's verdict into exactly one outcome: approved, change only, decision only, or change plus decision. (Step 5a is skipped because there is only one instance.)",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Checkpoint the outcome: create a pending PR review (`mcp__github__pull_request_review_write` method create, commitID pinned to the head, no event). The body carries the full outcome, including the tech lead's Checked against list.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "If the outcome carries needs-human, skip the pause and go straight to step 9. Otherwise (all-approve or pure-change), show the outcome. The human decides: confirm, drop or add points, or flip approve and change. Update the pending review to match, quoting dropped points as dropped.",
+      "waits_for_human": true
+     },
+     {
+      "step": "9",
+      "action": "Submit the pending review with submit_pending, using the event that matches the outcome (APPROVE, REQUEST_CHANGES or COMMENT). Apply the label with `pilot.py set 70 --status approved|changes-requested --unassign`, adding `--add needs-human` where the outcome has a decision point. A decision-only outcome keeps status:in-review and uses `--add needs-human` alone. If GitHub rejects the event because the identity is the PR author, retry submit_pending on the same review with COMMENT.",
+      "waits_for_human": false
+     },
+     {
+      "step": "10",
+      "action": "Only if the outcome carried needs-human (decision-only or mixed): engage the live human on the block. If their answer changes the outcome, create and submit one more review with the matching event and label, plus the why/what comment and a second resolution comment, removing needs-human. If the block is not cleared, leave it standing.",
+      "waits_for_human": true
+     },
+     {
+      "step": "13",
+      "action": "Report the outcome: the verdict, the label set, and that the PR was not merged (no --merge was passed, so step 12 is skipped and a human merges). Step 11 is only a limit of at most two reviews.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.120312,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2196,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 24587
+   },
+   "ms": 15411,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "0",
+      "action": "Preflight: skip `pilot.py doctor`, it already reported ok: true in this conversation.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve review 9` (no --auto, since a human is live). It returns claim-fresh for ticket #70, so go to step 2 in mode fresh.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Run `python3 .pilot/pilot.py claim review 70 --mode fresh` (no --merge, no --auto). Confirm the claim; on lost-race or another refusal, report and stop.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Best-effort dashboard push: send the event/activity returned by the claim with ArtifactData (load it via ToolSearch if deferred), because a dashboard URL is set.",
+      "waits_for_human": false
+     },
+     {
+      "step": "Mode (before 3)",
+      "action": "Because of --human, ask the human once whether anything specific should be checked in the PR. This answer is passed to the reviewer in step 5.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Run `pilot.py workflow show --ticket 70 --path <changed files>` to get the default reviewer set (lean workflow, type:tech: tech lead alone). Call get_reviews on the PR for a prior submitted review (none expected on a first round). Add no architect, since neither --with nor --only was given.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "If a CI workflow covers the affected area, check it is green on the PR head commit. Red or pending CI counts as an automatic `change` point.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Call the Agent tool once for pilot-techlead. Pass the full review-consensus doc, the full existing-analysis doc, the spec-conformance task doc, the PR diff and description, and ticket #70's spec. Pass the human's specific checks. With wiki and architecture on, also pass the knowledge, wiki and architecture docs, the PR's wiki/ and architecture/ changes, and the wiki entries for #70. Pass the prior review and comments only if step 3 found one.",
+      "waits_for_human": false
+     },
+     {
+      "step": "6",
+      "action": "Aggregate the tech lead's verdict into exactly one outcome: approved, change-only, decision-only, or both. 5a is skipped, because there is no --multi.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Create a pending GitHub PR review (`pull_request_review_write` method create, commitID pinned to the PR head, no event) with the full body, including the tech lead's Checked-against list.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "If the outcome carries needs-human, skip the pause and go straight to step 9. Otherwise (all-approve or pure-change), show the outcome to the human. They decide: confirm, drop or add points, or flip approve and request-changes. Dropped points are quoted as dropped.",
+      "waits_for_human": true
+     },
+     {
+      "step": "9",
+      "action": "Submit the pending review with `submit_pending` and the event that matches what was decided: APPROVE, REQUEST_CHANGES or COMMENT. Run `pilot.py set 70 --status approved|changes-requested --unassign`, adding `--add needs-human` where the outcome calls for it. For a decision-only outcome, keep in-review and add only needs-human. If GitHub rejects the event because this identity authored the PR, retry on the same pending review with COMMENT.",
+      "waits_for_human": false
+     },
+     {
+      "step": "10",
+      "action": "Only if the submitted outcome carries needs-human (decision-only or mixed): engage the live human to resolve it, post the why/what comment and the resolution comment, and remove needs-human. If their answer changes the outcome, submit one more fresh review with the matching event and label. If the block is not cleared, leave the review and needs-human standing.",
+      "waits_for_human": true
+     },
+     {
+      "step": "12",
+      "action": "Without --merge, never merge: do nothing here. A human merges by hand.",
+      "waits_for_human": false
+     },
+     {
+      "step": "13",
+      "action": "Report the outcome: the review(s) submitted, the label set, and that this run did not merge the PR.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.035426400000000004,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2089,
+    "cache_read_input_tokens": 21484,
+    "cache_creation_input_tokens": 3096
+   },
+   "ms": 14047,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve review 9` (no --auto, mode --human); it returns claim-fresh for PR #9, which closes ticket #70. Doctor (step 0) is skipped because it already reported ok.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Claim the ticket: `python3 .pilot/pilot.py claim review 70 --mode fresh` (no --merge, no --auto). If it reports lost-race, stand down. Any other refusal means report the reason and stop.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Push the claim's event/activity to the dashboard with ArtifactData (loaded via ToolSearch if deferred), because a dashboard URL is set.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3 (pre-step, --human)",
+      "action": "Ask the human once whether anything specific should be checked in the PR. Keep the answer to pass to the reviewer in step 5.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Read ticket #70 and its own type:tech label. Get the PR's changed files. Run `pilot.py workflow show --ticket 70 --path <changed files>` to get the default reviewer set, which is the tech lead alone. Check get_reviews for a prior submitted review. None is expected on a first round.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "If a CI workflow covers the affected area, check that it is green on the PR's head commit. Red or pending CI is an automatic change-tagged block. If there is no CI workflow, this is a no-op.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Call the pilot-techlead Agent once, with no --multi. Pass it the review-consensus doc, the existing-analysis doc, the spec-conformance task doc, the PR diff and description, the ticket spec, the knowledge/wiki/architecture link docs, the PR's changes under wiki/ and architecture/, the wiki entries for ticket #70, and the human's specific focus points.",
+      "waits_for_human": false
+     },
+     {
+      "step": "6",
+      "action": "Aggregate the tech lead's verdict into exactly one outcome: approved, change-only, decision-only, or change plus decision. A CI failure counts as change. Step 5a is skipped because there is no multi-instance run.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Create a pending GitHub PR review (`create`, commitID pinned to the PR head, no event). The body holds the full outcome with the tech lead's Checked-against list.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "If the outcome has no needs-human (approve or pure change), show it to the human. The human decides: confirm, drop or add points, or flip approve and change-request. Dropped points are quoted as dropped. If the outcome carries needs-human, skip the pause and go straight to step 9.",
+      "waits_for_human": true
+     },
+     {
+      "step": "9",
+      "action": "Submit the pending review (`submit_pending`) with the event for the decided outcome, then `pilot.py set 70 --status approved|changes-requested --unassign`. Add `--add needs-human` where it applies (decision-only keeps status:in-review and the assignee). If GitHub rejects APPROVE or REQUEST_CHANGES because the identity is the PR author, retry on the same pending review with event COMMENT.",
+      "waits_for_human": false
+     },
+     {
+      "step": "10",
+      "action": "Only if the submitted outcome carries needs-human: engage the live human on the block. If their answer changes the outcome, submit one more fresh review plus the matching label. Otherwise leave step 9's review and needs-human standing.",
+      "waits_for_human": true
+     },
+     {
+      "step": "12",
+      "action": "No merge, because --merge was not passed. A human merges by hand.",
+      "waits_for_human": false
+     },
+     {
+      "step": "13",
+      "action": "Report the outcome, including that this run did not merge the PR. The skill ends here.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.0356524,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2112,
+    "cache_read_input_tokens": 21484,
+    "cache_creation_input_tokens": 3095
+   },
+   "ms": 14245,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "0",
+      "action": "Skip the preflight: doctor already reported ok: true in this conversation.",
+      "waits_for_human": false
+     },
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve review 9` (no --auto, since a human is live). Expected result is claim-fresh, so the ticket is #70 (the issue PR #9 closes). Go to step 2 in mode fresh.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Run `python3 .pilot/pilot.py claim review 70 --mode fresh`. There is no --merge. On lost-race or any other refusal, report and stop. Otherwise the ticket becomes assigned and status:in-review.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Best-effort dashboard push of the event/activity returned by the claim, using ArtifactData (load it with ToolSearch if deferred). A dashboardUrl is set, so this is not skipped.",
+      "waits_for_human": false
+     },
+     {
+      "step": "Mode (before 3)",
+      "action": "--human mode: ask the human once whether anything specific should be checked. Keep the answer to pass to the reviewer in step 5.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Read ticket #70 and its own type label (type:tech). Fetch the PR's changed files. Run `pilot.py workflow show --ticket 70 --path <changed files>`. The default reviewer set is the tech lead alone (lean workflow). Check `get_reviews` for a prior submitted review; none is expected on a first round. No --with or --only was given.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "If a CI workflow covers the affected area, check that it is green on the PR's head commit. Red or pending counts as an automatic change-tagged block. If there is no CI workflow, this is a no-op.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Make one Agent call, subagent_type pilot-techlead, with no --multi. Pass it these inputs:\n- pilot-link-review-consensus.md in full.\n- pilot-task-review-spec-conformance.md.\n- pilot-link-existing-analysis.md in full.\n- The PR diff and description, and ticket #70's spec.\n- The human's specific points to check.\n- pilot-link-knowledge.md, pilot-link-wiki.md and pilot-link-architecture.md in full, because both modules are on.\n- The PR's changes under wiki/ and architecture/ (get_files).\n- The wiki entries for ticket #70 (`wiki index --ticket 70`, then `wiki show <id>` for each).\nThe tech lead re-runs validation on the PR branch itself.",
+      "waits_for_human": false
+     },
+     {
+      "step": "6",
+      "action": "Collect the tech lead's verdict and aggregate it into exactly one outcome by tag. Approve gives status:approved. Change points only gives status:changes-requested with no needs-human. A decision point gives needs-human, and both tags together also give status:changes-requested. Step 5a is skipped because only one reviewer ran once.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Create the pending GitHub PR review (`pull_request_review_write` method create, commitID pinned to the PR head, no event). The body holds the full outcome and the tech lead's Checked against list, even for an approval.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "If the outcome has no needs-human (all-approve or pure change), show it to the human and pause. In --human mode the human decides: confirm, drop or add points, or flip approve and change-request. Dropped points are quoted as dropped. If the outcome carries needs-human, skip this pause and go straight to step 9.",
+      "waits_for_human": true
+     },
+     {
+      "step": "9",
+      "action": "Submit the pending review with `submit_pending`. The event follows the outcome: APPROVE, REQUEST_CHANGES, or COMMENT for decision-only. Apply the label with `pilot.py set 70 --status approved|changes-requested --unassign`, adding `--add needs-human` where the outcome calls for it. A decision-only outcome keeps status:in-review and the assignee, and gets `--add needs-human` alone. If GitHub rejects the event because the identity is the PR author, retry submit_pending on the same pending review with event COMMENT.",
+      "waits_for_human": false
+     },
+     {
+      "step": "10",
+      "action": "Only if the submitted outcome carries needs-human: engage the live human on the block, post the why/what comment first, and take their answer. If it changes the outcome, submit one more fresh review with an event and the matching label, and remove needs-human with a second comment. If it does not clear the block, leave step 9's review and the flag standing.",
+      "waits_for_human": true
+     },
+     {
+      "step": "11",
+      "action": "Keep to at most two reviews on the PR (step 9's, plus step 10's correction). No action beyond that.",
+      "waits_for_human": false
+     },
+     {
+      "step": "12",
+      "action": "Do not merge: --merge was not passed. A human merges any approved PR by hand.",
+      "waits_for_human": false
+     },
+     {
+      "step": "13",
+      "action": "Report the outcome: the verdict, the labels set, any live resolution, and that this run did not merge the PR.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.039700400000000004,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2514,
+    "cache_read_input_tokens": 21484,
+    "cache_creation_input_tokens": 3102
+   },
+   "ms": 20559,
+   "judged": {}
+  },
+  {
+   "output": {
+    "calls": [
+     {
+      "step": "1",
+      "action": "Run `python3 .pilot/pilot.py resolve review 9`. It returns claim-fresh for PR #9, which closes ticket #70. (If it returned manual/pr-number I would read the PR's `Closes #N` instead.)",
+      "waits_for_human": false
+     },
+     {
+      "step": "2",
+      "action": "Run `python3 .pilot/pilot.py claim review 70 --mode fresh`, with no --merge and no --auto. On lost-race, stand down. On any other refusal, report it and stop.",
+      "waits_for_human": false
+     },
+     {
+      "step": "2a",
+      "action": "Best-effort dashboard push: load ArtifactData via ToolSearch if it is deferred, then push the event/activity that claim returned, since dashboardUrl is set.",
+      "waits_for_human": false
+     },
+     {
+      "step": "3 (--human pre-step)",
+      "action": "Ask the human once whether anything specific should be checked. Keep the answer to pass to the reviewer in step 5.",
+      "waits_for_human": true
+     },
+     {
+      "step": "3",
+      "action": "Read ticket #70's own type label (type:tech) and get the PR's changed files. Run `pilot.py workflow show --ticket 70 --path <files>` to get the default reviewer set, which is the tech lead alone (lean). Check `get_reviews` for a prior submitted review. None is expected on a first round. If one exists, fetch its full body. Do not add the architect, since --with architect and --only were not given.",
+      "waits_for_human": false
+     },
+     {
+      "step": "4",
+      "action": "If the project has a CI workflow covering the affected area, check that it is green on the PR's head commit. Red or pending CI is an automatic `change` block. Otherwise this is a no-op.",
+      "waits_for_human": false
+     },
+     {
+      "step": "5",
+      "action": "Make one Agent call with subagent_type pilot-techlead (no --multi). Pass it the full review-consensus and existing-analysis links, the spec-conformance task doc, the knowledge, wiki and architecture links in full, and the PR's wiki/ and architecture/ changes. Also pass the ticket's wiki entries from `wiki index --ticket 70` / `wiki show`, the PR diff and description, the ticket spec, and the human's specific check points.",
+      "waits_for_human": false
+     },
+     {
+      "step": "6",
+      "action": "Aggregate the single tech lead verdict into one outcome from the change/decision tags: approve, pure-change, mixed, or decision-only. Step 5a is skipped because there is no multi-instance reconciliation.",
+      "waits_for_human": false
+     },
+     {
+      "step": "7",
+      "action": "Create a pending GitHub PR review (`pull_request_review_write` create, no event, commitID pinned to the PR head). Its body carries the full outcome and the tech lead's Checked-against list.",
+      "waits_for_human": false
+     },
+     {
+      "step": "8",
+      "action": "If the outcome is all-approve or pure-change, show it to the human and pause. The human decides: confirm, drop or add points, or flip approve and request-changes. If the outcome carries needs-human, skip this pause and go straight to step 9.",
+      "waits_for_human": true
+     },
+     {
+      "step": "9",
+      "action": "Submit the pending review (`submit_pending`) with the event matching the outcome, or the human's decision (dropped points quoted as dropped). Apply the label with `pilot.py set 70 --status approved|changes-requested --unassign`, adding `--add needs-human` where required. For decision-only, use `--add needs-human` alone and keep in-review. If GitHub rejects the event because the identity is the PR author, retry submit_pending with COMMENT.",
+      "waits_for_human": false
+     },
+     {
+      "step": "10",
+      "action": "Only if the submitted outcome carries needs-human: engage the live human on the block. If their answer changes the outcome, submit one more fresh review (create with event, plus the matching label). Otherwise leave the block standing.",
+      "waits_for_human": true
+     },
+     {
+      "step": "12",
+      "action": "Do not merge, because --merge was not given. A human merges by hand.",
+      "waits_for_human": false
+     },
+     {
+      "step": "13",
+      "action": "Report the outcome: the verdict, the label set, and that this run did not merge the PR.",
+      "waits_for_human": false
+     }
+    ]
+   },
+   "cost": 0.0356404,
+   "tokens": {
+    "input_tokens": 2,
+    "output_tokens": 2110,
+    "cache_read_input_tokens": 21484,
+    "cache_creation_input_tokens": 3097
+   },
+   "ms": 14852,
+   "judged": {}
+  }
+ ]
+}
