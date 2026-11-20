@@ -3,7 +3,7 @@
 
   pilot.py pool    <spec|dev|review|qa> [--limit N]
   pilot.py resolve <phase> <issue> [--resume]
-  pilot.py claim   <phase> <issue> --mode fresh|reclaim|resume-orphaned|resume-cleared|rescope
+  pilot.py claim   <phase> <issue> --mode fresh|reclaim|resume-orphaned|resume-cleared|rescope [--auto] [--merge]
   pilot.py set     <issue> [--status S] [--assign-me|--unassign] [--add L]... [--remove L]... [--close] [--pr N]
   pilot.py event   <issue>... --action NAME [--phase P]  # those tickets' current state as dashboard events, no write
   pilot.py flag    <issue> --comment TEXT      # needs-human + the mandatory why/what's-needed comment
@@ -11,6 +11,8 @@
   pilot.py doctor  [--verbose] [--no-wiki]      # preflight: can the commands above work here? (+ wiki/, when that module is on)
   pilot.py contract [PHASE] [--profile P]      # a phase's contract (statuses it consumes / claims / produces); bare: all, and whether they compose
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
+  pilot.py hooks   install|check|remove [--path P]  # PILOT's entries in the project's .claude/settings.json, merged, never replacing the project's own
+  pilot.py hook    guard|track                 # the hook entry points (payload on stdin; exit 2 = refusal the model reads); not run by hand
   pilot.py workflow show|check|set [PROFILE]   # the project's workflow profile: the chain it runs, and the check that every profile composes
   pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
   pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
@@ -38,8 +40,11 @@ import math
 import os
 import posixpath
 import re
+import shlex
 import subprocess
 import sys
+import tempfile
+import time
 import unicodedata
 
 # phase -> statuses and which §4 rules apply to an explicitly-given ticket
@@ -2310,6 +2315,7 @@ def build_parser():
     p.add_argument("--mode", required=True,
                    choices=["fresh", "reclaim", "resume-orphaned", "resume-cleared", "rescope"])
     p.add_argument("--auto", action="store_true", help="an unattended run: refuse a ticket a signal makes pair only")
+    p.add_argument("--merge", action="store_true", help="the run may merge its PR (review --merge); read from the command line by the merge guard hook, changes nothing here")
     p = sub.add_parser("set")
     p.add_argument("issue", type=int)
     p.add_argument("--status", help="a status name (e.g. review-ready) or 'none'")
@@ -2449,6 +2455,11 @@ def build_parser():
     w = ws.add_parser("supersede", help="an accepted ADR is replaced by a new one")
     w.add_argument("new")
     w.add_argument("old")
+    p = sub.add_parser("hooks", help="PILOT's entries in the project's .claude/settings.json")
+    p.add_argument("action", choices=["install", "check", "remove"])
+    p.add_argument("--path", help=f"default {SETTINGS_PATH}")
+    p = sub.add_parser("hook", help="a hook entry point (payload on stdin)")
+    p.add_argument("name", choices=["guard", "track"])
     for name in ("flag", "unflag"):
         p = sub.add_parser(name)
         p.add_argument("issue", type=int)
@@ -2535,7 +2546,7 @@ def run_workflow(args, gh=None):
 def needs_github(args):
     if args.cmd == "workflow":
         return bool(getattr(args, "ticket", None))
-    if args.cmd in ("module", "contract", "flow"):
+    if args.cmd in ("module", "contract", "flow", "hooks", "hook"):
         return False
     if args.cmd == "arch":
         return False
@@ -2605,6 +2616,235 @@ def run_flow(args):
     return {"ok": True, "file": args.out, "flow": doc["flow"], "result": doc["result"]}
 
 
+# ---- hooks: the constraints on what the model does during a PILOT run (design: docs/hooks-design.md) ----------------
+SETTINGS_PATH = os.path.join(".claude", "settings.json")
+HOOK_MARK = '.pilot/pilot.py" hook '  # a handler whose command holds this is PILOT's; the others are the project's
+HOOK_GUARD_TOOLS = "Bash|Edit|Write|mcp__github__issue_write|mcp__github__merge_pull_request|mcp__github__enable_pr_auto_merge"
+HOOK_ENTRIES = {
+    "PreToolUse": {"matcher": HOOK_GUARD_TOOLS, "name": "guard"},
+    "PostToolUse": {"matcher": "Bash", "name": "track"},
+}
+RUN_TTL_SECONDS = 4 * 3600  # a run marker older than this is ignored
+OWNED_DIR = ".pilot/"
+OWNED_EXEMPT = (".pilot/state.json",)  # the one file of that folder a skill may write by hand
+LABEL_EDIT_FLAGS = ("--add-label", "--remove-label", "--add-assignee", "--remove-assignee")
+
+
+def hook_command(name):
+    return f'python3 "$CLAUDE_PROJECT_DIR/{HOOK_MARK}{name}'
+
+
+def is_pilot_handler(handler):
+    return isinstance(handler, dict) and HOOK_MARK in str(handler.get("command", ""))
+
+
+def merge_hooks(settings):
+    """`settings` with PILOT's hook entries installed and nothing else touched: every PILOT handler is dropped (an entry the
+    release no longer ships goes with it), then the current ones are added. Idempotent."""
+    out = json.loads(json.dumps(settings))
+    hooks = out.setdefault("hooks", {})
+    if not isinstance(hooks, dict):
+        raise Refused({"ok": False, "reason": "bad-settings", "hint": "`hooks` is not an object"})
+    strip_pilot_hooks(hooks)
+    for event, entry in HOOK_ENTRIES.items():
+        hooks.setdefault(event, []).append({"matcher": entry["matcher"], "hooks": [
+            {"type": "command", "command": hook_command(entry["name"])}]})
+    return out
+
+
+def strip_pilot_hooks(hooks):
+    for event in list(hooks):
+        groups = hooks[event]
+        if not isinstance(groups, list):
+            continue
+        kept = []
+        for group in groups:
+            inner = group.get("hooks") if isinstance(group, dict) else None
+            if isinstance(inner, list):
+                inner = [h for h in inner if not is_pilot_handler(h)]
+                if not inner:
+                    continue
+                group = {**group, "hooks": inner}
+            kept.append(group)
+        if kept:
+            hooks[event] = kept
+        else:
+            del hooks[event]
+
+
+def read_settings(path):
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except FileNotFoundError:
+        return {}
+    except ValueError:
+        raise Refused({"ok": False, "reason": "invalid-json", "path": path,
+                       "hint": "fix the file by hand: PILOT never overwrites a settings file it cannot read"})
+    if not isinstance(data, dict):
+        raise Refused({"ok": False, "reason": "bad-settings", "path": path, "hint": "the top level is not an object"})
+    return data
+
+
+def run_hooks(args):
+    path = args.path or SETTINGS_PATH
+    before = read_settings(path)
+    if args.action == "install":
+        after = merge_hooks(before)
+    elif args.action == "remove":
+        after = json.loads(json.dumps(before))
+        if isinstance(after.get("hooks"), dict):
+            strip_pilot_hooks(after["hooks"])
+            if not after["hooks"]:
+                del after["hooks"]
+    else:  # check
+        want = merge_hooks(before)
+        return {"ok": want == before, "path": path, "installed": want == before,
+                "hint": None if want == before else "python3 .pilot/pilot.py hooks install"}
+    changed = after != before
+    if changed:
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as handle:
+            json.dump(after, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+        os.replace(tmp, path)
+    return {"ok": True, "path": path, "changed": changed}
+
+
+def run_marker_path(session_id):
+    safe = "".join(c for c in str(session_id) if c.isalnum() or c in "-_")
+    return os.path.join(tempfile.gettempdir(), f"pilot-run-{safe}.json")
+
+
+def read_run(session_id, now=None):
+    """The active PILOT run of this Claude session (written by `hook track` when a `claim` succeeds), or None."""
+    if not session_id:
+        return None
+    try:
+        with open(run_marker_path(session_id), encoding="utf-8") as handle:
+            run = json.load(handle)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(run, dict) or (now or time.time()) - run.get("at", 0) > RUN_TTL_SECONDS:
+        return None
+    return run
+
+
+def write_run(session_id, run):
+    with open(run_marker_path(session_id), "w", encoding="utf-8") as handle:
+        json.dump(run, handle)
+
+
+def end_run(session_id):
+    try:
+        os.remove(run_marker_path(session_id))
+    except OSError:
+        pass
+
+
+def command_words(command):
+    try:
+        return shlex.split(command)
+    except ValueError:
+        return command.split()
+
+
+def pilot_call(command):
+    """(subcommand, args) when the Bash command runs `pilot.py <subcommand> ...`, else None."""
+    words = command_words(command)
+    for i, word in enumerate(words):
+        if word.endswith("pilot.py") and i + 1 < len(words):
+            return words[i + 1], words[i + 2:]
+    return None
+
+
+def refusal(message):
+    return {"decision": "deny", "message": message}
+
+
+def guard_decision(payload, now=None):
+    """What the PreToolUse guard says about one tool call: None to let it through, or a refusal. Inert outside a PILOT run,
+    except the write guard on `.pilot/`; never raises (a hook that breaks must not block the project)."""
+    tool, params = payload.get("tool_name", ""), payload.get("tool_input") or {}
+    if tool in ("Edit", "Write"):
+        raw = str(params.get("file_path", ""))
+        root = os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd()
+        rel = os.path.relpath(os.path.abspath(os.path.join(root, raw)), root).replace(os.sep, "/")
+        if rel.startswith(OWNED_DIR) and rel not in OWNED_EXEMPT:
+            return refusal(f"{rel} is a PILOT-owned copy: /pilot-update replaces it from the published release. "
+                           "Never edit it here; edit its source in the PILOT repository.")
+        return None
+    run = read_run(payload.get("session_id"), now)
+    if run is None:
+        return None
+    command = str(params.get("command", "")) if tool == "Bash" else ""
+    if tool == "mcp__github__merge_pull_request" or tool == "mcp__github__enable_pr_auto_merge" or (
+            tool == "Bash" and re.search(r"\bgh\s+pr\s+merge\b", command)):
+        if not run.get("merge"):
+            return refusal("A PILOT run never merges a pull request unless it was started with --merge. "
+                           "Leave the merge to the human.")
+        return None
+    if tool == "mcp__github__issue_write":
+        if params.get("method") == "update" and ("labels" in params or "assignees" in params):
+            return refusal("Do not change a ticket's labels or assignees by hand during a PILOT run: use "
+                           "`python3 .pilot/pilot.py set` (or claim / flag / unflag), which also keeps the status chain valid.")
+        return None
+    if tool == "Bash" and re.search(r"\bgh\s+(issue\s+edit|api\b.*\bissues/\d+)", command):
+        if any(flag in command for flag in LABEL_EDIT_FLAGS) or re.search(r"labels|assignees", command):
+            return refusal("Do not change a ticket's labels or assignees by hand during a PILOT run: use "
+                           "`python3 .pilot/pilot.py set` (or claim / flag / unflag).")
+    return None
+
+
+def track_run(payload, now=None):
+    """PostToolUse on Bash: a successful `pilot.py claim` opens this session's run; a `set` that moves the claimed ticket on,
+    unassigns it or closes it ends it. Returns what it did (for the tests)."""
+    session = payload.get("session_id")
+    command = str((payload.get("tool_input") or {}).get("command", ""))
+    call = pilot_call(command)
+    if not session or not call:
+        return None
+    sub, rest = call
+    if sub == "claim":
+        out = payload.get("tool_response")
+        text = out.get("stdout", "") if isinstance(out, dict) else str(out or "")
+        try:
+            result = json.loads(text.strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            return None
+        if not isinstance(result, dict) or not result.get("claimed"):
+            return None
+        phase = rest[0] if rest else None
+        write_run(session, {"phase": phase, "ticket": result.get("issue"), "status": result.get("status"),
+                            "merge": "--merge" in rest, "at": now or time.time()})
+        return "start"
+    if sub == "set" and read_run(session, now):
+        run = read_run(session, now)
+        ticket = next((w for w in rest if w.isdigit()), None)
+        if ticket and int(ticket) == run.get("ticket") and (
+                "--unassign" in rest or "--close" in rest or "--status" in rest):
+            end_run(session)
+            return "end"
+    return None
+
+
+def run_hook(name):
+    """Entry point of a hook (`pilot.py hook guard|track`), payload on stdin. Fails open: any problem exits 0."""
+    try:
+        payload = json.load(sys.stdin)
+        if name == "guard":
+            verdict = guard_decision(payload)
+            if verdict:
+                print(verdict["message"], file=sys.stderr)
+                return 2
+        elif name == "track":
+            track_run(payload)
+    except Exception:  # a hook never blocks the project because PILOT could not read a payload
+        return 0
+    return 0
+
+
 def run_module(args):
     if args.action == "list":
         return {"ok": True, "modules": module_registry(read_modules()), "language": read_language()}
@@ -2616,6 +2856,8 @@ def run_module(args):
 def run(args, gh):
     if args.cmd == "module":
         return run_module(args)
+    if args.cmd == "hooks":
+        return run_hooks(args)
     if args.cmd == "contract":
         return run_contract(args)
     if args.cmd == "flow":
@@ -2659,6 +2901,8 @@ def run(args, gh):
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
+    if args.cmd == "hook":
+        return run_hook(args.name)
     try:
         repo = (args.repo or resolve_repo()) if needs_github(args) else None
         result = run(args, GhClient(repo) if repo else None)
@@ -2669,7 +2913,7 @@ def main(argv=None):
         print(json.dumps({"error": str(err) or "gh CLI not found"}))
         return 2
     print(json.dumps({"repo": repo, **result} if repo else result, ensure_ascii=False))
-    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki", "arch", "contract", "workflow") else 0
+    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki", "arch", "contract", "workflow", "hooks") else 0
 
 
 if __name__ == "__main__":

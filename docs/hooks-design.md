@@ -1,7 +1,9 @@
 # PILOT — hooks (design proposal)
 
-Status: **proposal; nothing implemented in consuming projects**. Only this repo's own maintainer hooks exist
-(`.claude/settings.json`, `scripts/hooks/repo_hook.py`). Human-only document: no skill or agent reads it, and it
+Status: **engine implemented in `scripts/pilot.py` (v4.4.0), not yet wired**: `pilot.py hook guard|track` and
+`pilot.py hooks install|check|remove` exist with their tests, but there is no `hooks` module yet, `/pilot-init` and
+`/pilot-update` do not run `install`, and no skill passes `--merge` to `claim`. This repo's own maintainer hooks are
+separate (`.claude/settings.json`, `scripts/hooks/repo_hook.py`). Human-only document: no skill or agent reads it, and it
 is not copied into consuming projects.
 
 ## 1. Goal
@@ -45,45 +47,48 @@ by default in cloud, or workspace trust never accepted; the outcome is the same)
 
 ## 4. The run marker
 
-A hook must know a PILOT run is active, for which phase, and what it is allowed to do.
+A hook must know a PILOT run is active, and whether it may merge.
 
-- `pilot.py claim` writes `.pilot/run.json` (git-ignored): `{session_id, phase, ticket, mode, merge, at}`.
-  `set` to a terminal status, `unflag`, or an explicit `pilot.py run end` removes it. A marker older than a
-  TTL (12 h) is ignored.
-- A hook acts only when the payload's `session_id` equals the marker's. This also keeps a second Claude session
-  on the same checkout out of it.
-- `merge` is true only when the phase was started with `--merge` (review).
-
-A sub-agent's payload carries the **same `session_id`** as its parent (measured), plus `agent_id` and
-`agent_type`; the match needs nothing more.
+- **Written by a hook, not by `claim`**: the `claim` process does not know the Claude session. `hook track`
+  (PostToolUse on `Bash`) sees a successful `pilot.py claim` and writes `<tmpdir>/pilot-run-<session_id>.json`:
+  `{phase, ticket, status, merge, at}`. `merge` is true when the command line carried `--merge` (the flag exists on
+  `claim` for that purpose; the review skill must pass it).
+- **Keyed by session**: a second Claude session on the same checkout has its own file, so is never guarded by
+  another's run. A sub-agent's payload carries the **same `session_id`** as its parent (measured), plus `agent_id`
+  and `agent_type`, so one file covers the whole run.
+- **Ends** when a `pilot.py set` on the claimed ticket changes its status, unassigns it or closes it, or after a TTL
+  of 4 h. A marker lives outside the repository (nothing to git-ignore); a cloud session resumed in a new container
+  loses it, which is the fail-open side.
 
 ## 5. Installation: merging into `settings.json`
 
 `.claude/settings.json` belongs to the project; PILOT never replaces it.
 
-`pilot.py hooks install|check|remove`:
-- Reads the file (absent → `{}`); **refuses and reports** if it is not valid JSON.
-- Adds the PILOT entries under `hooks.PreToolUse` etc., leaving every other key and entry untouched. An entry
-  is PILOT's when its command starts with `python3 "$CLAUDE_PROJECT_DIR/.pilot/pilot.py" hook`.
-- Idempotent: running it twice changes nothing. A later release's `install` updates PILOT's entries in place
-  and removes the ones it no longer ships.
-- Writes atomically; prints one JSON object (added, updated, removed, unchanged), like every command.
-- `check` is read-only and feeds `doctor` (module on but entries missing or stale → reported).
+`pilot.py hooks install|check|remove [--path P]`:
+- Reads the file (absent → `{}`); **refuses** with `invalid-json` and leaves it untouched when it cannot be read.
+- Drops every PILOT handler, then adds the current two: `PreToolUse` → `hook guard` on
+  `Bash|Edit|Write|mcp__github__issue_write|mcp__github__merge_pull_request|mcp__github__enable_pr_auto_merge`,
+  `PostToolUse` → `hook track` on `Bash`. A handler is PILOT's when its command holds
+  `.pilot/pilot.py" hook `; every other key, group and handler is kept as it was.
+- Idempotent; writes atomically; prints one JSON object (`changed`). `check` is read-only (`installed`).
 
-`/pilot-init` and `/pilot-update` ask before running `install`, since it edits a project-owned file.
-`/pilot-update` also runs it silently when the module is on, to keep entries current.
+`/pilot-init` and `/pilot-update` are to ask before running `install`, since it edits a project-owned file, and to
+run it silently afterwards when the module is on. Not wired yet.
 
-## 6. First set of hooks
+## 6. The guards
 
-| Hook | Event / matcher | Acts when | Refuses |
-|---|---|---|---|
-| `status-guard` | PreToolUse: `Bash` (`gh issue edit`, `gh api …issues`), `mcp__github__issue_write` | a run is active | a by-hand change of a `status:` label or of the assignee; names `pilot.py set` / `claim` |
-| `merge-guard` | PreToolUse: `Bash` (`gh pr merge`), `mcp__github__merge_pull_request` | a run is active and `merge` is false; always for a PR whose head starts with `wiki/` or `architecture/` | the merge |
-| `owned-guard` | PreToolUse: `Edit`, `Write` | always | a write under `.pilot/`; names `/pilot-update` |
+One handler, `hook guard`, decides by tool; all but the first act only during a run of this session.
 
-Possible later: a Stop / SubagentStop hook (a Dev run does not end without a PR or a `needs-human` with its
-comment), `PILOT_ACCOUNT_*` not echoed in `/pilot-flow`, reads under `wiki/` and `architecture/` through
-`pilot.py wiki|arch` only.
+| Guard | Tools | Refuses |
+|---|---|---|
+| owned | `Edit`, `Write` (always, run or not) | a write under `.pilot/` except `.pilot/state.json`; names `/pilot-update` |
+| merge | `Bash` (`gh pr merge`), `mcp__github__merge_pull_request`, `mcp__github__enable_pr_auto_merge` | the merge, unless the run was claimed with `--merge` |
+| status | `Bash` (`gh issue edit`, `gh api …/issues/N`, with a label or assignee flag), `mcp__github__issue_write` (`update` with `labels` or `assignees`) | a by-hand label or assignee change; names `pilot.py set`. Creating a ticket and editing its body stay allowed |
+
+Not in the first slice: refusing a merge of a `wiki/` or `architecture/` PR outside a run (the wiki and architecture
+skills never claim, so no marker exists), a Stop / SubagentStop hook (a Dev run does not end without a PR or a
+`needs-human` with its comment), `PILOT_ACCOUNT_*` not echoed in `/pilot-flow`, reads under `wiki/` and
+`architecture/` through `pilot.py wiki|arch` only.
 
 ## 7. What leaves the prose once it ships
 
@@ -93,7 +98,7 @@ architecture, flow), "`.pilot/` is never edited". A rule stays in prose only if 
 
 ## 8. Tests
 
-- `test_pilot.py`: each hook against payload fixtures (no marker, matching marker, other session, expired,
+- `test_pilot.py` (`HooksTests`, done): each hook against payload fixtures (no marker, matching marker, other session, expired,
   `merge` true/false, bad JSON, missing file); `hooks install` on an absent file, a file with the project's own
   hooks, a stale PILOT entry, invalid JSON, run twice.
 - A real session check, once: install into a scratch project, run a claim, see the refusal.
@@ -101,8 +106,8 @@ architecture, flow), "`.pilot/` is never edited". A rule stays in prose only if 
 
 ## 9. Versioning
 
-`VERSION`: **minor** (a backward-compatible capability; the module is off until a project enables it). The
-first release that makes `/pilot-update` edit `settings.json` is documented in the PR.
+The engine shipped as **4.4.0** (minor: new commands, inert until installed). Wiring `install` into `/pilot-init` and
+`/pilot-update`, the `hooks` module and the review skill's `--merge` are the next slice, minor again.
 
 ## 10. Open questions
 
