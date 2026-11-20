@@ -16,16 +16,17 @@ import json
 import os
 import pathlib
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 OWNED = (".pilot/", ".github/workflows/pilot-status-on-merge.yml")
-LINTED = (".claude/skills/", ".claude/agents/", "assets/docs/", "assets/templates/", "scripts/pilot.py", "scripts/pilot_hook.py", "CLAUDE.md")
+LINTED = (".claude/skills/", ".claude/agents/", "assets/docs/", "assets/templates/", "scripts/pilot.py", "CLAUDE.md")
 
 
-REVIEWED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/pilot_hook.py", "scripts/setup-github-labels.sh",
+REVIEWED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/setup-github-labels.sh",
             "CLAUDE.md", "README.md", "VERSION")  # what a PR must have had reviewed
 REVIEW_DOC = "docs/maintainer-review.md"
 
@@ -56,13 +57,40 @@ def review_scope(root):
     return changed, digest.hexdigest()
 
 
-def engine(root):
-    """scripts/pilot_hook.py of this checkout, for its shell-command parser (one implementation of "is this command run")."""
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("pilot_hook", ROOT / "scripts" / "pilot_hook.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def shell_commands(command):
+    """The simple commands of a Bash command line, each a list of words. Quoted text stays one word and the body of a
+    here-document is not a command, so a PR body that quotes `gh pr merge` is not one."""
+    lines, closing = [], None
+    for line in command.splitlines():
+        if closing is not None:
+            if line.strip() == closing:
+                closing = None
+            continue
+        lines.append(line)
+        opened = re.search(r"<<-?\s*['\"]?(\w+)['\"]?", line)
+        if opened:
+            closing = opened.group(1)
+    try:
+        lexer = shlex.shlex(" ; ".join(lines), posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        words = list(lexer)
+    except ValueError:
+        return []
+    commands, current = [], []
+    for word in words:
+        if word and all(c in ";&|" for c in word):
+            if current:
+                commands.append(current)
+            current = []
+        else:
+            current.append(word)
+    if current:
+        commands.append(current)
+    return commands
+
+
+def runs_command(command, *prefix):
+    return any(c[:len(prefix)] == list(prefix) for c in shell_commands(command))
 
 
 def review_marker(session_id):
@@ -86,7 +114,7 @@ def review_track(payload, root=ROOT):
 def pr_gate(payload, root=ROOT):
     tool, params = payload.get("tool_name"), payload.get("tool_input") or {}
     if not ((str(tool).startswith("mcp__") and str(tool).lower().endswith("__create_pull_request"))
-            or (tool == "Bash" and engine(root).runs_command(str(params.get("command", "")), "gh", "pr", "create"))):
+            or (tool == "Bash" and runs_command(str(params.get("command", "")), "gh", "pr", "create"))):
         return 0
     scope = review_scope(root)
     if scope is None:

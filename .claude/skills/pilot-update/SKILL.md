@@ -35,8 +35,7 @@ from a previous run — the whole point is picking up upstream changes.
   persona files carry only identity, never a duty's mechanics),
   **`.pilot/pilot.py`** (the script the `pilot-spec`/`pilot-dev`/`pilot-review`/
   `pilot-qa` skills run for ticket selection, claiming and status transitions, from
-  `$PILOT_SRC/scripts/pilot.py`), **`.pilot/pilot_hook.py`** (the lightweight entry point
-  of the `hooks` module's hooks, from `$PILOT_SRC/scripts/pilot_hook.py`), and
+  `$PILOT_SRC/scripts/pilot.py`), and
   **`.github/workflows/pilot-status-on-merge.yml`** are the same kind of PILOT-owned
   file, made by `pilot-init` from `$PILOT_SRC`.
 - **The `<!-- PILOT:INTRO:START -->`/`END` and `<!-- PILOT:MAINTENANCE:START -->`/`END`
@@ -78,7 +77,7 @@ from a previous run — the whole point is picking up upstream changes.
 3. **Diff the PILOT-owned root files.** Compare the project's `.pilot/pilot-process.md`,
    every `.pilot/pilot-process-*.md`, `.pilot/pilot-link-*.md`, and `.pilot/pilot-task-*.md` the
    project has, `.pilot/pilot.py` (against `$PILOT_SRC/scripts/pilot.py`; new
-   upstream if missing, `chmod +x` after copying), `.pilot/pilot_hook.py` (against `$PILOT_SRC/scripts/pilot_hook.py`, the same way), and
+   upstream if missing, `chmod +x` after copying), and
    `.github/workflows/pilot-status-on-merge.yml` against `$PILOT_SRC`'s
    copies (for the three glob sets, that means every such file currently under
    `$PILOT_SRC/assets/docs/` — treat each as its own set, not a fixed list of names,
@@ -131,7 +130,7 @@ from a previous run — the whole point is picking up upstream changes.
    record in step 6 what the project already uses, so nothing it relies on disappears — `dashboard` on when it has a
    `dashboardUrl`, and `design` and `proto` on with it (they only worked with it), `wiki` off. A `state.json` with no `language` means English: leave it, and mention `language` (the text of wiki and architecture entries) if the project writes them in another language. Say which modules exist
    (`.pilot/pilot-process.md` §8) and that each is turned on by its own skill (`/pilot-wiki`, `/pilot-architecture`, `/pilot-dashboard`,
-   `/pilot-design`, `/pilot-proto`), except `hooks`, which has none (step 5d); never enable anything else here, and never create or change anything under
+   `/pilot-design`, `/pilot-proto`); never enable anything else here, and never create or change anything under
    `wiki/` or `architecture/`. With the `wiki` module on but `wiki/` missing, say that `doctor` fails until `/pilot-wiki` repairs it; with
    it on and entries still in the earlier format (several per page, `wiki lint` reporting `no-frontmatter`), offer
    `python3 .pilot/pilot.py wiki migrate` (one PR). When the project has closed tickets or code to document, mention
@@ -148,11 +147,6 @@ from a previous run — the whole point is picking up upstream changes.
    Without a `dashboardUrl`, don't create one here: mention in the report that
    `/pilot-dashboard` can.
 
-5d. **Refresh the hooks.** Only when the `hooks` module is on: run `python3 .pilot/pilot.py hooks install` (it merges PILOT's current
-   entries into `.claude/settings.json` and keeps the project's own); report whether it changed anything. `reason: invalid-json` → leave the file
-   and tell the human. With the module off, mention once that `python3 .pilot/pilot.py module enable hooks` turns it on, then
-   `/pilot-update` installs it; never enable it here.
-
 6. **Update the state marker.** Set `lastSkillsSyncAt` (if step 2 changed anything),
    `lastProcessDocSyncAt` (if step 3 changed any of its files), and
    `lastIntroSyncAt` (if step 4 changed anything) in `.pilot/state.json` to now, `modules` (step 5b, only when it was absent), and
@@ -163,7 +157,7 @@ from a previous run — the whole point is picking up upstream changes.
 
 7. **Report.** Say which PILOT version the project moved from and to (`pilotVersion`). Run
    `python3 .pilot/pilot.py doctor` and include its result (a failed
-   `pilot-labels` check means step 5's label sync did not complete; a failed `wiki` check means the module is on but `wiki/` is missing, step 5b; a failed `hooks` check means PILOT's entries are missing from `.claude/settings.json`, step 5d). Summarize what changed across steps 2-5: skills/agents added, updated,
+   `pilot-labels` check means step 5's label sync did not complete; a failed `wiki` check means the module is on but `wiki/` is missing, step 5b). Summarize what changed across steps 2-5: skills/agents added, updated,
    flagged as orphaned (and whether removed), each root file added, updated, flagged as
    orphaned (and whether removed), or left as-is and why, intro blocks resynced or
    skipped, labels created/updated.

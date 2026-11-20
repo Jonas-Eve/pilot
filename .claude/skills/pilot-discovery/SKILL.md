@@ -136,8 +136,8 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    (an out-of-scope note from an early round that no longer matches an acceptance
    criterion added later, an architecture assumption one round made that a later round's
    split contradicts).
-7. Finalize: flip each story from `status:draft` to `status:backlog`, unassigned
-   (`python3 .pilot/pilot.py set <n> --status backlog --unassign`). Under `--from-proto`: `update` `protos/p<n>` with `stories` (the numbers just
+7. Finalize (`mcp__github__issue_write`): flip each story from `status:draft` to
+   `status:backlog`, unassigned. Under `--from-proto`: `update` `protos/p<n>` with `stories` (the numbers just
    finalized), comment on the prototype ticket with them, then `python3 .pilot/pilot.py set <n> --close` (the
    label stays). If the dialogue decides the idea is out of scope, ask the human whether to reject the
    prototype; if so, `python3 .pilot/pilot.py proto <n> reject --reason "<why>"` and `update` `protos/p<n>`

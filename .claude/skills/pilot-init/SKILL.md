@@ -1,7 +1,7 @@
 ---
 name: pilot-init
-description: "One-time bootstrap of a project adopting PILOT: asks for the project name and a short functional vision, copies the skills, agents and canonical docs from github.com/Jonas-Eve/pilot, renders CLAUDE.md and README.md from templates, creates the wiki Vision entry when the wiki module is on, adds a default pull request template if none exists, provisions the GitHub labels, and enables the optional modules asked for (wiki, architecture, dashboard, design, proto, hooks) with the content language. Refuses to run twice. Use to start using PILOT in a project that has not run it."
-argument-hint: "[project name] [functional vision] [--modules wiki,architecture,dashboard,design,proto,hooks | --no-modules] [--language en|fr|…]"
+description: "One-time bootstrap of a project adopting PILOT: asks for the project name and a short functional vision, copies the skills, agents and canonical docs from github.com/Jonas-Eve/pilot, renders CLAUDE.md and README.md from templates, creates the wiki Vision entry when the wiki module is on, adds a default pull request template if none exists, provisions the GitHub labels, and enables the optional modules asked for (wiki, architecture, dashboard, design, proto) with the content language. Refuses to run twice. Use to start using PILOT in a project that has not run it."
+argument-hint: "[project name] [functional vision] [--modules wiki,architecture,dashboard,design,proto | --no-modules] [--language en|fr|…]"
 disable-model-invocation: true
 ---
 
@@ -30,7 +30,7 @@ This skill's idempotency is tracked in `.pilot/state.json` at the project root:
   "pilotVersion": "<MAJOR.MINOR.PATCH, from $PILOT_SRC/VERSION>",
   "projectName": "<name>",
   "language": "en",
-  "modules": {"wiki": <bool>, "architecture": <bool>, "dashboard": <bool>, "design": <bool>, "proto": <bool>, "hooks": <bool>},
+  "modules": {"wiki": <bool>, "architecture": <bool>, "dashboard": <bool>, "design": <bool>, "proto": <bool>},
   "lastProcessDocSyncAt": "<ISO8601>",
   "lastLabelsSyncAt": "<ISO8601>",
   "lastIntroSyncAt": "<ISO8601>",
@@ -62,7 +62,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
    (2-5 sentences) — enough to seed the one-line summary atop `CLAUDE.md`/`README.md` and, with
    the `wiki` module on, the wiki's `Vision` entry (step 9b), not a full spec.
    Also decide the optional **modules** (`.pilot/pilot-process.md` §8): `wiki` (the project's functional wiki), `architecture` (its apps, technical guidelines and decisions),
-   `dashboard` (the team page), `design` and `proto` (the design system and prototypes, which need `dashboard`), `hooks` (guards that refuse, during a PILOT run, what the skills only ask for; it edits the project's `.claude/settings.json`, so say so when asking).
+   `dashboard` (the team page), `design` and `proto` (the design system and prototypes, which need `dashboard`).
    `--modules <list>` or `--no-modules` if given, otherwise ask the human which to enable (recommending `wiki` and
    `dashboard` for a project with a product to describe); a module whose prerequisite is missing brings it along.
    Every module can be turned on later, by its own skill. Also the **language** of the wiki and architecture text (`--language <code>`, e.g. `fr`; English by default, written to `language`);
@@ -113,8 +113,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
    identity now, never a duty's mechanics. Copy all four kinds regardless of how many exist
    right now — all are PILOT-owned from here on, never hand-edit any of them;
    `/pilot-update` overwrites them from a fresh `$PILOT_SRC`. Also copy
-   `$PILOT_SRC/scripts/pilot.py` to `.pilot/pilot.py` and `$PILOT_SRC/scripts/pilot_hook.py` to
-   `.pilot/pilot_hook.py` (the hooks' entry point), and `chmod +x` both —
+   `$PILOT_SRC/scripts/pilot.py` to `.pilot/pilot.py` and `chmod +x` it —
    PILOT-owned the same way; the `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa`
    skills run it for ticket selection, claiming and status transitions.
 
@@ -157,10 +156,6 @@ see `.claude/skills/pilot-update/SKILL.md`.
     `python3 .pilot/pilot.py arch reindex`: it creates `architecture/` with its root `index.md`. From here it is
     project-owned: `/pilot-update` never touches it. Tell the human to run `/pilot-architecture --scaffold` to create
     the apps, or `--bootstrap` when they already exist.
-
-9d. **Install the hooks** (only when the hooks module is on). Run `python3 .pilot/pilot.py hooks install`: it merges PILOT's
-    entries into `.claude/settings.json`, keeping everything else in it. Exit 1 with `reason: invalid-json` → leave the
-    file, tell the human to fix it, then run the command again.
 
 10. **Write the state marker.** Create `.pilot/state.json` per the schema above, with
     `pilotInitialized: true`, the current timestamp, the project name, `pilotVersion`, `modules`, and

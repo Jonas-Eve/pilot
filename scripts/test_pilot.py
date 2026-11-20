@@ -5,23 +5,16 @@ import importlib.util
 import json
 import pathlib
 import re
-import shutil
 import contextlib
 import io
 import os
 import subprocess
-import sys
 import tempfile
-import time
 import unittest
-import unittest.mock
 
 spec = importlib.util.spec_from_file_location("pilot", pathlib.Path(__file__).with_name("pilot.py"))
 pilot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pilot)
-hook_spec = importlib.util.spec_from_file_location("pilot_hook", pathlib.Path(__file__).with_name("pilot_hook.py"))
-hook = importlib.util.module_from_spec(hook_spec)
-hook_spec.loader.exec_module(hook)
 
 
 _CWD, _TMP = None, None
@@ -734,7 +727,7 @@ class DoctorTests(unittest.TestCase):
 
     def test_the_registry_lists_every_module_with_its_state(self):
         reg = pilot.module_registry({"dashboard": True})
-        self.assertEqual(sorted(reg), ["architecture", "dashboard", "design", "hooks", "proto", "wiki"])
+        self.assertEqual(sorted(reg), ["architecture", "dashboard", "design", "proto", "wiki"])
         self.assertEqual((reg["architecture"]["use"], reg["architecture"]["bootstrap"]), ("/pilot-architecture", "/pilot-architecture --bootstrap"))
         self.assertEqual((reg["dashboard"]["enabled"], reg["design"]["enabled"], reg["design"]["requires"], reg["wiki"]["bootstrap"]),
                          (True, False, ["dashboard"], "/pilot-wiki --bootstrap"))
@@ -2280,7 +2273,7 @@ class VersionBumpTests(unittest.TestCase):
     skipped where that ref or git is not available."""
 
     ROOT = pathlib.Path(__file__).resolve().parent.parent
-    SHIPPED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/pilot_hook.py", "scripts/setup-github-labels.sh")
+    SHIPPED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/setup-github-labels.sh")
 
     def git(self, *args):
         out = subprocess.run(["git", *args], cwd=self.ROOT, capture_output=True, text=True)
@@ -2446,236 +2439,6 @@ class FlowRunDocTests(unittest.TestCase):
             with self.assertRaises(pilot.Refused) as refused:
                 self.doc(*runs, flow=flow)
             self.assertEqual(refused.exception.payload["reason"], reason)
-
-
-def argparse_ns(**kwargs):
-    import argparse
-    return argparse.Namespace(**kwargs)
-
-
-class HooksTests(unittest.TestCase):
-    """`hooks install` merges into the project's settings; `hook guard|track` constrain a PILOT run, and only a run."""
-
-    def setUp(self):
-        self.dir = tempfile.TemporaryDirectory()
-        self.settings = os.path.join(self.dir.name, "settings.json")
-        self.session = f"test-{os.getpid()}-{id(self)}"
-        self.addCleanup(self.dir.cleanup)
-        self.addCleanup(hook.end_run, self.session)
-
-    def install(self):
-        return pilot.run_hooks(argparse_ns(action="install", path=self.settings))
-
-    def load(self):
-        with open(self.settings, encoding="utf-8") as handle:
-            return json.load(handle)
-
-    def payload(self, tool, **params):
-        return {"session_id": self.session, "tool_name": tool, "tool_input": params}
-
-    def start_run(self, merge=False, ticket=7, now=None):
-        hook.write_run(self.session, {"phase": "review", "ticket": ticket, "status": "status:in-review",
-                                       "merge": merge, "at": now or time.time()})
-
-    # ---- install ------------------------------------------------------------------------
-    def test_install_creates_the_file_and_is_idempotent(self):
-        self.assertEqual(self.install(), {"ok": True, "path": self.settings, "changed": True})
-        first = self.load()
-        self.assertEqual(set(first["hooks"]), {"PreToolUse", "PostToolUse"})
-        self.assertEqual(self.install()["changed"], False)
-        self.assertEqual(self.load(), first)
-        self.assertTrue(pilot.run_hooks(argparse_ns(action="check", path=self.settings))["installed"])
-
-    def test_install_keeps_everything_the_project_has(self):
-        mine = {"permissions": {"allow": ["Bash(ls)"]}, "env": {"A": "1"},
-                "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "mine.sh"}]}],
-                          "Stop": [{"hooks": [{"type": "command", "command": "stop.sh"}]}]}}
-        with open(self.settings, "w", encoding="utf-8") as handle:
-            json.dump(mine, handle)
-        self.install()
-        got = self.load()
-        self.assertEqual(got["permissions"], mine["permissions"])
-        self.assertEqual(got["env"], mine["env"])
-        self.assertEqual(got["hooks"]["Stop"], mine["hooks"]["Stop"])
-        commands = [h["command"] for g in got["hooks"]["PreToolUse"] for h in g["hooks"]]
-        self.assertIn("mine.sh", commands)
-        self.assertEqual(len([c for c in commands if pilot.HOOK_MARK in c]), 1)
-
-    def test_install_replaces_a_stale_entry_and_remove_takes_only_pilots(self):
-        stale = {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [
-            {"type": "command", "command": 'python3 "$CLAUDE_PROJECT_DIR/.pilot/pilot_hook.py" old-name'},
-            {"type": "command", "command": "mine.sh"}]}]}}
-        with open(self.settings, "w", encoding="utf-8") as handle:
-            json.dump(stale, handle)
-        self.install()
-        text = json.dumps(self.load())
-        self.assertNotIn("old-name", text)
-        self.assertIn("mine.sh", text)
-        pilot.run_hooks(argparse_ns(action="remove", path=self.settings))
-        left = self.load()
-        self.assertNotIn(pilot.HOOK_MARK, json.dumps(left))
-        self.assertIn("mine.sh", json.dumps(left))
-
-    def test_remove_from_a_file_with_only_pilots_hooks_leaves_no_hooks_key(self):
-        self.install()
-        pilot.run_hooks(argparse_ns(action="remove", path=self.settings))
-        self.assertEqual(self.load(), {})
-
-    def test_an_unreadable_settings_file_is_refused_and_left_alone(self):
-        with open(self.settings, "w", encoding="utf-8") as handle:
-            handle.write("{not json")
-        with self.assertRaises(pilot.Refused) as caught:
-            self.install()
-        self.assertEqual(caught.exception.payload["reason"], "invalid-json")
-        with open(self.settings, encoding="utf-8") as handle:
-            self.assertEqual(handle.read(), "{not json")
-
-    # ---- guard --------------------------------------------------------------------------
-    def test_outside_a_run_nothing_is_refused_but_a_write_to_pilot_owned_files(self):
-        self.assertIsNone(hook.guard_decision(self.payload("Bash", command="gh pr merge 5")))
-        self.assertIsNone(hook.guard_decision(self.payload("Bash", command="gh issue edit 5 --add-label status:done")))
-        self.assertIsNone(hook.guard_decision(self.payload("mcp__github__merge_pull_request", pullNumber=5)))
-        with unittest.mock.patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": self.dir.name}):
-            self.assertEqual(hook.guard_decision(self.payload("Write", file_path=".pilot/pilot.py"))["decision"], "deny")
-            self.assertIsNone(hook.guard_decision(self.payload("Write", file_path=".pilot/state.json")))
-            self.assertIsNone(hook.guard_decision(self.payload("Edit", file_path="src/app.py")))
-
-    def test_a_run_never_merges_unless_started_with_merge(self):
-        self.start_run()
-        for call in (("Bash", {"command": "gh pr merge 5 --squash"}),
-                     ("mcp__github__merge_pull_request", {"pullNumber": 5}),
-                     ("mcp__github__enable_pr_auto_merge", {"pullNumber": 5})):
-            self.assertEqual(hook.guard_decision(self.payload(call[0], **call[1]))["decision"], "deny", call)
-        self.start_run(merge=True)
-        self.assertIsNone(hook.guard_decision(self.payload("Bash", command="gh pr merge 5 --squash")))
-
-    def test_the_mcp_server_name_does_not_matter(self):
-        self.start_run()
-        self.assertEqual(hook.guard_decision(self.payload("mcp__GitHub__merge_pull_request", pullNumber=5))["decision"], "deny")
-        self.assertEqual(hook.guard_decision(self.payload(
-            "mcp__GitHub__issue_write", method="update", labels=["x"]))["decision"], "deny")
-        self.install()
-        matcher = self.load()["hooks"]["PreToolUse"][-1]["matcher"]
-        for tool in ("mcp__github__merge_pull_request", "mcp__GitHub__issue_write"):
-            self.assertRegex(tool, matcher)
-
-    def test_a_run_does_not_change_labels_or_assignees_by_hand(self):
-        self.start_run()
-        for call in (("Bash", {"command": "gh issue edit 7 --add-label status:done"}),
-                     ("Bash", {"command": "gh api -X PATCH repos/o/r/issues/7 -f labels[]=status:done"}),
-                     ("mcp__github__issue_write", {"method": "update", "issue_number": 7, "labels": ["status:done"]}),
-                     ("mcp__github__issue_write", {"method": "update", "issue_number": 7, "assignees": ["me"]})):
-            verdict = hook.guard_decision(self.payload(call[0], **call[1]))
-            self.assertEqual(verdict["decision"], "deny", call)
-            self.assertIn("pilot.py", verdict["message"])
-
-    def test_a_run_may_create_tickets_comment_and_read(self):
-        self.start_run()
-        for call in (("mcp__github__issue_write", {"method": "create", "labels": ["status:backlog"]}),
-                     ("mcp__github__issue_write", {"method": "update", "issue_number": 7, "body": "text"}),
-                     ("Bash", {"command": "gh issue view 7"}),
-                     ("Bash", {"command": "gh issue comment 7 --body hi"}),
-                     ("Bash", {"command": "python3 .pilot/pilot.py set 7 --status review-ready"})):
-            self.assertIsNone(hook.guard_decision(self.payload(call[0], **call[1])), call)
-
-    def test_text_that_merely_mentions_a_command_is_not_that_command(self):
-        self.start_run()
-        for command in ('gh pr create --body "never run gh pr merge here"',
-                        "cat <<'EOF'\ngh pr merge 5\ngh issue edit 7 --add-label x\nEOF",
-                        "echo 'gh issue edit 7 --add-label status:done'"):
-            self.assertIsNone(hook.guard_decision(self.payload("Bash", command=command)), command)
-        for command in ("cd repo && gh pr merge 5", "echo hi; gh pr merge 5", "gh pr merge 5 | cat"):
-            self.assertEqual(hook.guard_decision(self.payload("Bash", command=command))["decision"], "deny", command)
-
-    def test_an_expired_run_or_another_session_is_not_guarded(self):
-        self.start_run(now=time.time() - hook.RUN_TTL_SECONDS - 5)
-        self.assertIsNone(hook.guard_decision(self.payload("Bash", command="gh pr merge 5")))
-        self.start_run()
-        other = {**self.payload("Bash", command="gh pr merge 5"), "session_id": self.session + "-other"}
-        self.assertIsNone(hook.guard_decision(other))
-
-    # ---- track --------------------------------------------------------------------------
-    def claim_payload(self, claimed=True, merge=False):
-        command = "python3 .pilot/pilot.py claim review 7 --mode fresh" + (" --merge" if merge else "")
-        out = json.dumps({"claimed": claimed, "issue": 7, "status": "status:in-review"})
-        return {"session_id": self.session, "tool_name": "Bash", "tool_input": {"command": command},
-                "tool_response": {"stdout": out, "stderr": ""}}
-
-    def test_a_successful_claim_opens_the_run_and_a_failed_one_does_not(self):
-        self.assertIsNone(hook.track_run(self.claim_payload(claimed=False)))
-        self.assertIsNone(hook.read_run(self.session))
-        self.assertEqual(hook.track_run(self.claim_payload()), "start")
-        run = hook.read_run(self.session)
-        self.assertEqual((run["phase"], run["ticket"], run["merge"]), ("review", 7, False))
-
-    def test_claim_accepts_the_merge_flag_the_hook_reads(self):
-        args = pilot.build_parser().parse_args(["claim", "review", "7", "--mode", "fresh", "--merge"])
-        self.assertTrue(args.merge)
-
-    def test_the_merge_flag_of_the_claim_is_recorded(self):
-        hook.track_run(self.claim_payload(merge=True))
-        self.assertTrue(hook.read_run(self.session)["merge"])
-
-    def test_a_later_claim_replaces_the_run_and_a_set_does_not_end_it(self):
-        hook.track_run(self.claim_payload())
-        done = {"session_id": self.session, "tool_name": "Bash",
-                "tool_input": {"command": "python3 .pilot/pilot.py set 7 --status approved --unassign"}}
-        self.assertIsNone(hook.track_run(done))
-        self.assertIsNotNone(hook.read_run(self.session))
-        self.assertIsNone(hook.guard_decision(self.payload("Bash", command="gh pr view 7")))
-        self.assertEqual(hook.guard_decision(self.payload("Bash", command="gh pr merge 7"))["decision"], "deny")
-        hook.track_run(self.claim_payload(merge=True))
-        self.assertTrue(hook.read_run(self.session)["merge"])
-
-    def test_doctor_checks_the_hooks_only_when_the_module_is_on(self):
-        with unittest.mock.patch.object(pilot, "SETTINGS_PATH", self.settings):
-            off = pilot.Machine(FakeGh([])).doctor(str(pathlib.Path(self.dir.name) / "none"), {})
-            self.assertNotIn("hooks", [c["name"] for c in off["checks"]])
-            on = pilot.Machine(FakeGh([])).doctor(str(pathlib.Path(self.dir.name) / "none"), {"hooks": True})
-            self.assertIn("hooks", [c["name"] for c in on["failed"]])
-            self.install()
-            fixed = pilot.Machine(FakeGh([])).doctor(str(pathlib.Path(self.dir.name) / "none"), {"hooks": True})
-            self.assertNotIn("hooks", [c["name"] for c in fixed["failed"]])
-
-    # ---- entry point --------------------------------------------------------------------
-    def test_the_entry_point_fails_open(self):
-        for raw in ("", "not json", "[]", json.dumps({"tool_name": 3})):
-            with unittest.mock.patch("sys.stdin", io.StringIO(raw)):
-                self.assertEqual(hook.run_hook("guard"), 0, raw)
-            with unittest.mock.patch("sys.stdin", io.StringIO(raw)):
-                self.assertEqual(hook.run_hook("track"), 0, raw)
-
-    def test_the_script_exits_2_on_a_refusal_and_0_on_anything_else(self):
-        self.start_run()
-        script = pathlib.Path(__file__).with_name("pilot_hook.py")
-        run = lambda raw, mode="guard": subprocess.run([sys.executable, str(script), mode], input=raw, capture_output=True, text=True)
-        refused = run(json.dumps(self.payload("Bash", command="gh pr merge 5")))
-        self.assertEqual(refused.returncode, 2)
-        self.assertIn("--merge", refused.stderr)
-        self.assertEqual(run(json.dumps(self.payload("Bash", command="ls"))).returncode, 0)
-        self.assertEqual(run("garbage").returncode, 0)
-        self.assertEqual(run("{}", "nope").returncode, 0)
-
-    def test_the_installed_command_exits_0_when_the_script_is_missing(self):
-        command = pilot.hook_command("guard")
-        done = subprocess.run(["sh", "-c", command], input="{}", capture_output=True, text=True,
-                              env={**os.environ, "CLAUDE_PROJECT_DIR": self.dir.name})
-        self.assertEqual(done.returncode, 0)
-        shutil.copy(pathlib.Path(__file__).with_name("pilot_hook.py"), self.dir.name + "/pilot_hook.py")
-        os.makedirs(self.dir.name + "/.pilot")
-        os.replace(self.dir.name + "/pilot_hook.py", self.dir.name + "/.pilot/pilot_hook.py")
-        self.start_run()
-        refused = subprocess.run(["sh", "-c", command], input=json.dumps(self.payload("Bash", command="gh pr merge 5")),
-                                 capture_output=True, text=True, env={**os.environ, "CLAUDE_PROJECT_DIR": self.dir.name})
-        self.assertEqual(refused.returncode, 2)
-
-    def test_the_entry_point_exits_2_with_the_reason_on_stderr(self):
-        self.start_run()
-        raw = json.dumps(self.payload("Bash", command="gh pr merge 5"))
-        err = io.StringIO()
-        with unittest.mock.patch("sys.stdin", io.StringIO(raw)), contextlib.redirect_stderr(err):
-            self.assertEqual(hook.run_hook("guard"), 2)
-        self.assertIn("--merge", err.getvalue())
 
 
 if __name__ == "__main__":

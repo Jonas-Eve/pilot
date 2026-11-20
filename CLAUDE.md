@@ -124,13 +124,11 @@ itself.
   docs, persona duty lists, label vocabulary and `pilot.py` commands cited against `pilot.py`, `PILOT:` markers in the templates, size of the LLM-read
   files. Runs in CI with the two test suites (`.github/workflows/lint-pilot.yml`); run it after any edit of the families §3's cross-reference check
   names (`python3 scripts/lint_pilot.py`, tests: `python3 -m unittest scripts/test_lint_pilot.py`).
-- `scripts/e2e_hooks.py` — maintainers' end-to-end check of the `hooks` module in a real headless session (`claude -p`, stub `gh`),
-  with a control arm without the hooks; a few cents, needs the `claude` CLI, so not in CI. Run it after a change to the hooks.
 - `.claude/settings.json` + `scripts/hooks/repo_hook.py` — maintainers' hooks, never copied into a project: refuse an edit of a
   PILOT-owned copy (`.pilot/`, the synced workflow), run `lint_pilot.py` after an edit of a file it covers, handing its
   errors back to the model, and refuse `create_pull_request` / `gh pr create` while the diff touches what projects copy and no
   maintainer review of that exact diff returned `VERDICT: PASS`. `docs/maintainer-review.md` is that review (coherence and
-  completeness, run by an isolated agent before the PR); it is read by no skill or agent of a project.
+  completeness, run by an isolated agent before the PR); it is read by no skill or agent of a project. What was measured about hooks, and why none ships to projects: `docs/hooks-findings.md`.
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot-init` and `/pilot-update`; also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
@@ -147,7 +145,7 @@ itself.
   (the project's wiki under `wiki/`, an OKF bundle: `index` (`--under`, `--depth 1` for one level), `search` (ranked, lexical, with an extract), `describe` (a folder's one sentence), `reindex`, `show` (with what an entry cites and what cites it), `status`, `lint` (size warnings never fail it), `snapshot` (the dashboard's Wiki tab document), `add`/`set`/`remove`, the only
   writers of an entry's frontmatter and of the folder `index.md` files, and `migrate` — design in `docs/wiki-design.md`; used by `pilot-wiki` and, when the `wiki` module is enabled, by all five phases) and
   `arch` (the architecture module's bundle under `architecture/` — `overview.md`, `guidelines/*.md`, `reference/<id>.md` (how the code is built today, checked against it by `--verify`, a human arbitrating each divergence), `adr/NNNN-title.md`, `runbooks/<id>.md` (how to operate: read on demand, left out of `--active`) — on the same OKF engine and the same reading commands as `wiki` (`search`, `describe`, `index --depth 1`; `snapshot` (the dashboard's Architecture tab document), `index` — `--active` gives the one-row-per-entry list of what is in force that dev, spec and review prompts carry instead of the files —, `reindex`, `show`, `lint`, `add`, `set`, `remove`, plus `supersede NEW OLD` for ADRs, `next-number` and `inventory` (outlines of what a project already documents, for `--bootstrap`) (ADR numbers run across the whole bundle); `--app <name>` on `index`/`search` gives the transversal entries plus one app's, a monorepo keeping an app's own rules under `architecture/apps/<app>/`; no GitHub call); design in `docs/modules-design.md` §6) and `flow` (`doc`: the dashboard's `flowRuns` document of a run of a user flow, from the persona runs and the consolidation — hashes of the flow and of each persona that played, the worst result, the bugs; no GitHub call; refuses a run that played no step) and `doctor` (preflight each phase skill runs as its step 0, once per session: python, `gh api` reachable (never `gh auth status`: it can be wrong behind a token-swapping proxy),
-  repo access and push permission, the 32 PILOT labels (plus one `workflow:` label per profile once the project declares a `workflow`), the `wiki/` and `architecture/` directories when those modules are on — `--no-wiki` lets `pilot-wiki` repair a missing one) and `hooks` (`install|check|remove`: PILOT's entries merged into the project's `.claude/settings.json`, never replacing the project's own) and `scripts/pilot_hook.py` (the lightweight entry point those entries run, copied as `.pilot/pilot_hook.py`: `guard|track`, payload on stdin, exit 2 = refusal the model reads, a few stdlib imports only because it runs on every tool call; a PILOT run's marker lives in the temp directory, keyed by session; design in `docs/hooks-design.md`) and `module` (`list` — also the project's content `language`, English by default, which `wiki`/`arch` `lint` check entries against —, `enable`, `disable`: the optional modules of `.pilot/state.json` — `wiki`, `architecture`, `dashboard`, `design`, `proto`, `hooks` — with the prerequisites each declares; the snapshot document carries them so the dashboard's tabs follow). Every command prints one JSON
+  repo access and push permission, the 32 PILOT labels (plus one `workflow:` label per profile once the project declares a `workflow`), the `wiki/` and `architecture/` directories when those modules are on — `--no-wiki` lets `pilot-wiki` repair a missing one) and `module` (`list` — also the project's content `language`, English by default, which `wiki`/`arch` `lint` check entries against —, `enable`, `disable`: the optional modules of `.pilot/state.json` — `wiki`, `architecture`, `dashboard`, `design`, `proto` — with the prerequisites each declares; the snapshot document carries them so the dashboard's tabs follow). Every command prints one JSON
   object; `claim`/`set`/`flag`/`unflag` also return the `event` (and `claim` the `activity`)
   the phase skills push to the dashboard (`pilot-link-dashboard.md`), and `event` builds one
   for a ticket a skill changed itself (Discovery, the tasks Spec creates). Judgment (which agent
@@ -170,8 +168,8 @@ the skill files) — never a fixed path, there is no installed location.
 - **Deterministic first — code over prose:** whatever can be decided by code (a script, a test, a linter, a hook) is, and the
   prose that explained it leaves the LLM-read files; it lightens the context and removes a source of drift. A rule written in a
   `SKILL.md` or task doc that a command could compute or check is a candidate to move: into `scripts/pilot.py` (and its tests)
-  for ticket mechanics, into `scripts/lint_pilot.py` for this repo's coherence, into a hook for a constraint on what the model
-  does. Prose keeps only judgment. The test of a new rule: could a check fail on it? Then write the check.
+  for ticket mechanics, into `scripts/lint_pilot.py` for this repo's coherence, into this repo's own hooks (`.claude/settings.json`) for a constraint on what the model
+  does while working here (`docs/hooks-findings.md`: a hook cannot be shipped to projects cleanly). Prose keeps only judgment. The test of a new rule: could a check fail on it? Then write the check.
 - **Mechanism vs. wording:** the phase names, label taxonomy, claim protocol, and
   skill-to-agent mapping in `assets/docs/pilot-process.md` are the actual product. Don't
   change them casually; a mechanism change here affects every project that has copied
@@ -311,7 +309,7 @@ the skill files) — never a fixed path, there is no installed location.
 - **Version Every Change Projects Would Copy (`VERSION`, SemVer):** `VERSION` holds PILOT's
   `MAJOR.MINOR.PATCH`; `/pilot-init` and `/pilot-update` record it in the project's
   `.pilot/state.json` (`pilotVersion`) and the dashboard footer shows it. A PR that changes
-  anything a project copies (skills, agents, `assets/docs`, `scripts/pilot.py`, `scripts/pilot_hook.py`, the
+  anything a project copies (skills, agents, `assets/docs`, `scripts/pilot.py`, the
   dashboard template) bumps it once, in the PR itself: **patch** for a fix or wording that
   changes no mechanism, **minor** for a backward-compatible capability (a new skill, flag,
   command or dashboard feature), **major** for a mechanism change that makes a project act
