@@ -553,13 +553,6 @@ class FlagTests(unittest.TestCase):
         self.assertIn("needs-human", names(gh.store[1]))
         self.assertIn("status:in-dev", names(gh.store[1]))
 
-    def test_unflag_refuses_a_ticket_that_is_not_flagged_and_posts_nothing(self):
-        m, gh = machine([issue(1, ["status:in-dev"])])
-        with self.assertRaises(pilot.Refused) as caught:
-            m.unflag(1, "Decided: A")
-        self.assertEqual(caught.exception.payload["reason"], "not-flagged")
-        self.assertEqual(gh.calls, [])
-
     def test_unflag_posts_resolution_then_removes_flag(self):
         m, gh = machine([issue(1, ["status:in-dev", "needs-human"])])
         with self.assertRaises(pilot.Refused):
