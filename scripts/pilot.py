@@ -554,6 +554,44 @@ def set_module(name, enabled, path=STATE_PATH, with_requires=False):
     return {"ok": True, "modules": {k: bool(v) for k, v in modules.items()}}
 
 
+CLAIM_MODES = {"claim-fresh": "fresh", "reclaim": "reclaim", "resume-orphaned": "resume-orphaned",
+               "resume-cleared": "resume-cleared", "rescope": "rescope"}
+# what a skill tells the human when a ticket cannot be taken (`say`), by the engine's `reason`; {fields} are the result's own
+SAY = {
+    "not-found": "Ticket #{issue} was not found.",
+    "closed": "Ticket #{issue} is closed.",
+    "flagged": "Ticket #{issue} carries {flags}: unresolved, a human must clear it first.",
+    "assigned": "Ticket #{issue} is already assigned to {assignees}.",
+    "depends-on-open": "Ticket #{issue} waits on open {depends_on}.",
+    "wrong-status": "Ticket #{issue} is at {status}, which this phase does not take.",
+    "in-progress-unassigned": "Ticket #{issue} is in progress with nobody assigned: an orphaned claim, left for a human.",
+    "resume-mismatch": "Ticket #{issue} cannot be resumed here (status {status}, flags {flags}, assignees {assignees}).",
+    "pair-only": "Ticket #{issue} is pair only ({signals}): an unattended run leaves it to a human.",
+    "epic-without-open-subissues": "Epic #{issue} has no open sub-issue to take.",
+    "not-a-poc": "Ticket #{issue} is not a prototype.",
+    "poc": "Ticket #{issue} is a prototype: it never goes through the phases, use /pilot-proto.",
+    "pr-number": "#{issue} is a pull request, not a ticket.",
+    "ask-resume": "Ticket #{issue} is in progress and assigned to {assignees}: likely a session left mid-pair. Re-run with --resume, or add can-resume yourself.",
+}
+
+
+def with_next(phase, result, auto):
+    """`result` with what to do next, so no skill restates it: `claim` (the exact command that takes the ticket, mode and
+    `--auto` included) or `say` (what to report to the human, then stop)."""
+    action, number = result.get("action"), result.get("issue")
+    if action in CLAIM_MODES:
+        suffix = " --auto" if auto else ""
+        return {**result, "claim": f"python3 .pilot/pilot.py claim {phase} {number} --mode {CLAIM_MODES[action]}{suffix}"}
+    key = result.get("reason") if action in ("stop", "manual") else action
+    if key in SAY and action != "descend":
+        fields = {k: (", ".join(f"#{n}" if isinstance(n, int) else str(n) for n in v) if isinstance(v, list) else v)
+                  for k, v in result.items()}
+        fields.setdefault("flags", ""); fields.setdefault("assignees", ""); fields.setdefault("depends_on", "")
+        fields.setdefault("signals", "")
+        return {**result, "say": SAY[key].format(**fields)}
+    return result
+
+
 class GhClient:
     def __init__(self, repo):
         self.repo = repo
@@ -786,7 +824,7 @@ class Machine:
                         blocks_open_ticket=c.get("blocks")) for c in candidates]
         if shown and only is None:  # the pick is resolved here, from what was listed: the caller acts on `action` at once
             checked = self.resolve_raw(phase, shown[0]["number"], False, auto, raws[shown[0]["number"]])
-            shown[0] = {**shown[0], "action": checked["action"], **({"reason": checked["reason"]} if "reason" in checked else {})}
+            shown[0] = {**shown[0], **{k: checked[k] for k in ("action", "reason", "claim", "say") if k in checked}}
         return {"pick": shown[0] if shown else None, "candidates": shown[:limit],
                 "candidate_count": len(shown),
                 "excluded": sorted(excluded, key=lambda e: e["number"])}
@@ -814,9 +852,9 @@ class Machine:
         if auto and result.get("action") in ("claim-fresh", "reclaim", "resume-orphaned", "resume-cleared"):
             route = self._pair_only(normalize(raw))
             if route:  # a signal makes it pair only: an unattended run leaves it to a human
-                return {"action": "stop", "reason": "pair-only", "signals": route["signals"], "issue": number,
-                        "status": result.get("status")}
-        return result
+                result = {"action": "stop", "reason": "pair-only", "signals": route["signals"], "issue": number,
+                          "status": result.get("status")}
+        return with_next(phase, result, auto)
 
     def _resolve(self, phase, number, resume, auto, raw):
         cfg = PHASES[phase]
