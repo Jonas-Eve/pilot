@@ -54,9 +54,8 @@ A hook must know a PILOT run is active, for which phase, and what it is allowed 
   on the same checkout out of it.
 - `merge` is true only when the phase was started with `--merge` (review).
 
-Open: that a sub-agent's payload carries the **same `session_id`** as its parent (the test showed `agent_id`
-and `agent_type`; the equality was not checked). If it does not, the match falls back to the marker's
-`session_id` list or to the working directory.
+A sub-agent's payload carries the **same `session_id`** as its parent (measured), plus `agent_id` and
+`agent_type`; the match needs nothing more.
 
 ## 5. Installation: merging into `settings.json`
 
@@ -107,10 +106,9 @@ first release that makes `/pilot-update` edit `settings.json` is documented in t
 
 ## 10. Open questions
 
-1. Same `session_id` for a sub-agent and its parent (§4).
-2. Mobile app and `claude -p` behaviour of `settings.json` hooks (the docs say a headless run treats the
+1. Mobile app and `claude -p` behaviour of `settings.json` hooks (the docs say a headless run treats the
    folder as trusted; interactive runs wait for the workspace-trust dialog).
-3. Whether `if: "Bash(gh pr merge *)"` is worth using over matching in the script (one rule per handler, an
+2. Whether `if: "Bash(gh pr merge *)"` is worth using over matching in the script (one rule per handler, an
    unclear behaviour on chained commands); the script matches by default.
-4. Where the marker lives when a cloud session is resumed in a new container (`.pilot/run.json` is lost; a
+3. Where the marker lives when a cloud session is resumed in a new container (`.pilot/run.json` is lost; a
    resumed run then has no guard, which is the fail-open side).
