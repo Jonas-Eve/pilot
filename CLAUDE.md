@@ -124,6 +124,9 @@ itself.
   docs, persona duty lists, label vocabulary against `pilot.py`, `PILOT:` markers in the templates, size of the LLM-read
   files. Runs in CI (`.github/workflows/lint-pilot.yml`); run it after any edit of the families §3's cross-reference check
   names (`python3 scripts/lint_pilot.py`, tests: `python3 -m unittest scripts/test_lint_pilot.py`).
+- `.claude/settings.json` + `scripts/hooks/repo_hook.py` — maintainers' hooks, never copied into a project: refuse an edit of a
+  PILOT-owned copy (`.pilot/`, the synced workflow), and run `lint_pilot.py` after an edit of a file it covers, handing its
+  errors back to the model.
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot-init` and `/pilot-update`; also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if

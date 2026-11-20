@@ -60,5 +60,22 @@ class LintTests(unittest.TestCase):
         self.assertTrue(self.errors("marker"))
 
 
+class HookTests(unittest.TestCase):
+    def run_hook(self, mode, rel):
+        import json, subprocess, sys
+        payload = json.dumps({"tool_input": {"file_path": str(REPO / rel)}})
+        return subprocess.run([sys.executable, str(HERE / "hooks" / "repo_hook.py"), mode], input=payload,
+                              capture_output=True, text=True).returncode
+
+    def test_guard_refuses_owned_copies(self):
+        self.assertEqual(self.run_hook("guard", ".pilot/pilot.py"), 2)
+        self.assertEqual(self.run_hook("guard", ".github/workflows/pilot-status-on-merge.yml"), 2)
+        self.assertEqual(self.run_hook("guard", "scripts/pilot.py"), 0)
+
+    def test_lint_hook_passes_on_clean_repo(self):
+        self.assertEqual(self.run_hook("lint", "CLAUDE.md"), 0)
+        self.assertEqual(self.run_hook("lint", "README.md"), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
