@@ -79,8 +79,8 @@ spec).
    (keep `status:in-dev` — an orthogonal flag, `.pilot/pilot-process.md` §3) and a
    comment on why and what you need decided, immediately and every time, even with
    a human live in this session. *Then*, if that human answers in conversation,
-   resolve it in the same turn with `pilot.py unflag --comment "<the decision>"`
-   and proceed with their answer;
+   proceed with their answer, post a follow-up comment summarizing the decision,
+   and only then remove `needs-human` yourself in the same turn, continuing;
    otherwise stop and leave flag and comment for later — don't open a partial PR
    for an undecided ticket. If instead it can't move forward due to unresolved work
    elsewhere rather than a judgment call, that's `on-hold`, not `needs-human`

@@ -110,7 +110,7 @@ the `decision` is resolved (`.pilot/pilot-link-review-consensus.md`).
 Flag and comment the moment a phase hits such a blocker, whether or not a human is live. What differs is what follows:
 - **Nobody answers on the spot** — the flag and comment stay, and the ticket waits for the resume protocol (§4).
 - **A human is live in the same session** and answers there — the agent still posts the why/what comment first, proceeds with the answer, posts
-  resolves it with `pilot.py unflag --comment "<what was decided>"` (the second comment and the label's removal, in one step). Never silently: the ticket's history shows the block and its resolution (for phase
+  a **second** comment saying what was decided, then removes `needs-human` itself. Never silently: the ticket's history shows the block and its resolution (for phase
   4, a blocking review followed by a corrected one).
 
 Otherwise a human resolves it by removing the label, optionally after a reply: its absence is the whole signal. Whether the ticket is then picked up automatically is

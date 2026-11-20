@@ -36,8 +36,8 @@ analogous judgment from a different moment.
    there's no architect to raise it with in this pass: add `needs-human` (keep the
    ticket's current `status:` — `.pilot/pilot-process.md` §3) and a comment stating the
    conflict and what needs deciding, every time, even with a human live in this session.
-   If that human answers in conversation, proceed with their answer, resolving it in the same turn with
-   `pilot.py unflag --comment "<the decision>"`;
+   If that human answers in conversation, proceed with their answer, post a follow-up
+   comment summarizing the decision, and remove `needs-human` yourself in the same turn;
    otherwise leave the flag and comment for a human to resolve later. If the ticket
    instead just can't proceed yet due to unresolved work elsewhere (not a judgment call),
    use `on-hold` instead (`.pilot/pilot-process.md` §3 "`on-hold`") with a comment on what
