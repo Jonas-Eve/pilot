@@ -1194,6 +1194,8 @@ class Machine:
         if raw is None:
             raise Refused({"ok": False, "reason": "not-found", "issue": number})
         labels = normalize(raw)["labels"]
+        if "needs-human" not in labels:
+            raise Refused({"ok": False, "reason": "not-flagged", "issue": number})
         self.gh.post_comment(number, comment)  # the resolution is always on the record first
         after = self._write(number, labels - {"needs-human"})
         return {"ok": True, "issue": number, "flagged": False, "event": self._event(after, "unflag")}

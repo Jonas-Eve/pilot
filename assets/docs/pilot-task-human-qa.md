@@ -27,10 +27,9 @@ nobody has yet confirmed it behaves as intended for a real user.
    you genuinely can't tell, that's a `needs-human` situation like any other
    (`.pilot/pilot-process.md` §3): add the label and
    post the why/what's-needed comment immediately, every time, even with a human live —
-   never skip straight to a resolution. *Then* get their answer, post a follow-up comment
-   summarizing what was decided, and remove `needs-human` yourself in the same turn — same
-   two-comment pattern (`.pilot/pilot-process.md` §3) as any live-resolved block, so the
-   GitHub history shows both question and answer either way. Then form your verdict:
+   never skip straight to a resolution. *Then* get their answer and resolve it in the same turn with
+   `pilot.py unflag --comment "<what was decided>"` (`.pilot/pilot-process.md` §3), so the
+   history shows both question and answer. Then form your verdict:
    - **Every case confirmed, or every failure resolves to "not actually a bug"** →
      approve. Say so plainly, and for each "not actually a bug" failure, tell the human it
      needs its own ticket through Discovery — the skill sets `status:done` and closes the
