@@ -1,0 +1,12 @@
+name: lint-pilot
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/lint_pilot.py
+      - run: python3 -m unittest scripts/test_lint_pilot.py

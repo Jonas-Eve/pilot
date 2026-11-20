@@ -120,6 +120,10 @@ itself.
   command changes, update its texts (`HOW_PHASES`, `HOW_TABS`, the `vHow*` functions, `AGENTS`, `ROSTER`) in the same PR. Refresh the demo
   data with `python3 scripts/demo_snapshot.py --dir DIR` and `ArtifactData` (`snapshots`
   `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, `wiki` `Jonas-Eve__pilot` (`wiki.json`), `architecture` `Jonas-Eve__pilot` (`architecture.json`), plus the `activity`/`events`/`protos`/`protoHtml` files it writes).
+- `scripts/lint_pilot.py` — maintainers' coherence linter, never copied into a project: doc references, orphan task/link
+  docs, persona duty lists, label vocabulary against `pilot.py`, `PILOT:` markers in the templates, size of the LLM-read
+  files. Runs in CI (`.github/workflows/lint-pilot.yml`); run it after any edit of the families §3's cross-reference check
+  names (`python3 scripts/lint_pilot.py`, tests: `python3 -m unittest scripts/test_lint_pilot.py`).
 - `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
   `/pilot-init` and `/pilot-update`; also bumps the calling project's own
   `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
