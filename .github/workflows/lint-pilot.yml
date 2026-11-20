@@ -8,5 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the version-bump test compares with origin/main
       - run: python3 scripts/lint_pilot.py
       - run: python3 -m unittest scripts/test_lint_pilot.py
+      - run: python3 -m unittest scripts/test_pilot.py
