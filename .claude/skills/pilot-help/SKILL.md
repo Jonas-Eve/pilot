@@ -49,9 +49,9 @@ not something to re-derive per run):
 
 For each command actually present, one line: its name, a plain-language one-sentence
 summary distilled from its `description` (not the full frontmatter dumped verbatim), and
-a pointer to run `/pilot-help <name>` for the rest. Skip any of the fourteen that isn't
+a pointer to run `/pilot-help <name>` for the rest. Skip any of the fifteen that isn't
 actually installed in this project rather than describing it from memory; mention any
-`pilot-*` skill present that isn't one of the fourteen as project-local, not PILOT's. Then
+`pilot-*` skill present that isn't one of the fifteen as project-local, not PILOT's. Then
 the optional modules: run `python3 .pilot/pilot.py module list` and give each module's name, whether it is on, the
 command that turns it on (`use`) and its `bootstrap` when it has one. Close
 with one line naming the seven personas behind these commands (`pilot-pm`,
