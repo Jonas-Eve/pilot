@@ -1,13 +1,14 @@
 # PILOT — adaptive workflow (design proposal)
 
-Status: **proposal; the engine is built.** 3.3.0: `pilot.py workflow`, a chain that is a function of a profile.
-3.4.0: `lean` (no human QA, no e2e task in a feature split, the tech lead alone reviews, a finished feature goes to `done`), read by
-the skills, task docs and the merge workflow from `pilot.py workflow show`. 3.5.0: the cockpit shows the project's phases, a profile
-chip and the rules. 3.6.0: risk signals (`workflow.signals`, declared by the project, none by default), a route per ticket (`workflow show --ticket N`:
-its own `workflow:<profile>` label when allowed, the mode, the reviewers, the Spec rule), `--auto` refused by the engine on a pair-only
-ticket, a frozen workflow label, the Spec of a `type:tech` story by profile (the tech lead alone, the architect validating or
-leading), and the launch buttons following the default mode. Not yet: a project's own signals (myAVI's, pilot's), recording the mode
-of each run, and the measures it would feed.
+Status: **the engine is built, then reduced.** 3.3.0: `pilot.py workflow`, a chain that is a function of a profile. 3.4.0: `lean`
+(no human QA, no e2e task in a feature split, the tech lead alone reviews, a finished feature goes to `done`), read by the skills,
+task docs and the merge workflow from `pilot.py workflow show`. 3.5.0: the cockpit shows the project's phases, a profile chip and the
+rules. 3.6.0 added risk signals, a profile per ticket (a `workflow:<profile>` label, `workflow.allow`) and `--auto` refused by the engine on a
+pair-only ticket. **5.0.0 removed those three** (sections 4 and "A profile for one ticket" below are kept as a record of what was dropped
+and why): nobody declared a signal, the single user can always choose the mode of a run, and the machinery carried several
+silent failures (a refused route treated as not pair-only, a ticket label the phase gate ignored). What stays: the two profiles, their
+rules, `workflow show|check|set`, `show --ticket N` (its mode, reviewers and Spec rule). The engine no longer has `--auto`: whether a
+run is unattended is the skill's flag and the project's default mode.
 
 Human-only document: no skill or agent reads it, and it
 is not copied into consuming projects. Once validated, the contract moves into `assets/docs/` and
@@ -27,32 +28,34 @@ records why a ticket took a given path.
 
 ## 2. Principle
 
-Put the constraint where the risk is, nowhere else. Three independent axes:
+Put the constraint where the risk is, nowhere else. Two independent axes:
 
 1. **Project profile**: fixed at init in `.pilot/state.json`: `lean` or `standard`, which steps and
    personas by default.
-2. **Ticket risk**: objective signals, each carrying its own roster additions for that one ticket.
-3. **Interaction mode**: pair or auto. Exists today, unchanged.
+2. **Interaction mode**: pair or auto, chosen for each run.
+
+A third axis, ticket risk (objective signals, each adding to one ticket's roster), existed from 3.6.0 and was removed in 5.0.0
+(section 4).
 
 ## 3. Profiles
 
-Two, not three: what a third `strict` profile would have bought is expressed as risk signals
-(section 4), per ticket, instead of a per-project level that taxes every ticket.
+Two, not three: a third `strict` profile would have taxed every ticket of a project; risk signals were the per-ticket
+answer (section 4, removed in 5.0.0), and today a human who wants a careful run picks the pair mode for it.
 
 | | `lean` (pilot) | `standard` (myAVI) |
 |---|---|---|
 | Discovery | a new capability (skill, flag, command, dashboard feature, i.e. a `type:feature` of the repo's functional scope) gets a light framing; an internal `type:tech` has none | PM + architect |
-| Spec, `type:tech` | tech lead alone; the architect validates on a signal and **leads** when the ticket declares dependencies, names several apps, or the tech lead's pass finds it must split | tech lead leads, the architect always validates (one call), and leads on the same triggers |
+| Spec, `type:tech` | tech lead alone; the architect **leads** when the ticket declares dependencies, names several apps, or the tech lead's pass finds it must split | tech lead leads, the architect always validates (one call), and leads on the same triggers |
 | Spec, `type:feature` | architect + tech lead | architect + tech lead |
-| Dev | auto | pair by default, or auto with pair forced by a signal |
+| Dev | auto | pair by default |
 | Review | tech lead alone | tech lead (+ PM for feature/e2e) |
-| Human QA | none | features, depth set by signal (see section 4) |
+| Human QA | none | features |
 | Default mode | auto | pair |
 
 Discovery keeps the architect as contributor and validator in every profile that has a
 Discovery: a story badly thought out there makes the rest of the chain wrong.
 
-## 4. Risk signals
+## 4. Risk signals (removed in 5.0.0; kept as a record)
 
 A signal is a rule a script can evaluate (labels, paths touched, keywords in the ticket), never an
 agent's opinion. Each one carries the **additions** it makes to the roster of that ticket, rather
@@ -70,7 +73,7 @@ project that declares none is never forced to anything. Examples of what a proje
 A signal that adds `pair_only` makes its tickets pair-only: an unattended run (`--auto`) leaves them out or refuses them, and the cockpit hides their auto button (its `pairOnly`). Keep the list short at first,
 three or four signals, and grow it from what the measurements show.
 
-### A profile for one ticket (built, 3.6.0)
+### A profile for one ticket (built in 3.6.0, removed in 5.0.0; kept as a record)
 
 A signal is the automatic way to give one ticket a different workflow; a label is the manual one.
 `workflow:standard` or `workflow:lean` on a ticket, resolved by one function,
@@ -127,8 +130,8 @@ personas sit in the roster, never the vocabulary.
 - `pilot.py contract` checks that every path a profile allows composes (no status without a
   producer or a consumer), once per profile; today it checks the single chain.
 - The roster becomes one table per profile instead of one fixed table.
-- `pilot.py snapshot` adds, per ticket, its **route**: effective profile, the signals that apply,
-  the roster of its next step, whether auto is allowed.
+- ~~`pilot.py snapshot` adds, per ticket, its route (effective profile, signals, whether auto is allowed).~~ Removed in 5.0.0:
+  the snapshot carries the project's profile and rules, no route per ticket.
 - Probably a **major** version: a project acts differently.
 
 ## 8. The cockpit
@@ -140,18 +143,16 @@ computes the route.
 - **Banner**: active profile as a badge, linking to the roster table of that profile.
 - **Phases from data**: `PHASES` is no longer a constant; a phase absent from the profile is
   hidden or greyed.
-- **Route per ticket**: chips with the effective profile and which signals added guardrails, e.g.
-  "pair only: label change". Filter "tickets with a signal" and `needs-human` at a glance.
+- ~~**Route per ticket**: chips with the effective profile and the signals that added guardrails.~~ Removed in 5.0.0.
 - **"My queue" follows the step's roles**: a ticket where the architect validates shows in the
   architect's queue only at validation time.
 - **Launch buttons**: the command text stays simple (`/pilot-spec 123`): the skill reads the
   profile in `state.json` and composes the roster, so the cockpit cannot drift from the skills.
   The cockpit varies only the mode and the options: which button is primary (auto for `lean`,
-  pair for `standard` or a ticket with a signal), auto hidden when the route is pair-only, and the
+  pair for `standard`), and the
   Options panel (`WITHS`, `--only`, `--multi`, `--next`) read from the profile's roster instead
   of the hard-coded table.
-- **"i" help**: the active profile, what each mode does in it, and why a given ticket is
-  pair-only.
+- **"i" help**: the active profile and what each mode does in it.
 - **Metrics, to tune the profiles**: from the events the cockpit already receives, per profile
   and per phase: agent calls per ticket, time per status, validator objection rate,
   `needs-human` rate. This is the measurement needed to decide whether the architect earns its
@@ -168,12 +169,11 @@ computes the route.
 1. myAVI's non-negotiable risk. Resolved from the repository (315 issues, 260 merged PRs; 51 % of
    issues are `type:tech`, 74 of those 162 mention security, 121 tenants): identity and tenant
    isolation first. Accessibility is already enforced mechanically in the front components and
-   their tests; the open gap is new screens and flows, covered by the `type:feature` signal above.
+   their tests; the open gap is new screens and flows, the signal that was to cover it was removed in 5.0.0.
 2. Decided: the state machine depends on the project's configuration (section 7). Still to
    confirm with `contract`, per profile: that `lean`'s path (no QA, no e2e task, a lighter Spec)
    composes without a new status.
-3. Signals: declared per project in `state.json`, none by default (decided: a default `priority:P0`
-   signal was removed because nobody had asked for it); confirm the schema, and who may edit it.
+3. Signals: removed in 5.0.0 (none was ever declared); to be redesigned only when a project asks for one.
 4. Is the profile per project only, or can a monorepo set one per app?
 5. QA granularity: per story (today) or batched per epic or per release? 20 of myAVI's 25 open
    feature stories wait at `status:qa`; none has ever closed through QA, so the epics above them
@@ -193,12 +193,12 @@ computes the route.
    `standard` is unchanged, `lean` composes (`workflow check`) and is refused by `workflow set` until it is ready.
 1. Done (3.4.0): `lean` is ready for what it declares (no QA, no e2e task, the tech lead alone reviews),
    carried to projects by `pilot-update`.
-2. Done (3.5.0 to 3.6.0): Spec's route, the default mode of each profile, risk signals (none by default, a
-   project declares its own), a per-ticket `workflow:` label, the cockpit following the profile, and `pilot`
+2. Done (3.5.0 to 3.6.0): Spec's route, the default mode of each profile, risk signals and a per-ticket `workflow:` label (both removed
+   in 5.0.0), the cockpit following the profile, and `pilot`
    running PILOT on itself (`lean`).
 3. Measured (3.7.0, `docs/engine-comparison.md`): one ticket from creation to `approved` in three arms; the
    engine that reaches GitHub with `gh` cost the least. More tickets, by type, remain to be measured.
-4. To do: define `standard` and its signals with myAVI's real constraints (migration from PILOT 2.9.0: no
+4. To do: define `standard` with myAVI's real constraints (migration from PILOT 2.9.0: no
    `workflow` block means today's chain), then publish the cockpit changes with the release.
 
 ## 11. Evidence from myAVI (measured 2026-11, read-only)

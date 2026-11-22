@@ -21,8 +21,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:qa`, resumable
    `status:in-qa` + `can-resume`; `needs-human`, `on-hold` and open "Depends on #N" excluded;
    priority, then "Blocks #M", then oldest). `pick: null` → report nothing to do; otherwise
-   the pool has already resolved its pick: act on `pick.action` (pair unless `--browser` is given, never the ticket's `mode`; with `--browser` the pool, `resolve` and `claim` get `pilot.py`'s own `--auto`, which leaves out a pair-only story,
-   `.pilot/pilot-process.md` §4 "Interaction modes"). A `--auto` or `--human` given to `/pilot-qa` itself is not a QA flag: say that QA runs in pair or with `--browser`, and stop before anything else:
+   the pool has already resolved its pick: act on `pick.action` (pair unless `--browser` is given, never the ticket's `mode`, `.pilot/pilot-process.md` §4 "Interaction modes"). A `--auto` or `--human` given to `/pilot-qa` itself is not a QA flag: say that QA runs in pair or with `--browser`, and stop before anything else:
    - `claim-fresh` → step 2 (mode `fresh`). Under `--browser`, `resume-cleared` (a human cleared `needs-human` and set `can-resume`) and `resume-orphaned` (only with `--resume`, a human's explicit call that the claim is orphaned) go on as in pair, from the test log (step 5); `ask-resume` still stops and asks for `--resume`.
    - `resume-orphaned` (`--resume`: a session left mid-pair) or `resume-cleared`
      (`can-resume`: a human cleared `needs-human`) → step 2 (mode of the same name), then
@@ -45,7 +44,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    - The story's test account, if a case needs a login: the environment variables `PILOT_ACCOUNT_QA_USER` and `PILOT_ACCOUNT_QA_PASSWORD`, checked with `[ -n "${VAR:-}" ]` and never printed; else the human may give them, which you write to a
      mode-600 file in the session's scratchpad (deleted when the run ends) and pass its path, never the values, to the agent. Never invented: a case needing a login with none is untestable (step 4). Credentials, tokens and personal data seen in the environment never go into the test log.
 2. **Claim** it: `python3 .pilot/pilot.py claim qa <issue> --mode <mode>` (the mode named in
-   step 1; in `--browser` runs add `pilot.py`'s `--auto`) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
+   step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-qa`, re-read to confirm). Any refusal (`lost-race`, `not-claimable`, …) →
    report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.

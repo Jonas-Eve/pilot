@@ -15,8 +15,7 @@ One tiny ticket per run, the same each time: a `type:tech` need, "add a `--versi
 description by `/pilot-spec --tech`, then `/pilot-dev`, then `/pilot-review`, on the lean profile. The run stops at
 `status:approved`; the human merges.
 - One branch of pilot-test per arm carries that arm's PILOT install (`.claude/`, `.pilot/`, the state with
-  `workflow.profile: lean`); every pull request targets that branch, never `main`. The `workflow:lean` and
-  `workflow:standard` labels must exist (the gh engine's `doctor` requires them).
+  `workflow.profile: lean`); every pull request targets that branch, never `main`.
 - Each phase is its own fresh Claude Code session created with the phase's instruction as its first message (a session does
   not act on a message another session sends it), so the real personas run and a session's usage is exactly one phase's.
 - Usage per phase comes from the session record (`external_metadata.usage`: input, output, cache read, cache write,

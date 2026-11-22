@@ -21,8 +21,8 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
 ## Steps
 
 0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation. `ok: false` (exit 1) or a failure (exit 2, script missing) → report each entry of `failed` (or the error) and stop here, before anything has changed.
-1. Resolve the ticket: `python3 .pilot/pilot.py resolve review <issue> [--resume] [--auto]` (`--auto` on `pool`, `resolve` and `claim` whenever this run is unattended, `.pilot/pilot-process.md` §4 "Interaction modes"). With none
-   given, run `python3 .pilot/pilot.py pool review [--auto]` first — the pool of
+1. Resolve the ticket: `python3 .pilot/pilot.py resolve review <issue> [--resume]`. With none
+   given, run `python3 .pilot/pilot.py pool review` first — the pool of
    `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:review-ready`,
    resumable `status:in-review` + `can-resume`; `needs-human`, `on-hold` and open "Depends on
    #N" excluded; priority, then "Blocks #M", then oldest; `status:changes-requested` tickets
@@ -52,16 +52,16 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
      `resume-mismatch`; `wrong-status`; `assigned`; `closed`; `not-found`).
    Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
    `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
-2. **Claim** it: `python3 .pilot/pilot.py claim review <issue> --mode <mode> [--auto]` (the mode named
+2. **Claim** it: `python3 .pilot/pilot.py claim review <issue> --mode <mode>` (the mode named
    in step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-review`, re-read to confirm). Exit 1 with `reason: lost-race` → stand down and
    return to step 1 for a different candidate (bare pool only — report nothing to do if a
    specific ticket was requested). Any other refusal → report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's, `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited") to pick the **default**
-   reviewer set: it is `review` of `python3 .pilot/pilot.py workflow show --ticket <issue> --path <changed file>…` (the PR's changed files feed the path signals):
-   - standard: `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`; `type:tech` or `type:bug` → `pilot-techlead` alone (no PM); a signal may add reviewers
-   - a lean workflow: `pilot-techlead` alone for every type, plus what a signal adds
+   reviewer set: it is `review` of `python3 .pilot/pilot.py workflow show --ticket <issue>`:
+   - standard: `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`; `type:tech` or `type:bug` → `pilot-techlead` alone (no PM)
+   - a lean workflow: `pilot-techlead` alone for every type
    - Whatever the flags, check whether the PR already carries a submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true after a reclaim fix
      (`.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket"), never for a first round. Found → fetch the latest submitted review's full body
      (every point, marked `change` or `decision`) to pass to every reviewer in step 5. This also feeds `--only`.

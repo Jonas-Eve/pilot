@@ -39,16 +39,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          # The workflow profile decides where a finished feature story goes (.pilot/pilot-link-cascade.md): the project's
-          # (`workflow show`), or the story's own workflow: label, whose rules `workflow check` gives for every profile.
+          # The project's workflow profile decides where a finished feature story goes (.pilot/pilot-link-cascade.md).
           # Any failure here (no clone, an older .pilot/pilot.py) leaves '{}': the script below then keeps today's behaviour.
-          shown='{}'; checked='{}'
+          shown='{}'
           if git clone --quiet --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" project 2>/dev/null; then
             shown=$(cd project && env -u GH_TOKEN python3 .pilot/pilot.py workflow show 2>/dev/null) || shown='{}'
-            checked=$(cd project && env -u GH_TOKEN python3 .pilot/pilot.py workflow check 2>/dev/null) || checked='{}'
           fi
           echo "$shown" > "$RUNNER_TEMP/pilot-workflow-show.json"
-          echo "$checked" > "$RUNNER_TEMP/pilot-workflow-check.json"
       - name: Resolve closed issues and update status labels
         uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
         with:
@@ -57,9 +54,8 @@ jobs:
             const repo = context.repo.repo;
             const STATUS_PREFIX = 'status:';
 
-            // Where a finished type:feature story goes: the story's own workflow: label when the project declares a
-            // workflow, else the project's profile (`pilot.py workflow show|check`); status:qa when the rules cannot be
-            // read (every project before workflow profiles).
+            // Where a finished type:feature story goes: the project's profile (`pilot.py workflow show`); status:qa when
+            // the rules cannot be read (every project before workflow profiles).
             function readRules(name) {
               try {
                 return JSON.parse(require('fs').readFileSync(`${process.env.RUNNER_TEMP}/${name}`, 'utf8'));
@@ -69,16 +65,9 @@ jobs:
               }
             }
             const shownRules = readRules('pilot-workflow-show.json');
-            const checkedRules = readRules('pilot-workflow-check.json');
-            function featureDoneGoesTo(storyLabels) {
-              const valid = (t) => t === 'status:qa' || t === 'status:done';
-              let target = shownRules.rules && shownRules.rules.feature_done_goes_to;
-              const own = storyLabels.find(l => l.startsWith('workflow:'));
-              if (own && shownRules.source === 'state') {
-                const profile = checkedRules.profiles && checkedRules.profiles[own.slice('workflow:'.length)];
-                if (profile && profile.rules && valid(profile.rules.feature_done_goes_to)) target = profile.rules.feature_done_goes_to;
-              }
-              return valid(target) ? target : 'status:qa';
+            function featureDoneGoesTo() {
+              const target = shownRules.rules && shownRules.rules.feature_done_goes_to;
+              return target === 'status:qa' || target === 'status:done' ? target : 'status:qa';
             }
 
             function statusLabelsOf(issue) {
@@ -209,7 +198,7 @@ jobs:
               // (featureDoneGoesTo(...)) — a type:tech parent (the only other type that can reach
               // status:split; type:bug never does, pilot-link-ticket-tree.md "Three levels")
               // is unaffected, unchanged cascade.
-              if (parentLabels.includes('type:feature') && featureDoneGoesTo(parentLabels) === 'status:qa') {
+              if (parentLabels.includes('type:feature') && featureDoneGoesTo() === 'status:qa') {
                 core.info(`All sub-issues of #${parent.number} are done/wont-do; cascading status:qa (type:feature) to parent.`);
                 await swapToDone(parent.number, dryRun, 'status:qa');
               } else {

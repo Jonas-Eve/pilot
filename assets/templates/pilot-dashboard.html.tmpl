@@ -189,8 +189,6 @@ function h(tag,attrs){
 function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
 /* ---------- language: the page text is written in French; EN maps a French text to its English one (exact for short texts, by fragment for the long ones; a ticket title is never a key) ---------- */
 var EN={
-"pair seulement": "pair only",
-"profil": "profile",
 "Profil": "Profile",
 "Profil du projet : ": "Project profile: ",
 "QA humaine pour les features.": "Human QA for features.",
@@ -401,12 +399,11 @@ var EN={
 "Spec · tech": "Spec · tech",
 "Review · feature ou e2e": "Review · feature or e2e",
 "Review · tech ou bug": "Review · tech or bug",
-"l’architecte aussi si dépendances, plusieurs apps ou signal": "the architect too on dependencies, several apps or a signal",
+"l’architecte aussi si dépendances ou plusieurs apps": "the architect too on dependencies or several apps",
 "Mode par défaut : auto (sans vous).": "Default mode: auto (without you).",
 "Mode par défaut : pair (avec vous).": "Default mode: pair (with you).",
 "Spec tech : le tech lead écrit, l’architecte valide.": "Tech spec: the tech lead writes, the architect validates.",
-"Spec tech : le tech lead seul ; l’architecte intervient sur dépendances, plusieurs apps ou signal.": "Tech spec: the tech lead alone; the architect steps in on dependencies, several apps or a signal.",
-"Un signal de risque que le projet déclare peut rendre un ticket pair seulement ; un ticket peut aussi porter son propre profil (label workflow:<profil>).": "A risk signal the project declares can make a ticket pair only; a ticket can also carry its own profile (workflow:<profile> label).",
+"Spec tech : le tech lead seul ; l’architecte intervient sur dépendances ou plusieurs apps.": "Tech spec: the tech lead alone; the architect steps in on dependencies or several apps.",
 "Spec, Dev et Review": "Spec, Dev and Review",
 "Spécifier": "Specify",
 "Statuts": "Statuses",
@@ -604,7 +601,7 @@ function profileSummary(w){
   if(r.default_mode==='auto'||r.default_mode==='pair')out.push(tr(r.default_mode==='auto'?'Mode par défaut : auto (sans vous).':'Mode par défaut : pair (avec vous).'));
   var sa=r.spec&&r.spec.tech&&r.spec.tech.architect;
   if(sa==='validates')out.push(tr('Spec tech : le tech lead écrit, l’architecte valide.'));
-  else if(sa==='on-signal')out.push(tr('Spec tech : le tech lead seul ; l’architecte intervient sur dépendances, plusieurs apps ou signal.'));
+  else if(sa==='on-signal')out.push(tr('Spec tech : le tech lead seul ; l’architecte intervient sur dépendances ou plusieurs apps.'));
   return tr('Profil du projet : ')+w.profile+'. '+out.join(' ');
 }
 
@@ -678,7 +675,7 @@ function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.a
 
 /* ---------- snapshots (db): written by Claude from GitHub, read by everyone ---------- */
 function snapId(repo){return String(repo).replace('/','__');}
-function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||'',p:i.p||0,k:i.k||null,r:i.r||0,g:i.g||null};t.status=lab(t,'status:');return t;}
+function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||'',p:i.p||0,k:i.k||null,r:i.r||0};t.status=lab(t,'status:');return t;}
 function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
@@ -793,8 +790,6 @@ function ticketChips(t){
   if(t.status)out.push(h('span',{class:'chip acc'},STATUS_FR[t.status]||t.status));
   if(has(t,'needs-human'))out.push(h('span',{class:'chip warn'},h('span',{class:'dot'}),'attend un humain'));
   if(has(t,'on-hold'))out.push(h('span',{class:'chip'},'en pause'));
-  if(t.g&&t.g.p)out.push(h('span',{class:'chip warn',title:arr(t.g.s).join(', ')},tr('pair seulement')));
-  if(t.g&&t.g.w)out.push(h('span',{class:'chip'},tr('profil')+' '+t.g.w));
   return out;
 }
 function ghLink(t,text){return h('a',{class:'btn',href:'https://github.com/'+S.repo+'/issues/'+t.n,target:'_blank',rel:'noopener'},text);}
@@ -857,7 +852,7 @@ function kidsOf(n){
 }
 function rowCmds(t,a,o){
   if(a.container)return {canAuto:true,multiOK:true,container:true,auto:a.cmd+(o.multi?' --multi '+o.multi:'')+(o.next?' --next':''),pair:null};
-  var canAuto=a.kind==='run'&&!a.pairOnly&&!(t.g&&t.g.p), multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
+  var canAuto=a.kind==='run'&&!a.pairOnly, multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
   /* --human: the human proposes, the agents analyze and challenge; Discovery, Spec, Dev, Review and Proto, never QA, a container, nor --multi (`.pilot/pilot-process.md` §4) */
   var humanOK=a.kind==='run'&&t.status!=='changes-requested'&&!/^\/pilot-qa /.test(a.cmd)&&/^\/pilot-(discovery|spec|dev|review|proto) /.test(a.cmd); /* a reclaim has no approach to propose */
   var useHuman=humanOK&&!!o.human&&!o.next;
@@ -1704,7 +1699,7 @@ function rosterRows(){
   if(on('discovery'))rows.push(ROSTER[0]);
   if(on('spec')){
     rows.push({step:'Spec · feature',lead:['architect','techlead'],val:['pm'],sum:['designer']});
-    rows.push({step:'Spec · tech',lead:['techlead'],leadNote:'l’architecte aussi si dépendances, plusieurs apps ou signal',val:arch==='validates'?['architect']:[],sum:['designer']});
+    rows.push({step:'Spec · tech',lead:['techlead'],leadNote:'l’architecte aussi si dépendances ou plusieurs apps',val:arch==='validates'?['architect']:[],sum:['designer']});
     rows.push(ROSTER[2],ROSTER[3]);
   }
   if(on('dev'))rows.push({step:'Dev',lead:['dev'],leadNote:r.e2e_task===false?undefined:'E2E pour une tâche e2e',val:[],sum:['techlead','architect','designer']});
@@ -1814,7 +1809,7 @@ function vHowPrinciples(){
     sec('Les phases de ce projet','This project’s phases'),
     h('div',{class:'agents'},ph.map(function(p){var d=HOW_PHASES[p.key], x=hw(d); return helpCard(p.n+'. '+tr(d.name),'',[[L('Produit :','Produces:'),x.what],[L('Comment :','How:'),howOf(p.key,d)],[L('Intérêt :','Why:'),x.why],[L('Commande :','Command:'),code(d.cmd)]]);})),
     sec('Le profil du projet','The project’s profile'),
-    para('Le profil de workflow choisit les phases que le projet fait, le mode par défaut et les relecteurs : standard garde toute la chaîne, lean en retire. La pastille Profil en haut du cockpit le rappelle. Un signal de risque que le projet déclare peut rendre un ticket pair seulement, et un ticket peut porter son propre profil (label workflow:<profil>) tant qu’il n’est pas entré en Dev.','The workflow profile chooses the phases the project runs, the default mode and the reviewers: standard keeps the whole chain, lean drops some. The Profile chip at the top of the cockpit recalls it. A risk signal the project declares can make a ticket pair only, and a ticket can carry its own profile (workflow:<profile> label) until it enters Dev.',S.gh&&S.gh.workflow?profileSummary(S.gh.workflow)+' ':''),
+    para('Le profil de workflow choisit les phases que le projet fait, le mode par défaut et les relecteurs : standard garde toute la chaîne, lean en retire. La pastille Profil en haut du cockpit le rappelle.','The workflow profile chooses the phases the project runs, the default mode and the reviewers: standard keeps the whole chain, lean drops some. The Profile chip at the top of the cockpit recalls it.',S.gh&&S.gh.workflow?profileSummary(S.gh.workflow)+' ':''),
     sec('Par où commencer','Where to start'),
     simpleTable([L('Je veux…','I want…'),L('Je lance','I run')],start));
 }
@@ -1936,7 +1931,6 @@ function vHowCases(){
     phOn('review')?[L('Relancer seulement certains relecteurs','Rerun only some reviewers'),L('/pilot-review <n°> --only pm,techlead : possible après une première relecture, en pair.','/pilot-review <n°> --only pm,techlead: possible after a first review, in pair.'),'tech']:null,
     autoOn()?[L('Un epic ou une story découpée','An epic or a split story'),L('/pilot-auto <n°> descend dans ses sous-tickets et travaille le meilleur candidat ; --next enchaîne jusqu’à la fin ou un blocage.','/pilot-auto <n°> descends into its sub-tickets and works the best candidate; --next keeps going until the end or a block.'),'tech']:null,
     [L('Écarter un ticket','Drop a ticket'),L('wont-do, seulement avant toute spec ou code. À partir de dev-ready, écarter est une décision humaine : needs-human avec le raisonnement.','wont-do, only before any spec or code. From dev-ready on, dropping is a human decision: needs-human with the reasoning.')],
-    S.gh&&S.gh.workflow?[L('Un ticket est « pair seulement »','A ticket is “pair only”'),L('Un signal de risque déclaré par le projet le rend interactif : il n’est jamais traité en routine, et le cockpit l’indique.','A risk signal the project declares makes it interactive: it is never handled in a routine, and the cockpit says so.'),'tech']:null,
     [L('Un second avis sur un choix','A second opinion on a choice'),L('--with <agent> pour convoquer un agent, --multi pour plusieurs agents qui convergent (onglet Modes).','--with <agent> to summon an agent, --multi for several agents converging (Modes tab).')]
   ];
   return h('div',{class:'list'},
@@ -1999,7 +1993,6 @@ function vHelp(){
   return h('div',{class:'list'},
     lang,
     steps&&S.gh&&S.gh.workflow?h('p',{class:'note',id:'profileNote'},profileSummary(S.gh.workflow)):null,
-    steps&&S.gh&&S.gh.workflow?h('p',{class:'note',id:'signalNote'},'Un signal de risque que le projet déclare peut rendre un ticket pair seulement ; un ticket peut aussi porter son propre profil (label workflow:<profil>).'):null,
     steps?h('p',{class:'note'},'À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.'):null,
     steps?h('div',{class:'ref'},h('table',{},
       h('thead',{},h('tr',{},['Step','Lead','Validateur','Convocable'].map(function(t){return h('th',{scope:'col'},t);}))),

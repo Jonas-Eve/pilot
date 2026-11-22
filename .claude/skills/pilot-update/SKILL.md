@@ -140,6 +140,10 @@ from a previous run — the whole point is picking up upstream changes.
    `architecture/` in one PR. Leave `archInitialized` and `apps` in place (the personas read `apps`); `archInitialized` is no longer written or read.
    The `/pilot-init-archi` skill is gone upstream, so step 3 flags it as orphaned: offer to delete it once nothing needs it.
 
+5b2. **Check the workflow block.** `python3 .pilot/pilot.py workflow show`: when its `ignored` lists keys (`signals`, `allow`: risk signals and per-ticket
+   profiles, removed in 5.0), tell the human they are ignored and can be deleted from `.pilot/state.json`, and that the repository's two
+   `workflow:` labels (standard and lean, no longer created) can be deleted too; change nothing yourself.
+
 5c. **Update the dashboard.** Only when `.pilot/state.json` has a `dashboardUrl`: run
    `/pilot-dashboard` (reusing this `$PILOT_SRC`), after asking the human whether to
    republish — it does nothing if the rendered page is unchanged, and a refusal or failure

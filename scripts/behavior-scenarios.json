@@ -89,6 +89,7 @@
   "scripts/lab/*"
  ],
  "untested": [
+  ".claude/agents/pilot-designer.md",
   ".claude/skills/pilot-architecture/SKILL.md",
   ".claude/skills/pilot-auto/SKILL.md",
   ".claude/skills/pilot-dashboard/SKILL.md",

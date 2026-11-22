@@ -16,8 +16,8 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
 ## Steps
 
 0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation. `ok: false` (exit 1) or a failure (exit 2, script missing) → report each entry of `failed` (or the error) and stop here, before anything has changed.
-1. Resolve the ticket: `python3 .pilot/pilot.py resolve dev <issue> [--resume] [--auto]` (`--auto` on `pool`, `resolve` and `claim` whenever this run is unattended, `.pilot/pilot-process.md` §4 "Interaction modes"). With no issue
-   given, run `python3 .pilot/pilot.py pool dev [--auto]` first — the pool of `.pilot/pilot-process.md`
+1. Resolve the ticket: `python3 .pilot/pilot.py resolve dev <issue> [--resume]`. With no issue
+   given, run `python3 .pilot/pilot.py pool dev` first — the pool of `.pilot/pilot-process.md`
    §4 "Picking the next ticket..." (fresh `status:dev-ready`, resumable `can-resume`,
    reclaimable `status:changes-requested`; `needs-human`, `on-hold` and open "Depends on #N"
    excluded; priority, then "Blocks #M", then oldest; a scheduled cron Routine drives this
@@ -43,7 +43,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
      `in-progress-unassigned`, `closed`, `not-found`.
    Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
    `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
-2. **Claim** it: `python3 .pilot/pilot.py claim dev <issue> --mode <mode> [--auto]` (the mode named in
+2. **Claim** it: `python3 .pilot/pilot.py claim dev <issue> --mode <mode>` (the mode named in
    step 1: `fresh`, `reclaim`, `resume-orphaned` or `resume-cleared`) — it applies
    `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee + `status:in-dev`, re-read to
    confirm). Exit 1 with `reason: lost-race` → another instance won; stand down and return

@@ -12,8 +12,7 @@
    "type:tech",
    "level:task",
    "priority:P2",
-   "status:dev-ready",
-   "workflow:lean"
+   "status:dev-ready"
   ],
   "body": "Bench scenario S4 (throwaway).\n\n## Spec\n\nAdd a `--names-only` option to the CLI: it prints one place name per line, with no distance and no count line. Without the option the output is unchanged. Expose it in `accessplaces/cli.py` (the search logic is untouched). Add a unit test in `tests/test_cli.py`.\n\n## Acceptance\n\n- `python -m accessplaces cafe --names-only` prints the two cafe names, one per line, and nothing else.\n- Existing output is unchanged. Tests pass.\n"
  },
