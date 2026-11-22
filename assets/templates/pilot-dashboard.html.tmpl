@@ -1294,7 +1294,7 @@ function vProtos(){
 function protoText(){var el=document.getElementById('protoText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
 /* an imported artifact is one of the human's own pages, addressed as claude.ai/artifact/<id> */
 var ART_RE=/^https:\/\/claude\.ai\/(?:code\/)?artifact\/[A-Za-z0-9_-]+$/;
-function protoUrl(){var el=document.getElementById('protoUrl');return el?el.value.trim():'';}
+function protoUrl(){var el=document.getElementById('protoUrl');return el?el.value.trim().replace(/[?#].*$/,''):'';} /* a share link's ?sk=… is dropped */
 function protoReady(){return S.protoImp?ART_RE.test(protoUrl()):!!protoText();}
 function protoCmd(){var t=protoText();return S.protoImp?'/pilot-proto --from-artifact '+protoUrl()+(t?' '+t:''):'/pilot-proto'+(t?' '+t:'')+(S.protoWith?' --with architect':'');}
 function buildProtoNew(){

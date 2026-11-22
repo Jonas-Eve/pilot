@@ -976,6 +976,9 @@ const STUB = (opts) => `
   await page.fill('#protoUrl', 'https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K'); await page.waitForTimeout(100);
   check('import: /pilot-proto --from-artifact <url> <note>, and the link carries it',
         (await text(page, '#protoCmd')) === '/pilot-proto --from-artifact https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K Choisir un itinéraire sans escalier' && (await pHref()) === (await text(page, '#protoCmd')), await text(page, '#protoCmd'));
+  await page.fill('#protoUrl', 'https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K?sk=abc123'); await page.waitForTimeout(100);
+  check('import: a share link (?sk=…) is accepted and the key is dropped from the command',
+        (await text(page, '#protoCmd')) === '/pilot-proto --from-artifact https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K Choisir un itinéraire sans escalier' && !!(await pHref()), await text(page, '#protoCmd'));
   await page.click('#protoSrcIdea'); await page.waitForTimeout(100);
   check('back to an idea: the architect option returns', !(await page.$eval('#protoWithWrap', (e) => e.hidden)) && (await text(page, '#protoCmd')).indexOf('--from-artifact') < 0);
   check('new prototype card hidden on the other tabs', (await tab(page, 'Recherche')) !== null && (await page.$eval('#protoNew', (e) => e.hidden)));
