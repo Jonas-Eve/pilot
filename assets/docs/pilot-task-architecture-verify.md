@@ -1,4 +1,4 @@
-# PILOT task — Check architecture reference entries against the code
+# PILOT task — Check architecture entries against the code
 
 Injected by `.claude/skills/pilot-architecture/SKILL.md` (`--verify`) into the `pilot-techlead` persona's prompt,
 together with `.pilot/pilot-link-architecture.md`.

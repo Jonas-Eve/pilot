@@ -1354,6 +1354,21 @@ class ArchitectureTests(unittest.TestCase):
         self.assertIn('okf_version: "0.2"', index)
         self.assertIn("# Architecture", index)
 
+    def test_verify_stamps_an_accepted_guideline_or_adr_and_refuses_one_not_in_force(self):
+        self.add("guidelines/layering.md", "accepted")
+        self.add("adr/0001-a.md", "accepted")
+        self.add("guidelines/draft.md", "proposed")
+        self.add("adr/0002-b.md", "accepted")
+        self.arch.set("layering", stamp="abc1234")
+        self.arch.set("0001-a", stamp="abc1234")
+        self.assertEqual(self.arch.show("layering")["verifiedCommit"], "abc1234")
+        self.assertEqual(self.arch.show("0001-a")["verifiedCommit"], "abc1234")
+        with self.assertRaises(pilot.Refused):
+            self.arch.set("draft", stamp="abc1234")
+        self.arch.supersede("0002-b", "0001-a")
+        with self.assertRaises(pilot.Refused):
+            self.arch.set("0001-a", stamp="def5678")
+
     def test_supersede_links_both_ways_and_lints_clean(self):
         self.add("adr/0001-a.md", "accepted")
         self.add("adr/0002-b.md", "proposed")
