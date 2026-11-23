@@ -1556,9 +1556,9 @@ function vWiki(){
 var ARCH_FR={proposed:'proposé',accepted:'accepté',superseded:'remplacé'};
 var ARCH_CLS={proposed:'',accepted:'ok',superseded:'warn'};
 var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',reference:'Référence',adr:'Décisions',runbooks:'Procédures'};
-/* what is checked against the code (`--verify`): a reference entry and the overview (facts), an accepted rule or decision (does the code still follow it); a proposed or superseded one is not in force */
+/* what is checked against the code (`--verify`): an accepted reference entry or overview (facts), rule or decision (does the code still follow it); a proposed or superseded one is not in force */
 function archIsRef(e){return /(^|\/)reference\//.test(str(e.path,200));}
-function archCheckable(e){var p=str(e.path,200); return archIsRef(e)||/(^|\/|-)overview\.md$/.test(p)||(e.status==='accepted'&&/(^|\/)(guidelines|adr)\//.test(p));}
+function archCheckable(e){var p=str(e.path,200); return e.status==='accepted'&&(archIsRef(e)||/(^|\/|-)overview\.md$/.test(p)||/(^|\/)(guidelines|adr)\//.test(p));}
 function archEntries(){return S.arch&&Array.isArray(S.arch.entries)?S.arch.entries.slice(0,2000):[];}
 function archGroup(e){var p=str(e.path,200).split('/'); if(p[0]==='apps'&&p.length>2)return 'app:'+str(p[1],60); return p.length>1&&ARCH_GROUPS[p[0]]?p[0]:'overview';}
 function archLabel(g){return g.indexOf('app:')===0?'App '+g.slice(4):ARCH_GROUPS[g]||g;}

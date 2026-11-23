@@ -23,7 +23,7 @@ particular and stop as soon as you have what the task needs:
 
 **What you read.** Where the bundle is silent, say it is not covered; do not fill the gap from the code. A
 `proposed` or `specified` entry is a promise, not behavior; a `superseded` one is history, read only
-to follow `supersededBy`. When the bundle and the code disagree, the bundle is right and a human arbitrates, except a reference entry or the overview of `architecture/` (they state what the code is, so either may be wrong, and a human arbitrates the same way); a guideline or an accepted ADR binds until a human arbitrates.
+to follow `supersededBy`. When the bundle and the code disagree, the bundle is right and a human arbitrates, except a reference entry or the overview of `architecture/` (they state what the code is, so either may be wrong, and a human arbitrates the same way).
 
 **What binds, and what to check.** Binding: the `accepted` entries of `architecture/` and the wiki entries that describe a behavior (functional entries and user flows; the vision and the personas state no behavior); a `proposed` or `superseded` architecture entry never binds. Check only
 when needed and only what bears on the work: the module is on, the work touches something documented, and the entries come from `search`, `describe` or `index --ticket` on the work's own words — never a scan of the bundle.
