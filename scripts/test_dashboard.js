@@ -440,9 +440,9 @@ const STUB = (opts) => `
     const v = await text(pg, '#view');
     const refLinks = await hrefs(pg, '#view .refresh a.btn');
     const cmdsOf = refLinks.map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]));
-    check('architecture: a button adds a rule, one checks the reference', cmdsOf.includes('/pilot-architecture --guideline') && cmdsOf.includes('/pilot-architecture --verify') && /Ajouter une règle/.test(v) && /Vérifier la référence/.test(v), JSON.stringify(cmdsOf));
-    check('architecture: each reference entry has its own check, a rule has none', cmdsOf.includes('/pilot-architecture --verify data-model') && cmdsOf.includes('/pilot-architecture --verify stack') && !cmdsOf.some((c) => /--verify layering/.test(c)), JSON.stringify(cmdsOf));
-    check('architecture: a reference entry says whether it was checked, a rule does not', (v.match(/non vérifié/g) || []).length === 1 && (v.match(/vérifié il y a/g) || []).length === 1 && /Référence/.test(v), v);
+    check('architecture: a button adds a rule, one checks the reference', cmdsOf.includes('/pilot-architecture --guideline') && cmdsOf.includes('/pilot-architecture --verify') && /Ajouter une règle/.test(v) && /Vérifier contre le code/.test(v), JSON.stringify(cmdsOf));
+    check('architecture: each reference entry, accepted rule and accepted ADR has its own check; a proposed or superseded one has none', cmdsOf.includes('/pilot-architecture --verify data-model') && cmdsOf.includes('/pilot-architecture --verify stack') && cmdsOf.includes('/pilot-architecture --verify layering') && cmdsOf.includes('/pilot-architecture --verify 0002-store') && !cmdsOf.some((c) => /--verify (0003-draft|0001-old)/.test(c)), JSON.stringify(cmdsOf));
+    check('architecture: every entry in force says whether it was checked, a proposed or superseded one does not', (v.match(/non vérifié/g) || []).length === 4 && (v.match(/vérifié il y a/g) || []).length === 1 && /Référence/.test(v), v);
     const has = (c) => cmdsOf.some((x) => x.trim() === c);
     check('architecture: a rule can be edited and removed', has('/pilot-architecture --edit layering') && has('/pilot-architecture --remove layering'), JSON.stringify(cmdsOf));
     check('architecture: an accepted ADR is replaced, never edited nor removed', cmdsOf.some((x) => x.startsWith('/pilot-architecture --adr "remplace 0002-store :')) && !has('/pilot-architecture --edit 0002-store') && !has('/pilot-architecture --remove 0002-store'), JSON.stringify(cmdsOf));
