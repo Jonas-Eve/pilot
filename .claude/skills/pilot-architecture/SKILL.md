@@ -70,8 +70,7 @@ Checks the `reference` entries, the overview and the `accepted` guidelines and A
 3. `ok` verdicts → `arch set <id> --stamp <commit>`. `unverifiable` keeps the old stamp.
 4. Each `drift` goes to the human with the agent's evidence and its three outcomes (`.pilot/pilot-link-architecture.md`): propose the exact
    `/pilot-spec --bug "<description>"` when the code is wrong; edit the entry in this run's branch with the `corrections` when the human confirms it is stale or
-   wrong (`arch set <id> --clear-stamp`, then `--stamp` on the corrected text); point at `/pilot-spec --tech` when the code must change on purpose. A `drift` on an accepted ADR is
-   never edited away: the code is wrong (`--bug`), or the code must change (`--tech`), or the decision no longer holds and a new ADR supersedes it (`--adr "remplace <id> : …"`).
+   wrong (`arch set <id> --clear-stamp`, then `--stamp` on the corrected text); point at `/pilot-spec --tech` when the code must change on purpose. For an accepted ADR the third outcome is `--adr "remplace <id> : …"`.
    `--auto`: decide nothing, list every drift under "To arbitrate" in the PR and leave it unstamped.
    A fact in `undocumented` the human wants becomes a new `reference/<id>.md` (`arch add … --status accepted --stamp <commit>`).
 5. Changes → branch `architecture/verify-<YYYY-MM-DD>`, commit, push, open one PR. Nothing to change → no PR.

@@ -41,7 +41,7 @@ changes what a reference entry, the overview or a guideline states updates the e
 
 **A divergence between an entry and the code** is resolved by a human, one of: the code is wrong (a
 `type:bug` ticket, `/pilot-spec --bug "<description>"`, entry untouched); the entry is wrong or out of date (it is
-corrected in the same PR once the human confirms; an accepted ADR is superseded by a new one instead); the code must change on purpose (a `/pilot-spec --tech` ticket,
+corrected in the same PR once the human confirms); the code must change on purpose (a `/pilot-spec --tech` ticket,
 entry untouched). A reference entry, overview or guideline never stamped has not been checked against anything: a divergence on it is first read as
 a wrong or stale entry, with the reason. A divergence on an accepted ADR, stamped or not, is the code (a bug or a `--tech` ticket) or a superseding ADR, never an edit of the ADR.
 
