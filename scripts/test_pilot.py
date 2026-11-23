@@ -1363,6 +1363,8 @@ class ArchitectureTests(unittest.TestCase):
         before = self.text("adr/0001-a.md").split("---", 2)[2]
         self.arch.set("0001-a", stamp="abc1234")
         self.assertEqual(self.text("adr/0001-a.md").split("---", 2)[2], before)  # a stamp never edits the decision
+        rows = {r["id"]: r for r in self.arch.snapshot("o/r")["entries"]}
+        self.assertTrue(rows["layering"]["verifiedAt"] and rows["0001-a"]["verifiedAt"])  # what the cockpit's chip reads
         self.assertEqual(self.arch.show("layering")["verifiedCommit"], "abc1234")
         self.assertEqual(self.arch.show("0001-a")["verifiedCommit"], "abc1234")
         with self.assertRaises(pilot.Refused):
