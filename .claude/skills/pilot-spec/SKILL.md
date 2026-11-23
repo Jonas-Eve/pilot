@@ -55,7 +55,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
        (`.pilot/pilot-link-split-tickets.md` "Re-scoping a `type:feature` story after its split is
        done"): say it's closed, point at opening a new ticket instead, never claim it.
        `epic-without-open-subissues`: there's nothing to work on the epic itself — point at
-       its stories. Otherwise (`flagged`: unresolved `needs-human`/`on-hold`,
+       its stories. `draft-awaits-discovery`: a `type:feature` draft is Discovery's, still awaiting its human's approval — point at `/pilot-discovery --resume`. Otherwise (`flagged`: unresolved `needs-human`/`on-hold`,
        `resume-mismatch`, `assigned`, `not-found`) report it.
      Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
      `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.

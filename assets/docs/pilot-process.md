@@ -170,7 +170,7 @@ A ticket's body may carry "Depends on #N" references, written by the architect f
 `pilot-dev`/`pilot-e2e`/`pilot-qa` for a bug found inline; anything that writes the phrase gets the gate. **One dependency per line, always**, one issue number each, never several on a
 line: the check is a per-line literal match.
 
-The gate is `.pilot/pilot.py`'s, never a subagent's reasoning: a ticket with a dependency still open (plain open/closed, not its `status:`; an unreadable reference counts as open) is
+The gate is `.pilot/pilot.py`'s, never a subagent's reasoning: a ticket with a dependency still open, in its own body or its parent story's (a split story's tasks inherit its line, an unreadable parent counts as open; plain open/closed, not its `status:`; an unreadable reference counts as open) is
 excluded from every pool and refused when given explicitly in Dev and QA. Spec is the exception: re-splitting or re-speccing needs no prerequisite resolved. Nothing is removed by hand — the
 ticket is a candidate again the moment the referenced one closes.
 

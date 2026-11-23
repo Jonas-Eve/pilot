@@ -603,6 +603,7 @@ class Machine:
         self.state_path = state_path
         self.profile = profile or read_profile(state_path)
         self._open = {}
+        self._parent_bodies = {}
 
     def _require_phase(self, phase):
         if phase not in chain(self.profile)["phases"]:
@@ -614,10 +615,27 @@ class Machine:
             self._open[number] = self.gh.is_open(number)
         return self._open[number]
 
+    def split_story_body(self, number):
+        """(the raw parent, None when it cannot be read; its body when it is a `level:story`, else '' — an Epic's line is not inherited)."""
+        if number not in self._parent_bodies:
+            try:
+                found = self.gh.get_issue(number)
+            except (GhError, ValueError):
+                found = None
+            names = [l["name"] if isinstance(l, dict) else l for l in (found or {}).get("labels", [])]
+            self._parent_bodies[number] = (found, (found.get("body") or "") if found and "level:story" in names else "")
+        return self._parent_bodies[number]
+
     def blocking_dependencies(self, issue):
-        """Open (or unreadable) 'Depends on #N' references in the issue body."""
-        return [n for n in sorted({int(m) for m in DEPENDS_RE.findall(issue["body"])})
-                if self.open_state(n) is not False]
+        """Open (or unreadable) 'Depends on #N' references in the issue body, and in its parent story's: a split story keeps
+        the line its own spec recorded and its tasks inherit it. A parent that cannot be read counts as open."""
+        body, unreadable = issue["body"], []
+        if issue.get("parent"):
+            found, parent_text = self.split_story_body(issue["parent"])
+            if found is None:
+                unreadable.append(issue["parent"])
+            body += "\n" + parent_text
+        return sorted({int(m) for m in DEPENDS_RE.findall(body) if self.open_state(int(m)) is not False} | set(unreadable))
 
     def blocks_open_ticket(self, issue):
         """True when a 'Blocks #M' comment on this issue points at a still-open M."""
@@ -734,6 +752,8 @@ class Machine:
         flags = sorted(f for f in FLAGS if f in labels)
         assigned = issue["assignees"]
         if resume:
+            if phase == "spec" and status == "status:draft" and "type:feature" in labels:
+                return {"action": "stop", "reason": "draft-awaits-discovery", **base}  # Discovery's story, not yet approved
             if status in cfg["resumable"] and assigned and not flags:
                 return {"action": "resume-orphaned", **base}
             return {"action": "stop", "reason": "resume-mismatch", "flags": flags,

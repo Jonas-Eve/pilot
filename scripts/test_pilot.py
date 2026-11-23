@@ -159,6 +159,33 @@ class PoolTests(unittest.TestCase):
         self.assertEqual(got, [2])
         self.assertEqual(ex, {1: "depends-on-open", 3: "depends-on-open"})
 
+    def test_a_task_inherits_its_split_story_dependency(self):
+        def child(n, parent):
+            c = issue(n, ["status:dev-ready"]); c["parent_issue_url"] = f"https://api.github.com/repos/o/r/issues/{parent}"
+            return c
+        got, ex = self.pick("dev", [
+            issue(1, ["status:split", "level:story"], body="Depends on #10"), issue(5, ["status:split", "level:story"]),
+            issue(6, ["level:epic"], body="Depends on #10"),
+            issue(10), child(2, 1), child(3, 5), child(4, 6),
+        ])
+        self.assertEqual(got, [3, 4])  # an Epic's line is not inherited
+        self.assertEqual(ex, {2: "depends-on-open"})
+        # a closed parent still carries its line; an unreadable one counts as open
+        got, ex = self.pick("dev", [issue(1, ["status:split", "level:story"], state="closed", body="Depends on #10"),
+                                    issue(10), child(2, 1), child(3, 99)])
+        self.assertEqual((got, ex), ([], {2: "depends-on-open", 3: "depends-on-open"}))
+        m = pilot.Machine(FakeGh([issue(1, ["status:split", "level:story"], body="Depends on #10"), issue(10), child(2, 1)]), profile="standard")
+        self.assertEqual(m.resolve("dev", 2)["reason"], "depends-on-open")
+
+    def test_spec_resume_refuses_a_discovery_draft(self):
+        for labels, action in ((["status:draft", "type:feature", "level:story"], "stop"),
+                               (["status:draft", "type:tech", "level:story"], "resume-orphaned")):
+            m = pilot.Machine(FakeGh([issue(7, labels, assignees=["bot"])]), profile="standard")
+            got = m.resolve("spec", 7, resume=True)
+            self.assertEqual(got["action"], action)
+            if action == "stop":
+                self.assertEqual(got["reason"], "draft-awaits-discovery")
+
     def test_priority_then_blocks_then_oldest(self):
         got, _ = self.pick("dev", [
             issue(1, ["status:dev-ready", "priority:P1"], created="2026-01-01T00:00:00Z"),

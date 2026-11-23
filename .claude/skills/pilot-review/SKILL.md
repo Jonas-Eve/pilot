@@ -62,8 +62,7 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
    reviewer set: it is `review` of `python3 .pilot/pilot.py workflow show --ticket <issue>`:
    - standard: `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`; `type:tech` or `type:bug` → `pilot-techlead` alone (no PM)
    - a lean workflow: `pilot-techlead` alone for every type
-   - Whatever the flags, check whether the PR already carries a submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true after a reclaim fix
-     (`.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket"), never for a first round. Found → fetch the latest submitted review's full body
+   - Whatever the flags, check whether the PR already carries a submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true after a reclaim fix, never for a first round. Found → fetch the latest submitted review's full body
      (every point, marked `change` or `decision`) to pass to every reviewer in step 5. This also feeds `--only`.
    - `--with architect` → the default set plus the architect: never narrows (no prior-review check), valid on any `type:`, in a sweep too, never with `--only`.
    - `--only <list>` (explicit number only) → `<list>` is the **complete, exact** set, never merged with the default (`--only architect` means only the architect; to add the
@@ -104,8 +103,7 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
    if present: whatever's in the PR's comment thread after it — a specific reply resolving
    a `decision` point, or "no reply — treat as approved as proposed" if none
    (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket") — and the dev's own
-   reclaim summary comment on the ticket's *issue* (not the PR,
-   `.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket").
+   reclaim summary comment on the ticket's *issue* (not the PR).
    `.pilot/pilot-link-review-consensus.md` has how each reviewer is expected to use this
    instead of starting blind.
 5a. **Per-role reconciliation** (only when `--multi` ran more than one instance of a

@@ -25,7 +25,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    otherwise the pool has already resolved its pick: act on `pick.action`:
    - `claim-fresh` → step 2 (mode `fresh`).
    - `reclaim` → step 2 (mode `reclaim`): a PR already exists, phase 4 sent it back
-     (`.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket"). Then
+     (`.pilot/pilot-task-implement.md` step 1a). Then
      skip straight to step 3, passing the phase-4 blocking review instead of a fresh spec.
    - `resume-orphaned` (`--resume`: a ticket left mid-pair session) → step 2 (mode
      `resume-orphaned`), then step 3 invoked with the recovered context as input
@@ -68,7 +68,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"). **Reclaim case** (per
    step 1): pass the phase-4 blocking review — its submitted PR review, fetched via
    `mcp__github__pull_request_read` method `get_reviews` (the body holds the points, not a
-   plain issue comment, `.pilot/pilot-link-review-consensus.md`) — with its `change`-tagged
+   plain issue comment) — with its `change`-tagged
    points to fix, plus any `decision`-tagged points and their resolution, instead of a
    fresh spec — only more commits on the existing PR. When a knowledge module is enabled (`.pilot/pilot-process.md` §8), also pass
    `.pilot/pilot-link-knowledge.md` in full and, per module on, `.pilot/pilot-link-wiki.md` / `.pilot/pilot-link-architecture.md` in full;
