@@ -69,14 +69,15 @@ CONTRACTS = {
                   "produces": ["status:draft", "status:backlog", "status:wont-do"]},
     "spec": {"consumes": ["status:qa", "status:in-qa", "status:split"],
              "produces": ["status:draft", "status:backlog", "status:dev-ready", "status:split", "status:wont-do"]},
-    "dev": {"consumes": [], "produces": ["status:review-ready"]},
+    "dev": {"consumes": [], "produces": ["status:review-ready", "status:dev-ready"]},  # dev-ready: handed back for a prerequisite
     "review": {"consumes": [], "produces": ["status:approved", "status:changes-requested"]},
-    "qa": {"consumes": [], "produces": ["status:done"]},
+    "qa": {"consumes": [], "produces": ["status:done", "status:qa"]},  # qa: handed back after a bug ticket
     "proto": {"consumes": ["status:poc-review", "status:poc-validated"],
               "produces": ["status:poc-draft", "status:poc-review", "status:poc-validated", "status:poc-rejected"]},
 }
-# transitions the merge/close workflow makes, not a phase
-EXTERNAL = (("status:approved", "status:done"), ("status:split", "status:done"), ("status:split", "status:qa"))
+# transitions the merge/close workflow makes, or a human, not a phase
+EXTERNAL = (("status:approved", "status:done"), ("status:split", "status:done"), ("status:split", "status:qa"),
+            ("status:approved", "status:review-ready"))  # moved back by hand before the merge
 SINKS = ("status:done", "status:wont-do", "status:poc-rejected")  # statuses nothing consumes
 
 
@@ -180,7 +181,7 @@ def composition_problems(profile=DEFAULT_PROFILE):
 
 def transition_allowed(current, new, profile=DEFAULT_PROFILE):
     """Whether some contract of the profile admits `current` -> `new` (a phase that consumes or claims `current` and
-    produces `new`, or the merge workflow). Creation (no status yet), no change and clearing the status are always fine."""
+    produces or claims `new`, or the merge workflow). Creation (no status yet), no change and clearing the status are always fine."""
     if not current or current == new or new == "status:none":
         return True
     ch = chain(profile)
@@ -188,7 +189,7 @@ def transition_allowed(current, new, profile=DEFAULT_PROFILE):
         return True
     for phase in ch["contracts"]:
         contract = phase_contract(phase, profile)
-        if current in contract["consumes"] + [contract["claims"]] and new in contract["produces"]:
+        if current in contract["consumes"] + [contract["claims"]] and new in contract["produces"] + [contract["claims"]]:
             return True
     return False
 
@@ -765,7 +766,8 @@ class Machine:
                 return {"action": "resume-cleared", **base}
             if assigned:
                 return {"action": "ask-resume", "assignees": assigned, **base}
-            return {"action": "stop", "reason": "in-progress-unassigned", **base}
+            return {"action": "stop", "reason": "in-progress-unassigned",
+                    "hint": "no assignee and no can-resume: a human adds can-resume to hand it to a sweep, or sets the status back", **base}
         if cfg["reclaim"] and status == cfg["reclaim"]:
             return {"action": "reclaim", **base}
         if status == cfg["fresh"]:

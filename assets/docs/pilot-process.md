@@ -189,7 +189,7 @@ Distinct from resuming a `needs-human` ticket and from reclaiming a `status:chan
 (`draft`, `in-spec`, `in-dev`, `in-review`, `in-qa`), with **no** `needs-human`. A pair session that ended before final approval, or an `--auto` run that died mid-work, leaves this same shape,
 which the plain "has an assignee → stop" check would read as someone actively working. For Discovery and Spec's no-ticket entry, `status:draft` is what makes this possible.
 
-Only a human verifying it firsthand can tell it is dead. They resume it now with an **explicit** `--resume <issue>` (never in a bare pool) or add `can-resume` to hand it to the next sweep. To
+Only a human verifying it firsthand can tell it is dead. They resume it now with an **explicit** `--resume <issue>` (never in a bare pool) or add `can-resume` to hand it to the next sweep (an in-progress ticket with no assignee at all, which `--resume` refuses, takes `can-resume`, or its status set back to the phase's pre-claim one). To
 resume via `--resume`:
 1. Read the full ticket (body and comments), which rebuilds pair mode's checkpoints. `/pilot-review`'s checkpoint is a pending PR review (`pilot-review/SKILL.md`): pinned to the PR's current head
    → the recovered outcome; stale or absent → discard it and restart the reviewers fresh. An `--auto` run of another phase has nothing to rebuild: restart from the ticket's original inputs.

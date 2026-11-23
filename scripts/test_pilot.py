@@ -177,6 +177,14 @@ class PoolTests(unittest.TestCase):
         m = pilot.Machine(FakeGh([issue(1, ["status:split", "level:story"], body="Depends on #10"), issue(10), child(2, 1)]), profile="standard")
         self.assertEqual(m.resolve("dev", 2)["reason"], "depends-on-open")
 
+    def test_the_transitions_the_process_makes_are_admitted(self):
+        for before, after in (("status:in-dev", "status:dev-ready"), ("status:in-qa", "status:qa"),
+                              ("status:draft", "status:in-spec"), ("status:approved", "status:review-ready"),
+                              ("status:backlog", "status:in-spec"), ("status:changes-requested", "status:in-dev")):
+            self.assertTrue(pilot.transition_allowed(before, after), (before, after))
+        self.assertFalse(pilot.transition_allowed("status:backlog", "status:done"))
+        self.assertFalse(pilot.transition_allowed("status:dev-ready", "status:approved"))
+
     def test_spec_resume_refuses_a_discovery_draft(self):
         for labels, action in ((["status:draft", "type:feature", "level:story"], "stop"),
                                (["status:draft", "type:tech", "level:story"], "resume-orphaned")):
@@ -255,6 +263,12 @@ class ResolveTests(unittest.TestCase):
             got = self.act("dev", [raw], 1)
             self.assertEqual((got["action"], got["reason"]), ("stop", reason), reason)
         self.assertEqual(self.act("dev", [], 1)["reason"], "not-found")
+
+    def test_an_unassigned_in_progress_ticket_has_a_way_out(self):
+        got = self.act("dev", [issue(1, ["status:in-dev"])], 1)
+        self.assertEqual(got["reason"], "in-progress-unassigned")
+        self.assertIn("can-resume", got["hint"])
+        self.assertEqual(self.act("dev", [issue(1, ["status:in-dev", "can-resume"])], 1)["action"], "resume-cleared")
 
     def test_dependency_gate_applies_to_dev_and_qa_not_spec_or_review(self):
         dep = [issue(10)]
@@ -1701,7 +1715,7 @@ class ContractTests(unittest.TestCase):
 
     def test_a_phase_contract_is_what_the_phase_reads_claims_and_leaves(self):
         dev = pilot.phase_contract("dev")
-        self.assertEqual((dev["claims"], dev["produces"]), ("status:in-dev", ["status:review-ready"]))
+        self.assertEqual((dev["claims"], dev["produces"]), ("status:in-dev", ["status:dev-ready", "status:review-ready"]))
         self.assertEqual(dev["consumes"], ["status:changes-requested", "status:dev-ready", "status:in-dev"])
         self.assertIn("status:split", pilot.phase_contract("spec")["consumes"])
         self.assertEqual(pilot.phase_contract("discovery")["claims"], None)
@@ -1733,7 +1747,7 @@ class ContractTests(unittest.TestCase):
     def test_cli_contract_needs_no_github_and_fails_only_on_a_broken_chain(self):
         self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(["contract"])))
         self.assertTrue(pilot.run_contract(pilot.build_parser().parse_args(["contract"]))["ok"])
-        self.assertEqual(pilot.run_contract(pilot.build_parser().parse_args(["contract", "qa"]))["produces"], ["status:done"])
+        self.assertEqual(pilot.run_contract(pilot.build_parser().parse_args(["contract", "qa"]))["produces"], ["status:done", "status:qa"])
 
 
 class WorkflowProfileTests(unittest.TestCase):

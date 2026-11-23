@@ -40,7 +40,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
      resolve `pick.number` the same way. `pick: null` → report nothing to do for this ticket.
    - `stop` → report `reason` and stop: `depends-on-open` (name the `depends_on` ticket),
      `flagged` (`flags`: `needs-human`/`on-hold`, unresolved), `assigned`, `wrong-status`,
-     `in-progress-unassigned`, `closed`, `not-found`.
+     `in-progress-unassigned` (relay its `hint`), `closed`, `not-found`.
    Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
    `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
 2. **Claim** it: `python3 .pilot/pilot.py claim dev <issue> --mode <mode>` (the mode named in
