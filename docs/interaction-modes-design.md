@@ -67,7 +67,7 @@ Pair-capable skills get `--human`. "Already" means the human already states the 
 | `pilot-auto` | dispatcher | no | yes |
 | `pilot-dashboard`, `pilot-init`, `pilot-update`, `pilot-help` | mechanical / read-only | no | no |
 
-The three mode flags `--pair`, `--auto` and `--human` are mutually exclusive with each other and each combines with `--resume`: a resumed run takes its mode from the ticket's checkpoint, which must record it, or from the flag given with `--resume`. `--human` is meaningless with `--multi` (no N agent proposals to compare). A ticket a risk signal makes pair-only accepts `--human` (a human is present). `--with` stays orthogonal.
+The three mode flags `--pair`, `--auto` and `--human` are mutually exclusive with each other and each combines with `--resume`: a resumed run takes its mode from the ticket's checkpoint, which must record it, or from the flag given with `--resume`. (A risk signal could once make a ticket pair-only; removed in 5.0.0, `docs/workflow-design.md`.) `--with` stays orthogonal.
 
 ## 6. The cycle, skill by skill
 

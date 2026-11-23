@@ -44,7 +44,7 @@ and **`level:`** (`epic` → `story` → `task`, never deeper). Where each type 
 - `type:poc` — a prototype of a feature, built with a human in `/pilot-proto` before any Discovery
   and used to decide whether to build it. Always a standalone `level:story`, never split, never
   through Spec, Dev, Review or QA (`pilot.py resolve` refuses it there, and refuses anything else
-  in `/pilot-proto`). Its states are the `status:poc-*` labels below.
+  in `/pilot-proto`). Its states are the `status:poc-*` labels (`pilot.py contract proto`).
 
 Never inherited from a parent to a child (`.pilot/pilot-link-ticket-tree.md` "Types and where each originates") — a story's tasks each get whichever of
 the four fits that specific task, assigned by Spec at split time.
@@ -54,8 +54,8 @@ the four fits that specific task, assigned by Spec at split time.
   or `type:tech` alike (`.pilot/pilot-link-ticket-tree.md` "Three levels"). Carries no
   `status:` label and never moves through the pipeline itself — its stories are linked to
   it as native GitHub sub-issues (`mcp__github__sub_issue_write`), not a hand-written
-  checklist. It **auto-closes once every one of its stories is closed** (see "Cascading
-  completion" below) — same mechanism as a split story's tasks, one level up, and just as
+  checklist. It **auto-closes once every one of its stories is closed** (`.pilot/pilot-link-cascade.md` "Cascading
+  completion") — same mechanism as a split story's tasks, one level up, and just as
   terminal: further work in the same area becomes a new Epic, not a story reopening this
   one.
 - `level:story` — the root unit Discovery produces for `type:feature` (and any grouped
@@ -130,11 +130,6 @@ ticket should resume unattended, or after verifying firsthand that an orphaned c
 whatever is recorded on the ticket is safe to continue from. A plain label check, never something a subagent reasons about. The claiming phase removes it as it claims; a
 human who prefers resumes at once with `--resume <issue>`.
 
-### `workflow:` — one ticket's own workflow profile (optional)
-`workflow:standard` / `workflow:lean` on a ticket overrides the project's profile for that ticket and its tasks, when the project allows it (`python3 .pilot/pilot.py workflow show --ticket <N>`
-gives the route). Set before Dev starts and then frozen (`pilot.py set` refuses to change it once the ticket is in Dev); Spec copies it from a story to every task it creates (`inherit_labels`).
-Without a `workflow` block in `.pilot/state.json` the label is ignored.
-
 ### `priority:`
 `priority:P0` / `P1` / `P2`, set at creation by whoever creates the ticket: the PM for `type:feature` and a grouped `type:tech` (business value and urgency for the
 feature, the architect's technical framing for a grouped tech story), the architect for a standalone `type:tech` or a `type:bug`. It orders `pool`. At Spec the architect and
@@ -175,7 +170,7 @@ A ticket's body may carry "Depends on #N" references, written by the architect f
 `pilot-dev`/`pilot-e2e`/`pilot-qa` for a bug found inline; anything that writes the phrase gets the gate. **One dependency per line, always**, one issue number each, never several on a
 line: the check is a per-line literal match.
 
-The gate is `.pilot/pilot.py`'s, never a subagent's reasoning: a ticket with a dependency still open (plain open/closed, not its `status:`; an unreadable reference counts as open) is
+The gate is `.pilot/pilot.py`'s, never a subagent's reasoning: a ticket with a dependency still open, in its own body or its parent story's (a split story's tasks inherit its line, an unreadable parent counts as open; plain open/closed, not its `status:`; an unreadable reference counts as open) is
 excluded from every pool and refused when given explicitly in Dev and QA. Spec is the exception: re-splitting or re-speccing needs no prerequisite resolved. Nothing is removed by hand — the
 ticket is a candidate again the moment the referenced one closes.
 
@@ -194,7 +189,7 @@ Distinct from resuming a `needs-human` ticket and from reclaiming a `status:chan
 (`draft`, `in-spec`, `in-dev`, `in-review`, `in-qa`), with **no** `needs-human`. A pair session that ended before final approval, or an `--auto` run that died mid-work, leaves this same shape,
 which the plain "has an assignee → stop" check would read as someone actively working. For Discovery and Spec's no-ticket entry, `status:draft` is what makes this possible.
 
-Only a human verifying it firsthand can tell it is dead. They resume it now with an **explicit** `--resume <issue>` (never in a bare pool) or add `can-resume` to hand it to the next sweep. To
+Only a human verifying it firsthand can tell it is dead. They resume it now with an **explicit** `--resume <issue>` (never in a bare pool) or add `can-resume` to hand it to the next sweep (an in-progress ticket with no assignee at all, which `--resume` refuses, takes `can-resume`, or its status set back to the phase's pre-claim one). To
 resume via `--resume`:
 1. Read the full ticket (body and comments), which rebuilds pair mode's checkpoints. `/pilot-review`'s checkpoint is a pending PR review (`pilot-review/SKILL.md`): pinned to the PR's current head
    → the recovered outcome; stale or absent → discard it and restart the reviewers fresh. An `--auto` run of another phase has nothing to rebuild: restart from the ticket's original inputs.
@@ -205,8 +200,7 @@ resume via `--resume`:
 
 Each phase's own `SKILL.md` follows this contract and may specialize it. Discovery has no `--auto`: it is pair or `--human`, never driven by a scheduled Routine, and supports `--resume`. QA has no `--auto`: it is pair, or `--browser` (the agent runs the cases in a browser against an environment the human supplies; explicit only, never the ticket's `mode`, never from `/pilot-auto`'s sweeps; it closes a story only when every case was tested and passed, every other outcome waits for a human, `pilot-qa/SKILL.md`). Spec, Dev and
 Review take `--auto` or `--pair` when given, else the ticket's `mode` from `python3 .pilot/pilot.py workflow show --ticket <N>` (`pair` unless the project's workflow defaults to `auto`;
-a project with no `workflow` block is pair). A ticket a risk signal makes pair only is never run unattended: an unattended run passes `--auto` to `pilot.py pool`/`resolve`/`claim`,
-which leave it out or refuse it. `--auto` is what a scheduled Routine uses (`.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). Review specializes pair: its reviewers always
+a project with no `workflow` block is pair). `--auto` is what a scheduled Routine uses (`.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). Review specializes pair: its reviewers always
 run in parallel and isolated, so an outcome carrying `needs-human` submits at once in both modes (the block must reach GitHub before any resolution) and a live human resolves it afterwards
 ("A human is live in the same session", `needs-human` above), while an all-approve or pure-`change` outcome pauses before submitting for a last look (`pilot-review/SKILL.md`). Both modes claim immediately, the same way.
 
@@ -223,9 +217,9 @@ Review, not an addition. Review has no incremental assembly: each reviewer re-ch
 **`--auto`** has the agent(s) decide everything and the skill apply the result in one pass, no checkpoint. `--pair`, `--auto` and `--human` are mutually exclusive — pick one per run; `--resume` goes with a mode flag wherever its skill's argument hint shows it, else the ticket's own mode (pair by default). `--with
 <persona>[,...]` (`.pilot/pilot-link-roster.md` "Roster") is orthogonal to all of them; `--merge` (Review only, "`status:approved`") only controls whether an all-approve outcome also merges the
 PR, with either mode; `--multi <N>` (Discovery, Spec, Dev, Review; `.pilot/pilot-link-agent-dialogue.md`, `.pilot/pilot-link-multi-consensus.md`) runs an ensemble on the one claimed ticket, with either
-mode, and is invalid only with `--resume`.
+mode. On a resume every instance starts from the recovered context (the checkpoint, or the blocking comment and its thread) and only reconciles what is still open; with `--human`, the human's proposal is the shared input of all N.
 
-**`--human`** (Discovery, Spec, Dev, Review, `/pilot-design` and `/pilot-proto`; `.pilot/pilot-link-existing-analysis.md`) needs a human live like pair, but the human proposes: the plan and the decisions are theirs, and the agent(s) analyze the existing, challenge what the human proposes and write the tickets, never adding a decision of their own. Same checkpoints, `--resume` and final consolidation as pair; invalid with `--multi`.
+**`--human`** (Discovery, Spec, Dev, Review, `/pilot-design` and `/pilot-proto`; `.pilot/pilot-link-existing-analysis.md`) needs a human live like pair, but the human proposes: the plan and the decisions are theirs, and the agent(s) analyze the existing, challenge what the human proposes and write the tickets, never adding a decision of their own. Same checkpoints, `--resume` and final consolidation as pair.
 
 **The cycle**, in every mode (the skills above, and the drafting duties of `/pilot-architecture`, `/pilot-wiki --edit` and `/pilot-flow`): analyze the existing, propose (who depends on the mode), challenge, repeated until agreed. The lead persona goes through all three, a validator the first two, a summoned persona only the point it was summoned on (`.pilot/pilot-link-existing-analysis.md`). The first analysis is an agent's turn (its reading stays out of the session's context); between rounds the session may answer a targeted factual question itself from a lookup it cites, never rewriting the analysis, and a point that changes the proposal's scope goes back to an agent for the delta.
 

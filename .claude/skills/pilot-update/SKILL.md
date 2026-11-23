@@ -27,8 +27,8 @@ from a previous run — the whole point is picking up upstream changes.
   agent directory doesn't match anything under `$PILOT_SRC` (the project's own, unrelated
   skill), leave it alone — touch only what's actually PILOT's.
 - **`.pilot/pilot-process.md`**, every **`.pilot/pilot-process-*.md`** human-facing companion
-  (currently just `.pilot/pilot-process-companion.md` — no skill or agent reads any of
-  these), every **`.pilot/pilot-link-*.md`** cross-skill link doc (the opposite of a
+  (currently just `.pilot/pilot-process-companion.md` — only `pilot-help` reads it, for
+  examples), every **`.pilot/pilot-link-*.md`** cross-skill link doc (the opposite of a
   companion — read by the specific skills/agents it names, not every phase, not a human
   audience), every **`.pilot/pilot-task-*.md`** per-duty task doc (read by exactly one
   phase skill and injected into an `Agent` call's prompt — the `.claude/agents/pilot-*.md`
@@ -139,6 +139,10 @@ from a previous run — the whole point is picking up upstream changes.
    --bootstrap`, which turns it on, reads that content, `docs/` and each app's own documents (`python3 .pilot/pilot.py arch inventory`), and drafts
    `architecture/` in one PR. Leave `archInitialized` and `apps` in place (the personas read `apps`); `archInitialized` is no longer written or read.
    The `/pilot-init-archi` skill is gone upstream, so step 3 flags it as orphaned: offer to delete it once nothing needs it.
+
+5b2. **Check the workflow block.** `python3 .pilot/pilot.py workflow show`: when its `ignored` lists keys (`signals`, `allow`: risk signals and per-ticket
+   profiles, removed in 5.0), tell the human they are ignored and can be deleted from `.pilot/state.json`, and that the repository's two
+   `workflow:` labels (standard and lean, no longer created) can be deleted too; change nothing yourself.
 
 5c. **Update the dashboard.** Only when `.pilot/state.json` has a `dashboardUrl`: run
    `/pilot-dashboard` (reusing this `$PILOT_SRC`), after asking the human whether to

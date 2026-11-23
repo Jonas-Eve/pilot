@@ -12,8 +12,7 @@
    "type:tech",
    "level:task",
    "priority:P2",
-   "status:dev-ready",
-   "workflow:lean"
+   "status:dev-ready"
   ],
   "body": "Bench scenario S5 (throwaway).\n\n## Spec\n\nAdd a `--limit N` option to the CLI that keeps the first N places of the search result. Expose it in `accessplaces/cli.py`. Add a unit test in `tests/test_cli.py`.\n\n## Acceptance\n\n- `python -m accessplaces cafe --limit 1` prints one place and the count line.\n- Tests pass.\n"
  },

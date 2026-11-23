@@ -113,7 +113,7 @@ class Linter:
 
     def check_labels(self, files):
         mod = load_pilot(self.root)
-        known = set(mod.REQUIRED_LABELS) | set(mod.WORKFLOW_LABELS) | set(getattr(mod, "POC_OPEN", ()))
+        known = set(mod.REQUIRED_LABELS) | set(getattr(mod, "POC_OPEN", ()))
         for p in files:
             for lab in sorted(set(LABEL_RE.findall(p.read_text()))):
                 if lab not in known:

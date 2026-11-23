@@ -17,16 +17,14 @@ spec).
    that doesn't resolve cleanly is a genuine blocker: handle it the same way as step 4's
    "ask live, otherwise flag `needs-human`" — never force through a conflicted rebase by
    discarding either side blind.
-1a. **If this is a reclaim** (`.pilot/pilot-link-review-consensus.md` "Reclaiming a
-    `status:changes-requested` ticket"): there's no fresh spec — check out the PR's
+1a. **If this is a reclaim** (`status:changes-requested`: phase 4 sent the PR back): there's no fresh spec — check out the PR's
     existing branch and rebase it onto its actual current base first — normally `main`
     (or this project's default branch), but the branch this ticket's own PR was
     deliberately opened against instead if it's based on another still-open PILOT PR's
-    branch (`.pilot/pilot-process.md` §3 "`status:done`" Known limitation) — before reading
+    branch (`.pilot/pilot-link-cascade.md` "Known limitation") — before reading
     its diff and the phase-4 blocking review instead (the `change`-tagged points to fix,
     plus any `decision`-tagged points and their resolution) — the branch may have gone
-    stale since it was opened, and phase 4 just re-ran validation against it
-    (`.pilot/pilot-link-review-consensus.md`), so build on the current base, not whatever it
+    stale since it was opened, and phase 4 just re-ran validation against it, so build on the current base, not whatever it
     was at PR-open time. Address exactly those points, skipping steps 2-4 below
     (fresh-implementation only). Push new commits to that same PR's branch — a force
     push, since the rebase already rewrote its history; safe as long as no other
@@ -34,8 +32,7 @@ spec).
     assuming — this ticket's own dependents, if any, would need coordinating instead of
     a blind force-push) — never open a second PR for the same ticket. Before moving on,
     post one comment on the issue itself summarizing what you changed and why — the
-    blocking points live only in the PR review, not the issue
-    (`.pilot/pilot-link-review-consensus.md`), and a `change`-only reclaim reaches you
+    blocking points live only in the PR review, not the issue, and a `change`-only reclaim reaches you
     without any human ever having looked at the ticket, so this is what keeps the
     ticket's own history coherent with the code. Still run the
     validation in step 5 and move to `status:review-ready` in step 6, same as a fresh
@@ -95,7 +92,7 @@ spec).
     readability/naming, whether tests actually exercise the claimed behavior, edge
     cases the spec didn't call out) and fix what you find. This stands in for a
     separate phase-4 reviewer covering the same ground (`.pilot/pilot-process.md` §4
-    "Interaction modes", `.pilot/pilot-link-review-consensus.md`) — the tech lead still
+    "Interaction modes") — the tech lead still
     checks spec conformance and does its own quality pass independently, but this is
     your one chance to catch what you'd otherwise ship uncaught.
 6. Commit and push to a short-lived branch, open a pull request following this
@@ -122,6 +119,6 @@ spec).
    one.
 
 You are not a phase-4 reviewer — your self-review at step 5a above is what stands in
-for that (`.pilot/pilot-link-review-consensus.md`); phase 4's default set is `pilot-techlead`
+for that; phase 4's default set is `pilot-techlead`
 alone (`type:tech`/`type:bug`) or `pilot-techlead` + `pilot-pm` (`type:feature`/`type:e2e`)
 — `pilot-architect` optional in either, added via `--with architect`.

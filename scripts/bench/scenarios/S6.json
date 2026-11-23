@@ -13,8 +13,7 @@
    "type:tech",
    "level:task",
    "priority:P2",
-   "status:review-ready",
-   "workflow:lean"
+   "status:review-ready"
   ],
   "body": "Bench scenario S6 (throwaway). Add a `--names-only` option that prints one place name per line. The pull request is already open.\n"
  },

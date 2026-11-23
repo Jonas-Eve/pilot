@@ -63,5 +63,5 @@ candidate at all, wherever it sits.
 
 An Epic whose every story is closed but whose own issue is still open by hand has no
 open sub-issues to search, so it falls through to the ordinary resolution above — the
-one case `pilot-spec/SKILL.md`'s own "there's nothing to scope on the epic itself"
+one case `pilot-spec/SKILL.md`'s own "there's nothing to work on the epic itself"
 line still fires.

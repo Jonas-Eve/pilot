@@ -323,7 +323,7 @@ const STUB = (opts) => `
   if (rcOpts301) { await rcRow(301).locator('button:has-text("Options")').click(); await rcPage.waitForTimeout(100); }
   check('reclaim row: no Humain option, a dev-ready row keeps it', rcHas302 && (await rcRow(301).locator('.opts .tog', { hasText: /^Humain$/ }).count()) === 0, String(rcHas302));
   await rcPage.close();
-  // ---- --human: its own option, exclusive with Auto, --next and multi; never on QA ----
+  // ---- --human: its own option, exclusive with Auto and --next, compatible with multi; never on QA ----
   const launchOf = async (n) => decodeURIComponent((await rowOf(n).locator('a.btn').first().getAttribute('href')).split('?q=')[1].split('&repo=')[0]);
   const humanTog = (n) => rowOf(n).locator('.opts .tog', { hasText: /^Humain$/ });
   await optBtn(60).click(); await page.waitForTimeout(100);
@@ -332,7 +332,7 @@ const STUB = (opts) => `
   check('resume row (pair only): a Humain option, off by default, launches --human', h60 === '/pilot-dev --resume 60' && (await launchOf(60)) === '/pilot-dev --resume 60 --human' && /humain/.test(await rowOf(60).textContent()), h60 + ' / ' + (await launchOf(60)));
   await humanTog(60).click(); await optBtn(60).click(); await page.waitForTimeout(100);
   await humanTog(99).click(); await page.waitForTimeout(100);
-  check('dev row: Humain replaces Auto, hides --next and multi', (await launchOf(99)) === '/pilot-dev 99 --human' && (await panel99().locator('text=Multi').count()) === 0 && (await panel99().locator('text=Enchaîner').count()) === 0, await launchOf(99));
+  check('dev row: Humain replaces Auto and hides --next', (await launchOf(99)) === '/pilot-dev 99 --human' && (await panel99().locator('text=Enchaîner').count()) === 0, await launchOf(99));
   await panel99().locator('.tog', { hasText: /^Auto$/ }).click(); await page.waitForTimeout(100);
   check('Auto switches Humain off', (await launchOf(99)) === '/pilot-dev 99 --auto' && (await humanTog(99).getAttribute('aria-pressed')) === 'false', await launchOf(99));
   await panel99().locator('.tog', { hasText: /^Auto$/ }).click(); await page.waitForTimeout(100);
@@ -374,7 +374,7 @@ const STUB = (opts) => `
   await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
   check('bug spec: /pilot-spec 80 --auto --with architect', JSON.stringify(await rowHrefs(80)) === JSON.stringify(['/pilot-spec 80 --auto --with architect', '/pilot-spec 80 --with architect']), JSON.stringify(await rowHrefs(80)));
   await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
-  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
+  check('resume rows get no --next, QA rows neither --multi nor --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
   await optBtn(50).click(); await page.waitForTimeout(100);
   check('QA row options: an environment address, no --next', (await rowOf(50).locator('.opts #qaUrl-50').count()) === 1 && (await rowOf(50).locator('.opts .tog', { hasText: 'Enchaîner' }).count()) === 0);
   await rowOf(50).locator('#qaUrl-50').fill('https://staging.example.com'); await page.waitForTimeout(150);
@@ -1430,7 +1430,6 @@ const STUB = (opts) => `
     check('profile: the help page states the profile and its rules', /Profil du projet : lean\. Pas de QA humaine\. Pas de tâche e2e\. Relecture : Tech lead seul\./.test(await text(page, '#profileNote')), await text(page, '#profileNote'));
     check('profile: the help page states the default mode and the Spec rule of a tech story',
           /Mode par défaut : auto \(sans vous\)\./.test(await text(page, '#profileNote')) && /Spec tech : le tech lead seul ; l’architecte intervient/.test(await text(page, '#profileNote')), await text(page, '#profileNote'));
-    check('profile: the help page says a ticket can be pair only or carry its own profile', /pair seulement/.test(await text(page, '#signalNote')) && /workflow:<profil>/.test(await text(page, '#signalNote')));
     let table = await text(page, '#view table');
     check('profile: lean has no human QA row, and a tech Spec is the tech lead alone',
           !/QA humaine/.test(table) && /Spec · tech\s*Tech lead/.test(table) && /Spec · feature/.test(table) && !/Spec · feature ou tech/.test(table), table);
@@ -1462,7 +1461,7 @@ const STUB = (opts) => `
     page = await open({ preload: [withWf(null)] });
     await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
     table = await text(page, '#view table');
-    check('profile: a project without a workflow keeps the whole table as before', /Spec · feature ou tech/.test(table) && /QA humaine/.test(table) && (await page.$('#signalNote')) === null, table);
+    check('profile: a project without a workflow keeps the whole table as before', /Spec · feature ou tech/.test(table) && /QA humaine/.test(table), table);
     await page.close();
 
     page = await open({ preload: [withWf(LEAN)], lang: 'en' });
@@ -1470,7 +1469,7 @@ const STUB = (opts) => `
     await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
     check('profile: the default mode, the Spec rule and the rows are translated',
           /Default mode: auto \(without you\)\./.test(await text(page, '#profileNote')) && /Tech spec: the tech lead alone/.test(await text(page, '#profileNote'))
-          && /Spec · tech/.test(await text(page, '#view table')) && /the architect too on dependencies/.test(await text(page, '#view table')) && /can also carry its own profile/.test(await text(page, '#signalNote')), await text(page, '#view'));
+          && /Spec · tech/.test(await text(page, '#view table')) && /the architect too on dependencies/.test(await text(page, '#view table')), await text(page, '#view'));
     check('profile: the chip and the rules are translated',
           c.text === 'Profile lean' && /No human QA/.test(c.title) && /Review: Tech lead alone/.test(c.title) && /Project profile: lean\. No human QA\. No e2e task\. Review: Tech lead alone\./.test(await text(page, '#profileNote')),
           JSON.stringify(c) + ' ' + (await text(page, '#profileNote')));
@@ -1495,8 +1494,7 @@ const STUB = (opts) => `
       review: { feature: ['pilot-pm', 'pilot-techlead'], e2e: ['pilot-pm', 'pilot-techlead'], tech: ['pilot-techlead'], bug: ['pilot-techlead'] } });
     const wf = (mode) => ({ profile: mode === 'pair' ? 'standard' : 'lean', phases: ['dev', 'discovery', 'proto', 'qa', 'review', 'spec'], rules: modeRules(mode) });
     const issues = [ticket(31, ['type:tech', 'status:dev-ready', 'priority:P1'], { t: 'Ticket ordinaire' }),
-                    ticket(32, ['type:tech', 'status:dev-ready', 'priority:P0'], { t: 'Ticket à signal', g: { p: 1, s: ['priority-p0'] } }),
-                    ticket(33, ['type:tech', 'status:dev-ready', 'priority:P1', 'workflow:lean'], { t: 'Ticket à profil propre', g: { w: 'lean' } })];
+                    ticket(32, ['type:tech', 'status:dev-ready', 'priority:P0'], { t: 'Ticket urgent' })];
     const snap = (w) => Object.assign({}, snapshot(issues, 120), w ? { workflow: w } : {});
     const rowOf2 = (pg, n) => pg.locator('#view .row', { hasText: '#' + n + ' ' }).first();
     const links = async (pg, n) => rowOf2(pg, n).locator('a.btn').evaluateAll((as) => as.map((a) => ({ cmd: decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0]), primary: a.classList.contains('primary') })));
@@ -1506,10 +1504,8 @@ const STUB = (opts) => `
     check('mode: a workflow whose default is pair launches pair, Auto is off in Options',
           l.length === 1 && l[0].cmd === '/pilot-dev 31' && l[0].primary && JSON.stringify(await modeHrefs(page, 31)) === JSON.stringify(['/pilot-dev 31 --auto', '/pilot-dev 31']), JSON.stringify(l));
     l = await links(page, 32);
-    check('mode: a ticket a signal makes pair only has no auto button, and says why', l.length === 1 && l[0].cmd === '/pilot-dev 32' && l[0].primary
-          && (await rowOf2(page, 32).locator('.chip.warn[title="priority-p0"]').count()) === 1 && /pair seulement/.test(await rowOf2(page, 32).textContent()), JSON.stringify(l));
-    check('mode: a ticket with its own workflow profile shows it', /profil lean/.test(await rowOf2(page, 33).textContent()));
-    check('mode: an ordinary ticket shows neither chip', !/pair seulement|profil /.test(await rowOf2(page, 31).textContent()));
+    check('mode: an urgent ticket launches like any other (no ticket is held back from auto)', l.length === 1 && l[0].cmd === '/pilot-dev 32' && l[0].primary, JSON.stringify(l));
+    check('mode: no ticket shows a pair-only or profile chip', !/pair seulement|profil /.test(await rowOf2(page, 31).textContent()) && !/pair seulement|profil /.test(await rowOf2(page, 32).textContent()));
     check('mode: no page errors', page.errors.length === 0, page.errors.join('|'));
     await page.close();
 
@@ -1517,7 +1513,7 @@ const STUB = (opts) => `
     l = await links(page, 31);
     check('mode: a workflow whose default is auto launches auto, one button',
           l.length === 1 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary, JSON.stringify(l));
-    check('mode: pair only wins over an auto default', JSON.stringify((await links(page, 32)).map((x) => x.cmd)) === JSON.stringify(['/pilot-dev 32']));
+    check('mode: an urgent ticket follows the auto default too', JSON.stringify((await links(page, 32)).map((x) => x.cmd)) === JSON.stringify(['/pilot-dev 32 --auto']));
     await page.close();
 
     page = await open({ preload: [snap(null)] });
@@ -1525,9 +1521,6 @@ const STUB = (opts) => `
     check('mode: without a workflow, pair is the default', l.length === 1 && l[0].cmd === '/pilot-dev 31' && l[0].primary, JSON.stringify(l));
     await page.close();
 
-    page = await open({ preload: [snap(wf('pair'))], lang: 'en' });
-    check('mode: the chips are translated', /pair only/.test(await rowOf2(page, 32).textContent()) && /profile lean/.test(await rowOf2(page, 33).textContent()));
-    await page.close();
   }
 
   // every tab and sub-tab fits a phone, in both themes, with no script error

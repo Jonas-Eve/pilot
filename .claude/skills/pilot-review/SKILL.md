@@ -1,7 +1,7 @@
 ---
 name: pilot-review
 description: "Phase 4 of PILOT: claims a status:review-ready PR and runs the reviewers in parallel (PM and tech lead for type:feature/type:e2e, tech lead alone for type:tech/type:bug, the architect optional), then submits one GitHub PR review (Approve, Request changes or Comment) and the matching label: status:approved, or status:changes-requested (a pure code-level verdict never sets needs-human, so it is reclaimable at once; a judgment call adds it). Pair by default, or the project workflow's default (a live human gets a last look and can resolve a needs-human block live), --auto or --pair to choose, --auto for a Routine; --merge merges an all-approve PR; --with architect, --only <roles>, --multi, --resume; bare, it sweeps ready PRs. Use for a status:review-ready PR."
-argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto|--pair|--human] [--merge] [--with architect] [--multi [N]] | <issue or PR number> --only <pm|architect|techlead>[,...] [--merge] | <issue number> --resume [--merge]"
+argument-hint: "<PR number, or issue number, optional — sweeps ready PRs if omitted> [--auto|--pair|--human] [--merge] [--with architect] [--multi [N]] | <issue or PR number> --only <pm|architect|techlead>[,...] [--merge] | <issue number> --resume [--merge] [--multi [N]]"
 ---
 
 # PILOT — Phase 4: Review
@@ -10,19 +10,19 @@ Read `.pilot/pilot-process.md` first (labels, states, the claim protocol §4) an
 skill covers only phase 4's mechanics, including the reviewer set (step 3). `--with architect` adds the architect to that set, in a sweep too (the only persona
 summonable here, `.pilot/pilot-link-roster.md` "Roster"); `--only` (step 3) fixes the exact set instead; nothing can be summoned mid-review.
 
-Mode: `--auto`, `--pair` or `--human` as given, else the ticket's own, pair by default (`.pilot/pilot-process.md` §4 "Interaction modes"). The reviewers are the challenge step of the cycle (`.pilot/pilot-link-existing-analysis.md`, passed in full into every reviewer's call: each analyzes the PR against the existing in its own turn and returns sourced points only; no separate analysis comment). `--human`: the human decides the verdict. Before step 3, ask them once whether anything specific should be checked and pass it to every reviewer in step 5; step 8's pause is their decision (confirm, drop or add points, turn an approval into a change request or the reverse), step 9 submits what they decided and the points they dropped are quoted as dropped; a `needs-human` outcome still submits at once (step 9, then step 10). Never with `--multi` or `--auto`. Every outcome is checkpointed as a pending GitHub PR review the moment it is decided
+Mode: `--auto`, `--pair` or `--human` as given, else the ticket's own, pair by default (`.pilot/pilot-process.md` §4 "Interaction modes"). The reviewers are the challenge step of the cycle (`.pilot/pilot-link-existing-analysis.md`, passed in full into every reviewer's call: each analyzes the PR against the existing in its own turn and returns sourced points only; no separate analysis comment). `--human`: the human decides the verdict. Before step 3, ask them once whether anything specific should be checked and pass it to every reviewer in step 5; step 8's pause is their decision (confirm, drop or add points, turn an approval into a change request or the reverse), step 9 submits what they decided and the points they dropped are quoted as dropped; a `needs-human` outcome still submits at once (step 9, then step 10). Never with `--auto`. Every outcome is checkpointed as a pending GitHub PR review the moment it is decided
 (step 7). An all-approve or pure-`change` outcome (no `decision` point, so no `needs-human`) gets a pre-submission pause (step 8); an outcome carrying
 `needs-human` always submits at once (step 9) and pair's value comes after, in the live resolution of step 10. `--auto` skips both pauses (required for a scheduled
 Routine, `.claude/skills/pilot-auto/SKILL.md` "Scheduled sweeps"). `--merge` (step 12) works with either mode; without it this skill never merges. `--multi <N>`
 runs N instances of each role selected in step 3 (roles × N simultaneous `Agent` calls), reconciled per role before step 6's aggregation
-(`.pilot/pilot-link-multi-consensus.md`); invalid with `--resume`. `--only <list>` is valid only with an explicit PR/issue number, never a sweep and never with
+(`.pilot/pilot-link-multi-consensus.md`; on a `--resume` that recovers an outcome it has no effect, on a restart the instances run fresh; under `--human` step 3's question goes to every instance). `--only <list>` is valid only with an explicit PR/issue number, never a sweep and never with
 `--auto`: dropping a role is a human's call, so step 8's pause always stays as the last check.
 
 ## Steps
 
 0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported `ok: true` earlier in this conversation. `ok: false` (exit 1) or a failure (exit 2, script missing) → report each entry of `failed` (or the error) and stop here, before anything has changed.
-1. Resolve the ticket: `python3 .pilot/pilot.py resolve review <issue> [--resume] [--auto]` (`--auto` on `pool`, `resolve` and `claim` whenever this run is unattended, `.pilot/pilot-process.md` §4 "Interaction modes"). With none
-   given, run `python3 .pilot/pilot.py pool review [--auto]` first — the pool of
+1. Resolve the ticket: `python3 .pilot/pilot.py resolve review <issue> [--resume]`. With none
+   given, run `python3 .pilot/pilot.py pool review` first — the pool of
    `.pilot/pilot-process.md` §4 "Picking the next ticket..." (fresh `status:review-ready`,
    resumable `status:in-review` + `can-resume`; `needs-human`, `on-hold` and open "Depends on
    #N" excluded; priority, then "Blocks #M", then oldest; `status:changes-requested` tickets
@@ -52,18 +52,17 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
      `resume-mismatch`; `wrong-status`; `assigned`; `closed`; `not-found`).
    Script missing or exiting 2 → report that and stop: `.pilot/pilot.py` ships with
    `/pilot-init`/`/pilot-update` and needs `python3` and a working `gh`.
-2. **Claim** it: `python3 .pilot/pilot.py claim review <issue> --mode <mode> [--auto]` (the mode named
+2. **Claim** it: `python3 .pilot/pilot.py claim review <issue> --mode <mode>` (the mode named
    in step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-review`, re-read to confirm). Exit 1 with `reason: lost-race` → stand down and
    return to step 1 for a different candidate (bare pool only — report nothing to do if a
    specific ticket was requested). Any other refusal → report `reason` and stop.
 2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's, `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited") to pick the **default**
-   reviewer set: it is `review` of `python3 .pilot/pilot.py workflow show --ticket <issue> --path <changed file>…` (the PR's changed files feed the path signals):
-   - standard: `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`; `type:tech` or `type:bug` → `pilot-techlead` alone (no PM); a signal may add reviewers
-   - a lean workflow: `pilot-techlead` alone for every type, plus what a signal adds
-   - Whatever the flags, check whether the PR already carries a submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true after a reclaim fix
-     (`.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket"), never for a first round. Found → fetch the latest submitted review's full body
+   reviewer set: it is `review` of `python3 .pilot/pilot.py workflow show --ticket <issue>`:
+   - standard: `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`; `type:tech` or `type:bug` → `pilot-techlead` alone (no PM)
+   - a lean workflow: `pilot-techlead` alone for every type
+   - Whatever the flags, check whether the PR already carries a submitted review (`mcp__github__pull_request_read` method `get_reviews`) — true after a reclaim fix, never for a first round. Found → fetch the latest submitted review's full body
      (every point, marked `change` or `decision`) to pass to every reviewer in step 5. This also feeds `--only`.
    - `--with architect` → the default set plus the architect: never narrows (no prior-review check), valid on any `type:`, in a sweep too, never with `--only`.
    - `--only <list>` (explicit number only) → `<list>` is the **complete, exact** set, never merged with the default (`--only architect` means only the architect; to add the
@@ -104,8 +103,7 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
    if present: whatever's in the PR's comment thread after it — a specific reply resolving
    a `decision` point, or "no reply — treat as approved as proposed" if none
    (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket") — and the dev's own
-   reclaim summary comment on the ticket's *issue* (not the PR,
-   `.pilot/pilot-link-review-consensus.md` "Reclaiming a `status:changes-requested` ticket").
+   reclaim summary comment on the ticket's *issue* (not the PR).
    `.pilot/pilot-link-review-consensus.md` has how each reviewer is expected to use this
    instead of starting blind.
 5a. **Per-role reconciliation** (only when `--multi` ran more than one instance of a
@@ -167,6 +165,6 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
     before.
 13. Report the outcome, including whether this run merged the PR itself. Once a PR is
     merged (by a human, or by step 12), `.github/workflows/pilot-status-on-merge.yml` sets
-    `status:done` and runs the cascading-completion check (`.pilot/pilot-process.md` §3)
+    `status:done` and runs the cascading-completion check (`.pilot/pilot-link-cascade.md`)
     — this skill's own job ends at the submitted review(s) (plus, when `--merge` applied,
     the merge itself).
