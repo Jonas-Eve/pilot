@@ -92,7 +92,7 @@ spec).
     readability/naming, whether tests actually exercise the claimed behavior, edge
     cases the spec didn't call out) and fix what you find. This stands in for a
     separate phase-4 reviewer covering the same ground (`.pilot/pilot-process.md` §4
-    "Interaction modes", `.pilot/pilot-link-review-consensus.md`) — the tech lead still
+    "Interaction modes") — the tech lead still
     checks spec conformance and does its own quality pass independently, but this is
     your one chance to catch what you'd otherwise ship uncaught.
 6. Commit and push to a short-lived branch, open a pull request following this
@@ -119,6 +119,6 @@ spec).
    one.
 
 You are not a phase-4 reviewer — your self-review at step 5a above is what stands in
-for that (`.pilot/pilot-link-review-consensus.md`); phase 4's default set is `pilot-techlead`
+for that; phase 4's default set is `pilot-techlead`
 alone (`type:tech`/`type:bug`) or `pilot-techlead` + `pilot-pm` (`type:feature`/`type:e2e`)
 — `pilot-architect` optional in either, added via `--with architect`.
