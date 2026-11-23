@@ -1,7 +1,7 @@
 ---
 name: pilot-architecture
-description: "The project's architecture (architecture/ at the project root, .pilot/pilot-link-architecture.md): overview of the apps, the technical guidelines AIs and developers must respect, the reference of how the code is built today (stack and versions, data model, structure), and the architecture decision records (ADR: why a choice was made). No flag, or a question in free text → answers from it with citations (path, status), and says when it does not cover it. --guideline \"<rule>\" → drafts one rule with the architect and a human, one PR. --adr \"<decision>\" → drafts an ADR, one PR; one that replaces an accepted ADR supersedes it. --edit <id> \"<change>\" → rewrites an entry, one PR (an accepted ADR is replaced, never edited). --remove <id> → deletes an entry nothing cites, one PR. --verify [<id>] → checks the reference entries, the overview and the accepted guidelines and ADRs against the code, stamps those that hold, a human arbitrates each divergence, one PR. --bootstrap → drafts overview, guidelines and reference from the existing apps/, docs and code, one PR. --scaffold → creates the apps' skeletons and the overview. --lint → mechanical checks. Never merges a PR, never claims a ticket. When the module is off it proposes to turn it on first. Use to ask how the project is built and why, to add a rule, to record a decision, or to set the architecture up."
-argument-hint: "[<question>] | --guideline \"<rule>\" | --adr \"<decision>\" | --edit <id> \"<change>\" | --remove <id> | --verify [<id>] | --bootstrap | --scaffold [<free-text apps and tech>] | --lint"
+description: "The project's architecture (architecture/ at the project root, .pilot/pilot-link-architecture.md): overview of the apps, the technical guidelines AIs and developers must respect, the reference of how the code is built today (stack and versions, data model, structure), and the architecture decision records (ADR: why a choice was made). No flag, or a question in free text → answers from it with citations (path, status), and says when it does not cover it. --guideline \"<rule>\" → drafts one rule with the architect and a human, one PR. --adr \"<decision>\" → drafts an ADR, one PR; one that replaces an accepted ADR supersedes it. --edit <id> \"<change>\" → rewrites an entry, one PR (an accepted ADR is replaced, never edited). --remove <id> → deletes an entry nothing cites, one PR. --accept <id> → a human accepts a `proposed` entry (it becomes `accepted`, in force), one PR. --verify [<id>] → checks the reference entries, the overview and the accepted guidelines and ADRs against the code, stamps those that hold, a human arbitrates each divergence, one PR. --bootstrap → drafts overview, guidelines and reference from the existing apps/, docs and code, one PR. --scaffold → creates the apps' skeletons and the overview. --lint → mechanical checks. Never merges a PR, never claims a ticket. When the module is off it proposes to turn it on first. Use to ask how the project is built and why, to add a rule, to record a decision, or to set the architecture up."
+argument-hint: "[<question>] | --guideline \"<rule>\" | --adr \"<decision>\" | --edit <id> \"<change>\" | --remove <id> | --accept <id> | --verify [<id>] | --bootstrap | --scaffold [<free-text apps and tech>] | --lint"
 disable-model-invocation: true
 ---
 
@@ -61,6 +61,12 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 2. The human confirms (pair); `--auto` is not offered.
 3. `arch remove <id>` (refused while another entry cites it: edit those first). Branch `architecture/remove-<id>`, commit, push, open one PR.
 
+## `--accept <id>`
+
+1. `arch show <id>`. Only a `proposed` entry is accepted; an `accepted` or `superseded` one is not (say which and stop). Show the human its title, description and text, and what it supersedes (`supersedes`: that ADR is already history, accepting this one is when the replacement takes force).
+2. The human confirms (pair); `--auto` is not offered: accepting puts a rule or a decision in force.
+3. `arch set <id> --status accepted`, then `arch lint`. Branch `architecture/accept-<id>`, commit, push, open one PR; a guideline, reference entry, overview or ADR accepted is then offered `--verify <id>`.
+
 ## `--verify [<id>]`
 
 Checks the `reference` entries, the overview and the `accepted` guidelines and ADRs (all, or `<id>`) against the code: a fact still holds, a rule or a decision is still followed. An entry that is not `accepted`, and a runbook, is skipped and reported as not checked.
@@ -86,7 +92,7 @@ Checks the `reference` entries, the overview and the `accepted` guidelines and A
    human's.
 4. `arch add adr/<NNNN-title>.md … --status proposed` (`apps/<app>/adr/<NNNN-title>.md` when only one app is concerned) (NNNN = `arch next-number`), and `arch supersede <new> <old>`
    when it replaces an accepted ADR. Branch `architecture/adr-<NNNN>`, commit, push, open one PR; the human
-   merging it accepts it — set `accepted` in that same PR when the human says so.
+   merging it accepts it — set `accepted` in that same PR when the human says so, otherwise it stays `proposed` until `--accept <id>`.
 
 ## `--bootstrap`
 
