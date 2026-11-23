@@ -44,7 +44,7 @@ and **`level:`** (`epic` → `story` → `task`, never deeper). Where each type 
 - `type:poc` — a prototype of a feature, built with a human in `/pilot-proto` before any Discovery
   and used to decide whether to build it. Always a standalone `level:story`, never split, never
   through Spec, Dev, Review or QA (`pilot.py resolve` refuses it there, and refuses anything else
-  in `/pilot-proto`). Its states are the `status:poc-*` labels below.
+  in `/pilot-proto`). Its states are the `status:poc-*` labels (`pilot.py contract proto`).
 
 Never inherited from a parent to a child (`.pilot/pilot-link-ticket-tree.md` "Types and where each originates") — a story's tasks each get whichever of
 the four fits that specific task, assigned by Spec at split time.
@@ -54,8 +54,8 @@ the four fits that specific task, assigned by Spec at split time.
   or `type:tech` alike (`.pilot/pilot-link-ticket-tree.md` "Three levels"). Carries no
   `status:` label and never moves through the pipeline itself — its stories are linked to
   it as native GitHub sub-issues (`mcp__github__sub_issue_write`), not a hand-written
-  checklist. It **auto-closes once every one of its stories is closed** (see "Cascading
-  completion" below) — same mechanism as a split story's tasks, one level up, and just as
+  checklist. It **auto-closes once every one of its stories is closed** (`.pilot/pilot-link-cascade.md` "Cascading
+  completion") — same mechanism as a split story's tasks, one level up, and just as
   terminal: further work in the same area becomes a new Epic, not a story reopening this
   one.
 - `level:story` — the root unit Discovery produces for `type:feature` (and any grouped
@@ -217,7 +217,7 @@ Review, not an addition. Review has no incremental assembly: each reviewer re-ch
 **`--auto`** has the agent(s) decide everything and the skill apply the result in one pass, no checkpoint. `--pair`, `--auto` and `--human` are mutually exclusive — pick one per run; `--resume` goes with a mode flag wherever its skill's argument hint shows it, else the ticket's own mode (pair by default). `--with
 <persona>[,...]` (`.pilot/pilot-link-roster.md` "Roster") is orthogonal to all of them; `--merge` (Review only, "`status:approved`") only controls whether an all-approve outcome also merges the
 PR, with either mode; `--multi <N>` (Discovery, Spec, Dev, Review; `.pilot/pilot-link-agent-dialogue.md`, `.pilot/pilot-link-multi-consensus.md`) runs an ensemble on the one claimed ticket, with either
-mode, and is invalid only with `--resume`.
+mode, and is invalid with `--resume` and with `--human`.
 
 **`--human`** (Discovery, Spec, Dev, Review, `/pilot-design` and `/pilot-proto`; `.pilot/pilot-link-existing-analysis.md`) needs a human live like pair, but the human proposes: the plan and the decisions are theirs, and the agent(s) analyze the existing, challenge what the human proposes and write the tickets, never adding a decision of their own. Same checkpoints, `--resume` and final consolidation as pair; invalid with `--multi`.
 

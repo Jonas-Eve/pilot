@@ -22,7 +22,7 @@ spec).
     existing branch and rebase it onto its actual current base first — normally `main`
     (or this project's default branch), but the branch this ticket's own PR was
     deliberately opened against instead if it's based on another still-open PILOT PR's
-    branch (`.pilot/pilot-process.md` §3 "`status:done`" Known limitation) — before reading
+    branch (`.pilot/pilot-link-cascade.md` "Known limitation") — before reading
     its diff and the phase-4 blocking review instead (the `change`-tagged points to fix,
     plus any `decision`-tagged points and their resolution) — the branch may have gone
     stale since it was opened, and phase 4 just re-ran validation against it

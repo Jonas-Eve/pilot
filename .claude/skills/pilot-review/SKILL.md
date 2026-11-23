@@ -167,6 +167,6 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
     before.
 13. Report the outcome, including whether this run merged the PR itself. Once a PR is
     merged (by a human, or by step 12), `.github/workflows/pilot-status-on-merge.yml` sets
-    `status:done` and runs the cascading-completion check (`.pilot/pilot-process.md` §3)
+    `status:done` and runs the cascading-completion check (`.pilot/pilot-link-cascade.md`)
     — this skill's own job ends at the submitted review(s) (plus, when `--merge` applied,
     the merge itself).
