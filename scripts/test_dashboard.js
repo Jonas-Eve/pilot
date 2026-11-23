@@ -323,7 +323,7 @@ const STUB = (opts) => `
   if (rcOpts301) { await rcRow(301).locator('button:has-text("Options")').click(); await rcPage.waitForTimeout(100); }
   check('reclaim row: no Humain option, a dev-ready row keeps it', rcHas302 && (await rcRow(301).locator('.opts .tog', { hasText: /^Humain$/ }).count()) === 0, String(rcHas302));
   await rcPage.close();
-  // ---- --human: its own option, exclusive with Auto, --next and multi; never on QA ----
+  // ---- --human: its own option, exclusive with Auto and --next, compatible with multi; never on QA ----
   const launchOf = async (n) => decodeURIComponent((await rowOf(n).locator('a.btn').first().getAttribute('href')).split('?q=')[1].split('&repo=')[0]);
   const humanTog = (n) => rowOf(n).locator('.opts .tog', { hasText: /^Humain$/ });
   await optBtn(60).click(); await page.waitForTimeout(100);
@@ -332,7 +332,7 @@ const STUB = (opts) => `
   check('resume row (pair only): a Humain option, off by default, launches --human', h60 === '/pilot-dev --resume 60' && (await launchOf(60)) === '/pilot-dev --resume 60 --human' && /humain/.test(await rowOf(60).textContent()), h60 + ' / ' + (await launchOf(60)));
   await humanTog(60).click(); await optBtn(60).click(); await page.waitForTimeout(100);
   await humanTog(99).click(); await page.waitForTimeout(100);
-  check('dev row: Humain replaces Auto, hides --next and multi', (await launchOf(99)) === '/pilot-dev 99 --human' && (await panel99().locator('text=Multi').count()) === 0 && (await panel99().locator('text=Enchaîner').count()) === 0, await launchOf(99));
+  check('dev row: Humain replaces Auto and hides --next', (await launchOf(99)) === '/pilot-dev 99 --human' && (await panel99().locator('text=Enchaîner').count()) === 0, await launchOf(99));
   await panel99().locator('.tog', { hasText: /^Auto$/ }).click(); await page.waitForTimeout(100);
   check('Auto switches Humain off', (await launchOf(99)) === '/pilot-dev 99 --auto' && (await humanTog(99).getAttribute('aria-pressed')) === 'false', await launchOf(99));
   await panel99().locator('.tog', { hasText: /^Auto$/ }).click(); await page.waitForTimeout(100);
@@ -374,7 +374,7 @@ const STUB = (opts) => `
   await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
   check('bug spec: /pilot-spec 80 --auto --with architect', JSON.stringify(await rowHrefs(80)) === JSON.stringify(['/pilot-spec 80 --auto --with architect', '/pilot-spec 80 --with architect']), JSON.stringify(await rowHrefs(80)));
   await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
-  check('resume and QA rows never get --multi or --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
+  check('resume rows get no --next, QA rows neither --multi nor --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
   await optBtn(50).click(); await page.waitForTimeout(100);
   check('QA row options: an environment address, no --next', (await rowOf(50).locator('.opts #qaUrl-50').count()) === 1 && (await rowOf(50).locator('.opts .tog', { hasText: 'Enchaîner' }).count()) === 0);
   await rowOf(50).locator('#qaUrl-50').fill('https://staging.example.com'); await page.waitForTimeout(150);

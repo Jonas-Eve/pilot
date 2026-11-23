@@ -835,7 +835,7 @@ function foldCard(box,key,title){
   return body;
 }
 /* what one ticket row can launch, given its chosen options: --next rides it through every phase via /pilot-auto,
-   --multi N has N agents converge on the approach first (never on a resume, nor on QA) */
+   --multi N has N agents converge on the approach first (never on QA) */
 function rowOpts(n){return S.ro[n]||(S.ro[n]={open:false,next:false,human:false,multi:0,kids:false,w:{},only:{},url:''});}
 /* a QA row: --browser runs the cases in a browser against an address the human gives (or the agent finds); it is never chained (--next) and never takes --with */
 function isQaRun(a){return /^\/pilot-qa (--resume )?\d+$/.test(a.cmd||'');}
@@ -852,17 +852,16 @@ function kidsOf(n){
 }
 function rowCmds(t,a,o){
   if(a.container)return {canAuto:true,multiOK:true,container:true,auto:a.cmd+(o.multi?' --multi '+o.multi:'')+(o.next?' --next':''),pair:null};
-  var canAuto=a.kind==='run'&&!a.pairOnly, multiOK=a.kind==='run'&&!/--resume/.test(a.cmd)&&a.cmd.indexOf('/pilot-qa')!==0;
-  /* --human: the human proposes, the agents analyze and challenge; Discovery, Spec, Dev, Review and Proto, never QA, a container, nor --multi (`.pilot/pilot-process.md` §4) */
+  var canAuto=a.kind==='run'&&!a.pairOnly, multiOK=a.kind==='run'&&a.cmd.indexOf('/pilot-qa')!==0;
+  /* --human: the human proposes, the agents analyze and challenge; Discovery, Spec, Dev, Review and Proto, never QA nor a container (`.pilot/pilot-process.md` §4) */
   var humanOK=a.kind==='run'&&t.status!=='changes-requested'&&!/^\/pilot-qa /.test(a.cmd)&&/^\/pilot-(discovery|spec|dev|review|proto) /.test(a.cmd); /* a reclaim has no approach to propose */
   var useHuman=humanOK&&!!o.human&&!o.next;
-  if(useHuman)multiOK=false;
   var mu=multiOK&&o.multi?' --multi '+o.multi:'';
   var q=isQaRun(a), p=phaseCmd(a), withs=!p?[]:p==='/pilot-spec'&&lab(t,'type:')==='bug'?['architect']:WITHS[p], onlys=onlyList(t,a), only=picked(o.only,onlys), wl=o.next||only.length?[]:picked(o.w,withs);
   var wt=wl.length?' --with '+wl.join(','):'', ot=only.length?' --only '+only.join(','):'';
   if(only.length)canAuto=false; /* --only is never combined with --auto */
   return {canAuto:canAuto,multiOK:multiOK,withs:withs,onlys:onlys,
-    qa:q,humanOK:humanOK,useHuman:useHuman,human:humanOK?a.cmd+' --human'+wt+ot:null,
+    qa:q,humanOK:humanOK,useHuman:useHuman,human:humanOK?a.cmd+' --human'+mu+wt+ot:null,
     auto:canAuto?(q?a.cmd+' --browser'+flowUrlArg(o.url):o.next?'/pilot-auto '+t.n+mu+' --next':a.cmd+' --auto'+mu+wt):null,
     pair:a.cmd+mu+wt+ot};
 }
@@ -1821,7 +1820,7 @@ function vHowModes(){
   var humanFor=[rv('discovery')?'Discovery':null,rv('spec')?'Spec':null,rv('dev')?'Dev':null,rv('review')?'Review':null,mv('design')?'/pilot-design':null,mv('proto')?'/pilot-proto':null].filter(Boolean).join(', ');
   var noAuto=[phOn('discovery')?'Discovery':null,phOn('qa')?L('la QA (qui a --browser : l’agent déroule les cas seul dans un navigateur)','QA (which has --browser: the agent runs the cases alone in a browser)'):null].filter(Boolean);
   var dlg=[rv('discovery')?'Discovery':null,rv('spec')?'Spec':null,rv('dev')?'Dev':null].filter(Boolean).join(', ');
-  var multi=(dlg?L('Dans '+dlg+' : N instances du même agent (ou deux agents différents) conversent entre elles jusqu’à converger. ','In '+dlg+': N instances of the same agent (or two different agents) converse until they converge. '):'')+(rv('review')?L('Dans Review : N relecteurs isolés, comparés ensuite par le skill, avec un plafond de tours et une escalade vers vous. ','In Review: N isolated reviewers, compared afterwards by the skill, with a round cap and an escalation to you. '):'')+L('Jamais avec --resume ni --human'+(phOn('qa')?', ni en QA':'')+'.','Never with --resume nor --human'+(phOn('qa')?', nor in QA':'')+'.');
+  var multi=(dlg?L('Dans '+dlg+' : N instances du même agent (ou deux agents différents) conversent entre elles jusqu’à converger. ','In '+dlg+': N instances of the same agent (or two different agents) converse until they converge. '):'')+(rv('review')?L('Dans Review : N relecteurs isolés, comparés ensuite par le skill, avec un plafond de tours et une escalade vers vous. ','In Review: N isolated reviewers, compared afterwards by the skill, with a round cap and an escalation to you. '):'')+(phOn('qa')?L('Jamais en QA.','Never in QA.'):'');
   return h('div',{class:'list'},
     roleNote(),
     sec('Trois modes : qui propose','Three modes: who proposes'),

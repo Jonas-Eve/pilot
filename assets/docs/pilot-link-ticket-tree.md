@@ -113,7 +113,7 @@ to conflate.
   technical layer — a front-end-only or back-end-only task is rarely reviewable or
   testable on its own, unless the two are genuinely decoupled (e.g. a backend API meant to
   be consumed later, independently).
-  - **`type:tech` story**: splitting is still a judgment call — (`.pilot/pilot-task-scope-story.md`), a well-scoped story
+  - **`type:tech` story**: splitting is still a judgment call (`.pilot/pilot-task-scope-story.md`): a well-scoped story
     can carry itself through phase 3 (Dev) as a single ticket, `level:story` the whole way,
     never split into `level:task`s.
   - **`type:bug` ticket: always `level:task` directly, never split, no parent.** The one

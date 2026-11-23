@@ -1,13 +1,13 @@
 ---
 name: pilot-discovery
 description: "Phase 1 of PILOT: turns a raw type:feature idea into formalized GitHub stories. The PM analyzes the existing, frames the idea with the human into a validated brief and drafts the story (with --human, the human proposes the plan and the PM writes it up and challenges it); the architect validates it (anticipating architecture) and debates the PM on objection. Produces level:story tickets (plus a type:tech enabler when genuinely needed), under an epic when it does not fit one story, created as status:draft and refined with the human. Never splits into tasks or writes a spec (that is /pilot-spec). Always pair, never --auto. --from-proto <n> starts from an accepted prototype, --resume <issue> continues a draft, --with, --multi. A purely technical need or any bug goes to /pilot-spec --tech/--bug instead. Use to start a new product idea."
-argument-hint: "<raw idea in free text> | --from-proto <accepted prototype number> [--human] [--with <persona>[,...]] [--multi [N]] | --resume <issue number> [--human]"
+argument-hint: "<raw idea in free text> | --from-proto <accepted prototype number> [--human] [--with <persona>[,...]] [--multi [N]] | --resume <issue number> [--human] [--multi [N]]"
 disable-model-invocation: true
 ---
 
 # PILOT — Phase 1: Discovery
 
-Read `.pilot/pilot-link-existing-analysis.md` (the analyze / propose / challenge cycle) too; it is passed in full into every persona's call below. `--human`: the human states the stories' shape and decisions, the PM writes them up and challenges them, the architect validates (invalid with `--multi`; with `--resume`, the mode comes from the flag, else pair). Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
+Read `.pilot/pilot-link-existing-analysis.md` (the analyze / propose / challenge cycle) too; it is passed in full into every persona's call below. `--human`: the human states the stories' shape and decisions, the PM writes them up and challenges them, the architect validates (with `--resume`, the mode comes from the flag, else pair). Read `.pilot/pilot-process.md` before running this if you haven't already — it's the
 source of truth for labels, states, and the claim protocol; this skill only covers the
 mechanics of running Discovery. Read `.pilot/pilot-link-ticket-tree.md` (where each ticket type originates, how epics, stories and tasks are built) and `.pilot/pilot-link-agent-dialogue.md` too — it covers
 the PM/architect turn-taking mechanic this skill relies on whenever the architect objects. The
@@ -80,7 +80,7 @@ no-ticket entry, `pilot-spec/SKILL.md`).
    technical enabler the PM and architect agree the same effort needs); or several stories
    plus an existing Epic to reuse or a new Epic to create.
 3a. **With `--multi <N>`**: run N independent instances of step 3's own dialogue instead
-    of one, all starting from the same validated brief (step 2a runs once, not N times),
+    of one, all starting from the same input (the validated brief, step 2a running once, not N times; the human's proposal under `--human`; the recovered draft and thread under `--resume`),
     converging on a single proposal with no fixed round cap
     (`.pilot/pilot-link-agent-dialogue.md`) before continuing to step 4. A genuinely
     irreconcilable disagreement surfaces to the human right there in this same pair

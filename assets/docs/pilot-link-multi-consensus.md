@@ -34,17 +34,6 @@ orthogonal to pair vs `--auto` (`.pilot/pilot-process.md` §4 "Interaction modes
 reconciled result below is what pair's existing checkpoint shows the human, or what
 `--auto` applies straight through — exactly as if a single agent had produced it.
 
-**Invalid combined with the literal `--resume` flag** — knowable from the command line
-alone, report and stop. That flag recovers one specific paused pair session's exact
-in-progress state (`.pilot/pilot-process.md` §4 "Resuming an orphaned claim") — continuing
-one interrupted train of thought, not a fresh multi-perspective ask. An implicit resume via
-`can-resume` (a previously-blocked ticket, now cleared) is different: the persona is
-genuinely reconsidering given new information, which benefits from the same ensemble as a
-fresh claim — `pilot-review/SKILL.md` routes both the explicit-`--resume` and the implicit-
-`can-resume` case back through its own ordinary `Agent`-calling step, so `--multi` (and the
-"invalid with `--resume`" check above) apply there exactly the same way they do to a fresh
-claim.
-
 ## Mechanics
 
 ### One ensemble round
@@ -103,6 +92,4 @@ An optional `--multi <N>` on `/pilot-auto` forwards verbatim to whichever phase 
 runs, in both sweep mode and ticket-dispatch mode alike (unlike `--merge`'s review-only
 scope) — it changes nothing about which ticket gets claimed, only how the claiming phase
 works the one ticket it claims (this doc's mechanism for Review, `.pilot/pilot-link-agent-dialogue.md`'s
-for Discovery/Spec/Dev). Invalid combined with `--resume`, same as above (`/pilot-auto`
-never passes `--resume` itself, `pilot-auto/SKILL.md`, so this never actually arises in
-practice).
+for Discovery/Spec/Dev).

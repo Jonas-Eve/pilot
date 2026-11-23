@@ -1,13 +1,13 @@
 ---
 name: pilot-dev
 description: "Phase 3 of PILOT: implements a spec'd ticket (status:dev-ready) with pilot-dev (pilot-e2e for a type:e2e task) and opens a PR, or flags needs-human and stops if genuinely blocked. Pair by default, or the project workflow's default (agrees the approach with a live human before coding), --auto, --pair or --human (the human sets the approach, the agent analyzes, challenges it and codes) to choose, --auto for a Routine. --resume continues a flagged or mid-pair ticket; it also reclaims a status:changes-requested ticket by pushing to its existing PR; --with, --multi (N devs converge on an approach); bare, it sweeps fresh, resumable and reclaimable work. Use once /pilot-spec has produced a spec."
-argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto|--pair|--human] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume [--auto|--pair|--human]"
+argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto|--pair|--human] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume [--auto|--pair|--human] [--multi [N]]"
 ---
 
 # PILOT — Phase 3: Dev
 
 Read `.pilot/pilot-process.md` first — source of truth for labels, states, and the claim
-protocol; read `.pilot/pilot-link-existing-analysis.md` too (the analyze / propose / challenge cycle), passed in full into the dev's calls below — the dev leads, no validator, so its challenge is a sourced self-review. `--human` is ignored on a reclaim (nothing to propose, only fixes to push); never with `--auto` (`pool`, `resolve` and `claim` get no `--auto`) or `--multi`; with `--resume`, the mode is the flag, else the ticket's own, pair by default; this skill covers only phase 3's mechanics. Most likely phase to run as several
+protocol; read `.pilot/pilot-link-existing-analysis.md` too (the analyze / propose / challenge cycle), passed in full into the dev's calls below — the dev leads, no validator, so its challenge is a sourced self-review. `--human` is ignored on a reclaim (nothing to propose, only fixes to push); with `--resume`, the mode is the flag, else the ticket's own, pair by default; this skill covers only phase 3's mechanics. Most likely phase to run as several
 parallel instances; the claim step below prevents collisions. The roster (`.pilot/pilot-link-roster.md`
 "Roster"): the dev (`pilot-e2e` for a `type:e2e` task) leads, no validator; the tech lead,
 architect and designer are summonable. Summons and dismissals are recorded in the ticket's
@@ -94,8 +94,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
      genuine blocker (§3) still applies during implementation itself; pair mode doesn't
      replace it. **`--auto`**, with neither pair nor `--multi` in play, skips straight to
      implementation in this one call (no scratch comment ever created).
-   - **With `--multi <N>`** (a fresh claim, or a resume via `can-resume` per step 1 —
-     never a reclaim, never the literal `--resume` flag): N instances, **each asked
+   - **With `--multi <N>`** (a fresh claim or a resume, never a reclaim; a resume or a `--human` proposal is the shared starting point of all N): N instances, **each asked
      for a proposed implementation approach only, not the finished implementation** — same
      content as the pair-coding checkpoint above, never code — discuss the tradeoffs
      directly with each other instead of proposing in isolation (`.pilot/pilot-link-agent-dialogue.md`
@@ -103,7 +102,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
      a human is live in this pair session when they can't converge): no fixed number of
      turns, the instances themselves judge when they've converged on one approach, and
      escalate `needs-human` (quoting the differing positions verbatim) only once a
-     disagreement looks genuinely irreconcilable — nothing was implemented yet, so nothing
+     disagreement looks genuinely irreconcilable — no code is written at this step, so nothing
      to push or clean up either way. Once an approach is settled (reached by convergence,
      or by a live human resolving the escalation), **unless `--auto`**,
      show it to the human as the normal pair-coding checkpoint above (repeat until

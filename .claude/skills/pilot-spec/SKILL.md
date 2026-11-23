@@ -1,12 +1,12 @@
 ---
 name: pilot-spec
 description: "Phase 2 of PILOT: the architect and tech lead, in dialogue, split an already-formalized level:story into dev-sized tasks (mandatory for type:feature, a judgment call for type:tech) and write each ticket's technical spec in one pass; the PM checks a type:feature split against the acceptance criteria. Also specs a standalone type:bug task, originates a standalone type:tech need or a type:bug from a raw description (--tech, --bug), records dependencies, decides wont-do, and reclaims a story at status:qa for a new round. Pair by default (the project's workflow may default to auto), --auto, --pair or --human (the human proposes the split and the decisions, the agents analyze and challenge them) to choose, --auto for a Routine; --resume, --with, --multi; bare, it picks fresh or resumable work. Use to split and spec a story, spec a task or bug, or start a standalone technical need."
-argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto|--pair|--human] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume [--auto|--pair|--human] | --tech <raw need> | --bug <raw need>"
+argument-hint: "<issue number, optional — picks the next fresh/resumable status:backlog ticket if omitted> [--auto|--pair|--human] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume [--auto|--pair|--human] [--multi [N]] | --tech <raw need> | --bug <raw need>"
 ---
 
 # PILOT — Phase 2: Spec
 
-Read `.pilot/pilot-process.md` first (labels, states, the claim protocol); this skill covers only the mechanics of this phase. Also read `.pilot/pilot-link-existing-analysis.md` (the analyze / propose / challenge cycle), passed in full into every persona's call below: with `--human`, the human states the split and the decisions, the personas analyze, challenge and write them up (invalid with `--multi`; never with `--auto`: `pool`, `resolve` and `claim` get no `--auto`; with `--resume`, the mode is the flag, else the ticket's own, pair by default). Also read `.pilot/pilot-link-ticket-tree.md` (ticket
+Read `.pilot/pilot-process.md` first (labels, states, the claim protocol); this skill covers only the mechanics of this phase. Also read `.pilot/pilot-link-existing-analysis.md` (the analyze / propose / challenge cycle), passed in full into every persona's call below: with `--human`, the human states the split and the decisions, the personas analyze, challenge and write them up (with `--resume`, the mode is the flag, else the ticket's own, pair by default). Also read `.pilot/pilot-link-ticket-tree.md` (ticket
 types and levels), `.pilot/pilot-link-split-tickets.md` (prerequisite tickets, dependencies between tasks, re-scoping) and `.pilot/pilot-link-agent-dialogue.md` (the architect/tech lead
 turn-taking this skill relies on, and what `--multi` means here). The roster (`.pilot/pilot-link-roster.md` "Roster"): the architect and tech lead lead together (the tech lead alone for an
 existing `type:bug` ticket), the PM validates a `type:feature` split (step 4a), the designer is summonable (the architect, for an existing `type:bug`). Summons and dismissals are recorded
@@ -96,7 +96,7 @@ in the scratch checkpoint comment; `.pilot/pilot-task-advise.md` is passed into 
      `absent` → the tech lead alone, no validation. A tech lead alone who finds the story must be split, or depends on other tickets, stops and says so:
      run the dialogue below with the architect leading. Dialogue: run the architect+tech lead dialogue
      (`.pilot/pilot-link-agent-dialogue.md`) — or, with `--multi <N>`, an N-instance
-     ensemble of the same dialogue, converging with no fixed round cap before continuing.
+     ensemble of the same dialogue, all starting from the same input (the human's proposal under `--human`, the recovered checkpoint under `--resume`), converging with no fixed round cap before continuing.
      Call `Agent`, alternating `pilot-architect` and `pilot-techlead` turns. Read
      `.pilot/pilot-task-scope-story.md` (architect's split-decision duty) and
      `.pilot/pilot-task-write-spec.md` (tech lead's spec-writing duty) and pass the
