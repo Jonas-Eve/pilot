@@ -426,7 +426,7 @@ const STUB = (opts) => `
   check('tech role: a hidden tab falls back to the queue', /Ma file/.test(await text(page, '#view')));
   await page.close();
 
-  // ---- architecture: reference entries are checked against the code, rules and decisions are not ----
+  // ---- architecture: reference entries, the overview and accepted rules and decisions are checked against the code; a proposed or superseded one is not ----
   { const REF = { kind: 'architecture', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
       { id: 'layering', title: 'Layering', description: 'Domain never imports adapters.', path: 'guidelines/layering.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Domain never imports adapters.' },
       { id: 'data-model', title: 'Data model', description: 'The tables.', path: 'reference/data-model.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', verifiedAt: iso(120), text: 'Table catalog.' },

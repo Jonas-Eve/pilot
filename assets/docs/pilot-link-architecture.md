@@ -37,7 +37,7 @@ entry never carries the reasoning.
 **Entries stay true.** `/pilot-architecture --verify` checks the reference entries and the overview (a fact holds), the
 accepted guidelines and ADRs (the code still follows the rule or the decision) against the code at a commit, and stamps
 the ones that hold (`arch set <id> --stamp <commit>`); a `proposed` or `superseded` entry is not in force and is not checked. A PR that
-changes what a reference entry states updates the entry in the same PR, and clears its stamp (`--clear-stamp`).
+changes what a reference entry, the overview or a guideline states updates the entry in the same PR, and clears its stamp (`--clear-stamp`).
 
 **A divergence between an entry and the code** is resolved by a human, one of: the code is wrong (a
 `type:bug` ticket, `/pilot-spec --bug "<description>"`, entry untouched); the entry is wrong or out of date (it is
