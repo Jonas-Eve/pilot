@@ -63,7 +63,7 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 
 ## `--verify [<id>]`
 
-Checks the `reference` entries, the overview and the `accepted` guidelines and ADRs (all, or `<id>`) against the code: a fact still holds, a rule or a decision is still followed. An entry that is not `accepted` is skipped and reported as not in force.
+Checks the `reference` entries, the overview and the `accepted` guidelines and ADRs (all, or `<id>`) against the code: a fact still holds, a rule or a decision is still followed. An entry that is not `accepted`, and a runbook, is skipped and reported as not checked.
 1. `arch lint`; its findings go in the report.
 2. Call `Agent` for `pilot-techlead` with `.pilot/pilot-task-architecture-verify.md`, `.pilot/pilot-link-architecture.md`, those entries' kind, text and
    stamps, and `git rev-parse HEAD` — nothing else from this conversation.

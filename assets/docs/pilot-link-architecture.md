@@ -37,13 +37,13 @@ entry never carries the reasoning.
 **Entries stay true.** `/pilot-architecture --verify` checks the reference entries and the overview (a fact holds), the
 accepted guidelines and ADRs (the code still follows the rule or the decision) against the code at a commit, and stamps
 the ones that hold (`arch set <id> --stamp <commit>`); a `proposed` or `superseded` entry is not in force and is not checked. A PR that
-changes what a reference entry, the overview or a guideline states updates the entry in the same PR, and clears its stamp (`--clear-stamp`).
+changes what a reference entry states updates the entry in the same PR, and clears its stamp (`--clear-stamp`).
 
 **A divergence between an entry and the code** is resolved by a human, one of: the code is wrong (a
 `type:bug` ticket, `/pilot-spec --bug "<description>"`, entry untouched); the entry is wrong or out of date (it is
 corrected in the same PR once the human confirms); the code must change on purpose (a `/pilot-spec --tech` ticket,
 entry untouched). A reference entry or overview never stamped has not been checked against anything: a divergence on it is first read as
-a wrong or stale entry, with the reason. A divergence on an accepted guideline is first read as a violation by the code (a bug or a `--tech` ticket); the guideline is edited only when the human confirms it is stale. For an accepted ADR the second outcome does not exist: a decision that no longer holds is replaced by a new ADR (`--adr "remplace <id> : …"`), never edited.
+a wrong or stale entry, with the reason. A divergence on an accepted guideline is first read as a violation by the code (a bug or a `--tech` ticket); the guideline is edited only when the human confirms it is stale. For an accepted ADR the second outcome does not exist: a decision that no longer holds is replaced by a new ADR that supersedes it (`--adr`), never edited.
 
 **Statuses.** `pilot.status` is `proposed`, `accepted` or `superseded` (OKF `status`: `draft`,
 `stable`, `deprecated`). An accepted ADR is never edited and never deleted: a later one supersedes it, the old one stays as the history of the

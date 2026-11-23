@@ -1360,7 +1360,9 @@ class ArchitectureTests(unittest.TestCase):
         self.add("guidelines/draft.md", "proposed")
         self.add("adr/0002-b.md", "accepted")
         self.arch.set("layering", stamp="abc1234")
+        before = self.text("adr/0001-a.md").split("---", 2)[2]
         self.arch.set("0001-a", stamp="abc1234")
+        self.assertEqual(self.text("adr/0001-a.md").split("---", 2)[2], before)  # a stamp never edits the decision
         self.assertEqual(self.arch.show("layering")["verifiedCommit"], "abc1234")
         self.assertEqual(self.arch.show("0001-a")["verifiedCommit"], "abc1234")
         with self.assertRaises(pilot.Refused):
