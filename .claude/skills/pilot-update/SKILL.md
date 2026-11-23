@@ -27,8 +27,8 @@ from a previous run — the whole point is picking up upstream changes.
   agent directory doesn't match anything under `$PILOT_SRC` (the project's own, unrelated
   skill), leave it alone — touch only what's actually PILOT's.
 - **`.pilot/pilot-process.md`**, every **`.pilot/pilot-process-*.md`** human-facing companion
-  (currently just `.pilot/pilot-process-companion.md` — no skill or agent reads any of
-  these), every **`.pilot/pilot-link-*.md`** cross-skill link doc (the opposite of a
+  (currently just `.pilot/pilot-process-companion.md` — only `pilot-help` reads it, for
+  examples), every **`.pilot/pilot-link-*.md`** cross-skill link doc (the opposite of a
   companion — read by the specific skills/agents it names, not every phase, not a human
   audience), every **`.pilot/pilot-task-*.md`** per-duty task doc (read by exactly one
   phase skill and injected into an `Agent` call's prompt — the `.claude/agents/pilot-*.md`

@@ -83,7 +83,7 @@ itself.
 - `assets/docs/pilot-link-<topic>.md` — a cross-skill link doc: operational like
   `pilot-process.md` itself (a skill/agent reads it to run), but scoped to the specific
   two-or-more skills/agents it names rather than all of them — the opposite of a
-  companion, which is human-only and read by none. Copied verbatim into a consuming
+  companion, which is human-only (only `pilot-help` reads it, for examples). Copied verbatim into a consuming
   project as `.pilot/pilot-link-<topic>.md` the same way as `pilot-process.md`. Holds
   content that connects a subset of skills (e.g. how phase 4's reviewers and phase 3's
   reclaim need to agree on something) — see §3 below for when content belongs here

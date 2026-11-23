@@ -1,6 +1,6 @@
 ---
 name: pilot-dev
-description: "Phase 3 of PILOT: implements a spec'd ticket (status:dev-ready) with pilot-dev (pilot-e2e for a type:e2e task) and opens a PR, or flags needs-human and stops if genuinely blocked. Pair by default, or the project workflow's default (agrees the approach with a live human before coding), --auto, --pair or --human (the human sets the approach, the agent analyzes, challenges it and codes) to choose, --auto for a Routine. --resume continues a flagged or mid-pair ticket; it also reclaims a status:changes-requested ticket by pushing to its existing PR; --with, --multi (N devs converge on an approach); bare, it sweeps fresh, resumable and reclaimable work. Use once /pilot-spec has produced a spec."
+description: "Phase 3 of PILOT: implements a spec'd ticket (status:dev-ready) with pilot-dev (pilot-e2e for a type:e2e task) and opens a PR, or flags needs-human and stops if genuinely blocked. Pair by default, or the project workflow's default (agrees the approach with a live human before coding), --auto, --pair or --human (the human sets the approach, the agent analyzes, challenges it and codes) to choose, --auto for a Routine. --resume continues a flagged or mid-pair ticket; a status:changes-requested ticket is reclaimed (by number, or by the bare sweep) by pushing to its existing PR; --with, --multi (N devs converge on an approach); bare, it sweeps fresh, resumable and reclaimable work. Use once /pilot-spec has produced a spec."
 argument-hint: "<issue number, optional — picks the next dev-ready or can-resume-marked ticket if omitted> [--auto|--pair|--human] [--with <persona>[,...]] [--multi [N]] | <issue number> --resume [--auto|--pair|--human] [--multi [N]]"
 ---
 
@@ -66,7 +66,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
    of any other ticket being worked in parallel. **Resume case** (per step 1, needs-human
    cleared): also pass the original blocking comment and whatever's in the thread after it
    (`.pilot/pilot-process.md` §4 "Resuming a `needs-human` ticket"). **Reclaim case** (per
-   step 1): pass the phase-5 blocking review — its submitted PR review, fetched via
+   step 1): pass the phase-4 blocking review — its submitted PR review, fetched via
    `mcp__github__pull_request_read` method `get_reviews` (the body holds the points, not a
    plain issue comment, `.pilot/pilot-link-review-consensus.md`) — with its `change`-tagged
    points to fix, plus any `decision`-tagged points and their resolution, instead of a
@@ -134,7 +134,7 @@ checkpoint comment; `.pilot/pilot-task-advise.md` is passed into a summoned pers
      ("Blocks #M"/"Depends on #N"), pushed its WIP to a branch with a comment naming it,
      cleared the assignee, and moved the ticket back to `status:dev-ready` itself. It's
      now an ordinary `status:dev-ready` candidate again, gated only by the dependency
-     (step 1's "Depends on #N" bullet) — no flag to clear, no `--resume` needed;
+     (step 1's pool excludes an open "Depends on #N") — no flag to clear, no `--resume` needed;
      whichever future run claims it picks up that branch per step 1's own claim-time
      check (`.pilot/pilot-task-implement.md` step 1).
 6. Report the PR URL, or the blocking summary, back to the human. Never merge as part of

@@ -25,8 +25,8 @@ source of truth and can change under `/pilot-update`:
   `--auto`, the claim protocol, `--resume`, the `status:`/label state machine) that a
   single `SKILL.md` assumes rather than restates.
 - `.pilot/pilot-link-*.md` — mechanics shared by *some* commands, not all (e.g.
-  `pilot-link-multi-consensus.md` for `--multi`, read by every phase skill and
-  `pilot-auto` alike but by none of the bootstrap/maintenance commands).
+  `pilot-link-multi-consensus.md` for Review's `--multi`, read by `pilot-review`
+  only).
 - `.pilot/pilot-process-companion.md` — a human-facing quickstart with plain example
   invocations of every command; reuse or adapt its examples in detail/recommend mode
   instead of inventing new ones from scratch where one already fits.

@@ -105,7 +105,7 @@ see `.claude/skills/pilot-update/SKILL.md`.
    project root, creating `.pilot/` if needed, kept separate from the project's own
    `docs/`. `pilot-process.md` is the generic operational
    spec every phase skill reads; each `pilot-process-*.md` companion is purely human-facing
-   (a sequence diagram, currently) — no skill or agent needs it; each `pilot-link-*.md` is
+   (a visual reference and a quickstart, currently) — no phase needs it, only `pilot-help` reads it for examples; each `pilot-link-*.md` is
    the opposite of a companion — operational like `pilot-process.md` itself, but scoped to
    the specific two-or-more skills/agents it names, read only by those, not by every phase;
    each `pilot-task-*.md` is what a phase skill reads and passes into an `Agent` call's
