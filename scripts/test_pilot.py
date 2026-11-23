@@ -1373,6 +1373,15 @@ class ArchitectureTests(unittest.TestCase):
         with self.assertRaises(pilot.Refused):
             self.arch.set("0001-a", stamp="def5678")
 
+    def test_accepting_a_proposed_entry_puts_it_in_force_and_lints_clean(self):
+        self.add("adr/0001-a.md", "proposed")
+        self.add("guidelines/layering.md", "proposed")
+        self.assertEqual([e["id"] for e in self.arch.index(active=True)["entries"]], [])
+        self.arch.set("0001-a", status="accepted")
+        self.arch.set("layering", status="accepted")
+        self.assertEqual(sorted(e["id"] for e in self.arch.index(active=True)["entries"]), ["0001-a", "layering"])
+        self.assertEqual(self.codes(), [])
+
     def test_supersede_links_both_ways_and_lints_clean(self):
         self.add("adr/0001-a.md", "accepted")
         self.add("adr/0002-b.md", "proposed")

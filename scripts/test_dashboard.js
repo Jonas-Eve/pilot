@@ -448,6 +448,7 @@ const STUB = (opts) => `
     check('architecture: a rule can be edited and removed', has('/pilot-architecture --edit layering') && has('/pilot-architecture --remove layering'), JSON.stringify(cmdsOf));
     check('architecture: an accepted ADR is replaced, never edited nor removed', cmdsOf.some((x) => x.startsWith('/pilot-architecture --adr "remplace 0002-store :')) && !has('/pilot-architecture --edit 0002-store') && !has('/pilot-architecture --remove 0002-store'), JSON.stringify(cmdsOf));
     check('architecture: a proposed ADR can be edited or removed, a superseded one is history', has('/pilot-architecture --edit 0003-draft') && has('/pilot-architecture --remove 0003-draft') && !cmdsOf.some((x) => /0001-old/.test(x)), JSON.stringify(cmdsOf));
+    check('architecture: only a proposed entry can be accepted', has('/pilot-architecture --accept 0003-draft') && has('/pilot-architecture --accept draft-ref') && !cmdsOf.some((x) => /--accept (layering|0002-store|0001-old|overview)/.test(x)), JSON.stringify(cmdsOf));
     check('architecture: the overview is checked and edited, never removed', has('/pilot-architecture --verify overview') && has('/pilot-architecture --edit overview') && !has('/pilot-architecture --remove overview'), JSON.stringify(cmdsOf));
     check('architecture: a removable entry offers Retirer, nothing is deprecated any more', /Retirer/.test(v) && !/Déprécier/.test(v));
     check('architecture reference: no page errors', pg.errors.length === 0, pg.errors.join('|'));
