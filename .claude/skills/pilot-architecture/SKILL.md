@@ -65,12 +65,12 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 
 Checks the `reference` entries, the overview and the `accepted` guidelines and ADRs (all, or `<id>`) against the code: a fact still holds, a rule or a decision is still followed. An entry that is not `accepted`, and a runbook, is skipped and reported as not checked.
 1. `arch lint`; its findings go in the report.
-2. Call `Agent` for `pilot-techlead` with `.pilot/pilot-task-architecture-verify.md`, `.pilot/pilot-link-architecture.md`, those entries' kind, text and
+2. Call `Agent` for `pilot-techlead` (the bare form: one call per kind — reference and overview, guidelines, ADRs — and per app) with `.pilot/pilot-task-architecture-verify.md`, `.pilot/pilot-link-architecture.md`, those entries' kind, text and
    stamps, and `git rev-parse HEAD` — nothing else from this conversation.
 3. `ok` verdicts → `arch set <id> --stamp <commit>`. `unverifiable` keeps the old stamp.
 4. Each `drift` goes to the human with the agent's evidence and its three outcomes (`.pilot/pilot-link-architecture.md`): propose the exact
-   `/pilot-spec --bug "<description>"` when the code is wrong; edit the entry in this run's branch with the `corrections` when the human confirms it is stale or
-   wrong (`arch set <id> --clear-stamp`, then `--stamp` on the corrected text); point at `/pilot-spec --tech` when the code must change on purpose. A guideline is read as a code violation first; an accepted ADR is never edited: a decision that no longer holds is superseded by a new one (`--adr`).
+   `/pilot-spec --bug "<description>"` when the code is wrong; for a reference entry, the overview or a guideline, edit the entry in this run's branch with the `corrections` when the human confirms it is stale or
+   wrong (`arch set <id> --clear-stamp`, then `--stamp` on the corrected text); an accepted ADR is replaced by a new one instead (`--adr`); point at `/pilot-spec --tech` when the code must change on purpose.
    `--auto`: decide nothing, list every drift under "To arbitrate" in the PR and leave it unstamped.
    A fact in `undocumented` the human wants becomes a new `reference/<id>.md` (`arch add … --status accepted --stamp <commit>`).
 5. Changes → branch `architecture/verify-<YYYY-MM-DD>`, commit, push, open one PR. Nothing to change → no PR.

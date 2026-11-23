@@ -19,7 +19,7 @@ trusting names. Return one verdict per entry:
 - `ok` — every statement holds as written.
 - `drift` — a statement is wrong, missing or out of date. Give each wrong statement and the exact fact the code shows,
   so the human can decide without another reading (for a guideline or an ADR, each place that departs from it). Say, with
-  the reason, whether the entry reads as stale or wrong or the code as a defect; the human decides.
+  the reason, whether the entry reads as stale or wrong or the code as a defect (for an `adr`: whether the code departs from the decision, or the decision no longer holds); the human decides.
 - `unverifiable` — you cannot establish it (needs a service you cannot reach). Never `ok` by default.
 
 For an `adr` verdict, `corrections` is empty: describe the departure in `evidence`.
