@@ -22,6 +22,8 @@ trusting names. Return one verdict per entry:
   the reason, whether the entry reads as stale or wrong or the code as a defect; the human decides.
 - `unverifiable` — you cannot establish it (needs a service you cannot reach). Never `ok` by default.
 
+For an `adr` verdict, `corrections` is empty: describe the departure in `evidence`.
+
 Each verdict cites its evidence as `path:line` (and the command you ran). Separately, list facts you met that no
 reference entry states and that a developer would need (`undocumented`, one line each, advisory only).
 

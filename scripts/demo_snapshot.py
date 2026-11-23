@@ -180,11 +180,11 @@ def architecture_document():
                 "tickets": tickets, "supersedes": supersedes, "supersededBy": superseded_by, "verifiedAt": verified, "verifiedBy": by, "text": text}
     entries = [
         entry("overview", "Vue d'ensemble", "overview.md", "accepted", [], "Une application en ligne de commande, sans service distant."),
-        entry("layering", "Couches", "guidelines/layering.md", "accepted", [], "Le domaine n'importe jamais les adaptateurs."),
+        entry("layering", "Couches", "guidelines/layering.md", "accepted", [], "Le domaine n'importe jamais les adaptateurs.", verified=iso(40), by="process:pilot-wiki"),
         entry("data-model", "Modèle de données", "reference/data-model.md", "accepted", [], "Table catalogue(id, nom, version) et table etapes(id, catalogue_id, rang).", verified=iso(180), by="process:pilot-wiki"),
         entry("stack", "Pile technique", "reference/stack.md", "accepted", [], "Node 22, TypeScript 5.6, Vitest 2."),
         entry("0001-compute", "Catalogue calculé", "adr/0001-compute.md", "superseded", [5], "Le catalogue est recalculé à chaque appel.", "", "0002-store"),
-        entry("0002-store", "Catalogue stocké", "adr/0002-store.md", "accepted", [12], "Le catalogue est stocké, pas calculé.", "0001-compute"),
+        entry("0002-store", "Catalogue stocké", "adr/0002-store.md", "accepted", [12], "Le catalogue est stocké, pas calculé.", "0001-compute", verified=iso(90), by="process:pilot-wiki"),
         entry("web-overview", "Application web", "apps/web/web-overview.md", "accepted", [], "L'interface web, en React."),
         entry("a11y", "Accessible par défaut", "apps/web/guidelines/a11y.md", "accepted", [], "Chaque contrôle a un nom accessible."),
     ]
