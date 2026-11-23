@@ -488,7 +488,7 @@ var EN={
 "à décider": "to decide",
 "Référence": "Reference",
 "Ajouter une règle": "Add a rule",
-"Vérifier la référence": "Check the reference",
+"Vérifier contre le code": "Check against the code",
 "Vérifier": "Check",
 "Remplacer": "Replace",
 "Retirer": "Remove",
@@ -1556,8 +1556,9 @@ function vWiki(){
 var ARCH_FR={proposed:'proposé',accepted:'accepté',superseded:'remplacé'};
 var ARCH_CLS={proposed:'',accepted:'ok',superseded:'warn'};
 var ARCH_GROUPS={overview:'Vue d’ensemble',guidelines:'Règles',reference:'Référence',adr:'Décisions',runbooks:'Procédures'};
-/* a reference entry states what the code is today: it is checked against the code (`--verify`), a rule or a decision is not */
+/* what is checked against the code (`--verify`): an accepted reference entry or overview (facts), rule or decision (does the code still follow it); a proposed or superseded one is not in force */
 function archIsRef(e){return /(^|\/)reference\//.test(str(e.path,200));}
+function archCheckable(e){var p=str(e.path,200); return e.status==='accepted'&&(archIsRef(e)||/(^|\/|-)overview\.md$/.test(p)||/(^|\/)(guidelines|adr)\//.test(p));}
 function archEntries(){return S.arch&&Array.isArray(S.arch.entries)?S.arch.entries.slice(0,2000):[];}
 function archGroup(e){var p=str(e.path,200).split('/'); if(p[0]==='apps'&&p.length>2)return 'app:'+str(p[1],60); return p.length>1&&ARCH_GROUPS[p[0]]?p[0]:'overview';}
 function archLabel(g){return g.indexOf('app:')===0?'App '+g.slice(4):ARCH_GROUPS[g]||g;}
@@ -1570,7 +1571,7 @@ function archGroups(){
 function archActions(e){
   var id=str(e.id,80); if(!FLOW_ID.test(id))return null;
   var adr=/(^|\/)adr\//.test(str(e.path,200)), acts=[];
-  if(archIsRef(e)||/(^|\/|-)overview\.md$/.test(str(e.path,200)))acts.push(openLink('/pilot-architecture --verify '+id,'Vérifier'));
+  if(archCheckable(e))acts.push(openLink('/pilot-architecture --verify '+id,'Vérifier'));
   if(e.status==='proposed'||(e.status==='accepted'&&!adr))acts.push(openLink('/pilot-architecture --edit '+id+' ','Modifier'));
   if(e.status==='accepted'&&adr)acts.push(openLink('/pilot-architecture --adr "remplace '+id+' : "','Remplacer'));
   if((e.status==='proposed'||(e.status==='accepted'&&!adr))&&str(e.path,200)!=='overview.md')acts.push(openLink('/pilot-architecture --remove '+id,'Retirer'));
@@ -1578,7 +1579,7 @@ function archActions(e){
 }
 function archEntry(e){
   var chips=[h('span',{class:'chip '+(ARCH_CLS[e.status]||'')},ARCH_FR[e.status]||str(e.status,40))];
-  if(archIsRef(e))chips.push(e.verifiedAt?verifiedChip(e):h('span',{class:'chip warn'},'non vérifié'));
+  if(archCheckable(e))chips.push(e.verifiedAt?verifiedChip(e):h('span',{class:'chip warn'},'non vérifié'));
   if(e.supersedes)chips.push(h('span',{class:'chip'},'remplace '+str(e.supersedes,80)));
   if(e.supersededBy)chips.push(h('span',{class:'chip warn'},'remplacé par '+str(e.supersededBy,80)));
   (Array.isArray(e.tickets)?e.tickets.slice(0,20):[]).forEach(function(n){n=Math.floor(Number(n));
@@ -1595,7 +1596,7 @@ function vArch(){
   shown.forEach(function(e){counts[e.status]=(counts[e.status]||0)+1; var k=archGroup(e); if(!by[k]){by[k]=[];pages.push(k);} by[k].push(e);});
   var sum=Object.keys(ARCH_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+ARCH_CLS[k]},counts[k]+' '+ARCH_FR[k]);});
   return h('div',{class:'list'},h('h2',{},'Architecture · mis à jour '+ago(a.at)+(a.truncated?' · textes raccourcis':'')),
-    h('div',{class:'refresh'},openLink('/pilot-architecture','Interroger l’architecture',true),openLink('/pilot-architecture --guideline','Ajouter une règle'),openLink('/pilot-architecture --adr','Consigner une décision'),archEntries().some(archIsRef)?openLink('/pilot-architecture --verify','Vérifier la référence'):null),
+    h('div',{class:'refresh'},openLink('/pilot-architecture','Interroger l’architecture',true),openLink('/pilot-architecture --guideline','Ajouter une règle'),openLink('/pilot-architecture --adr','Consigner une décision'),archEntries().some(archCheckable)?openLink('/pilot-architecture --verify','Vérifier contre le code'):null),
     sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
     pages.length?archGroups().map(function(g){return g[0];}).filter(function(k){return by[k];}).map(function(k){return h('section',{class:'list','aria-label':archLabel(k)},h('h2',{},archLabel(k)),by[k].map(archEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
 }
@@ -1896,8 +1897,8 @@ function vHowKnowledge(){
   if(mv('architecture'))out.push(sec('Architecture : comment le produit est construit','Architecture: how the product is built'),
     simpleTable(H2(),[
       [L('Contenu','Content'),L('Une vue d’ensemble des apps, les règles techniques que tout le monde respecte, la référence de la façon dont le code est construit aujourd’hui (stack, modèle de données, structure), les décisions (ADR : pourquoi un choix a été fait) et les runbooks (comment opérer, lus à la demande). Un monorepo peut garder les règles propres à une app à part.','An overview of the apps, the technical rules everyone follows, the reference for how the code is built today (stack, data model, structure), the decisions (ADRs: why a choice was made) and the runbooks (how to operate, read on demand). A monorepo can keep an app’s own rules apart.')],
-      [L('Règles de vie','How it lives'),L('Une décision acceptée n’est jamais modifiée : elle est remplacée par une nouvelle qui la supersede. La référence est vérifiée contre le code, et vous arbitrez chaque écart (ni l’un ni l’autre n’a automatiquement raison).','An accepted decision is never edited: it is replaced by a new one that supersedes it. The reference is checked against the code, and you arbitrate each divergence (neither automatically wins).')],
-      [L('L’utiliser','Using it'),L('/pilot-architecture « question » répond avec ses sources. --guideline rédige une règle, --adr une décision, avec l’architecte et vous. --edit <id>, --remove <id>. --verify vérifie la référence contre le code. --bootstrap amorce depuis les apps existantes, --scaffold depuis une description d’apps et de technos, --lint contrôle le fonds. Chaque écriture ouvre une PR.','/pilot-architecture “question” answers with its sources. --guideline drafts a rule, --adr a decision, with the architect and you. --edit <id>, --remove <id>. --verify checks the reference against the code. --bootstrap seeds from the existing apps, --scaffold from a description of apps and tech, --lint checks the body. Each write opens a PR.')]
+      [L('Règles de vie','How it lives'),L('Une décision acceptée n’est jamais modifiée : elle est remplacée par une nouvelle qui la supersede. La référence, les règles et les décisions acceptées sont vérifiées contre le code, et vous arbitrez chaque écart (ni l’un ni l’autre n’a automatiquement raison).','An accepted decision is never edited: it is replaced by a new one that supersedes it. The reference, the rules and the accepted decisions are checked against the code, and you arbitrate each divergence (neither automatically wins).')],
+      [L('L’utiliser','Using it'),L('/pilot-architecture « question » répond avec ses sources. --guideline rédige une règle, --adr une décision, avec l’architecte et vous. --edit <id>, --remove <id>. --verify vérifie la référence, les règles et les décisions acceptées contre le code. --bootstrap amorce depuis les apps existantes, --scaffold depuis une description d’apps et de technos, --lint contrôle le fonds. Chaque écriture ouvre une PR.','/pilot-architecture “question” answers with its sources. --guideline drafts a rule, --adr a decision, with the architect and you. --edit <id>, --remove <id>. --verify checks the reference, the rules and the accepted decisions against the code. --bootstrap seeds from the existing apps, --scaffold from a description of apps and tech, --lint checks the body. Each write opens a PR.')]
     ]));
   if(mv('design'))out.push(sec('Design : à quoi le produit ressemble','Design: what the product looks like'),
     simpleTable(H2(),[
@@ -1960,8 +1961,8 @@ var HOW_TABS=[
     fr:{title:"Wiki",what:"Ce que fait le produit : vision, personas, comportements, parcours utilisateur, par domaine ; chaque entrée dit si elle est en place ou seulement prévue.",how:"Parcourez par domaine ou cherchez ; posez une question, corrigez ou amorcez le wiki avec /pilot-wiki ; testez un parcours avec /pilot-flow.",why:"Un référentiel fonctionnel unique : les agents le lisent avant de spécifier ou relire, et ne contredisent pas un comportement établi."},
     en:{title:"Wiki",what:"What the product does: vision, personas, behaviors, user flows, by domain; each entry says whether it is in place or only planned.",how:"Browse by domain or search; ask a question, fix or bootstrap the wiki with /pilot-wiki; test a flow with /pilot-flow.",why:"A single functional reference: agents read it before specifying or reviewing, and do not contradict established behavior."}},
   {id:"architecture",mod:"architecture",
-    fr:{title:"Architecture",what:"Comment le produit est construit : vue d’ensemble, règles techniques, référence du code, décisions (ADR) et runbooks.",how:"Consultez avant une décision technique ; posez une question, ajoutez une règle ou un ADR, vérifiez la référence contre le code avec /pilot-architecture.",why:"Les décisions et leurs raisons survivent aux personnes ; une spec ou une PR qui les enfreint est signalée, pas laissée passer."},
-    en:{title:"Architecture",what:"How the product is built: overview, technical rules, code reference, decisions (ADRs) and runbooks.",how:"Check it before a technical decision; ask a question, add a rule or an ADR, verify the reference against the code with /pilot-architecture.",why:"Decisions and their reasons outlive people; a spec or PR that breaks them is flagged, not waved through."}}
+    fr:{title:"Architecture",what:"Comment le produit est construit : vue d’ensemble, règles techniques, référence du code, décisions (ADR) et runbooks.",how:"Consultez avant une décision technique ; posez une question, ajoutez une règle ou un ADR, vérifiez la référence, les règles et les décisions acceptées contre le code avec /pilot-architecture.",why:"Les décisions et leurs raisons survivent aux personnes ; une spec ou une PR qui les enfreint est signalée, pas laissée passer."},
+    en:{title:"Architecture",what:"How the product is built: overview, technical rules, code reference, decisions (ADRs) and runbooks.",how:"Check it before a technical decision; ask a question, add a rule or an ADR, verify the reference, the rules and the accepted decisions against the code with /pilot-architecture.",why:"Decisions and their reasons outlive people; a spec or PR that breaks them is flagged, not waved through."}}
 ];
 function vHowModules(){
   return h('div',{class:'list'},

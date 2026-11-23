@@ -426,13 +426,14 @@ const STUB = (opts) => `
   check('tech role: a hidden tab falls back to the queue', /Ma file/.test(await text(page, '#view')));
   await page.close();
 
-  // ---- architecture: reference entries are checked against the code, rules and decisions are not ----
+  // ---- architecture: reference entries, the overview and accepted rules and decisions are checked against the code; a proposed or superseded one is not ----
   { const REF = { kind: 'architecture', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
       { id: 'layering', title: 'Layering', description: 'Domain never imports adapters.', path: 'guidelines/layering.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Domain never imports adapters.' },
       { id: 'data-model', title: 'Data model', description: 'The tables.', path: 'reference/data-model.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', verifiedAt: iso(120), text: 'Table catalog.' },
       { id: 'stack', title: 'Stack', description: 'Versions.', path: 'apps/web/reference/stack.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Node 22.' },
       { id: 'overview', title: 'Overview', description: 'Apps.', path: 'overview.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'One CLI.' },
       { id: '0002-store', title: 'Store', description: 'Stored.', path: 'adr/0002-store.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Stored.' },
+      { id: 'draft-ref', title: 'Draft ref', description: 'Idea.', path: 'reference/draft-ref.md', status: 'proposed', tickets: [], supersedes: '', supersededBy: '', text: 'Idea.' },
       { id: '0003-draft', title: 'Draft', description: 'Idea.', path: 'adr/0003-draft.md', status: 'proposed', tickets: [], supersedes: '', supersededBy: '', text: 'Idea.' },
       { id: '0001-old', title: 'Old', description: 'Old.', path: 'adr/0001-old.md', status: 'superseded', tickets: [], supersedes: '', supersededBy: '0002-store', text: 'Old.' } ] };
     const pg = await open({ preload: [BASE], architecture: [REF] });
@@ -440,9 +441,9 @@ const STUB = (opts) => `
     const v = await text(pg, '#view');
     const refLinks = await hrefs(pg, '#view .refresh a.btn');
     const cmdsOf = refLinks.map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]));
-    check('architecture: a button adds a rule, one checks the reference', cmdsOf.includes('/pilot-architecture --guideline') && cmdsOf.includes('/pilot-architecture --verify') && /Ajouter une règle/.test(v) && /Vérifier la référence/.test(v), JSON.stringify(cmdsOf));
-    check('architecture: each reference entry has its own check, a rule has none', cmdsOf.includes('/pilot-architecture --verify data-model') && cmdsOf.includes('/pilot-architecture --verify stack') && !cmdsOf.some((c) => /--verify layering/.test(c)), JSON.stringify(cmdsOf));
-    check('architecture: a reference entry says whether it was checked, a rule does not', (v.match(/non vérifié/g) || []).length === 1 && (v.match(/vérifié il y a/g) || []).length === 1 && /Référence/.test(v), v);
+    check('architecture: a button adds a rule, one checks the reference', cmdsOf.includes('/pilot-architecture --guideline') && cmdsOf.includes('/pilot-architecture --verify') && /Ajouter une règle/.test(v) && /Vérifier contre le code/.test(v), JSON.stringify(cmdsOf));
+    check('architecture: each reference entry, accepted rule and accepted ADR has its own check; a proposed or superseded one has none', cmdsOf.includes('/pilot-architecture --verify data-model') && cmdsOf.includes('/pilot-architecture --verify stack') && cmdsOf.includes('/pilot-architecture --verify layering') && cmdsOf.includes('/pilot-architecture --verify 0002-store') && !cmdsOf.some((c) => /--verify (0003-draft|0001-old|draft-ref)/.test(c)), JSON.stringify(cmdsOf));
+    check('architecture: every entry in force says whether it was checked, a proposed or superseded one does not', (v.match(/non vérifié/g) || []).length === 4 && (v.match(/vérifié il y a/g) || []).length === 1 && /Référence/.test(v), v);
     const has = (c) => cmdsOf.some((x) => x.trim() === c);
     check('architecture: a rule can be edited and removed', has('/pilot-architecture --edit layering') && has('/pilot-architecture --remove layering'), JSON.stringify(cmdsOf));
     check('architecture: an accepted ADR is replaced, never edited nor removed', cmdsOf.some((x) => x.startsWith('/pilot-architecture --adr "remplace 0002-store :')) && !has('/pilot-architecture --edit 0002-store') && !has('/pilot-architecture --remove 0002-store'), JSON.stringify(cmdsOf));

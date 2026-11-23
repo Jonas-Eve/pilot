@@ -76,7 +76,7 @@ a YAML frontmatter, an `index.md` per folder, so an agent reads the index and op
   `CLAUDE.md`; the tech lead's review checks conformance, the way it checks the wiki.
 - `reference/<id>.md` — how the code is built today, one subject per file (stack and versions, data model, folder structure, commands,
   integrations): facts, never rules or reasons. It changes with the code: `--verify` checks the entries against the code
-  at a commit, stamps the ones that hold and has a human arbitrate each divergence (the wiki's `--lint` mechanism), and a PR that changes a stated fact updates the entry. Added in 3.13.0
+  at a commit (and the overview and the accepted `guidelines/` and `adr/` entries: does the code still follow the rule or the decision), stamps the ones that hold and has a human arbitrate each divergence (the wiki's `--lint` mechanism), and a PR that changes a stated fact updates the entry. Added in 3.13.0
   after finding that a version number or a table layout modelled as an ADR goes stale: an accepted ADR is never edited.
 - `adr/NNNN-title.md` — architecture decision records: context, decision, alternatives rejected,
   consequences, status (`proposed`, `accepted`, `superseded`), and the ADR it supersedes.
@@ -120,7 +120,5 @@ Each step is backward compatible; the last one is the break.
 ## 8. Open points
 
 - The ADR frontmatter: `type: ADR` with the same OKF and `pilot:` conventions as a wiki entry, plus what an ADR needs (`supersedes`), or keys of its own.
-- Whether `guidelines/` entries carry stamps like wiki entries (verified against the code by a lint) or
-  stay plain prose.
 - Whether a module may be disabled once it holds content (kept on disk, ignored), and what `doctor`
   says about a disabled module's leftover folder.

@@ -1,6 +1,6 @@
 ---
 name: pilot-architecture
-description: "The project's architecture (architecture/ at the project root, .pilot/pilot-link-architecture.md): overview of the apps, the technical guidelines AIs and developers must respect, the reference of how the code is built today (stack and versions, data model, structure), and the architecture decision records (ADR: why a choice was made). No flag, or a question in free text → answers from it with citations (path, status), and says when it does not cover it. --guideline \"<rule>\" → drafts one rule with the architect and a human, one PR. --adr \"<decision>\" → drafts an ADR, one PR; one that replaces an accepted ADR supersedes it. --edit <id> \"<change>\" → rewrites an entry, one PR (an accepted ADR is replaced, never edited). --remove <id> → deletes an entry nothing cites, one PR. --verify [<id>] → checks the reference entries against the code, stamps those that hold, a human arbitrates each divergence, one PR. --bootstrap → drafts overview, guidelines and reference from the existing apps/, docs and code, one PR. --scaffold → creates the apps' skeletons and the overview. --lint → mechanical checks. Never merges a PR, never claims a ticket. When the module is off it proposes to turn it on first. Use to ask how the project is built and why, to add a rule, to record a decision, or to set the architecture up."
+description: "The project's architecture (architecture/ at the project root, .pilot/pilot-link-architecture.md): overview of the apps, the technical guidelines AIs and developers must respect, the reference of how the code is built today (stack and versions, data model, structure), and the architecture decision records (ADR: why a choice was made). No flag, or a question in free text → answers from it with citations (path, status), and says when it does not cover it. --guideline \"<rule>\" → drafts one rule with the architect and a human, one PR. --adr \"<decision>\" → drafts an ADR, one PR; one that replaces an accepted ADR supersedes it. --edit <id> \"<change>\" → rewrites an entry, one PR (an accepted ADR is replaced, never edited). --remove <id> → deletes an entry nothing cites, one PR. --verify [<id>] → checks the reference entries, the overview and the accepted guidelines and ADRs against the code, stamps those that hold, a human arbitrates each divergence, one PR. --bootstrap → drafts overview, guidelines and reference from the existing apps/, docs and code, one PR. --scaffold → creates the apps' skeletons and the overview. --lint → mechanical checks. Never merges a PR, never claims a ticket. When the module is off it proposes to turn it on first. Use to ask how the project is built and why, to add a rule, to record a decision, or to set the architecture up."
 argument-hint: "[<question>] | --guideline \"<rule>\" | --adr \"<decision>\" | --edit <id> \"<change>\" | --remove <id> | --verify [<id>] | --bootstrap | --scaffold [<free-text apps and tech>] | --lint"
 disable-model-invocation: true
 ---
@@ -53,7 +53,7 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 3. Show the result, its `conflicts` and `questions` to the human, who edits and validates it (pair); `--auto` is not offered: an entry is a
    human's.
 4. Write the text under the frontmatter (the only hand-edited part), `arch set <id> --title … --description …` when they changed, and, when the entry was
-   stamped, `arch set <id> --clear-stamp`: a changed `reference` entry or overview is offered `--verify <id>` after this run. Branch `architecture/edit-<id>`, commit, push, open one PR.
+   stamped, `arch set <id> --clear-stamp`: a changed `reference` entry, overview or guideline is offered `--verify <id>` after this run. Branch `architecture/edit-<id>`, commit, push, open one PR.
 
 ## `--remove <id>`
 
@@ -63,14 +63,14 @@ with what was asked; on a no, stop. When the project has an `apps/` folder or `a
 
 ## `--verify [<id>]`
 
-Checks the `reference` entries (all, or `<id>`) and the overview against the code.
+Checks the `reference` entries, the overview and the `accepted` guidelines and ADRs (all, or `<id>`) against the code: a fact still holds, a rule or a decision is still followed. An entry that is not `accepted`, and a runbook, is skipped and reported as not checked.
 1. `arch lint`; its findings go in the report.
-2. Call `Agent` for `pilot-techlead` with `.pilot/pilot-task-architecture-verify.md`, `.pilot/pilot-link-architecture.md`, those entries' text and
+2. Call `Agent` for `pilot-techlead` (the bare form: one call per kind — reference and overview, guidelines, ADRs — and per app) with `.pilot/pilot-task-architecture-verify.md`, `.pilot/pilot-link-architecture.md`, those entries' kind, text and
    stamps, and `git rev-parse HEAD` — nothing else from this conversation.
 3. `ok` verdicts → `arch set <id> --stamp <commit>`. `unverifiable` keeps the old stamp.
 4. Each `drift` goes to the human with the agent's evidence and its three outcomes (`.pilot/pilot-link-architecture.md`): propose the exact
-   `/pilot-spec --bug "<description>"` when the code is wrong; edit the entry in this run's branch with the `corrections` when the human confirms it is stale or
-   wrong (`arch set <id> --clear-stamp`, then `--stamp` on the corrected text); point at `/pilot-spec --tech` when the code must change on purpose.
+   `/pilot-spec --bug "<description>"` when the code is wrong; for a reference entry, the overview or a guideline, edit the entry in this run's branch with the `corrections` when the human confirms it is stale or
+   wrong (`arch set <id> --clear-stamp`, then `--stamp` on the corrected text); an accepted ADR is replaced by a new one instead (`--adr`); point at `/pilot-spec --tech` when the code must change on purpose.
    `--auto`: decide nothing, list every drift under "To arbitrate" in the PR and leave it unstamped.
    A fact in `undocumented` the human wants becomes a new `reference/<id>.md` (`arch add … --status accepted --stamp <commit>`).
 5. Changes → branch `architecture/verify-<YYYY-MM-DD>`, commit, push, open one PR. Nothing to change → no PR.

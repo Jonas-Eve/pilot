@@ -1963,8 +1963,8 @@ ARCH_OKF_STATUS = {"proposed": "draft", "accepted": "stable", "superseded": "dep
 
 class Architecture(Bundle):
     """The architecture module's bundle: `architecture/overview.md`, `guidelines/<id>.md` (rules to respect),
-    `reference/<id>.md` (how the code is built today: stack and versions, data model, structure; checked against the
-    code by `--verify`, a human arbitrating each divergence), `adr/<NNNN-title>.md` (why a choice was made) and `runbooks/<id>.md`
+    `reference/<id>.md` (how the code is built today: stack and versions, data model, structure; `--verify` checks it, the overview and the accepted
+    guidelines and ADRs against the code, a human arbitrating each divergence), `adr/<NNNN-title>.md` (why a choice was made) and `runbooks/<id>.md`
     (how to operate: deploy, onboard; read on demand, never carried in a prompt).
     Same OKF files, same frontmatter writer, same indexes as the wiki; its own statuses (an ADR is accepted, then
     deprecated or superseded by a later one, and never edited in between), no ticket-driven checks."""
