@@ -1,6 +1,6 @@
 ---
 name: pilot-dashboard
-description: "Publishes or updates the project's PILOT dashboard: one private Claude Artifact with its own data — tickets by phase, each role's queue, live sessions, the Design and Prototypes tabs (untouched by --refresh) and, when those modules are on, read-only Wiki and Architecture tabs. Renders the project's name and repo into the template, publishes it, records dashboardUrl in .pilot/state.json and seeds the ticket snapshot; run again (or via /pilot-update) to republish at the same address with the data kept; --refresh re-reads tickets, wiki and architecture and prunes obsolete events. Run only when asked: it publishes a page. Needs the Artifact tool."
+description: "Publishes or updates the project's PILOT dashboard: one private Claude Artifact with its own data — tickets by phase, each role's queue, the workflow of the tickets with the time spent in each stage, live sessions, the Design and Prototypes tabs (untouched by --refresh) and, when those modules are on, read-only Wiki and Architecture tabs. Renders the project's name and repo into the template, publishes it, records dashboardUrl in .pilot/state.json and seeds the ticket snapshot; run again to republish at the same address with the data kept (/pilot-update runs it with --refresh); --refresh re-reads tickets, wiki and architecture and prunes obsolete events. Run only when asked: it publishes a page. Needs the Artifact tool."
 argument-hint: "[--refresh]"
 disable-model-invocation: true
 ---
@@ -49,7 +49,7 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
    `interact`).
 4. **Snapshot** (after a first publish, and for `--refresh`). `python3 .pilot/pilot.py
    snapshot --out <temp file>`, then `ArtifactData` `set` on `snapshots/<owner>__<repo>` with
-   that `file_path` (`get` it first and pass `if_version` if it already exists). The snapshot carries the project's
+   that `file_path` (`get` it first and pass `if_version` if it already exists). The snapshot carries each ticket's stage history and the project's
    `modules`, which is what hides the tabs of a module that is off. When the `wiki` module is
    enabled, the same way with `python3 .pilot/pilot.py wiki snapshot --out <temp file>` on
    `wiki/<owner>__<repo>` — the Wiki tab reads it; a project without the module skips this. Likewise with the
@@ -64,7 +64,7 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
    version went live, not when its data was last refreshed — that is the snapshot's `at`)
    into `.pilot/state.json`, leaving every other field alone. A `--refresh` that published
    nothing writes nothing there, so it never leaves a change to commit.
-7. **Report.** The address; created, updated or unchanged; the snapshot's ticket count (and the wiki's entry count when it was published). The
+7. **Report.** The address; created, updated or unchanged; the snapshot's ticket count, with `history_failed` when not 0 (tickets whose stage history could not be read: run `--refresh` again), and the wiki's entry count when it was published. The
    page is private until shared from the artifact's Share menu — people whose sessions should
    push events or edit the design system need the Contributor level. The page only reads the project's own data: a ticket
    changed by hand on GitHub shows up at the next `--refresh`, so say how often to run it

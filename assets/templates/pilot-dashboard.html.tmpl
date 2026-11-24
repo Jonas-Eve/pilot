@@ -271,6 +271,17 @@ var EN={
 "Créer": "Create",
 "Créer ou modifier": "Create or modify",
 "Derniers changements": "Latest changes",
+"Action humaine attendue": "Human action awaited",
+"← Tous les workflows": "← All workflows",
+"Ticket introuvable.": "Ticket not found.",
+"Sous-tickets · ": "Sub-tickets · ",
+"Aucun ticket n’attend un humain.": "No ticket is waiting for a human.",
+"Aucun ticket en cours.": "No ticket in progress.",
+"En file": "Queued",
+"Aucun ticket en file.": "No ticket queued.",
+"bloqué depuis ": "blocked for ",
+"dans cette étape depuis ": "in this stage for ",
+"sans mouvement": "no movement",
 "Design (hors phase)": "Design (outside a phase)",
 "Design · mis à jour ": "Design · updated ",
 "Discovery : le PM rédige, l’architecte valide, pour une ou plusieurs stories.": "Discovery: the PM writes, the architect validates, for one or several stories.",
@@ -652,7 +663,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'principes',ensemble:'tableau',design:'charter',activite:'sessions',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'principes',ensemble:'tableau',design:'charter',activite:'workflow',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{}, evlist:[], activity:[],
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -675,7 +686,7 @@ function tickets(){var c=cur();return c.src==='sample'?c.list:overlay(c.list,c.a
 
 /* ---------- snapshots (db): written by Claude from GitHub, read by everyone ---------- */
 function snapId(repo){return String(repo).replace('/','__');}
-function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||'',p:i.p||0,k:i.k||null,r:i.r||0};t.status=lab(t,'status:');return t;}
+function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updated:i.u||'',assignee:i.a||'',p:i.p||0,k:i.k||null,r:i.r||0,h:i.h||null,nh:i.nh||''};t.status=lab(t,'status:');return t;}
 function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
@@ -707,7 +718,10 @@ function overlay(list,baseAt){
     var e=S.events[k]; if(baseAt&&String(e.at)<=String(baseAt))return;
     if(e.state==='closed'){delete by[e.n];return;}
     var old=by[e.n], t={n:e.n,title:e.title||(old&&old.title)||('#'+e.n),labels:e.labels||[],updated:e.at,assignee:(e.assignees||[])[0]||'',p:e.parent||(old&&old.p)||0,k:(old&&old.k)||null,r:e.pr||(old&&old.r)||0};
-    t.status=lab(t,'status:'); by[e.n]=t;
+    t.status=lab(t,'status:');
+    /* the stage history of the snapshot goes on with this event: a new status opens a new stage, a flag its own clock */
+    t.h=old&&old.h?old.h.slice():null; if(t.h&&t.status&&(!t.h.length||t.h[t.h.length-1][0]!==t.status))t.h.push([t.status,e.at]);
+    t.nh=has(t,'needs-human')?((old&&old.nh)||e.at):''; by[e.n]=t;
   });
   return Object.keys(by).map(function(k){return by[k];});
 }
@@ -758,8 +772,64 @@ function recentActs(){
   return S.activity.filter(function(a){return minutesSince(beat(a))<24*60;})
     .sort(function(a,b){return beat(b).localeCompare(beat(a));});
 }
+/* ---------- workflow: where each ticket stands in the chain, how long it spent in each stage, who must act ---------- */
+function stageMs(iso){var d=Date.now()-new Date(iso).getTime(); return isFinite(d)&&d>0?d:0;}
+function dur(ms){var m=Math.round(ms/60000); if(m<60)return Math.max(1,m)+' min'; if(m<1440)return Math.round(m/60)+' h'; return Math.round(m/1440)+(LANG==='en'?' d':' j');}
+/* a human is awaited: a flag to resolve, a PR to merge (what actionFor answers with a GitHub link); a ticket on hold is paused, nobody is awaited */
+function humanWait(t){var k=actionFor(t).kind; return k==='human'||k==='merge';}
+function enteredAt(t){
+  var h=t.h||[]; for(var i=h.length-1;i>=0;i--)if(h[i][0]===t.status)return h[i][1];
+  return t.updated||'';
+}
+/* the time spent in each phase of the chain, from the stages a ticket went through (none without a history) */
+function phaseTimes(t){
+  var out={}, h=t.h||[];
+  h.forEach(function(x,i){var ph=phaseOf(x[0]); if(!ph)return; out[ph.key]=(out[ph.key]||0)+(i+1<h.length?Math.max(0,new Date(h[i+1][1]).getTime()-new Date(x[1]).getTime()):stageMs(x[1]));});
+  return out;
+}
+function workflowRows(){
+  return tickets().filter(function(t){return t.status&&t.status!=='split'&&phaseOf(t.status);}).map(function(t){
+    var since=has(t,'needs-human')&&t.nh?t.nh:enteredAt(t);
+    return {t:t,human:humanWait(t),hold:has(t,'on-hold'),since:since,ms:stageMs(since)};
+  }).sort(function(a,b){return (b.human-a.human)||(b.ms-a.ms);});
+}
+/* a ticket in the workflow view: its chain with the time spent in each phase and in the current one, then the launch buttons of the other views, so a stuck or flagged workflow is relaunched from here */
+function workflowRow(r){
+  var t=r.t, ph=phaseOf(t.status), times=phaseTimes(t), phases=phasesOn(), at=phases.indexOf(ph), flag=has(t,'needs-human'), stale=!r.human&&!has(t,'on-hold')&&r.ms>=7*86400000;
+  return ticketRow(t,false,0,h('div',{},
+    ph?h('div',{class:'meta'},phases.map(function(p,i){
+      var d=times[p.key];
+      return h('span',{class:'chip'+(i===at?' acc':i<at?' ok':''),'aria-current':i===at?'step':null},p.name+(d?' '+dur(d):''));})):null,
+    h('div',{class:'meta'},
+      ph?h('span',{class:'note'},tr(flag?'bloqué depuis ':'dans cette étape depuis ')+dur(r.ms)):null,
+      stale?h('span',{class:'chip warn'},'sans mouvement'):null)));
+}
+/* one ticket's workflow (the link of every other view): the ticket, then its sub-tickets */
+function vWorkflowOf(n){
+  var t=tickets().filter(function(x){return x.n===n;})[0];
+  if(!t)return h('div',{class:'empty'},'Ticket introuvable.');
+  function row(x){var since=has(x,'needs-human')&&x.nh?x.nh:enteredAt(x); return workflowRow({t:x,human:humanWait(x),since:since,ms:stageMs(since)});}
+  var kids=kidsOf(n);
+  return h('div',{class:'list'},
+    h('a',{class:'btn ghost',href:'#activite/workflow'},'← Tous les workflows'),
+    row(t),
+    kids.length?h('h2',{},'Sous-tickets · '+kids.length):null,
+    kids.map(row));
+}
+function vWorkflow(){
+  if(S.wf)return vWorkflowOf(S.wf);
+  var rows=workflowRows(), human=rows.filter(function(r){return r.human;}), paused=rows.filter(function(r){return r.hold;}), live=rows.filter(function(r){return !r.human&&!r.hold;}),
+      going=live.filter(function(r){return /^in-/.test(r.t.status);}), queue=live.filter(function(r){return !/^in-/.test(r.t.status);});
+  function group(title,list,empty){return h('div',{class:'list'},h('h2',{},title+' · '+list.length),list.length?list.map(workflowRow):h('div',{class:'empty'},empty));}
+  return h('div',{class:'list'},
+    group('Action humaine attendue',human,'Aucun ticket n’attend un humain.'),
+    group('En cours',going,'Aucun ticket en cours.'),
+    group('En file',queue,'Aucun ticket en file.'),
+    paused.length?group('En pause',paused,''):null);
+}
 function vActivity(){
   var acts=recentActs(), alive=acts.filter(isAlive).length;
+  if(S.sub.activite==='workflow')return vWorkflow();
   if(S.sub.activite==='changements')return h('div',{class:'list'},
     h('h2',{},'Derniers changements'),
     S.evlist.length?h('div',{class:'list'},S.evlist.slice(0,15).map(function(e){
@@ -869,7 +939,7 @@ function protoOf(n){
   if(!S._po){S._po={}; Object.keys(S.protos).forEach(function(k){var m=S.protos[k]; if(Math.floor(Number(m.parts)||0)>0)arr(m.stories).forEach(function(s){S._po[s]=Number(k);});});}
   return S._po[n]||0;
 }
-function ticketRow(t,withLevel,depth){
+function ticketRow(t,withLevel,depth,extra){
   if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
   var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), autoDefault=!rc.qa&&!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='auto'); /* pair leads, as in the skills; auto only when the project's workflow makes it the default (never for QA) */
   /* one launch button; auto (a browser run for QA) is an option like the others, off unless the project's workflow defaults to auto */
@@ -887,7 +957,8 @@ function ticketRow(t,withLevel,depth){
             t.assignee?h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee):null,
             t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
             h('span',{class:'note'},ago(t.updated)),
-            a.kind==='run'&&o.open?h('span',{class:'cmd'},main+(rc.canAuto||rc.useHuman?'':'  (pair)')):null)),
+            a.kind==='run'&&o.open?h('span',{class:'cmd'},main+(rc.canAuto||rc.useHuman?'':'  (pair)')):null),
+          extra||null),
         h('div',{class:'acts'},
           a.kind==='run'?[
             openBtn,
@@ -896,6 +967,7 @@ function ticketRow(t,withLevel,depth){
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
           t.r?h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r):null,
           protoOf(t.n)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+protoOf(t.n);}},'Voir le proto'):null,
+          S.tab!=='activite'&&tabOn('activite')&&(phaseOf(t.status)||kids.length)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#activite/workflow/'+t.n;}},'Workflow'):null,
           kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
           rc.canAuto&&rc.pair?h('div',{class:'grp'},h('button',{class:'tog',type:'button','aria-pressed':String(useAuto),onclick:function(){if(useAuto)o.next=false;o.human=false;set('auto',!useAuto);}},rc.qa?'Navigateur':'Auto'),
@@ -1064,7 +1136,7 @@ function subnav(tab,items,cur,id,prefix){
 }
 function setSub(tab,key){S.sub[tab]=key;S.page=0;}
 var DESIGN_SUBS=[['charter','Charte'],['colors','Couleurs'],['type','Typographie'],['space','Espacements'],['components','Composants'],['a11y','Accessibilité']];
-var ACT_SUBS=[['sessions','Sessions'],['changements','Changements']];
+var ACT_SUBS=[['workflow','Workflow'],['sessions','Sessions'],['changements','Changements']];
 var PROTO_SUBS=[['encours','En cours'],['acceptes','Acceptés'],['rejetes','Rejetés']];
 var ACC_SUBS=[['alancer','À lancer'],['encours','En cours'],['termines','Terminés']];
 var SUBS={ensemble:null,design:DESIGN_SUBS,activite:ACT_SUBS,prototypes:PROTO_SUBS};
@@ -1094,7 +1166,7 @@ function subItems(tab){
     return [['tous','Tous',archEntries().length||null]].concat(gs);
   }
   if(tab==='prototypes'){var c=protoCounts();return [['encours','En cours',c.encours||null],['acceptes','Acceptés',c.acceptes||null],['rejetes','Rejetés',c.rejetes||null]];}
-  if(tab==='activite')return [['sessions','Sessions',recentActs().length||null],['changements','Changements',Math.min(15,S.evlist.length)||null]];
+  if(tab==='activite')return [['workflow','Workflow',workflowRows().length||null],['sessions','Sessions',recentActs().length||null],['changements','Changements',Math.min(15,S.evlist.length)||null]];
   return [];
 }
 function vPhase(p){
@@ -1950,8 +2022,8 @@ var HOW_TABS=[
     fr:{title:"Recherche",what:"Une recherche dans les tickets, avec filtres par niveau, type, statut, drapeau et assigné.",how:"Tapez un mot ou un numéro, affinez avec les filtres.",why:"Retrouver un ticket ou une décision sans fouiller."},
     en:{title:"Search",what:"A search across tickets, filtered by level, type, status, flag and assignee.",how:"Type a word or a number, narrow with filters.",why:"Find a ticket or a decision without digging."}},
   {id:"activite",mod:"",
-    fr:{title:"Activité",what:"Les sessions d’agents en cours et l’historique des changements de statut.",how:"Consultez-la pour savoir qui travaille sur quoi en ce moment, ou ce qui a bougé.",why:"Évite deux agents sur le même ticket et rend le travail des agents visible."},
-    en:{title:"Activity",what:"Running agent sessions and the history of status changes.",how:"Check it to see who is working on what right now, or what moved.",why:"Prevents two agents on one ticket and makes agent work visible."}},
+    fr:{title:"Activité",what:"Le workflow des tickets (où en est chacun dans la chaîne, le temps passé à chaque étape, ce qui attend un humain), les sessions d’agents en cours et l’historique des changements de statut.",how:"Consultez le workflow pour savoir quoi débloquer en premier, les sessions pour savoir qui travaille sur quoi, les changements pour ce qui a bougé. Le temps par étape vient de l’instantané (/pilot-dashboard --refresh).",why:"Rend visible ce qui traîne ou attend une personne, et évite deux agents sur le même ticket."},
+    en:{title:"Activity",what:"The tickets’ workflow (where each one stands in the chain, the time spent in each stage, what waits for a human), the running agent sessions and the history of status changes.",how:"Use the workflow to see what to unblock first, the sessions to see who is working on what, the changes for what moved. The time per stage comes from the snapshot (/pilot-dashboard --refresh).",why:"Makes visible what drags or waits for a person, and prevents two agents on one ticket."}},
   {id:"prototypes",mod:"proto",
     fr:{title:"Prototypes",what:"Des maquettes cliquables de fonctions à tester, construites avec le PM puis le designer, à accepter ou rejeter.",how:"Décrivez la fonction dans l’onglet, puis acceptez ou rejetez la maquette ; une Discovery peut partir d’un prototype accepté (/pilot-proto).",why:"On décide sur du concret avant d’écrire de la spec ou du code."},
     en:{title:"Prototypes",what:"Clickable mockups of features to try, built with the PM then the designer, to accept or reject.",how:"Describe the feature in the tab, then accept or reject the mockup; a Discovery can start from an accepted prototype (/pilot-proto).",why:"You decide on something concrete before any spec or code is written."}},
@@ -2006,7 +2078,7 @@ var HELP_SUBS=[['principes','Principes'],['modes','Modes'],['tickets','Tickets']
 /* ---------- boot ---------- */
 function fromHash(){
   var p=(location.hash||'').slice(1).split('/'), t=p[0];
-  S.viewProto=0; S.viewHelp=t==='aide'?1:0;
+  S.viewProto=0; S.viewHelp=t==='aide'?1:0; S.wf=t==='activite'&&p[1]==='workflow'?Number(p[2])||0:0;
   if(S.viewHelp&&p[1]&&HELP_SUBS.some(function(s){return s[0]===p[1];}))S.sub.aide=p[1];
   if(t==='proto'){S.tab='prototypes';S.viewProto=Number(p[1])||0;}
   else if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design'||t==='prototypes'||t==='wiki'||t==='architecture')S.tab=t;

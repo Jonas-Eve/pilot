@@ -61,6 +61,25 @@ def tickets():
     return t
 
 
+CHAIN = ["draft", "backlog", "in-spec", "dev-ready", "in-dev", "review-ready", "in-review", "approved", "qa", "in-qa"]
+
+
+def history(labels, hours):
+    """The stages a demo ticket went through (what `pilot.py snapshot` reads from the label events): the current
+    one entered `hours` ago, each earlier one a plausible stretch before."""
+    status = next((l[len("status:"):] for l in labels if l.startswith("status:")), "")
+    if status == "changes-requested":  # sent back from a review
+        before = history(["status:in-review"], hours + 8)
+        return before + [[status, iso(hours)]]
+    if status not in CHAIN or status in ("draft", "backlog"):
+        return [[status, iso(hours)]] if status in CHAIN else None
+    out, back = [[status, iso(hours)]], hours
+    for i in range(CHAIN.index(status) - 1, 0, -1):
+        back += 6 + (i * 7) % 29
+        out.insert(0, [CHAIN[i], iso(back)])
+    return out
+
+
 def snapshot():
     rows = []
     for n, title, labels, hours, parent, k, assignee, pr in tickets():
@@ -73,6 +92,11 @@ def snapshot():
             row["k"] = k
         if pr:
             row["r"] = pr
+        if "status:split" not in labels:
+            if history(labels, hours):  # as `pilot.py snapshot`: no history, no flag time either
+                row["h"] = history(labels, hours)
+                if "needs-human" in labels:
+                    row["nh"] = iso(hours)
         rows.append(row)
     rows.sort(key=lambda r: r["u"], reverse=True)
     return {"repo": REPO, "at": iso(0.5), "source": "demo", "total": len(rows), "truncated": False, "issues": rows,

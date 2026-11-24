@@ -12,7 +12,7 @@
   pilot.py contract [PHASE] [--profile P]      # a phase's contract (statuses it consumes / claims / produces); bare: all, and whether they compose
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py workflow show|check|set [PROFILE]   # the project's workflow profile: the chain it runs, and the check that every profile composes
-  pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document
+  pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document, with its stage history (`h`) and `needs-human` start (`nh`), one label-events call per ticket
   pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
   pilot.py flow    doc --in FILE [--out FILE]   # the dashboard's `flowRuns` document of a run of a user flow (no GitHub)
   pilot.py arch    index [--active] [--app A] [--under D] [--depth 1]|search|describe|next-number|inventory|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
@@ -30,6 +30,7 @@ Judgment never lives here: which agent to call, what a story/spec/review says, a
 dialogue stay with the skills. Requires the `gh` CLI and Python 3.
 """
 import argparse
+import concurrent.futures
 import datetime
 import hashlib
 import json
@@ -522,6 +523,11 @@ class GhClient:
     def sub_issues(self, number):
         return self._pages(f"repos/{self.repo}/issues/{number}/sub_issues")
 
+    def issue_events(self, number):
+        """The ticket's label events (`labeled`/`unlabeled`), oldest first."""
+        items = self._pages(f"repos/{self.repo}/issues/{number}/events", max_pages=5)
+        return [e for e in items if e.get("event") in ("labeled", "unlabeled")]
+
     def repo_info(self):
         return json.loads(self._run(f"repos/{self.repo}"))
 
@@ -538,6 +544,30 @@ class GhClient:
 
     def post_comment(self, number, text):
         self._run(f"repos/{self.repo}/issues/{number}/comments", method="POST", body={"body": text})
+
+
+def stage_history(events, labels):
+    """What the dashboard's workflow view needs of a ticket's label events: `h`, the statuses it went through
+    with the time it entered each (`[[status, at], ...]`, a repeated status dropped), and `nh`, since when
+    `needs-human` stands (only while the ticket carries it)."""
+    history, flagged = [], ""
+    for e in sorted(events, key=lambda e: str(e.get("created_at", ""))):
+        name = str((e.get("label") or {}).get("name", ""))
+        at = str(e.get("created_at", ""))
+        if e.get("event") == "labeled" and name.startswith("status:"):
+            status = name[len("status:"):]
+            if not history or history[-1][0] != status:
+                history.append([status, at])
+        elif name == "needs-human":
+            flagged = at if e.get("event") == "labeled" else ""
+    out = {}
+    current = next((l[len("status:"):] for l in labels if l.startswith("status:")), "")
+    if not history or history[-1][0] != current:  # a history that does not end on the current status is incomplete (events cap): nothing of it is trusted
+        return out
+    out["h"] = history
+    if flagged and "needs-human" in labels:
+        out["nh"] = flagged
+    return out
 
 
 CLOSES_RE = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+#(\d+)", re.I)
@@ -869,6 +899,7 @@ class Machine:
             if summary.get("total"):
                 row["k"] = [summary.get("completed", 0), summary["total"]]  # sub-issues done / total
             rows.append(row)
+        self._add_history(rows)
         rows.sort(key=lambda r: r["u"], reverse=True)
         doc = {"repo": self.gh.repo, "at": now_iso(), "source": "pilot.py", "total": len(rows),
                "truncated": False, "issues": rows}
@@ -884,6 +915,23 @@ class Machine:
             del rows[max(1, len(rows) * 9 // 10):]
             doc["truncated"] = True
         return doc
+
+    def _add_history(self, rows):
+        """Best effort: the workflow view's `h`/`nh` for every ticket in a status that is worked on (an Epic or
+        a split story only holds sub-issues). A ticket whose events cannot be read has no history; `history_failed`
+        counts them so that a throttled run is reported, not published as complete."""
+        failed = []
+        def history(row):
+            status = next((l[len("status:"):] for l in row["l"] if l.startswith("status:")), "")
+            if not status or status == "split":
+                return
+            try:
+                row.update(stage_history(self.gh.issue_events(row["n"]), row["l"]))
+            except (GhError, ValueError):
+                failed.append(row["n"])
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(history, rows))
+        self.history_failed = len(failed)
 
     # ---- writes --------------------------------------------------------------------------
     def _write(self, number, labels, assignees=None, extra=None):
@@ -2537,7 +2585,8 @@ def run(args, gh):
             return doc
         with open(args.out, "w", encoding="utf-8") as handle:
             json.dump(doc, handle, ensure_ascii=False, separators=(",", ":"))
-        return {"ok": True, "file": args.out, "total": doc["total"], "truncated": doc["truncated"]}
+        return {"ok": True, "file": args.out, "total": doc["total"], "truncated": doc["truncated"],
+                "history_failed": machine.history_failed}
     if args.cmd == "doctor":
         report = machine.doctor(WIKI_DIR, {} if args.no_wiki else None)
         if not args.verbose:

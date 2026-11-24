@@ -163,11 +163,13 @@ const STUB = (opts) => `
     events: [ev({ action: 'claim:fresh', at: iso(4) })] });
   check('activity tab and chip show the live count', /Activité \(2\)/.test(await text(page, 'nav')) && /Sessions · 2 en cours/.test(await text(page, '#conn')));
   view = await tab(page, 'Activité');
+  await page.click('#subtabs >> text=Sessions'); await page.waitForTimeout(150);
+  view = await text(page, '#view');
   check('activity: live session with phase and mode', /Ticket vivant/.test(view) && /en cours/.test(view) && /Dev/.test(view) && /auto/.test(view), view);
   check('activity: a --human session shows the humain chip, not pair', /Ticket humain/.test(view) && /humain/.test(await page.locator('#view .row', { hasText: 'Ticket humain' }).textContent()) && !/pair/.test(await page.locator('#view .row', { hasText: 'Ticket humain' }).textContent()), view);
   check('activity: silent session flagged', /Ticket muet/.test(view) && /sans signe de vie/.test(view), view);
   check('activity: entries older than a day hidden', !/Ticket ancien/.test(view), view);
-  check('activity: hash route', (await page.evaluate(() => location.hash)) === '#activite');
+  check('activity: hash route', (await page.evaluate(() => location.hash)) === '#activite/sessions');
   await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(150);
   view = await text(page, '#view');
   check('activity: recent changes feed (Changements sub-tab)', /pris en charge \(Dev\)/.test(view) && !/Ticket vivant/.test(view), view);
@@ -176,9 +178,75 @@ const STUB = (opts) => `
 
   page = await open({ preload: [BASE] });
   view = await tab(page, 'Activité');
+  await page.click('#subtabs >> text=Sessions'); await page.waitForTimeout(150);
+  view = await text(page, '#view');
   check('activity: empty sessions', /Aucune session/.test(view), view);
   await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(150);
   check('activity: empty changes', /Aucun changement/.test(await text(page, '#view')), await text(page, '#view'));
+  await page.close();
+
+  // ---- activity tab: workflow view (stage times, human action) ----
+  const WF = snapshot([
+    ticket(10, ['type:tech', 'status:in-dev'], { t: 'Ticket en dev', a: 'alice', h: [['backlog', iso(5 * 1440)], ['in-spec', iso(4 * 1440)], ['dev-ready', iso(3 * 1440 - 60)], ['in-dev', iso(120)]] }),
+    ticket(11, ['type:tech', 'status:in-dev', 'needs-human'], { t: 'Ticket bloque', h: [['in-dev', iso(3 * 1440)]], nh: iso(2 * 1440) }),
+    ticket(12, ['type:feature', 'status:approved'], { t: 'Ticket a merger', h: [['approved', iso(300)]] }),
+    ticket(13, ['type:tech', 'status:backlog'], { t: 'Ticket en file', u: iso(9 * 1440) }),
+    ticket(14, ['type:feature', 'level:story', 'status:split'], { t: 'Story decoupee', k: [0, 1] }),
+    ticket(15, ['type:feature', 'level:task', 'status:dev-ready'], { t: 'Tache de la story', p: 14 }),
+  ], 30);
+  page = await open({ preload: [WF] });
+  view = await tab(page, 'Activité');
+  check('workflow: is the default sub-tab', /Action humaine attendue · 2/.test(view) && /En cours · 1/.test(view) && /En file · 2/.test(view), view);
+  check('workflow: a row carries the launch button of the other views, a flagged one the way to answer', /Ouvrir/.test(await text(page, '#view .row:has-text("Ticket en file")')) && /Copier/.test(await text(page, '#view .row:has-text("Ticket en file")')) && /Répondre sur GitHub/.test(await text(page, '#view .row:has-text("Ticket bloque")')));
+  check('workflow: no link to itself in a row', !/Workflow/.test(await text(page, '#view .row:has-text("Ticket en dev")')));
+  check('workflow: a split story is left out', !/Story decoupee/.test(view), view);
+  check('workflow: time per stage on the phases a ticket went through', /Spec 2 j/.test(await text(page, '#view .row:has-text("Ticket en dev")')) && /Dev 3 j/.test(await text(page, '#view .row:has-text("Ticket en dev")')));
+  check('workflow: the flagged ticket is blocked since the flag, not the stage', /bloqué depuis 2 j/.test(view) && /attend un humain/.test(view), view);
+  check('workflow: an approved ticket awaits its merge', /à merger/.test(view));
+  check('workflow: human action first', view.indexOf('Ticket bloque') < view.indexOf('Ticket en dev'), view);
+  check('workflow: a ticket with no history falls back on its last update and is flagged when idle', /9 j/.test(view) && /sans mouvement/.test(view), view);
+  await page.close();
+  // a story waiting for QA is a queued run, a paused ticket has its own group and no idle flag; the produit role has no Activité tab, so no link to it
+  const WF2 = snapshot([
+    ticket(20, ['type:feature', 'level:story', 'status:qa'], { t: 'Story a tester', h: [['qa', iso(300)]] }),
+    ticket(21, ['type:tech', 'status:backlog', 'on-hold'], { t: 'Ticket en pause', u: iso(20 * 1440), p: 22 }),
+    ticket(22, ['type:feature', 'level:epic'], { t: 'Epic parent', k: [0, 1] }),
+  ], 30);
+  page = await open({ preload: [WF2] });
+  view = await tab(page, 'Activité');
+  check('workflow: QA is queued, not a human action; a paused ticket is apart and never idle', /Action humaine attendue · 0/.test(view) && /En file · 1/.test(view) && /En pause · 1/.test(view) && !/sans mouvement/.test(view), view);
+  await page.goto(FILE + '#activite/workflow/22'); await page.waitForTimeout(400);
+  view = await text(page, '#view');
+  check('workflow: an Epic (no status) opens on its sub-tickets', /Epic parent/.test(view) && /Sous-tickets · 1/.test(view) && /Ticket en pause/.test(view), view);
+  await page.close();
+  page = await open({ preload: [WF], role: 'produit' });
+  check('workflow: no link to the Workflow view for a role without the Activité tab', (await page.$$('#view button:has-text("Workflow")')).length === 0);
+  await page.close();
+  // a live event continues the snapshot's history: a new status opens a stage, a flag starts its own clock
+  page = await open({ preload: [WF], events: [
+    ev({ n: 10, title: 'Ticket en dev', labels: ['type:tech', 'status:review-ready'], assignees: ['alice'], at: iso(10) }),
+    ev({ n: 13, title: 'Ticket en file', labels: ['type:tech', 'status:backlog', 'needs-human'], assignees: [], action: 'flag', at: iso(10) })] });
+  view = await tab(page, 'Activité');
+  const wfEvRow = await text(page, '#view .row:has-text("Ticket en dev")'), flagRow = await text(page, '#view .row:has-text("Ticket en file")');
+  check('workflow: a live event moves the ticket to its new stage, the earlier ones keep their time', /à relire/.test(wfEvRow) && /Dev 3 j/.test(wfEvRow) && /Review/.test(wfEvRow), wfEvRow);
+  check('workflow: a live flag starts the blocked clock at the event', /bloqué depuis 10 min/.test(flagRow) && /Action humaine attendue · 3/.test(view), flagRow);
+  await page.close();
+  // English: the day unit follows the language
+  page = await open({ preload: [WF], lang: 'en' });
+  view = await tab(page, 'Activity');
+  check('workflow: English units', /blocked for 2 d/.test(view) && !/\d j\b/.test(view), view);
+  await page.close();
+  page = await open({ preload: [WF] });
+  await page.click('nav >> text=Ma file'); await page.waitForTimeout(150);
+  await page.click('#view .row:has-text("Ticket en dev") >> text=Workflow'); await page.waitForTimeout(200);
+  view = await text(page, '#view');
+  check('workflow: a ticket links to its workflow', (await page.evaluate(() => location.hash)) === '#activite/workflow/10' && /Ticket en dev/.test(view) && !/Ticket bloque/.test(view) && /Tous les workflows/.test(view), view);
+  await page.goto(FILE + '#activite/workflow/14'); await page.waitForTimeout(400);
+  view = await text(page, '#view');
+  check('workflow: a story shows its sub-tickets, each with its launch button', /Story decoupee/.test(view) && /Sous-tickets · 1/.test(view) && /Tache de la story/.test(view) && /Ouvrir/.test(await text(page, '#view .row:has-text("Tache de la story")')), view);
+  await page.click('#view >> text=Tous les workflows'); await page.waitForTimeout(200);
+  check('workflow: back to all the workflows', /Action humaine attendue/.test(await text(page, '#view')));
+  check('workflow: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
   // ---- open in Claude Code: links with the command typed in ----
@@ -891,8 +959,9 @@ const STUB = (opts) => `
   ], events: [ev({ at: iso(2), action: 'claim:fresh' })] };
   page = await open(Object.assign({ preload: [BASE] }, ACT));
   await page.click('nav >> text=Activité'); await page.waitForTimeout(200);
-  check('activity sub-tabs: sessions and changes, with their counts', JSON.stringify(await dLabels()) === JSON.stringify(['Sessions (2)', 'Changements (1)']), JSON.stringify(await dLabels()));
-  check('activity sub-tabs: sessions first, without the changes', /Ticket vivant/.test(await text(page, '#view')) && !/pris en charge/.test(await text(page, '#view')));
+  check('activity sub-tabs: sessions and changes, with their counts', JSON.stringify(await dLabels()) === JSON.stringify(['Workflow (1)', 'Sessions (2)', 'Changements (1)']), JSON.stringify(await dLabels()));
+  await page.click('#subtabs >> text=Sessions'); await page.waitForTimeout(200);
+  check('activity sub-tabs: sessions apart from the changes', /Ticket vivant/.test(await text(page, '#view')) && !/pris en charge/.test(await text(page, '#view')));
   await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(200);
   check('activity sub-tabs: the changes alone, the address follows', /pris en charge \(Dev\)/.test(await text(page, '#view')) && !/Ticket vivant/.test(await text(page, '#view')) && (await page.evaluate(() => location.hash)) === '#activite/changements');
   await page.close();

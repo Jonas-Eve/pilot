@@ -165,5 +165,5 @@ see `.claude/skills/pilot-update/SKILL.md`.
 11. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result. Summarize what
     was created/updated/skipped (the wiki skeleton included, or the module left off), and suggest
     `/pilot-architecture --scaffold` (new apps) or `--bootstrap` (apps that already exist) when the `architecture` module is on, and
-    offer `/pilot-dashboard` (a private team page: tickets by phase, each role's queue, live
+    offer `/pilot-dashboard` (a private team page: tickets by phase, each role's queue, the workflow with time per stage, live
     sessions) when the `dashboard` module is on — run it only if the human accepts, since it publishes a page.

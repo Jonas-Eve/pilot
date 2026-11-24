@@ -145,9 +145,9 @@ from a previous run — the whole point is picking up upstream changes.
    `workflow:` labels (standard and lean, no longer created) can be deleted too; change nothing yourself.
 
 5c. **Update the dashboard.** Only when `.pilot/state.json` has a `dashboardUrl`: run
-   `/pilot-dashboard` (reusing this `$PILOT_SRC`), after asking the human whether to
-   republish — it does nothing if the rendered page is unchanged, and a refusal or failure
-   there (e.g. the current user can't edit the artifact) never blocks the rest of the update.
+   `/pilot-dashboard --refresh` (reusing this `$PILOT_SRC`), after asking the human whether to
+   republish (it republishes the page if it changed and refreshes the snapshot and the data the tabs read).
+   A refusal or failure there (e.g. the current user can't edit the artifact) never blocks the rest of the update.
    Without a `dashboardUrl`, don't create one here: mention in the report that
    `/pilot-dashboard` can.
 
