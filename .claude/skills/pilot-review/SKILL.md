@@ -57,7 +57,7 @@ runs N instances of each role selected in step 3 (roles × N simultaneous `Agent
    `status:in-review`, re-read to confirm). Exit 1 with `reason: lost-race` → stand down and
    return to step 1 for a different candidate (bare pool only — report nothing to do if a
    specific ticket was requested). Any other refusal → report `reason` and stop.
-2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
+2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Read the ticket's linked issue and **its own** `type:` label (never a parent's, `.pilot/pilot-link-ticket-tree.md` "`type:` is never inherited") to pick the **default**
    reviewer set: it is `review` of `python3 .pilot/pilot.py workflow show --ticket <issue>`:
    - standard: `type:feature` or `type:e2e` → `pilot-pm`, `pilot-techlead`; `type:tech` or `type:bug` → `pilot-techlead` alone (no PM)

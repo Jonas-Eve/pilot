@@ -1,6 +1,6 @@
 ---
 name: pilot-dashboard
-description: "Publishes or updates the project's PILOT dashboard: one private Claude Artifact with its own data — tickets by phase, each role's queue, the workflow of the tickets with the time spent in each stage, live sessions, the Design and Prototypes tabs (untouched by --refresh) and, when those modules are on, read-only Wiki and Architecture tabs. Renders the project's name and repo into the template, publishes it, records dashboardUrl in .pilot/state.json and seeds the ticket snapshot; run again to republish at the same address with the data kept (/pilot-update runs it with --refresh); --refresh re-reads tickets, wiki and architecture and prunes obsolete events. Run only when asked: it publishes a page. Needs the Artifact tool."
+description: "Publishes or updates the project's PILOT dashboard: one private Claude Artifact with its own data — tickets by phase, each role's queue, the workflow of the tickets with the time spent in each stage, the Design and Prototypes tabs (untouched by --refresh) and, when those modules are on, read-only Wiki and Architecture tabs. Renders the project's name and repo into the template, publishes it, records dashboardUrl in .pilot/state.json and seeds the ticket snapshot; run again to republish at the same address with the data kept (/pilot-update runs it with --refresh); --refresh re-reads tickets, wiki and architecture and prunes obsolete events. Run only when asked: it publishes a page. Needs the Artifact tool."
 argument-hint: "[--refresh]"
 disable-model-invocation: true
 ---
@@ -45,7 +45,7 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
      republish), stop and say so — never create a second artifact for the project.
 
    Capabilities, always the full set and nothing else (no connector): `db` with rules
-   `snapshots` (read `view`, write `admin`), `design`, `wiki`, `architecture`, `protos`, `protoHtml`, `flowRuns`, `events` and `activity` (read `view`, write
+   `snapshots` (read `view`, write `admin`), `design`, `wiki`, `architecture`, `protos`, `protoHtml`, `flowRuns` and `events` (read `view`, write
    `interact`).
 4. **Snapshot** (after a first publish, and for `--refresh`). `python3 .pilot/pilot.py
    snapshot --out <temp file>`, then `ArtifactData` `set` on `snapshots/<owner>__<repo>` with
@@ -56,8 +56,8 @@ Reuse `$PILOT_SRC` when `/pilot-init` or `/pilot-update` already cloned it; othe
    `architecture` module: `python3 .pilot/pilot.py arch snapshot --out <temp file>` on
    `architecture/<owner>__<repo>`, which the Architecture tab reads.
 5. **Prune** (with step 4). `events` documents whose `at` is older than the snapshot's `at`
-   are obsolete, and so are `activity` documents whose `lastBeat` is over 24 h old: list the
-   collections (read them into the conversation: `out_dir` is refused for documents others may
+   are obsolete: list the
+   collection (read it into the conversation: `out_dir` is refused for documents others may
    have written), then `delete` them in `batch`es of 50 (`if_version` each).
 6. **Record**, only when step 3 published. Write `dashboardUrl`, `dashboardHash` and
    `dashboardSyncedAt` (the deployment time `now` of step 3: when the dashboard's current

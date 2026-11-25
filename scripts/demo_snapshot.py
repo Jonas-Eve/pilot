@@ -4,7 +4,7 @@
 
 Usage:
   python3 scripts/demo_snapshot.py --out FILE        # the `snapshots/Jonas-Eve__pilot` document
-  python3 scripts/demo_snapshot.py --dir DIR         # that document + a live session, a few events, a design document, a wiki document, an architecture document and prototypes
+  python3 scripts/demo_snapshot.py --dir DIR         # that document + a few events, a design document, a wiki document, an architecture document and prototypes
 
 Timestamps are relative to now, so re-run it to refresh the demo. Stdlib only.
 """
@@ -104,17 +104,8 @@ def snapshot():
 
 
 def live_documents():
-    """A running session and the events a phase would have pushed, as `activity` / `events` documents."""
+    """The events a phase would have pushed, as `events` documents."""
     return {
-        "activity-dev-111": {"kind": "activity", "id": "dev-111-1", "phase": "dev", "n": 111,
-                             "title": "Calcul de l'itinéraire sans escalier", "mode": "fresh", "auto": True,
-                             "by": "alice", "startedAt": iso(0.4), "lastBeat": iso(0.02)},
-        "activity-spec-301": {"kind": "activity", "id": "spec-301-1", "phase": "spec", "n": 301,
-                              "title": "Cache des états d'équipements", "mode": "fresh", "auto": False,
-                              "by": "alice", "startedAt": iso(2.5), "lastBeat": iso(1.8)},
-        "activity-dev-112": {"kind": "activity", "id": "dev-112-1", "phase": "dev", "n": 112,
-                             "title": "Écran de préférences d'accessibilité", "mode": "fresh", "auto": False, "human": True,
-                             "by": "alice", "startedAt": iso(1.2), "lastBeat": iso(0.05)},
         "event-600": {"kind": "ticket", "n": 600, "title": "Tâche créée par un split depuis le dernier instantané",
                       "labels": ["type:feature", "level:task", "status:dev-ready", "priority:P1"],
                       "assignees": [], "state": "open", "action": "created", "phase": "spec", "parent": 101,

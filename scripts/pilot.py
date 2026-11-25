@@ -12,7 +12,7 @@
   pilot.py contract [PHASE] [--profile P]      # a phase's contract (statuses it consumes / claims / produces); bare: all, and whether they compose
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py workflow show|check|set [PROFILE]   # the project's workflow profile: the chain it runs, and the check that every profile composes
-  pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document, with its stage history (`h`) and `needs-human` start (`nh`), one label-events call per ticket
+  pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document, with its stage history (`h`) and `needs-human` start (with `--out`, the result also gives `history_failed`, the tickets whose history could not be read) (`nh`), one label-events call per ticket
   pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
   pilot.py flow    doc --in FILE [--out FILE]   # the dashboard's `flowRuns` document of a run of a user flow (no GitHub)
   pilot.py arch    index [--active] [--app A] [--under D] [--depth 1]|search|describe|next-number|inventory|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
@@ -21,7 +21,7 @@ Every command takes `--repo owner/repo` (default: the git remote of the current 
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
 (JSON says why), 2 GitHub or usage failure.
 
-claim/set/flag/unflag also return an `event` (and claim an `activity`), and `event` builds them for
+claim/set/flag/unflag also return an `event`, and `event` builds it for
 tickets the skill changed itself (Discovery, one call for all of them): the ready-made payloads the skills forward to the
 project's dashboard (pilot-link-dashboard.md). An event carries the ticket's parent, and the open
 PR (`set --pr N`) when the caller just opened one.
@@ -547,7 +547,7 @@ class GhClient:
 
 
 def stage_history(events, labels):
-    """What the dashboard's workflow view needs of a ticket's label events: `h`, the statuses it went through
+    """What the dashboard's work view needs of a ticket's label events: `h`, the statuses it went through
     with the time it entered each (`[[status, at], ...]`, a repeated status dropped), and `nh`, since when
     `needs-human` stands (only while the ticket carries it)."""
     history, flagged = [], ""
@@ -917,7 +917,7 @@ class Machine:
         return doc
 
     def _add_history(self, rows):
-        """Best effort: the workflow view's `h`/`nh` for every ticket in a status that is worked on (an Epic or
+        """Best effort: the work view's `h`/`nh` for every ticket in a status that is worked on (an Epic or
         a split story only holds sub-issues). A ticket whose events cannot be read has no history; `history_failed`
         counts them so that a throttled run is reported, not published as complete."""
         failed = []
@@ -989,10 +989,7 @@ class Machine:
                            "assignees": after["assignees"]})
         return {"claimed": True, "mode": mode, "issue": number, "assignee": me,
                 "status": status_of(after["labels"]), "labels": sorted(after["labels"]),
-                "event": self._event(after, "claim:" + mode, phase),
-                "activity": {"kind": "activity", "id": f"{phase}-{number}-{int(datetime.datetime.now().timestamp())}",
-                             "phase": phase, "n": number, "title": after["title"], "mode": mode,
-                             "by": me, "startedAt": now_iso()}}
+                "event": self._event(after, "claim:" + mode, phase)}
 
     def set(self, number, status=None, assign=None, add=(), remove=(), close=False, pr=None):
         raw = self.gh.get_issue(number)

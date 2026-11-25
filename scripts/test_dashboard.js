@@ -56,6 +56,7 @@ const STUB = (opts) => `
   const check = (name, ok, detail) => { results.push(!!ok); console.log((ok ? 'PASS ' : 'FAIL ') + name + (ok ? '' : '  -> ' + detail)); };
   const open = async (opts, file = FILE) => {
     const page = await browser.newPage({ viewport: { width: 400, height: 900 } });
+    page.setDefaultTimeout(6000);
     page.errors = []; page.on('pageerror', e => page.errors.push(String(e)));
     if (opts.lang !== null) await page.addInitScript(`try{localStorage.setItem('cp.lang',${JSON.stringify(opts.lang || 'fr')})}catch(e){}`);
     await page.addInitScript(`try{localStorage.setItem('cp.role',${JSON.stringify(opts.role || 'tous')})}catch(e){}`);
@@ -83,7 +84,7 @@ const STUB = (opts) => `
     return out.filter((x) => x !== null);
   };
   const text = (page, sel) => page.textContent(sel);
-  const tab = async (page, name) => { await page.click(`nav >> text=${name}`); await page.waitForTimeout(150); return text(page, '#view'); };
+  const tab = async (page, name) => { try { await page.click(`nav >> text=${name}`, { timeout: 3000 }); } catch (e) { return ''; } await page.waitForTimeout(150); return text(page, '#view'); };
   const rows = (page) => page.$$eval('#view .row', (r) => r.length);
 
   const BASE = snapshot([ticket(99, ['type:tech', 'status:dev-ready', 'priority:P1'], { t: 'Ticket de l instantane' })], 120);
@@ -120,72 +121,39 @@ const STUB = (opts) => `
 
   // ---- live events fold over the snapshot ----
   page = await open({ preload: [BASE], events: [ev({})] });
-  let view = await tab(page, 'Vue d’ensemble');
+  let view = await tab(page, 'Travail');
   check('event newer than the snapshot moves the ticket (dev-ready -> in-dev)', /dev en cours/.test(view) && !/prêt à coder/.test(view), view);
   check('banner counts the applied change', /1 changement appliqué depuis/.test(await text(page, '#banner')), await text(page, '#banner'));
   await page.close();
 
   page = await open({ preload: [BASE], events: [ev({ at: iso(300) })] });
-  view = await tab(page, 'Vue d’ensemble');
+  view = await tab(page, 'Travail');
   check('event older than the snapshot is ignored', /prêt à coder/.test(view) && !/dev en cours/.test(view), view);
   await page.close();
 
   page = await open({ preload: [BASE], events: [ev({ state: 'closed', labels: ['status:done'] })] });
-  check('closed event removes the ticket', !/Ticket de l instantane/.test(await tab(page, 'Vue d’ensemble')));
+  check('closed event removes the ticket', !/Ticket de l instantane/.test(await tab(page, 'Travail')));
   await page.close();
 
   page = await open({ preload: [BASE], events: [ev({ n: 7, title: 'Nouveau ticket', labels: ['type:feature', 'status:backlog'], assignees: [] })] });
-  view = await tab(page, 'Vue d’ensemble');
+  view = await tab(page, 'Travail');
   check('event for a ticket absent from the snapshot adds it', /Nouveau ticket/.test(view) && /à spécifier/.test(view), view);
   await page.close();
 
   page = await open({ preload: [BASE], events: [ev({ at: iso(30) }), ev({ at: iso(2), labels: ['type:tech', 'status:review-ready'], assignees: [] })] });
-  view = await tab(page, 'Vue d’ensemble');
+  view = await tab(page, 'Travail');
   check('latest event per ticket wins', /à relire/.test(view) && !/dev en cours/.test(view), view);
   await page.close();
 
   page = await open({ preload: [BASE] });
-  check('before the pushed event: dev-ready', /prêt à coder/.test(await tab(page, 'Vue d’ensemble')));
+  check('before the pushed event: dev-ready', /prêt à coder/.test(await tab(page, 'Travail')));
   await page.evaluate((e) => window.__push('events', 'live1', e), ev({}));
   await page.waitForTimeout(200);
   check('real time: a pushed event updates the board without reload', /dev en cours/.test(await text(page, '#view')) && !/prêt à coder/.test(await text(page, '#view')));
   check('real time: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
-  // ---- activity tab ----
-  page = await open({ preload: [BASE],
-    activity: [
-      { kind: 'activity', id: 'dev-99-1', phase: 'dev', n: 99, title: 'Ticket vivant', mode: 'fresh', auto: true, by: 'alice', startedAt: iso(30), lastBeat: iso(3) },
-      { kind: 'activity', id: 'spec-5-1', phase: 'spec', n: 5, title: 'Ticket muet', mode: 'fresh', auto: false, by: 'bob', startedAt: iso(300), lastBeat: iso(180) },
-      { kind: 'activity', id: 'dev-7-1', phase: 'dev', n: 7, title: 'Ticket humain', mode: 'fresh', auto: false, human: true, by: 'dave', startedAt: iso(20), lastBeat: iso(2) },
-      { kind: 'activity', id: 'qa-6-1', phase: 'qa', n: 6, title: 'Ticket ancien', mode: 'fresh', by: 'carol', startedAt: iso(3000), lastBeat: iso(2900) },
-    ],
-    events: [ev({ action: 'claim:fresh', at: iso(4) })] });
-  check('activity tab and chip show the live count', /Activité \(2\)/.test(await text(page, 'nav')) && /Sessions · 2 en cours/.test(await text(page, '#conn')));
-  view = await tab(page, 'Activité');
-  await page.click('#subtabs >> text=Sessions'); await page.waitForTimeout(150);
-  view = await text(page, '#view');
-  check('activity: live session with phase and mode', /Ticket vivant/.test(view) && /en cours/.test(view) && /Dev/.test(view) && /auto/.test(view), view);
-  check('activity: a --human session shows the humain chip, not pair', /Ticket humain/.test(view) && /humain/.test(await page.locator('#view .row', { hasText: 'Ticket humain' }).textContent()) && !/pair/.test(await page.locator('#view .row', { hasText: 'Ticket humain' }).textContent()), view);
-  check('activity: silent session flagged', /Ticket muet/.test(view) && /sans signe de vie/.test(view), view);
-  check('activity: entries older than a day hidden', !/Ticket ancien/.test(view), view);
-  check('activity: hash route', (await page.evaluate(() => location.hash)) === '#activite/sessions');
-  await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(150);
-  view = await text(page, '#view');
-  check('activity: recent changes feed (Changements sub-tab)', /pris en charge \(Dev\)/.test(view) && !/Ticket vivant/.test(view), view);
-  check('activity: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.close();
-
-  page = await open({ preload: [BASE] });
-  view = await tab(page, 'Activité');
-  await page.click('#subtabs >> text=Sessions'); await page.waitForTimeout(150);
-  view = await text(page, '#view');
-  check('activity: empty sessions', /Aucune session/.test(view), view);
-  await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(150);
-  check('activity: empty changes', /Aucun changement/.test(await text(page, '#view')), await text(page, '#view'));
-  await page.close();
-
-  // ---- activity tab: workflow view (stage times, human action) ----
+  // ---- work view: groups by what a ticket needs, time in the stage, detail page ----
   const WF = snapshot([
     ticket(10, ['type:tech', 'status:in-dev'], { t: 'Ticket en dev', a: 'alice', h: [['backlog', iso(5 * 1440)], ['in-spec', iso(4 * 1440)], ['dev-ready', iso(3 * 1440 - 60)], ['in-dev', iso(120)]] }),
     ticket(11, ['type:tech', 'status:in-dev', 'needs-human'], { t: 'Ticket bloque', h: [['in-dev', iso(3 * 1440)]], nh: iso(2 * 1440) }),
@@ -195,58 +163,62 @@ const STUB = (opts) => `
     ticket(15, ['type:feature', 'level:task', 'status:dev-ready'], { t: 'Tache de la story', p: 14 }),
   ], 30);
   page = await open({ preload: [WF] });
-  view = await tab(page, 'Activité');
-  check('workflow: is the default sub-tab', /Action humaine attendue · 2/.test(view) && /En cours · 1/.test(view) && /En file · 2/.test(view), view);
-  check('workflow: a row carries the launch button of the other views, a flagged one the way to answer', /Ouvrir/.test(await text(page, '#view .row:has-text("Ticket en file")')) && /Copier/.test(await text(page, '#view .row:has-text("Ticket en file")')) && /Répondre sur GitHub/.test(await text(page, '#view .row:has-text("Ticket bloque")')));
-  check('workflow: no link to itself in a row', !/Workflow/.test(await text(page, '#view .row:has-text("Ticket en dev")')));
-  check('workflow: a split story is left out', !/Story decoupee/.test(view), view);
-  check('workflow: time per stage on the phases a ticket went through', /Spec 2 j/.test(await text(page, '#view .row:has-text("Ticket en dev")')) && /Dev 3 j/.test(await text(page, '#view .row:has-text("Ticket en dev")')));
-  check('workflow: the flagged ticket is blocked since the flag, not the stage', /bloqué depuis 2 j/.test(view) && /attend un humain/.test(view), view);
-  check('workflow: an approved ticket awaits its merge', /à merger/.test(view));
-  check('workflow: human action first', view.indexOf('Ticket bloque') < view.indexOf('Ticket en dev'), view);
-  check('workflow: a ticket with no history falls back on its last update and is flagged when idle', /9 j/.test(view) && /sans mouvement/.test(view), view);
+  view = await tab(page, 'Travail');
+  const wfRow = (name) => text(page, `#view .row:has-text("${name}")`);
+  check('work: tickets grouped by what they need', /Action humaine attendue · 2/.test(view) && /En cours · 1/.test(view) && /À lancer · 2/.test(view) && !/En pause/.test(view), view);
+  check('work: a split story is left out', !/Story decoupee/.test(view), view);
+  check('work: a row carries the launch button of the other views, a flagged one the way to answer', /Ouvrir/.test(await wfRow('Ticket en file')) && /Copier/.test(await wfRow('Ticket en file')) && /Répondre sur GitHub/.test(await wfRow('Ticket bloque')));
+  check('work: a row says since when the ticket is in its stage, the chain stays in the detail', /dans cette étape depuis 2 h/.test(await wfRow('Ticket en dev')) && !/Spec 2 j/.test(await wfRow('Ticket en dev')));
+  check('work: the flagged ticket is blocked since the flag, not the stage', /bloqué depuis 2 j/.test(await wfRow('Ticket bloque')) && /attend un humain/.test(view), view);
+  check('work: an approved ticket awaits its merge', /à merger/.test(await wfRow('Ticket a merger')));
+  check('work: human action first', view.indexOf('Ticket bloque') < view.indexOf('Ticket en dev'), view);
+  check('work: a ticket with no history shows no time in its stage, and is still flagged when idle', !/dans cette étape/.test(await wfRow('Ticket en file')) && /sans mouvement/.test(await wfRow('Ticket en file')), view);
+  check('work: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.click('#view .row:has-text("Ticket en dev") >> text=Détail'); await page.waitForTimeout(200);
+  view = await text(page, '#view');
+  check('work: a row opens its ticket (the address follows), with the time in each phase', (await page.evaluate(() => location.hash)) === '#file/10' && /Ticket en dev/.test(view) && !/Ticket bloque/.test(view) && /Spec 2 j/.test(view) && /Dev 3 j/.test(view) && /Tous les tickets/.test(view), view);
+  await page.goto(FILE + '#file/14'); await page.waitForTimeout(400);
+  view = await text(page, '#view');
+  check('work: a story shows its sub-tickets, each with its launch button', /Story decoupee/.test(view) && /Sous-tickets · 1/.test(view) && /Tache de la story/.test(view) && /Ouvrir/.test(await wfRow('Tache de la story')), view);
+  await page.click('#view >> text=Tous les tickets'); await page.waitForTimeout(200);
+  check('work: back to all the tickets', /Action humaine attendue/.test(await text(page, '#view')) && (await page.evaluate(() => location.hash)) === '#file');
+  for (const old of ['#activite', '#ensemble/dev', '#recherche']) {
+    await page.goto(FILE + old); await page.waitForTimeout(300);
+    check(`work: the former address ${old} opens the work view`, (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Travail' && /Travail ·/.test(await text(page, '#view')));
+  }
+  check('work: no page errors on the detail', page.errors.length === 0, page.errors.join('|'));
   await page.close();
-  // a story waiting for QA is a queued run, a paused ticket has its own group and no idle flag; the produit role has no Activité tab, so no link to it
+  // a story waiting for QA is a queued run, a paused ticket has its own group and no idle flag, an Epic opens on its sub-tickets
   const WF2 = snapshot([
     ticket(20, ['type:feature', 'level:story', 'status:qa'], { t: 'Story a tester', h: [['qa', iso(300)]] }),
     ticket(21, ['type:tech', 'status:backlog', 'on-hold'], { t: 'Ticket en pause', u: iso(20 * 1440), p: 22 }),
     ticket(22, ['type:feature', 'level:epic'], { t: 'Epic parent', k: [0, 1] }),
   ], 30);
   page = await open({ preload: [WF2] });
-  view = await tab(page, 'Activité');
-  check('workflow: QA is queued, not a human action; a paused ticket is apart and never idle', /Action humaine attendue · 0/.test(view) && /En file · 1/.test(view) && /En pause · 1/.test(view) && !/sans mouvement/.test(view), view);
-  await page.goto(FILE + '#activite/workflow/22'); await page.waitForTimeout(400);
+  view = await tab(page, 'Travail');
+  check('work: QA is queued, not a human action; a paused ticket is apart and never idle', !/Action humaine attendue/.test(view) && /À lancer · 1/.test(view) && /En pause · 1/.test(view) && !/sans mouvement/.test(view), view);
+  await page.goto(FILE + '#file/22'); await page.waitForTimeout(400);
   view = await text(page, '#view');
-  check('workflow: an Epic (no status) opens on its sub-tickets', /Epic parent/.test(view) && /Sous-tickets · 1/.test(view) && /Ticket en pause/.test(view), view);
+  check('work: an Epic (no status) opens on its sub-tickets', /Epic parent/.test(view) && /Sous-tickets · 1/.test(view) && /Ticket en pause/.test(view), view);
   await page.close();
   page = await open({ preload: [WF], role: 'produit' });
-  check('workflow: no link to the Workflow view for a role without the Activité tab', (await page.$$('#view button:has-text("Workflow")')).length === 0);
+  check('work: the role limits the phases shown', /Aucun ticket ne correspond/.test(await tab(page, 'Travail')));
   await page.close();
   // a live event continues the snapshot's history: a new status opens a stage, a flag starts its own clock
   page = await open({ preload: [WF], events: [
     ev({ n: 10, title: 'Ticket en dev', labels: ['type:tech', 'status:review-ready'], assignees: ['alice'], at: iso(10) }),
     ev({ n: 13, title: 'Ticket en file', labels: ['type:tech', 'status:backlog', 'needs-human'], assignees: [], action: 'flag', at: iso(10) })] });
-  view = await tab(page, 'Activité');
-  const wfEvRow = await text(page, '#view .row:has-text("Ticket en dev")'), flagRow = await text(page, '#view .row:has-text("Ticket en file")');
-  check('workflow: a live event moves the ticket to its new stage, the earlier ones keep their time', /à relire/.test(wfEvRow) && /Dev 3 j/.test(wfEvRow) && /Review/.test(wfEvRow), wfEvRow);
-  check('workflow: a live flag starts the blocked clock at the event', /bloqué depuis 10 min/.test(flagRow) && /Action humaine attendue · 3/.test(view), flagRow);
+  view = await tab(page, 'Travail');
+  check('work: a live event moves the ticket to its new stage', /à relire/.test(await wfRow('Ticket en dev')) && /À lancer · 2/.test(view), view);
+  await page.goto(FILE + '#file/10'); await page.waitForTimeout(400);
+  check('work: the earlier stages keep their time after a live event', /Dev 3 j/.test(await text(page, '#view')) && /Review/.test(await text(page, '#view')));
+  await page.goto(FILE + '#file'); await page.waitForTimeout(300);
+  check('work: a live flag starts the blocked clock at the event', /bloqué depuis 10 min/.test(await wfRow('Ticket en file')) && /Action humaine attendue · 3/.test(await text(page, '#view')));
   await page.close();
   // English: the day unit follows the language
   page = await open({ preload: [WF], lang: 'en' });
-  view = await tab(page, 'Activity');
-  check('workflow: English units', /blocked for 2 d/.test(view) && !/\d j\b/.test(view), view);
-  await page.close();
-  page = await open({ preload: [WF] });
-  await page.click('nav >> text=Ma file'); await page.waitForTimeout(150);
-  await page.click('#view .row:has-text("Ticket en dev") >> text=Workflow'); await page.waitForTimeout(200);
-  view = await text(page, '#view');
-  check('workflow: a ticket links to its workflow', (await page.evaluate(() => location.hash)) === '#activite/workflow/10' && /Ticket en dev/.test(view) && !/Ticket bloque/.test(view) && /Tous les workflows/.test(view), view);
-  await page.goto(FILE + '#activite/workflow/14'); await page.waitForTimeout(400);
-  view = await text(page, '#view');
-  check('workflow: a story shows its sub-tickets, each with its launch button', /Story decoupee/.test(view) && /Sous-tickets · 1/.test(view) && /Tache de la story/.test(view) && /Ouvrir/.test(await text(page, '#view .row:has-text("Tache de la story")')), view);
-  await page.click('#view >> text=Tous les workflows'); await page.waitForTimeout(200);
-  check('workflow: back to all the workflows', /Action humaine attendue/.test(await text(page, '#view')));
-  check('workflow: no page errors', page.errors.length === 0, page.errors.join('|'));
+  view = await tab(page, 'Work');
+  check('work: English units', /blocked for 2 d/.test(view) && !/\d j\b/.test(view), view);
   await page.close();
 
   // ---- open in Claude Code: links with the command typed in ----
@@ -283,9 +255,9 @@ const STUB = (opts) => `
   const ideaOpen = () => page.$eval('#ideaOpen', (a) => ({ href: a.getAttribute('href'), disabled: a.getAttribute('aria-disabled'), target: a.target, rel: a.rel }));
   const encBase = 'https://claude.ai/code/new?q=';
   const encRepo = '&repo=' + encodeURIComponent(REPO);
-  check('new request card is shown on "Ma file" and hidden on the other tabs',
-        !(await page.$eval('#idea', (e) => e.hidden)) && (await tab(page, 'Vue d’ensemble')) !== null && (await page.$eval('#idea', (e) => e.hidden)) &&
-        (await tab(page, 'Ma file')) !== null && !(await page.$eval('#idea', (e) => e.hidden)));
+  check('new request card is shown on "Travail" and hidden on the other tabs',
+        !(await page.$eval('#idea', (e) => e.hidden)) && (await tab(page, 'Architecture')) !== null && (await page.$eval('#idea', (e) => e.hidden)) &&
+        (await tab(page, 'Travail')) !== null && !(await page.$eval('#idea', (e) => e.hidden)));
   check('empty text: link disabled without a target, copy disabled, command previewed',
         (await ideaOpen()).href === null && (await ideaOpen()).disabled === 'true' && (await page.isDisabled('#ideaCopy')) &&
         /^\/pilot-spec --tech …$/.test(await text(page, '#ideaCmd')), JSON.stringify(await ideaOpen()) + await text(page, '#ideaCmd'));
@@ -327,38 +299,26 @@ const STUB = (opts) => `
   check('typing continues after the update', (await page.inputValue('#ideaText')) === 'texte en cours!');
   await page.close();
 
-  // ---- pagination of "Ma file" ----
+  // ---- long groups fold: the first rows, then the others on demand ----
   const many = [];
   for (let n = 1; n <= 45; n++) many.push(ticket(n, ['type:tech', 'status:dev-ready', n === 30 ? 'priority:P0' : 'priority:P2']));
   page = await open({ preload: [snapshot(many)] });
-  check('page 1: 20 rows and a pager', (await rows(page)) === 20 && /Page 1 sur 3 · 45 tickets/.test(await text(page, '#view')), await text(page, '#view'));
+  check('a group shows its first 8 rows and offers the others', (await rows(page)) === 8 && /À lancer · 45/.test(await text(page, '#view')) && /Afficher les 37 autres/.test(await text(page, '#view')), await text(page, '#view'));
   check('most urgent ticket (P0) comes first', /#30/.test(await page.textContent('#view .row')), await page.textContent('#view .row'));
-  check('"Précédent" disabled on the first page', await page.isDisabled('button:has-text("Précédent") >> nth=0'));
-  await page.click('button:has-text("Suivant") >> nth=0'); await page.waitForTimeout(150);
-  check('page 2: next 20, pager updated', (await rows(page)) === 20 && /Page 2 sur 3/.test(await text(page, '#view')));
-  await page.click('button:has-text("Suivant") >> nth=0'); await page.waitForTimeout(150);
-  check('last page: remaining 5, "Suivant" disabled', (await rows(page)) === 5 && /Page 3 sur 3/.test(await text(page, '#view')) && await page.isDisabled('button:has-text("Suivant") >> nth=0'));
+  await page.click('button:has-text("Afficher les 37 autres")'); await page.waitForTimeout(150);
+  check('all the rows once opened, and a way back', (await rows(page)) === 45 && /Réduire/.test(await text(page, '#view')));
+  await page.click('button:has-text("Réduire")'); await page.waitForTimeout(150);
+  check('folded again', (await rows(page)) === 8);
   await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(150);
-  check('changing role goes back to a valid page', /Ma file · Prototypes, Discovery et QA humaine · 0/.test(await text(page, '#view')) && !(await page.$('.pager')));
+  check('changing role shows what that role has', /Aucun ticket ne correspond/.test(await text(page, '#view')));
   await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(150);
-  check('back on the first page after a role change', /Page 1 sur 3/.test(await text(page, '#view')));
-  check('pagination: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.screenshot({ path: path.join(TMP, 'pagination.png') });
+  check('back on the tech role', (await rows(page)) === 8);
+  check('fold: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.screenshot({ path: path.join(TMP, 'work.png') });
   await page.close();
 
   page = await open({ preload: [snapshot(many.slice(0, 12))] });
-  check('12 tickets: no pager', !(await page.$('.pager')) && (await rows(page)) === 12);
-  await page.close();
-
-  // ---- overview columns collapse ----
-  page = await open({ preload: [snapshot(many.slice(0, 12))] });
-  await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(150);
-  const cards = () => page.$$eval('section[aria-label="Dev"] .card', (c) => c.length);
-  check('overview: a long column shows 8 cards and an expander', (await cards()) === 8 && /Afficher les 4 autres/.test(await text(page, 'section[aria-label="Dev"]')));
-  await page.click('text=Afficher les 4 autres'); await page.waitForTimeout(150);
-  check('overview: expanding shows all 12 and offers to collapse', (await cards()) === 12 && /Réduire/.test(await text(page, 'section[aria-label="Dev"]')));
-  await page.click('section[aria-label="Dev"] >> text=Réduire'); await page.waitForTimeout(150);
-  check('overview: collapsing goes back to 8', (await cards()) === 8);
+  check('12 tickets: a group of 12 folds to 8', (await rows(page)) === 8);
   await page.close();
 
   // ---- row options: --next and --multi behind a chevron ----
@@ -460,9 +420,9 @@ const STUB = (opts) => `
   const batchOpen = () => page.$eval('#batchOpen', (a) => ({ href: a.getAttribute('href'), disabled: a.getAttribute('aria-disabled') }));
   const batchCmdText = () => text(page, '#batchCmd');
   const bt = (grp, label) => page.locator(`#${grp} button`, { hasText: label }).first().click();
-  check('batch card: shown on "Ma file", folded by default', !(await page.$eval('#batch', (e) => e.hidden)) && (await page.getAttribute('#batchToggle', 'aria-expanded')) === 'false' && (await page.$eval('#batchBody', (e) => e.hidden)));
-  check('batch card hidden on the other tabs', (await tab(page, 'Vue d’ensemble')) !== null && (await page.$eval('#batch', (e) => e.hidden)));
-  await tab(page, 'Ma file');
+  check('batch card: shown on "Travail", folded by default', !(await page.$eval('#batch', (e) => e.hidden)) && (await page.getAttribute('#batchToggle', 'aria-expanded')) === 'false' && (await page.$eval('#batchBody', (e) => e.hidden)));
+  check('batch card hidden on the other tabs', (await tab(page, 'Architecture')) !== null && (await page.$eval('#batch', (e) => e.hidden)));
+  await tab(page, 'Travail');
   await page.click('#batchToggle');
   check('batch default: bare /pilot-auto, all phases', (await batchCmdText()) === '/pilot-auto', await batchCmdText());
   await bt('batchMode', '--again');
@@ -483,15 +443,15 @@ const STUB = (opts) => `
   // ---- the role shows only what matters to it ----
   const tabNames = (pg) => pg.$$eval('#tabs a', (as) => as.map((x) => x.textContent.replace(/\s*\(\d+\)$/, '')));
   page = await open({ preload: [BASE], role: 'produit' });
-  check('product role: no Activité nor Architecture tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Design', 'Wiki']), JSON.stringify(await tabNames(page)));
+  check('product role: no Architecture tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Travail', 'Prototypes', 'Design', 'Wiki']), JSON.stringify(await tabNames(page)));
   check('product role: no batch card, no tech need request', await page.$eval('#batch', (e) => e.hidden));
-  await tab(page, 'Vue d’ensemble');
-  check('product role: overview shows only Discovery and QA humaine', JSON.stringify(await page.$$eval('#view .col header strong', (e) => e.map((x) => x.textContent))) === JSON.stringify(['1 · Discovery', '5 · QA humaine']));
+  await tab(page, 'Travail');
+  check('product role: the work view shows only Discovery and QA humaine tickets', !/Ticket 4|dev en cours|à relire/.test(await text(page, '#view')));
   await page.close();
   page = await open({ preload: [BASE], role: 'tech' });
-  check('tech role: no Prototypes, Design nor Wiki tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Recherche', 'Activité', 'Architecture']), JSON.stringify(await tabNames(page)));
+  check('tech role: no Prototypes, Design nor Wiki tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Travail', 'Architecture']), JSON.stringify(await tabNames(page)));
   await page.goto(FILE + '#design'); await page.waitForTimeout(200);
-  check('tech role: a hidden tab falls back to the queue', /Ma file/.test(await text(page, '#view')));
+  check('tech role: a hidden tab falls back to the work view', /Travail ·/.test(await text(page, '#view')));
   await page.close();
 
   // ---- architecture: reference entries, the overview and accepted rules and decisions are checked against the code; a proposed or superseded one is not ----
@@ -569,7 +529,7 @@ const STUB = (opts) => `
     ticket(20, ['type:tech', 'level:story', 'status:backlog'], { t: 'Sans parent' }),
   ], 120);
   page = await open({ preload: [KIDS_SNAP] });
-  await tab(page, 'Recherche');
+  await tab(page, 'Travail'); await page.fill('#searchText', '#'); await page.waitForTimeout(150); /* a search looks at every ticket, the Epic included */
   const kidsBtn = (scope) => scope.locator('button:has-text("Sous-tickets")');
   const topRow = (n) => page.locator('#view > .list > .row', { has: page.locator(`.main > .t:has-text("#${n} ")`) });
   check('parent row: progress chip and a collapsed sub-tickets chevron with the open count',
@@ -607,16 +567,13 @@ const STUB = (opts) => `
     ev({ n: 13, title: 'Tâche en cours', labels: ['type:tech', 'level:task', 'status:review-ready'], assignees: [], action: 'set', phase: null, pr: 77, at: iso(5) }),
     ev({ n: 40, title: 'Idée approuvée', labels: ['type:feature', 'level:story', 'status:backlog'], assignees: [], action: 'approved', phase: 'discovery', at: iso(3) }),
   ] });
-  await tab(page, 'Recherche');
+  await tab(page, 'Travail'); await page.fill('#searchText', '#'); await page.waitForTimeout(150);
   const evRow = (n) => page.locator('#view > .list > .row', { has: page.locator(`:scope > .main > .t:has-text("#${n} ")`) });
   check('a ticket created since the snapshot is nested under its parent from the event alone', (await evRow(11).locator('button:has-text("Sous-tickets (2)")').count()) === 1, await evRow(11).textContent());
   await evRow(11).locator('button:has-text("Sous-tickets")').click(); await page.waitForTimeout(100);
   check('both sub-tickets are listed under the story', JSON.stringify(await page.$$eval('#view > .list > .row:has(.kids) .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim().split(' ')[0]).sort())) === JSON.stringify(['#13', '#30']));
   const prLinks = (n) => evRow(n).locator('a:has-text("PR #")').evaluateAll((as) => as.map((a) => a.href));
   check('an event carrying a PR gives the ticket its PR link', JSON.stringify(await prLinks(13)) === JSON.stringify([`https://github.com/${REPO}/pull/77`]), JSON.stringify(await prLinks(13)));
-  await tab(page, 'Activité'); await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(150);
-  view = await text(page, '#view');
-  check('activity feed words a created and an approved ticket', /créé \(prêt à coder\)/.test(view) && /approuvé \(à spécifier\)/.test(view), view);
   check('events: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
@@ -630,13 +587,13 @@ const STUB = (opts) => `
     ticket(15, ['type:feature', 'level:story', 'status:split'], { t: 'Story déjà découpée' }),
   ], 120);
   page = await open({ preload: [SEARCH_SNAP] });
-  view = await tab(page, 'Recherche');
+  view = await tab(page, 'Travail');
   check('filters are folded by default behind a chevron, with no count', (await page.getAttribute('#filtersToggle', 'aria-expanded')) === 'false' && (await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.$eval('#filtersCount', (e) => e.hidden)));
   await page.click('#filtersToggle');
   check('the chevron opens the filter panel: five groups', !(await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.locator('#searchFilters .fgrp').count()) === 5);
-  check('search tab: shown, hash route, search card visible, new-request card hidden',
-        !(await page.$eval('#search', (e) => e.hidden)) && (await page.$eval('#idea', (e) => e.hidden)) && (await page.evaluate(() => location.hash)) === '#recherche');
-  check('no filter: every ticket is listed, epics and split stories included', (await rows(page)) === 6 && /6 sur 6 tickets ouverts/.test(view), view);
+  check('work view: the search card and the new-request card are both there',
+        !(await page.$eval('#search', (e) => e.hidden)) && !(await page.$eval('#idea', (e) => e.hidden)) && (await page.evaluate(() => location.hash)) === '#file');
+  check('no filter: the tickets of the phases, epics and split stories left out', (await rows(page)) === 4 && /Travail · 4/.test(view), view);
   const names = () => page.$$eval('#view .row .t', (e) => e.map((x) => x.textContent.trim()));
   await page.fill('#searchText', 'PROFIL');
   check('keyword: case-insensitive contains on the title', (await rows(page)) === 2 && (await names()).every((n) => /profil/i.test(n)), JSON.stringify(await names()));
@@ -661,7 +618,8 @@ const STUB = (opts) => `
   check('keyword + type + level are AND-ed', (await rows(page)) === 1 && /#14/.test((await names())[0]), JSON.stringify(await names()));
   check('filter buttons reflect their state', (await page.getAttribute('#searchFilters >> text=feature', 'aria-pressed')) === 'true' && (await page.getAttribute('#searchFilters >> text=bug', 'aria-pressed')) === 'false');
   await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
-  check('reset clears the keyword and the filters', (await page.inputValue('#searchText')) === '' && (await rows(page)) === 6);
+  check('reset clears the keyword and the filters', (await page.inputValue('#searchText')) === '' && (await rows(page)) === 4);
+  await page.fill('#searchText', '#'); await page.waitForTimeout(100); /* a search looks at every ticket */
   check('search results: levels shown as chips', /story/.test(await text(page, '#view')) && /epic/.test(await text(page, '#view')));
   const searchCmds = () => page.$$eval('#view .row a.btn', (as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
   check('an epic and a split story get a /pilot-auto action (auto only, no pair)', (await searchCmds()).includes('/pilot-auto 10') && (await searchCmds()).includes('/pilot-auto 15') && !(await searchCmds()).includes('/pilot-spec 15'), JSON.stringify(await searchCmds()));
@@ -670,6 +628,7 @@ const STUB = (opts) => `
   await epicRow.locator('button:has-text("Options")').click(); await page.waitForTimeout(100);
   await epicRow.locator('.opts >> text=Enchaîner').click(); await epicRow.locator('.opts .seg button', { hasText: /^3$/ }).click(); await page.waitForTimeout(100);
   check('epic options: /pilot-auto 10 --multi 3 --next', (await searchCmds()).includes('/pilot-auto 10 --multi 3 --next'), JSON.stringify(await searchCmds()));
+  await page.fill('#searchText', ''); await page.waitForTimeout(100);
   check('no active filter and no keyword: no chip, no reset button', (await page.locator('#activeFilters').textContent()) === '');
   await page.click('#searchText'); await page.keyboard.type('profil');
   await page.evaluate((e) => window.__push('events', 'live3', e), ev({}));
@@ -677,11 +636,6 @@ const STUB = (opts) => `
   check('a live update keeps the typed keyword and the focus', (await page.inputValue('#searchText')) === 'profil' && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'searchText');
   check('search: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'search.png') });
-  await page.close();
-
-  page = await open({ preload: [snapshot(many)] });
-  await tab(page, 'Recherche');
-  check('search results are paginated', (await rows(page)) === 20 && /Page 1 sur 3 · 45 tickets/.test(await text(page, '#view')));
   await page.close();
 
   // ---- search: state filter (and flags) ----
@@ -695,7 +649,7 @@ const STUB = (opts) => `
     ticket(16, ['type:tech', 'level:task', 'status:scoping'], { t: 'Statut hors processus' }),
   ], 120);
   page = await open({ preload: [STATE_SNAP] });
-  await tab(page, 'Recherche');
+  await tab(page, 'Travail');
   await page.click('#filtersToggle');
   const stBtn = (grp, key) => page.locator(`#searchFilters button[data-map="${grp}"][data-key="${key}"]`);
   const nums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
@@ -733,7 +687,7 @@ const STUB = (opts) => `
   check('a chip removes its filter', JSON.stringify(await nums()) === setOf('#13') && (await text(page, '#filtersCount')) === '2' && (await page.locator('#activeFilters .chip.rm').count()) === 2, JSON.stringify(await nums()));
   await page.click('#filtersToggle');
   await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
-  check('reset clears state and flag filters', (await nums()).length === 7 && (await stBtn('states', 'backlog').getAttribute('aria-pressed')) === 'false' && (await stBtn('flags', 'on-hold').getAttribute('aria-pressed')) === 'false');
+  check('reset clears state and flag filters', (await nums()).length === 4 && (await stBtn('states', 'backlog').getAttribute('aria-pressed')) === 'false' && (await stBtn('flags', 'on-hold').getAttribute('aria-pressed')) === 'false');
   check('state filter: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'states.png') });
   await page.close();
@@ -758,31 +712,16 @@ const STUB = (opts) => `
   const prHref = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' }).locator('a:has-text("PR #")').evaluateAll((as) => as.map((a) => ({ href: a.href, text: a.textContent.trim(), target: a.target, rel: a.rel })));
   check('a ticket with an open PR links to it (new tab, no opener)', JSON.stringify(await prHref(2)) === JSON.stringify([{ href: `https://github.com/${REPO}/pull/33`, text: 'PR #33', target: '_blank', rel: 'noopener' }]), JSON.stringify(await prHref(2)));
   check('a ticket without a PR has no PR link', (await prHref(1)).length === 0);
-  await page.locator('#view .seg button', { hasText: 'À prendre' }).click(); await page.waitForTimeout(100);
-  check('"À prendre": role tickets that are unassigned (a changes-requested one included, review unassigns it) and neither blocked nor on hold', JSON.stringify(await fileNums()) === setOf2('#1', '#4', '#8'), JSON.stringify(await fileNums()));
-  await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
-  check('"À prendre" follows the role (product: the QA ticket)', JSON.stringify(await fileNums()) === setOf2('#5'), JSON.stringify(await fileNums()));
-  await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(100);
-  await page.locator('#view .seg button', { hasText: 'Assignés à moi' }).click(); await page.waitForTimeout(100);
-  check('"Assignés à moi" without an identity asks for it', (await fileNums()).length === 0 && /Indiquez votre identifiant GitHub/.test(await text(page, '#view')));
   check('the known assignees are offered in the identity field', (await page.locator('#meList option').evaluateAll((o) => o.map((x) => x.value).sort())).join(',') === 'alice,bob,carol');
-  await page.fill('#meInput', '@alice'); await page.waitForTimeout(100);
-  check('with an identity: every ticket assigned to me, whatever the role (a dev one and a QA one)', JSON.stringify(await fileNums()) === setOf2('#2', '#6'), JSON.stringify(await fileNums()));
-  await page.screenshot({ path: path.join(TMP, 'mine.png') });
-  check('my own tickets are highlighted and the title names me', /@alice/.test(await text(page, '#view h2')) && (await page.locator('#view .row', { hasText: '#2 ' }).locator('.chip.acc', { hasText: '@alice' }).count()) === 1);
-  await page.fill('#meInput', 'nobody'); await page.waitForTimeout(100);
-  check('an identity with no ticket: dedicated empty state', /Aucun ticket ne vous est assigné/.test(await text(page, '#view')));
-  await page.fill('#meInput', 'bob'); await page.waitForTimeout(100);
-  check('bob sees his review ticket', JSON.stringify(await fileNums()) === setOf2('#7'), JSON.stringify(await fileNums()));
   await page.evaluate((e) => window.__push('events', 'live6', e), ev({ n: 1, title: 'Libre dev', labels: ['type:tech', 'status:in-dev'], assignees: ['bob'] }));
   await page.waitForTimeout(250);
-  check('a live event assigning a ticket moves it into my list', JSON.stringify(await fileNums()) === setOf2('#1', '#7'), JSON.stringify(await fileNums()));
+  check('a live event assigning a ticket shows the new assignee on its row', /@bob/.test(await page.locator('#view .row', { hasText: '#1 ' }).textContent()));
   check('assignee: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
   page = await open({ preload: [ASSIGN_SNAP] });
   await page.fill('#meInput', 'alice');
-  await tab(page, 'Recherche'); await page.click('#filtersToggle');
+  await tab(page, 'Travail'); await page.click('#filtersToggle');
   const asBtn = (key) => page.locator(`#searchFilters button[data-map="assignees"][data-key="${key}"]`);
   const sNums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
   check('assignee filter: moi, non assigné and each assignee found', (await asBtn('me').count()) === 1 && (await asBtn('none').count()) === 1 && (await asBtn('alice').count()) === 1 && (await asBtn('bob').count()) === 1);
@@ -812,7 +751,7 @@ const STUB = (opts) => `
   page = await open({ preload: [BASE] });
   await page.click('nav >> text=Design'); await page.waitForTimeout(150);
   check('design tab: empty state with the edit card, no ticket banner', /Aucun design system/.test(await text(page, '#view')) && !(await page.$eval('#designEdit', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)));
-  check('design edit card and banner back on the other tabs', (await tab(page, 'Vue d’ensemble')) !== null && (await page.$eval('#designEdit', (e) => e.hidden)) && !(await page.$eval('#banner', (e) => e.hidden)));
+  check('design edit card and banner back on the other tabs', (await tab(page, 'Travail')) !== null && (await page.$eval('#designEdit', (e) => e.hidden)) && !(await page.$eval('#banner', (e) => e.hidden)));
   await page.click('nav >> text=Design'); await page.waitForTimeout(100);
   check('design: the edit card is folded by default, so the content comes first', (await page.$eval('#designEBody', (e) => e.hidden)));
   await page.click('#designEToggle'); await page.waitForTimeout(100);
@@ -879,54 +818,7 @@ const STUB = (opts) => `
   check('preview: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
-  // ---- overview sub-tabs: the board, then one tab per phase, addressed as #ensemble/<phase> ----
-  const SUB_SNAP = snapshot([
-    ticket(1, ['type:feature', 'level:story', 'status:draft', 'priority:P1']),
-    ticket(2, ['type:tech', 'status:backlog', 'priority:P1']), ticket(3, ['type:tech', 'status:backlog', 'priority:P2']), ticket(4, ['type:tech', 'status:in-spec', 'priority:P1']),
-    ticket(5, ['type:tech', 'status:dev-ready', 'priority:P1']), ticket(6, ['type:tech', 'status:dev-ready', 'priority:P0']), ticket(7, ['type:tech', 'status:dev-ready', 'priority:P2']),
-    ticket(8, ['type:tech', 'status:in-dev', 'priority:P1']), ticket(9, ['type:tech', 'status:in-dev', 'priority:P1']), ticket(10, ['type:tech', 'status:changes-requested', 'priority:P1']),
-    ticket(11, ['type:feature', 'level:story', 'status:qa', 'priority:P1']),
-  ], 120);
-  page = await open({ preload: [SUB_SNAP] });
-  await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(200);
-  const subLabels = () => page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent));
-  const subNow = () => page.$eval('#subtabs a[aria-current=page]', (a) => a.textContent);
-  check('overview: a second row of tabs with the board first and a count per phase',
-        JSON.stringify(await subLabels()) === JSON.stringify(['Tableau', 'Discovery (1)', 'Spec (3)', 'Dev (6)', 'Review (0)', 'QA humaine (1)']), JSON.stringify(await subLabels()));
-  check('overview: the board is the default sub-tab', (await subNow()) === 'Tableau' && !!(await page.$('#view .board')));
-  await page.click('#subtabs >> text=Dev'); await page.waitForTimeout(200);
-  const grp = () => page.$$eval('#view h3.gh', (hs) => hs.map((h) => h.textContent));
-  check('phase tab: only that phase\'s tickets, grouped by state in pipeline order, most urgent first',
-        (await subNow()).startsWith('Dev') && !(await page.$('#view .board')) && (await rows(page)) === 6 &&
-        JSON.stringify(await grp()) === JSON.stringify(['prêt à coder · 3', 'dev en cours · 2', 'corrections demandées · 1']) &&
-        /#6 /.test((await page.$$eval('#view .row', (r) => r[0].textContent))), JSON.stringify(await grp()));
-  check('phase tab: no ticket of another phase', !/Ticket 1\b/.test(await text(page, '#view')) && !/Ticket 11\b/.test(await text(page, '#view')));
-  check('phase tab: the address follows (#ensemble/dev)', (await page.evaluate(() => location.hash)) === '#ensemble/dev');
-  await page.screenshot({ path: path.join(TMP, 'subtabs.png') });
-  await page.click('#subtabs >> text=Review'); await page.waitForTimeout(200);
-  check('phase tab: an empty phase says so', /Aucun ticket dans cette phase/.test(await text(page, '#view')));
-  await page.click('#subtabs >> text=Spec'); await page.waitForTimeout(200);
-  await page.goBack(); await page.waitForTimeout(250);
-  check('phase tab: the browser back button returns to the previous sub-tab', (await subNow()).startsWith('Review'), await subNow());
-  await page.click('nav >> text=Ma file'); await page.waitForTimeout(200);
-  check('sub-tabs are hidden, and empty, on a tab that has none', (await page.$eval('#subtabs', (e) => e.hidden)) && (await page.$$('#subtabs a')).length === 0);
-  await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(200);
-  check('coming back to the overview keeps the chosen sub-tab', (await subNow()).startsWith('Review'), await subNow());
-  await page.evaluate((e) => window.__push('events', 'sub1', e), ev({ n: 5, title: 'Ticket 5', labels: ['type:tech', 'status:review-ready'] })); await page.waitForTimeout(250);
-  check('a live update moves the ticket and the counts', (await subLabels()).includes('Dev (5)') && (await subLabels()).includes('Review (1)'), JSON.stringify(await subLabels()));
-  check('overview sub-tabs: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.close();
-  page = await open({ preload: [SUB_SNAP] });
-  await page.goto(FILE + '#ensemble/spec'); await page.waitForTimeout(350);
-  check('#ensemble/spec opens that phase directly', (await subNow()).startsWith('Spec') && (await rows(page)) === 3 && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Vue d’ensemble');
-  await page.close();
-  const MANY2 = []; for (let n = 1; n <= 45; n++) MANY2.push(ticket(n, ['type:tech', 'status:dev-ready', 'priority:P2']));
-  page = await open({ preload: [snapshot(MANY2, 120)] });
-  await page.goto(FILE + '#ensemble/dev'); await page.waitForTimeout(350);
-  check('phase tab: paginated like the other lists (20 per page)', (await rows(page)) === 20 && /Page 1 sur 3/.test(await text(page, '#view')));
-  await page.close();
-
-  // ---- sub-tabs of Design (one per section) and of Activité (sessions, changes) ----
+  // ---- sub-tabs of Design (one per section) ----
   page = await open({ preload: [BASE], design: [DESIGN] });
   await page.goto(FILE + '#design'); await page.waitForTimeout(400);
   const dLabels = () => page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent));
@@ -951,24 +843,6 @@ const STUB = (opts) => `
   await page.goto(FILE + '#design/space'); await page.waitForTimeout(400);
   check('design sub-tabs: #design/space opens that section directly', (await dNow()).startsWith('Espacements') && /Espacement m/.test(await text(page, '#view')) && /Rayon s/.test(await text(page, '#view')));
   check('design sub-tabs: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.close();
-
-  const ACT = { activity: [
-    { kind: 'activity', id: 'dev-99-1', phase: 'dev', n: 99, title: 'Ticket vivant', mode: 'fresh', auto: true, by: 'alice', startedAt: iso(30), lastBeat: iso(3) },
-    { kind: 'activity', id: 'spec-5-1', phase: 'spec', n: 5, title: 'Ticket muet', mode: 'fresh', auto: false, by: 'bob', startedAt: iso(300), lastBeat: iso(180) },
-  ], events: [ev({ at: iso(2), action: 'claim:fresh' })] };
-  page = await open(Object.assign({ preload: [BASE] }, ACT));
-  await page.click('nav >> text=Activité'); await page.waitForTimeout(200);
-  check('activity sub-tabs: sessions and changes, with their counts', JSON.stringify(await dLabels()) === JSON.stringify(['Workflow (1)', 'Sessions (2)', 'Changements (1)']), JSON.stringify(await dLabels()));
-  await page.click('#subtabs >> text=Sessions'); await page.waitForTimeout(200);
-  check('activity sub-tabs: sessions apart from the changes', /Ticket vivant/.test(await text(page, '#view')) && !/pris en charge/.test(await text(page, '#view')));
-  await page.click('#subtabs >> text=Changements'); await page.waitForTimeout(200);
-  check('activity sub-tabs: the changes alone, the address follows', /pris en charge \(Dev\)/.test(await text(page, '#view')) && !/Ticket vivant/.test(await text(page, '#view')) && (await page.evaluate(() => location.hash)) === '#activite/changements');
-  await page.close();
-  page = await open(Object.assign({ preload: [BASE] }, ACT));
-  await page.goto(FILE + '#activite/changements'); await page.waitForTimeout(400);
-  check('activity sub-tabs: #activite/changements opens that sub-tab directly', (await dNow()).startsWith('Changements') && /pris en charge/.test(await text(page, '#view')));
-  check('activity sub-tabs: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
   // ---- prototypes tab: type:poc tickets joined to their metadata; sub-tabs En cours / Acceptés (3 more) / Rejetés ----
@@ -998,7 +872,7 @@ const STUB = (opts) => `
   const pSubs2 = () => page.$$eval('#subtabs2 a', (as) => as.map((a) => a.textContent));
   const pRows = () => page.$$eval('#view .row .t', (ts) => ts.map((t) => t.textContent));
   await page.click('nav >> text=Prototypes'); await page.waitForTimeout(250);
-  check('prototypes: the third main tab, with the count of those in progress', JSON.stringify((await mainTabs()).slice(0, 4)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes (2)', 'Recherche']), JSON.stringify(await mainTabs()));
+  check('prototypes: the third main tab, with the count of those in progress', JSON.stringify((await mainTabs()).slice(0, 2)) === JSON.stringify(['Travail', 'Prototypes (2)']), JSON.stringify(await mainTabs()));
   check('prototypes: sub-tabs En cours / Acceptés / Rejetés with their counts', JSON.stringify(await pSubs()) === JSON.stringify(['En cours (2)', 'Acceptés (3)', 'Rejetés (1)']), JSON.stringify(await pSubs()));
   check('prototypes: "En cours" lists the draft and the one to decide, not the others', JSON.stringify((await pRows()).map((x) => x.replace(/^#\d+ /, '')).sort()) === JSON.stringify(['Proto brouillon', 'Proto à décider']), JSON.stringify(await pRows()));
   check('prototypes: a draft is resumed, one under review is accepted or rejected (never sent to the Discovery yet) — all by command',
@@ -1052,7 +926,7 @@ const STUB = (opts) => `
         (await text(page, '#protoCmd')) === '/pilot-proto --from-artifact https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K Choisir un itinéraire sans escalier' && !!(await pHref()), await text(page, '#protoCmd'));
   await page.click('#protoSrcIdea'); await page.waitForTimeout(100);
   check('back to an idea: the architect option returns', !(await page.$eval('#protoWithWrap', (e) => e.hidden)) && (await text(page, '#protoCmd')).indexOf('--from-artifact') < 0);
-  check('new prototype card hidden on the other tabs', (await tab(page, 'Recherche')) !== null && (await page.$eval('#protoNew', (e) => e.hidden)));
+  check('new prototype card hidden on the other tabs', (await tab(page, 'Travail')) !== null && (await page.$eval('#protoNew', (e) => e.hidden)));
   await page.evaluate((d) => window.__push('protos', 'p702', Object.assign({}, d, { decision: 'accepted', decidedAt: new Date().toISOString() })), PM(702, { title: 'Proto à décider', parts: 2 }));
   await page.click('nav >> text=Prototypes'); await page.waitForTimeout(300);
   check('a live update moves a prototype: accepted, so one fewer in progress', JSON.stringify(await pSubs()) === JSON.stringify(['En cours (1)', 'Acceptés (4)', 'Rejetés (1)']), JSON.stringify(await pSubs()));
@@ -1061,12 +935,12 @@ const STUB = (opts) => `
   page = await open({ preload: [PSNAP], protos: PROTOS });
   await page.goto(FILE + '#prototypes/acceptes/termines'); await page.waitForTimeout(350);
   check('#prototypes/acceptes/termines opens that third level directly', (await pRows()).join().includes('Proto terminé') && (await page.$eval('#subtabs2 a[aria-current=page]', (a) => a.textContent)).startsWith('Terminés'));
-  await tab(page, 'Recherche'); await page.fill('#searchText', '702'); await page.waitForTimeout(200);
+  await tab(page, 'Travail'); await page.fill('#searchText', '702'); await page.waitForTimeout(200);
   check('search shows a prototype with its state in words and the command to accept it, not the Discovery', /prototype à décider/.test(await text(page, '#view')) && JSON.stringify(await rowHrefs(702)) === JSON.stringify(['/pilot-proto 702 --accept', '/pilot-proto 702 --reject']), await text(page, '#view'));
   await page.close();
   page = await open({ preload: [BASE] });
   await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
-  check('prototypes: with none at all, a hint to start one', /Aucun prototype pour l’instant/.test(await text(page, '#view')) && /Prototypes$/.test((await mainTabs())[2]));
+  check('prototypes: with none at all, a hint to start one', /Aucun prototype pour l’instant/.test(await text(page, '#view')) && /Prototypes$/.test((await mainTabs())[1]));
   await page.close();
 
   // ---- prototype in full screen: its own address, a way back, the whole screen for the frame ----
@@ -1105,24 +979,25 @@ const STUB = (opts) => `
   check('discovery rule: a prototype under review offers Accepter / Rejeter and no Discovery', /pilot-proto 710 --accept/.test(await allHrefs()) && /pilot-proto 710 --reject/.test(await allHrefs()) && !/from-proto 710/.test(await allHrefs()), await allHrefs());
   await page.click('#subtabs >> text=Acceptés'); await page.waitForTimeout(250);
   check('discovery rule: the Discovery is offered once accepted', /pilot-discovery --from-proto 711/.test(await allHrefs()), await allHrefs());
-  await tab(page, 'Recherche'); await page.fill('#searchText', 'proto'); await page.waitForTimeout(250);
-  check('from everywhere: in Recherche a prototype is its prototype row (state, command, and its mockup one tap away)',
+  await tab(page, 'Travail'); await page.fill('#searchText', 'proto'); await page.waitForTimeout(250);
+  check('from everywhere: in a search a prototype is its prototype row (state, command, and its mockup one tap away)',
         (await page.locator('#view .row', { hasText: '#710 ' }).locator('button:has-text("Plein écran")').count()) === 1 && !/from-proto 710/.test(await allHrefs()));
   await page.locator('#view .row', { hasText: '#711 ' }).locator('button:has-text("la maquette")').click(); await page.waitForTimeout(500);
-  check('from everywhere: the mockup opens in place from Recherche', (await page.$('#view iframe.prev')) !== null);
+  check('from everywhere: the mockup opens in place from a search', (await page.$('#view iframe.prev')) !== null);
   await page.goto(FILE + '#file'); await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(250);
   const storyRow = page.locator('#view .row', { hasText: '#801 ' });
-  check('from everywhere: a story created from a prototype offers it (Ma file)', (await storyRow.locator('button:has-text("Voir le proto")').count()) === 1);
+  check('from everywhere: a story created from a prototype offers it (Travail)', (await storyRow.locator('button:has-text("Voir le proto")').count()) === 1);
   await storyRow.locator('button:has-text("Voir le proto")').click(); await page.waitForTimeout(500);
   check('from everywhere: it opens that prototype in full screen', (await page.evaluate(() => location.hash)) === '#proto/712' && /#712 Proto source/.test(await text(page, '#view')) && (await page.$('#view iframe.prev')) !== null);
   check('from everywhere: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.evaluate(() => { location.hash = 'file'; }); await page.waitForTimeout(100);
+  await page.fill('#searchText', ''); /* a search looks at every ticket, whatever the role */
   await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(150);
   const myFile = await text(page, '#view');
-  check('my queue (product): a prototype to decide and an accepted one to launch',
+  check('work view (product): a prototype to decide and an accepted one to launch',
         /#710 Proto en revue/.test(myFile) && /#711 Proto accepté/.test(myFile) && /Accepter/.test(myFile) && /Lancer la Discovery/.test(myFile), myFile.slice(280, 700));
   await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(150);
-  check('my queue (tech): no prototype', !/Proto en revue/.test(await text(page, '#view')));
+  check('work view (tech): no prototype', !/Proto en revue/.test(await text(page, '#view')));
 
   // reference page (#aide): the agents and the roster, kept in step with pilot-link-roster.md "Roster"
   await page.evaluate(() => { location.hash = 'file'; }); await page.waitForTimeout(100);
@@ -1178,7 +1053,7 @@ const STUB = (opts) => `
   const mods = await page.$eval('#view', (e) => e.innerText);
   check('reference page: Modules explains where the cockpit data comes from', /D’où viennent les données du cockpit/i.test(mods) && /instantané/.test(mods));
   check('reference page: Modules gives one card per cockpit tab, each with what, how and why; the optional ones say they are on',
-        (await page.$$('#view .agents .row')).length === 8 && (mods.match(/Rôle :/g) || []).length === 8 && (mods.match(/Comment :/g) || []).length === 8 && (mods.match(/Intérêt :/g) || []).length === 8 &&
+        (await page.$$('#view .agents .row')).length === 5 && (mods.match(/Rôle :/g) || []).length === 5 && (mods.match(/Comment :/g) || []).length === 5 && (mods.match(/Intérêt :/g) || []).length === 5 &&
         (mods.match(/actif/g) || []).length === 1 && (mods.match(/masqué par le rôle/g) || []).length === 3 && /python3 \.pilot\/pilot\.py module enable/.test(mods) === false && /Wiki/.test(mods) && /Architecture/.test(mods) && /\/pilot-architecture/.test(mods), mods.slice(0, 200));
   // the role filter (Produit / Tech / Tous) applies to the help pages too
   const roleTab = async (role, sub) => { await page.click('#roleSeg >> text=' + role); await page.evaluate((s) => { location.hash = 'aide/' + s; }, sub); await page.waitForTimeout(150); return page.$eval('#view', (e) => e.innerText); };
@@ -1225,9 +1100,9 @@ const STUB = (opts) => `
         docRows.length === roster.length && docRows.every((d, i) => [0, 1, 2].every((k) => same(d[k + 1], roster[i][k]))), JSON.stringify([docRows.length, roster.length]));
   check('reference page: the table shows one row per step, with Lead, Validateur and Convocable',
         (await page.$$('#view tbody tr')).length === docRows.length && /Discovery[\s\S]*PM[\s\S]*Architecte[\s\S]*Designer/.test(await text(page, '#view tbody tr')));
-  await page.click('#tabs >> text=Ma file'); await page.waitForTimeout(150);
+  await page.click('#tabs >> text=Travail'); await page.waitForTimeout(150);
   check('reference page: clicking another tab leaves it, no back button needed',
-        (await page.evaluate(() => location.hash)) === '#file' && !(await page.$eval('#idea', (e) => e.hidden)) && /Ma file/.test(await text(page, '#view')) && (await page.$$('#subtabs a')).length === 0);
+        (await page.evaluate(() => location.hash)) === '#file' && !(await page.$eval('#idea', (e) => e.hidden)) && /Travail ·/.test(await text(page, '#view')) && (await page.$$('#subtabs a')).length === 0);
 
   // ---- wiki tab: the project's wiki document (built by `pilot.py wiki snapshot`), read-only ----
   const WIKI = { kind: 'wiki', repo: REPO, at: iso(20), total: 4, truncated: false, entries: [
@@ -1442,15 +1317,15 @@ const STUB = (opts) => `
     const withMods = (m) => Object.assign({}, BASE, { modules: m });
     let page = await open({ preload: [withMods({ dashboard: true, wiki: false, architecture: false, design: false, proto: false })] });
     check('modules: a module that is off hides its tab (Design, Prototypes, Wiki, Architecture)',
-          JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Recherche', 'Activité']), JSON.stringify(await tabs(page)));
+          JSON.stringify(await tabs(page)) === JSON.stringify(['Travail']), JSON.stringify(await tabs(page)));
     await page.goto(FILE + '#design'); await page.waitForTimeout(350);
     check('modules: an address into a tab whose module is off falls back to the queue',
-          (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Ma file' && !(await page.$eval('#idea', (e) => e.hidden)));
+          (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Travail' && !(await page.$eval('#idea', (e) => e.hidden)));
     await page.goto(FILE + '#proto/702'); await page.waitForTimeout(350);
-    check('modules: a prototype address with the proto module off falls back too', (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Ma file');
+    check('modules: a prototype address with the proto module off falls back too', (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Travail');
     await page.evaluate((d) => window.__push('snapshots', 'Jonas-Eve__myavimobility', d), withMods({ dashboard: true, wiki: true, architecture: false, design: false, proto: true })); await page.waitForTimeout(250);
     check('modules: turning a module on shows its tab at the next snapshot, the others stay hidden',
-          JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Activité', 'Wiki']), JSON.stringify(await tabs(page)));
+          JSON.stringify(await tabs(page)) === JSON.stringify(['Travail', 'Prototypes', 'Wiki']), JSON.stringify(await tabs(page)));
     {
       const off = withMods({ dashboard: true, wiki: false, architecture: false, design: false, proto: false });
       const p2 = await open({ preload: [off] });
@@ -1466,7 +1341,7 @@ const STUB = (opts) => `
     await page.close();
     page = await open({ preload: [BASE] });
     check('modules: a snapshot without the field shows every tab, as before',
-          JSON.stringify(await tabs(page)) === JSON.stringify(['Ma file', 'Vue d’ensemble', 'Prototypes', 'Recherche', 'Activité', 'Design', 'Wiki', 'Architecture']), JSON.stringify(await tabs(page)));
+          JSON.stringify(await tabs(page)) === JSON.stringify(['Travail', 'Prototypes', 'Design', 'Wiki', 'Architecture']), JSON.stringify(await tabs(page)));
     await page.close();
   }
 
@@ -1481,22 +1356,15 @@ const STUB = (opts) => `
     const issues = [ticket(11, ['type:feature', 'level:story', 'status:qa', 'priority:P1'], { t: 'Story restée à tester' }),
                     ticket(12, ['type:tech', 'status:dev-ready', 'priority:P1'], { t: 'Tâche prête' })];
     const withWf = (w) => Object.assign({}, snapshot(issues, 120), w ? { workflow: w } : {});
-    const subTabs = (pg) => pg.$$eval('#subtabs a', (as) => as.map((a) => a.textContent.replace(/ \(\d+\)$/, '')));
     const chip = (pg) => pg.$eval('#profileChip', (e) => ({ hidden: e.hidden, text: e.textContent, title: e.title }));
 
     let page = await open({ preload: [withWf(LEAN)] });
     let c = await chip(page);
     check('profile: the chip shows the project\'s profile, with its rules as the tooltip',
           !c.hidden && c.text === 'Profil lean' && /Pas de QA humaine/.test(c.title) && /Pas de tâche e2e/.test(c.title) && /Relecture : Tech lead seul/.test(c.title), JSON.stringify(c));
-    await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(200);
-    check('profile: a phase the project does not run has no sub-tab (lean: no human QA)',
-          JSON.stringify(await subTabs(page)) === JSON.stringify(['Tableau', 'Discovery', 'Spec', 'Dev', 'Review']), JSON.stringify(await subTabs(page)));
-    check('profile: the board has one column per phase the project runs', (await page.$$eval('#view section.col', (x) => x.length)) === 4);
-    check('profile: a ticket left at a status of a dropped phase is outside every queue, not shown in a column',
-          !/Story restée à tester/.test(await text(page, '#view .board')) && /Tâche prête/.test(await text(page, '#view .board')));
-    await page.goto(FILE + '#ensemble/qa'); await page.waitForTimeout(350);
-    check('profile: an address into a phase the project does not run falls back to the board',
-          (await page.$eval('#subtabs a[aria-current=page]', (a) => a.textContent)) === 'Tableau' && !!(await page.$('#view .board')));
+    await page.click('nav >> text=Travail'); await page.waitForTimeout(200);
+    check('profile: a ticket left at a status of a dropped phase is not in the work view, the others are',
+          !/Story restée à tester/.test(await text(page, '#view')) && /Tâche prête/.test(await text(page, '#view')));
     await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
     check('profile: the help page states the profile and its rules', /Profil du projet : lean\. Pas de QA humaine\. Pas de tâche e2e\. Relecture : Tech lead seul\./.test(await text(page, '#profileNote')), await text(page, '#profileNote'));
     check('profile: the help page states the default mode and the Spec rule of a tech story',
@@ -1547,15 +1415,15 @@ const STUB = (opts) => `
     await page.close();
 
     page = await open({ preload: [withWf(STANDARD)] });
-    await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(200);
+    await page.click('nav >> text=Travail'); await page.waitForTimeout(200);
     check('profile: standard keeps the QA phase and shows its rules',
-          (await subTabs(page)).includes('QA humaine') && (await page.$$eval('#view section.col', (x) => x.length)) === 5 && (await chip(page)).text === 'Profil standard' && /QA humaine pour les features/.test((await chip(page)).title), JSON.stringify(await subTabs(page)));
+          /Story restée à tester/.test(await text(page, '#view')) && (await chip(page)).text === 'Profil standard' && /QA humaine pour les features/.test((await chip(page)).title));
     await page.close();
 
     page = await open({ preload: [withWf(null)] });
-    await page.click('nav >> text=Vue d’ensemble'); await page.waitForTimeout(200);
+    await page.click('nav >> text=Travail'); await page.waitForTimeout(200);
     check('profile: a snapshot without the field shows the whole chain and no chip, as before',
-          (await chip(page)).hidden && (await subTabs(page)).includes('QA humaine') && (await page.$$eval('#view section.col', (x) => x.length)) === 5, JSON.stringify(await subTabs(page)));
+          (await chip(page)).hidden && /Story restée à tester/.test(await text(page, '#view')));
     await page.close();
   }
 
@@ -1595,9 +1463,9 @@ const STUB = (opts) => `
   }
 
   // every tab and sub-tab fits a phone, in both themes, with no script error
-  const ROUTES = ['file', 'ensemble', 'ensemble/discovery', 'ensemble/spec', 'ensemble/dev', 'ensemble/review', 'ensemble/qa',
+  const ROUTES = ['file', 'file/99',
     'prototypes/encours', 'prototypes/acceptes/alancer', 'prototypes/acceptes/encours', 'prototypes/acceptes/termines', 'prototypes/rejetes', 'proto/702',
-    'recherche', 'activite/sessions', 'activite/changements', 'aide/principes', 'aide/modes', 'aide/tickets', 'aide/connaissances', 'aide/cas', 'aide/modules', 'aide/agents', 'aide/steps',
+    'aide/principes', 'aide/modes', 'aide/tickets', 'aide/connaissances', 'aide/cas', 'aide/modules', 'aide/agents', 'aide/steps',
     'design/charter', 'design/colors', 'design/type', 'design/space', 'design/components', 'design/a11y'];
   const wide = [];
   for (const scheme of ['light', 'dark']) {
@@ -1640,17 +1508,17 @@ const STUB = (opts) => `
     await page.evaluate(() => { location.hash = 'aide/agents'; }); await page.waitForTimeout(150);
     await page.click('#langSeg button[lang=fr]'); await page.waitForTimeout(200);
     check('language: switching to French translates back (tabs, form, footer) and keeps what was typed',
-          /Ma file/.test(await text(page, '#tabs')) && /Nouvelle demande/.test(await text(page, '#idea')) && /déployé le/.test(await text(page, '#version')) && (await page.inputValue('#ideaText')) === 'ma note');
+          /Travail/.test(await text(page, '#tabs')) && /Nouvelle demande/.test(await text(page, '#idea')) && /déployé le/.test(await text(page, '#version')) && (await page.inputValue('#ideaText')) === 'ma note');
     check('language: the choice is remembered', (await page.evaluate(() => localStorage.getItem('cp.lang'))) === 'fr');
     await page.close();
     page = await open({ lang: null, preload: [Object.assign({}, BASE, { language: 'fr' })] });
-    check('language: with no choice yet the page follows the project language (fr)', /Ma file/.test(await text(page, '#tabs')));
+    check('language: with no choice yet the page follows the project language (fr)', /Travail/.test(await text(page, '#tabs')));
     await page.close();
     page = await open({ lang: null, preload: [Object.assign({}, BASE, { language: 'en' })] });
-    check('language: and English when the project is English, or says nothing', /My queue/.test(await text(page, '#tabs')));
+    check('language: and English when the project is English, or says nothing', /Work/.test(await text(page, '#tabs')));
     await page.close();
     page = await open({ lang: 'en', preload: [Object.assign({}, BASE, { language: 'fr' })] });
-    check('language: a reader\'s own choice wins over the project language', /My queue/.test(await text(page, '#tabs')));
+    check('language: a reader\'s own choice wins over the project language', /Work/.test(await text(page, '#tabs')));
     await page.close();
     const keys = fs.readFileSync(TEMPLATE, 'utf8');
     const stale = Object.keys(JSON.parse(keys.match(/var EN=(\{[\s\S]*?\n\});/)[1])).filter((k) => keys.split(k).length < 3);

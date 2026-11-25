@@ -110,7 +110,7 @@ itself.
   §3 below). `pilot-dashboard.html.tmpl` is different: the page `/pilot-dashboard`
   renders (`{{PROJECT_NAME}}`, `{{REPO}}`, `{{PILOT_VERSION}}` — the `VERSION` file — and `{{DEPLOYED_AT}}`, the publication time, substituted only into the published copy so the recorded hash ignores it) and publishes as one private Artifact per
   project; `/pilot-update` republishes it at the same address, so a page change ships
-  with a PILOT release and the project's data (snapshot, events, activity) is kept. It
+  with a PILOT release and the project's data (snapshot, events) is kept. It
   is checked by `scripts/test_dashboard.js` (renders it, loads it in headless Chromium with
   stubbed `window.claude` capabilities; `node scripts/test_dashboard.js`, needs `playwright`):
   change the page, change that test. **While developing the page, publish it to the demo
@@ -119,7 +119,7 @@ itself.
   republished by `/pilot-update`, or when the human asks for it explicitly. The "i" page (Principes, Modes, Tickets, Connaissances, Cas particuliers, Modules, Agents, Steps) is how a user learns how PILOT works: when a phase, a module, a tab or a
   command changes, update its texts (`HOW_PHASES`, `HOW_TABS`, the `vHow*` functions, `AGENTS`, `ROSTER`) in the same PR. Refresh the demo
   data with `python3 scripts/demo_snapshot.py --dir DIR` and `ArtifactData` (`snapshots`
-  `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, `wiki` `Jonas-Eve__pilot` (`wiki.json`), `architecture` `Jonas-Eve__pilot` (`architecture.json`), plus the `activity`/`events`/`protos`/`protoHtml` files it writes).
+  `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, `wiki` `Jonas-Eve__pilot` (`wiki.json`), `architecture` `Jonas-Eve__pilot` (`architecture.json`), plus the `events`/`protos`/`protoHtml` files it writes).
 - `scripts/lint_pilot.py` — maintainers' coherence linter, never copied into a project: doc references, orphan task/link
   docs, persona duty lists, label vocabulary and `pilot.py` commands cited against `pilot.py`, quoted section titles that must exist in the doc they are cited from, counts written in words and the lists `pilot-help` spells out against what is installed, `argument-hint` flags, `PILOT:` markers in the templates, size of the LLM-read
   files. Runs in CI with `test_lint_pilot.py` and `test_pilot.py` (`.github/workflows/lint-pilot.yml`); run it after any edit of the families §3's cross-reference check
@@ -146,7 +146,7 @@ itself.
   writers of an entry's frontmatter and of the folder `index.md` files, and `migrate` — design in `docs/wiki-design.md`; used by `pilot-wiki` and, when the `wiki` module is enabled, by all five phases) and
   `arch` (the architecture module's bundle under `architecture/` — `overview.md`, `guidelines/*.md`, `reference/<id>.md` (how the code is built today; `--verify` checks it, and the accepted guidelines and ADRs, against the code, a human arbitrating each divergence), `adr/NNNN-title.md`, `runbooks/<id>.md` (how to operate: read on demand, left out of `--active`) — on the same OKF engine and the same reading commands as `wiki` (`search`, `describe`, `index --depth 1`; `snapshot` (the dashboard's Architecture tab document), `index` — `--active` gives the one-row-per-entry list of what is in force that dev, spec and review prompts carry instead of the files —, `reindex`, `show`, `lint`, `add`, `set`, `remove`, plus `supersede NEW OLD` for ADRs, `next-number` and `inventory` (outlines of what a project already documents, for `--bootstrap`) (ADR numbers run across the whole bundle); `--app <name>` on `index`/`search` gives the transversal entries plus one app's, a monorepo keeping an app's own rules under `architecture/apps/<app>/`; no GitHub call); design in `docs/modules-design.md` §6) and `flow` (`doc`: the dashboard's `flowRuns` document of a run of a user flow, from the persona runs and the consolidation — hashes of the flow and of each persona that played, the worst result, the bugs; no GitHub call; refuses a run that played no step) and `doctor` (preflight each phase skill runs as its step 0, once per session: python, `gh api` reachable (never `gh auth status`: it can be wrong behind a token-swapping proxy),
   repo access and push permission, the 32 PILOT labels, the `wiki/` and `architecture/` directories when those modules are on — `--no-wiki` lets `pilot-wiki` repair a missing one) and `module` (`list` — also the project's content `language`, English by default, which `wiki`/`arch` `lint` check entries against —, `enable`, `disable`: the optional modules of `.pilot/state.json` — `wiki`, `architecture`, `dashboard`, `design`, `proto` — with the prerequisites each declares; the snapshot document carries them so the dashboard's tabs follow). Every command prints one JSON
-  object; `claim`/`set`/`flag`/`unflag` also return the `event` (and `claim` the `activity`)
+  object; `claim`/`set`/`flag`/`unflag` also return the `event`
   the phase skills push to the dashboard (`pilot-link-dashboard.md`), and `event` builds one
   for a ticket a skill changed itself (Discovery, the tasks Spec creates). Judgment (which agent
   to call, what a spec or review says, pair dialogue) never lives in it. Copied verbatim into

@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-/* Layout: sticky control strip on top, three views below (ma file / vue d'ensemble / workflows). Cool paper neutrals, cobalt accent, semantic colors kept separate. */
+/* Layout: sticky control strip on top, tabs below (Travail with its #file/N detail, Prototypes, Design, Wiki, Architecture). Cool paper neutrals, cobalt accent, semantic colors kept separate. */
 :root{
   --bg:#F2F5F8; --surface:#FFFFFF; --surface2:#E9EEF3; --line:#D5DDE5;
   --fg:#121C26; --muted:#566677; --accent:#1747C9; --accent-fg:#FFFFFF; --accent-soft:#E3EBFD;
@@ -134,7 +134,6 @@ nav.tabs.sub a{padding:6px 12px;font-size:13px}
 .pair{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center}
 .prev{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff}
 a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
-.pager{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
 .overlay{position:fixed;inset:0;background:rgba(8,12,18,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
 .dlg{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:520px;width:100%;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow:auto}
 .dlg h3{margin:0;font-size:16px}
@@ -208,20 +207,16 @@ var EN={
 " en cours": " in progress",
 " la maquette": " the mockup",
 " la section « ": " the section « ",
-" sans statut PILOT.": " without a PILOT status.",
-" story suivie par ses tâches (split)": " story followed by its tasks (split)",
 " terminés": " done",
 " tickets ouverts": " open tickets",
 " tickets ouverts · instantané pris ": " open tickets · snapshot taken ",
 " tout le design system": " the whole design system",
-" · dernier signe ": " · last sign ",
 " · liste tronquée (": " · list truncated (",
 " · textes raccourcis": " · shortened texts",
 "(sans titre)": "(untitled)",
 "Accepter": "Accept",
 "Acceptés": "Accepted",
 "Accessibilité": "Accessibility",
-"Activité": "Activity",
 "Actualiser l’instantané": "Refresh the snapshot",
 "Adresse de l’artefact (un des vôtres, une seule page autonome de moins de 1 Mo)": "Artifact address (one of yours, a single self-contained page under 1 MB)",
 "Afficher les ": "Show the ",
@@ -233,25 +228,19 @@ var EN={
 "Architecte": "Architect",
 "Architecture · mis à jour ": "Architecture · updated ",
 "Assigné": "Assigned",
-"Assignés à moi": "Assigned to me",
 "Attend un humain": "Waiting for a human",
-"Aucun changement signalé par les sessions pour le moment.": "No change reported by the sessions for now.",
 "Aucun design system pour ce projet. Utilisez « Créer ou modifier » ci-dessus pour le lancer.": "No design system for this project. Use “Create or modify” above to start one.",
 "Aucun instantané pour ": "No snapshot for ",
 "Aucun prototype dans cette vue.": "No prototype in this view.",
 "Aucun prototype pour l’instant. Utilisez « Nouveau prototype » ci-dessus pour en lancer un.": "No prototype yet. Use “New prototype” above to start one.",
 "Aucun ticket": "No ticket",
-"Aucun ticket dans cette phase.": "No ticket in this phase.",
 "Aucun ticket ne correspond.": "No ticket matches.",
-"Aucun ticket ne vous est assigné.": "No ticket is assigned to you.",
 "Aucun wiki publié pour ce projet. Activez-le avec « /pilot-wiki » (puis « /pilot-wiki --bootstrap » pour l’amorcer depuis les tickets et le code), puis publiez-le avec « /pilot-dashboard --refresh ».": "No wiki published for this project. Enable it with “/pilot-wiki” (then “/pilot-wiki --bootstrap” to seed it from the tickets and the code), then publish it with “/pilot-dashboard --refresh”.",
 "Aucune architecture publiée pour ce projet. Activez-la avec « /pilot-architecture » (puis « /pilot-architecture --bootstrap » pour l’amorcer depuis les apps existantes), puis publiez-la avec « /pilot-dashboard --refresh ».": "No architecture published for this project. Enable it with “/pilot-architecture” (then “/pilot-architecture --bootstrap” to seed it from the existing apps), then publish it with “/pilot-dashboard --refresh”.",
 "Aucune entrée.": "No entry.",
-"Aucune session n’a signalé d’activité récemment.": "No session has reported activity recently.",
 "Avec": "With",
 "Besoin technique": "Technical need",
 "Cadre votre idée avec vous, rédige les stories, vérifie qu’un découpage couvre les critères d’acceptation, relit les livraisons produit, cadre un prototype puis le contrôle.": "Frames your idea with you, writes the stories, checks that a split covers the acceptance criteria, reviews product deliveries, frames a prototype then checks it.",
-"Changements": "Changes",
 "Chargement de la maquette…": "Loading the mockup…",
 "Charte": "Charter",
 "Charte graphique": "Brand charter",
@@ -270,15 +259,12 @@ var EN={
 "Couleurs": "Colors",
 "Créer": "Create",
 "Créer ou modifier": "Create or modify",
-"Derniers changements": "Latest changes",
 "Action humaine attendue": "Human action awaited",
-"← Tous les workflows": "← All workflows",
+"← Tous les tickets": "← All tickets",
+"Travail": "Work",
+"Détail": "Details",
 "Ticket introuvable.": "Ticket not found.",
 "Sous-tickets · ": "Sub-tickets · ",
-"Aucun ticket n’attend un humain.": "No ticket is waiting for a human.",
-"Aucun ticket en cours.": "No ticket in progress.",
-"En file": "Queued",
-"Aucun ticket en file.": "No ticket queued.",
 "bloqué depuis ": "blocked for ",
 "dans cette étape depuis ": "in this stage for ",
 "sans mouvement": "no movement",
@@ -312,7 +298,6 @@ var EN={
 "Implémente un ticket spécifié, relit son propre diff et ouvre la PR.": "Implements a specified ticket, reviews its own diff and opens the PR.",
 "Importer un artefact": "Import an artifact",
 "Indiquez votre identifiant GitHub (en haut de la page) pour que « moi » désigne vos tickets.": "Enter your GitHub username (top of the page) so that “me” designates your tickets.",
-"Indiquez votre identifiant GitHub (en haut de la page) pour voir les tickets qui vous sont assignés.": "Enter your GitHub username (top of the page) to see the tickets assigned to you.",
 "Instantané ancien : relancez la mise à jour depuis une session du projet.": "Old snapshot: run the update again from a project session.",
 "Instantané · ": "Snapshot · ",
 "Interroger le wiki": "Query the wiki",
@@ -347,8 +332,6 @@ var EN={
 "Lancer la Discovery": "Start the Discovery",
 "Lecture de la base impossible (": "Cannot read the database (",
 "Lecture des données en cours. Exemples affichés en attendant.": "Reading the data. Examples shown meanwhile.",
-"Ma file": "My queue",
-"Ma file · ": "My queue · ",
 "Maquette du prototype #": "Mockup of prototype #",
 "Maquette indisponible.": "Mockup unavailable.",
 "Merger sur GitHub": "Merge on GitHub",
@@ -378,8 +361,6 @@ var EN={
 "Prototypes acceptés · ": "Accepted prototypes · ",
 "Prototypes en cours": "Prototypes in progress",
 "Prototypes rejetés": "Rejected prototypes",
-"Prototypes, Discovery et QA humaine": "Prototypes, Discovery and human QA",
-"Précédent": "Previous",
 "Raison : ": "Reason: ",
 "Rayon ": "Radius ",
 "Recherche": "Search",
@@ -389,8 +370,6 @@ var EN={
 "Reprendre": "Resume",
 "Retirer le filtre ": "Remove the filter ",
 "Rien de défini pour l’instant.": "Nothing defined yet.",
-"Rien n’attend ce rôle pour le moment.": "Nothing is waiting for this role for now.",
-"Rien à prendre pour ce rôle pour le moment.": "Nothing to take for this role for now.",
 "Règles": "Rules",
 "Procédures": "Runbooks",
 "Règles d’usage": "Usage rules",
@@ -398,8 +377,6 @@ var EN={
 "Réinitialiser": "Reset",
 "Répondre sur GitHub": "Reply on GitHub",
 "Répétition": "Repetition",
-"Résultats · ": "Results · ",
-"Sessions en cours · ": "Running sessions · ",
 "Seulement": "Only",
 "Spec : l’architecte et le tech lead cadrent et spécifient le besoin.": "Spec: the architect and the tech lead frame and specify the need.",
 "Spec : l’architecte qualifie le défaut, puis crée le ticket.": "Spec: the architect qualifies the defect, then creates the ticket.",
@@ -415,18 +392,12 @@ var EN={
 "Mode par défaut : pair (avec vous).": "Default mode: pair (with you).",
 "Spec tech : le tech lead écrit, l’architecte valide.": "Tech spec: the tech lead writes, the architect validates.",
 "Spec tech : le tech lead seul ; l’architecte intervient sur dépendances ou plusieurs apps.": "Tech spec: the tech lead alone; the architect steps in on dependencies or several apps.",
-"Spec, Dev et Review": "Spec, Dev and Review",
 "Spécifier": "Specify",
 "Statuts": "Statuses",
-"Suivant": "Next",
-"Tableau": "Table",
 "Terminés": "Done",
 "Tester": "Test",
-"Tickets ouverts hors file : ": "Open tickets outside a queue: ",
 "Tous": "All",
-"Tous rôles": "All roles",
 "Tout le design system": "The whole design system",
-"Toutes les phases": "All phases",
 "Traite un seul ticket prêt, puis s’arrête.": "Handles a single ready ticket, then stops.",
 "Traiter": "Handle",
 "Type de demande": "Request type",
@@ -442,18 +413,13 @@ var EN={
 "Vérifier le wiki": "Check the wiki",
 "Wiki · mis à jour ": "Wiki · updated ",
 "accepté": "accepted",
-"approuvé (": "approved (",
 "approuvé, à merger": "approved, to merge",
 "après le cadrage par le PM": "after the PM’s framing",
-"assignés à ": "assigned to ",
 "attend un humain": "waiting for a human",
-"blocage levé": "block lifted",
 "brouillon en cours": "draft in progress",
 "corrections demandées": "changes requested",
-"créé (": "created (",
 "dev en cours": "dev in progress",
 "découpée en tâches": "split into tasks",
-"démarré ": "started ",
 "en cours": "in progress",
 "en dev": "in dev",
 "en pause": "paused",
@@ -470,7 +436,6 @@ var EN={
 "non assigné": "unassigned",
 "non vérifié": "not verified",
 "plusieurs PM, chacun validé par l’architecte, puis les propositions convergent": "several PMs, each validated by the architect, then the proposals converge",
-"pris en charge (": "taken over (",
 "proposé": "proposed",
 "prototype accepté": "prototype accepted",
 "prototype en construction": "prototype under construction",
@@ -482,12 +447,10 @@ var EN={
 "relecture en cours": "review in progress",
 "remplacé": "superseded",
 "remplacé par ": "superseded by ",
-"sans signe de vie": "no sign of life",
 "sans statut": "no status",
 "sinon : seulement la section ouverte": "otherwise: only the open section",
 "spec en cours": "spec in progress",
 "spécifié": "specified",
-"statut : ": "status: ",
 "suit ce ticket dans toutes les phases suivantes, jusqu’à la fin ou un blocage": "follows this ticket through all the following phases, until the end or a block",
 "test en cours": "test in progress",
 "traite ce qui est prêt dans cette arborescence, ticket après ticket, jusqu’à la fin ou un blocage": "handles what is ready in this tree, ticket after ticket, until the end or a block",
@@ -523,11 +486,9 @@ var EN={
 "À chaque step, le lead ouvre la discussion avec vous. Quand il a terminé, le validateur y entre et contrôle le livrable seul. Un agent convocable se demande dès le départ avec --with, ou en cours de discussion, et vous pouvez en congédier un à tout moment.": "At each step, the lead opens the discussion with you. When done, the validator joins and checks the deliverable alone. A summonable agent is requested from the start with --with, or during the discussion, and you can dismiss one at any time.",
 "À lancer": "To launch",
 "À partir d’une idée": "From an idea",
-"À prendre": "To take",
 "Écran de préférences d’accessibilité": "Accessibility preferences screen",
 "Écrit le test de bout en bout que chaque story produit exige, une fois les tâches fusionnées.": "Writes the end-to-end test each product story requires, once the tasks are merged.",
 "État": "State",
-"à prendre · ": "to take · ",
 "à relire": "to review",
 "à spécifier": "to specify",
 "à tester": "to test",
@@ -550,8 +511,7 @@ var EN={
 var EN_RULES=[
   function(s){return s.replace(/il y a (\d+) min\b/g,'$1 min ago').replace(/il y a (\d+) h\b/g,'$1 h ago').replace(/il y a (\d+) j\b/g,'$1 d ago');},
   function(s){var m=/^(.+?) (\(\d+\))$/.exec(s);return m&&EN.hasOwnProperty(m[1])?EN[m[1]]+' '+m[2]:s;}, /* "Accepted (3)" */
-  function(s){var m=/^(\d+) (\S.*)$/.exec(s);return m&&EN.hasOwnProperty(m[2])?m[1]+' '+EN[m[2]]:s;}, /* "1 specified" */
-  function(s){return s.replace(/^Page (\d+) sur (\d+) · (\d+) tickets$/,'Page $1 of $2 · $3 tickets');}
+  function(s){var m=/^(\d+) (\S.*)$/.exec(s);return m&&EN.hasOwnProperty(m[2])?m[1]+' '+EN[m[2]]:s;} /* "1 specified" */
 ];
 var EN_SUB=Object.keys(EN).filter(function(k){return k.length>=12||/^\s|\s$/.test(k);}).sort(function(a,b){return b.length-a.length;});
 var LANG='en', TR_CACHE={}, TR_ATTRS={'title':1,'aria-label':1,'placeholder':1,'alt':1};
@@ -662,9 +622,9 @@ var SAMPLE=[
 /* ---------- state ---------- */
 var S={
   repo:'{{REPO}}',
-  role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), scope:store('cp.scope')||'tous',
-  tab:'file', page:0, expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'principes',ensemble:'tableau',design:'charter',activite:'workflow',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
-  db:null, snaps:{}, events:{}, evlist:[], activity:[],
+  role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), 
+  tab:'file', expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  db:null, snaps:{}, events:{},
   gh:{state:'init',msg:'',live:[],at:null}
 };
 var unGh=null;
@@ -677,7 +637,7 @@ function cur(){
 var TAB_MODULE={prototypes:'proto',design:'design',wiki:'wiki',architecture:'architecture'};
 function moduleOn(tab){var m=S.gh&&S.gh.modules; return !TAB_MODULE[tab]||!m||m[TAB_MODULE[tab]]===true;}
 /* a role sees only the tabs and requests that matter to it; "tous" keeps everything */
-var ROLE_TABS={produit:['file','ensemble','prototypes','wiki','design','recherche'],tech:['file','ensemble','activite','architecture','recherche']};
+var ROLE_TABS={produit:['file','prototypes','wiki','design'],tech:['file','architecture']};
 var ROLE_KINDS={produit:['produit','bug'],tech:['tech','bug']};
 function roleShows(tab){var r=ROLE_TABS[S.role]; return !r||r.indexOf(tab)>-1;}
 function tabOn(tab){return moduleOn(tab)&&roleShows(tab);}
@@ -709,8 +669,7 @@ function watchSnapshots(){
   });
 }
 
-/* ---------- live layers: events and activity written by the project's PILOT sessions ---------- */
-var PHASE_FR={discovery:'Discovery',spec:'Spec',dev:'Dev',review:'Review',qa:'QA humaine',proto:'Prototype'}, STALE_MIN=60;
+/* ---------- live layer: ticket events written by the project's PILOT sessions ---------- */
 /* a ticket event newer than the base list (snapshot or direct read) replaces that ticket's state */
 function overlay(list,baseAt){
   var by={}; list.forEach(function(t){by[t.n]=t;});
@@ -728,13 +687,10 @@ function overlay(list,baseAt){
 function watchLive(){
   if(!S.db)return;
   S.db.collection('events').orderBy('at','desc').limit(500).onSnapshot(function(snap){
-    var latest={}, list=[];
-    snap.docs.forEach(function(d){var v=d.data(); if(!v||v.kind!=='ticket'||!v.n)return; list.push(v);
+    var latest={};
+    snap.docs.forEach(function(d){var v=d.data(); if(!v||v.kind!=='ticket'||!v.n)return;
       if(!latest[v.n]||String(v.at)>String(latest[v.n].at))latest[v.n]=v;});
-    S.events=latest; S.evlist=list.sort(function(a,b){return String(b.at).localeCompare(String(a.at));}); render();
-  },function(){});
-  S.db.collection('activity').onSnapshot(function(snap){
-    S.activity=snap.docs.map(function(d){var v=d.data(); return v&&v.kind==='activity'?v:null;}).filter(Boolean); render();
+    S.events=latest; render();
   },function(){});
   try{S.db.collection('protos').onSnapshot(function(snap){
     S.protos={}; snap.docs.forEach(function(d){var v=d.data(); if(v&&v.kind==='proto'&&v.n&&(!v.repo||snapId(v.repo)===snapId(S.repo)))S.protos[v.n]=v;}); render();
@@ -756,27 +712,9 @@ function watchLive(){
     S.arch=null; snap.docs.forEach(function(d){var v=d.data(); if(v&&v.kind==='architecture'&&v.repo&&snapId(v.repo)===snapId(S.repo))S.arch=v;}); render();
   },function(){});}catch(e){}
 }
-function minutesSince(iso){var d=(Date.now()-new Date(iso).getTime())/60000; return isFinite(d)?d:1e9;}
-function beat(a){return a.lastBeat||a.startedAt||'';}
-function isAlive(a){return minutesSince(beat(a))<STALE_MIN;}
-function eventText(e){
-  var st=lab({labels:e.labels||[]},'status:');
-  if(/^claim/.test(e.action))return 'pris en charge ('+(PHASE_FR[e.phase]||e.phase||'')+')';
-  if(e.action==='created')return 'créé ('+(STATUS_FR[st]||st||'sans statut')+')';
-  if(e.action==='approved')return 'approuvé ('+(STATUS_FR[st]||st||'sans statut')+')';
-  if(e.action==='flag')return 'attend un humain';
-  if(e.action==='unflag')return 'blocage levé';
-  return e.state==='closed'?'fermé':'statut : '+(STATUS_FR[st]||st||'sans statut');
-}
-function recentActs(){
-  return S.activity.filter(function(a){return minutesSince(beat(a))<24*60;})
-    .sort(function(a,b){return beat(b).localeCompare(beat(a));});
-}
-/* ---------- workflow: where each ticket stands in the chain, how long it spent in each stage, who must act ---------- */
+/* ---------- work: the open tickets of the phases, grouped by what they need, with the time spent in their stage ---------- */
 function stageMs(iso){var d=Date.now()-new Date(iso).getTime(); return isFinite(d)&&d>0?d:0;}
 function dur(ms){var m=Math.round(ms/60000); if(m<60)return Math.max(1,m)+' min'; if(m<1440)return Math.round(m/60)+' h'; return Math.round(m/1440)+(LANG==='en'?' d':' j');}
-/* a human is awaited: a flag to resolve, a PR to merge (what actionFor answers with a GitHub link); a ticket on hold is paused, nobody is awaited */
-function humanWait(t){var k=actionFor(t).kind; return k==='human'||k==='merge';}
 function enteredAt(t){
   var h=t.h||[]; for(var i=h.length-1;i>=0;i--)if(h[i][0]===t.status)return h[i][1];
   return t.updated||'';
@@ -787,69 +725,65 @@ function phaseTimes(t){
   h.forEach(function(x,i){var ph=phaseOf(x[0]); if(!ph)return; out[ph.key]=(out[ph.key]||0)+(i+1<h.length?Math.max(0,new Date(h[i+1][1]).getTime()-new Date(x[1]).getTime()):stageMs(x[1]));});
   return out;
 }
-function workflowRows(){
-  return tickets().filter(function(t){return t.status&&t.status!=='split'&&phaseOf(t.status);}).map(function(t){
-    var since=has(t,'needs-human')&&t.nh?t.nh:enteredAt(t);
-    return {t:t,human:humanWait(t),hold:has(t,'on-hold'),since:since,ms:stageMs(since)};
-  }).sort(function(a,b){return (b.human-a.human)||(b.ms-a.ms);});
+/* where a ticket stands: a human is awaited (a flag to resolve, a PR to merge, a prototype to decide), work is under way, it is paused, or it waits to be launched */
+function workGroup(t){
+  var k=actionFor(t).kind;
+  if(k==='hold')return 'pause';
+  if(k==='human'||k==='merge'||t.status==='poc-review')return 'human';
+  if(/^in-/.test(t.status)||t.status==='poc-draft')return 'going';
+  return 'queue';
 }
-/* a ticket in the workflow view: its chain with the time spent in each phase and in the current one, then the launch buttons of the other views, so a stuck or flagged workflow is relaunched from here */
-function workflowRow(r){
-  var t=r.t, ph=phaseOf(t.status), times=phaseTimes(t), phases=phasesOn(), at=phases.indexOf(ph), flag=has(t,'needs-human'), stale=!r.human&&!has(t,'on-hold')&&r.ms>=7*86400000;
-  return ticketRow(t,false,0,h('div',{},
-    ph?h('div',{class:'meta'},phases.map(function(p,i){
+function workItem(t){var since=has(t,'needs-human')&&t.nh?t.nh:enteredAt(t); return {t:t,group:workGroup(t),ms:stageMs(since)};}
+/* a prototype is product work while it is being built, waiting for a decision, or accepted and not yet taken up by a Discovery */
+function protoWork(){var o={}; protoList().forEach(function(e){if(e.group==='encours'||(e.group==='acceptes'&&e.sub==='alancer'))o[e.n]=1;}); return o;}
+/* a search or a filter looks at every open ticket (an Epic, a ticket without a status); otherwise the view is the tickets of the phases of the role */
+function filtering(){return !!S.q.trim()||[S.levels,S.types,S.states,S.flags,S.assignees].some(function(m){return Object.keys(m).some(function(k){return m[k];});});}
+function workRows(){
+  var pocs=protoWork(), any=filtering();
+  function inRole(t){if(any)return true; if(pocs[t.n])return S.role==='tous'||S.role==='produit'; var p=phaseOf(t.status); return !!p&&(S.role==='tous'||p.role===S.role);}
+  return tickets().filter(function(t){return inRole(t)&&matches(t);}).map(workItem);
+}
+var WORK_GROUPS=[['human','Action humaine attendue'],['going','En cours'],['queue','À lancer'],['pause','En pause']];
+/* a ticket of the work view: where it stands and since when, then the launch buttons; `detail` adds the chain with the time spent in each phase */
+function workRow(r,detail){
+  var t=r.t, ph=phaseOf(t.status), phases=phasesOn(), at=phases.indexOf(ph), times=phaseTimes(t), flag=has(t,'needs-human');
+  var stale=!!ph&&(r.group==='going'||r.group==='queue')&&r.ms>=7*86400000;
+  return ticketRow(t,filtering(),0,h('div',{},
+    detail&&ph?h('div',{class:'meta'},phases.map(function(p,i){
       var d=times[p.key];
       return h('span',{class:'chip'+(i===at?' acc':i<at?' ok':''),'aria-current':i===at?'step':null},p.name+(d?' '+dur(d):''));})):null,
-    h('div',{class:'meta'},
-      ph?h('span',{class:'note'},tr(flag?'bloqué depuis ':'dans cette étape depuis ')+dur(r.ms)):null,
-      stale?h('span',{class:'chip warn'},'sans mouvement'):null)));
+    ph?h('div',{class:'meta'},(t.h&&t.h.length)||(flag&&t.nh)?h('span',{class:'note'},tr(flag?'bloqué depuis ':'dans cette étape depuis ')+dur(r.ms)):null,stale?h('span',{class:'chip warn'},'sans mouvement'):null):null));
 }
-/* one ticket's workflow (the link of every other view): the ticket, then its sub-tickets */
-function vWorkflowOf(n){
+/* one ticket's detail (the link of every row): the ticket with its chain, then its sub-tickets */
+function vWorkOf(n){
   var t=tickets().filter(function(x){return x.n===n;})[0];
   if(!t)return h('div',{class:'empty'},'Ticket introuvable.');
-  function row(x){var since=has(x,'needs-human')&&x.nh?x.nh:enteredAt(x); return workflowRow({t:x,human:humanWait(x),since:since,ms:stageMs(since)});}
   var kids=kidsOf(n);
   return h('div',{class:'list'},
-    h('a',{class:'btn ghost',href:'#activite/workflow'},'← Tous les workflows'),
-    row(t),
+    h('a',{class:'btn ghost',href:'#file'},'← Tous les tickets'),
+    workRow(workItem(t),true),
     kids.length?h('h2',{},'Sous-tickets · '+kids.length):null,
-    kids.map(row));
+    kids.map(function(x){return workRow(workItem(x),true);}));
 }
-function vWorkflow(){
-  if(S.wf)return vWorkflowOf(S.wf);
-  var rows=workflowRows(), human=rows.filter(function(r){return r.human;}), paused=rows.filter(function(r){return r.hold;}), live=rows.filter(function(r){return !r.human&&!r.hold;}),
-      going=live.filter(function(r){return /^in-/.test(r.t.status);}), queue=live.filter(function(r){return !/^in-/.test(r.t.status);});
-  function group(title,list,empty){return h('div',{class:'list'},h('h2',{},title+' · '+list.length),list.length?list.map(workflowRow):h('div',{class:'empty'},empty));}
+function vWork(){
+  if(S.wf)return vWorkOf(S.wf);
+  var rows=workRows();
+  function byGroup(g){
+    var list=rows.filter(function(r){return r.group===g;});
+    return g==='queue'?list.sort(function(a,b){return byUrgency(a.t,b.t);}):list.sort(function(a,b){return b.ms-a.ms;});
+  }
+  var blocks=WORK_GROUPS.map(function(g){
+    var list=byGroup(g[0]); if(!list.length)return null;
+    var open=!!S.expanded['w:'+g[0]], shown=open?list:list.slice(0,COL_LIMIT);
+    return [h('h2',{},g[1],' · '+list.length),shown.map(function(r){return workRow(r);}),
+      list.length>COL_LIMIT?h('button',{class:'btn',type:'button',onclick:function(){S.expanded['w:'+g[0]]=!open;render();}},open?'Réduire':'Afficher les '+(list.length-COL_LIMIT)+' autres'):null];
+  }).filter(Boolean);
   return h('div',{class:'list'},
-    group('Action humaine attendue',human,'Aucun ticket n’attend un humain.'),
-    group('En cours',going,'Aucun ticket en cours.'),
-    group('En file',queue,'Aucun ticket en file.'),
-    paused.length?group('En pause',paused,''):null);
-}
-function vActivity(){
-  var acts=recentActs(), alive=acts.filter(isAlive).length;
-  if(S.sub.activite==='workflow')return vWorkflow();
-  if(S.sub.activite==='changements')return h('div',{class:'list'},
-    h('h2',{},'Derniers changements'),
-    S.evlist.length?h('div',{class:'list'},S.evlist.slice(0,15).map(function(e){
-      return h('div',{class:'row'},h('div',{class:'main'},
-        h('div',{class:'t'},h('span',{class:'num'},'#'+e.n+' '),e.title||''),
-        h('div',{class:'meta'},h('span',{class:'note'},ago(e.at)+' · '+eventText(e)+(e.by?' · '+e.by:'')))));
-    })):h('div',{class:'empty'},'Aucun changement signalé par les sessions pour le moment.'));
-  return h('div',{class:'list'},
-    h('h2',{},'Sessions en cours · '+alive),
-    acts.length?acts.map(function(a){
-      var ok=isAlive(a);
-      return h('div',{class:'row'+(ok?'':' flag')},
-        h('div',{class:'main'},
-          h('div',{class:'t'},h('span',{class:'num'},'#'+a.n+' '),a.title||''),
-          h('div',{class:'meta'},h('span',{class:'chip acc'},PHASE_FR[a.phase]||a.phase||'?'),
-            a.human===true?h('span',{class:'chip'},'humain'):a.auto===true?h('span',{class:'chip'},'auto'):a.auto===false?h('span',{class:'chip'},'pair'):null,
-            a.by?h('span',{class:'note'},a.by):null,
-            h('span',{class:'note'},'démarré '+ago(a.startedAt)+' · dernier signe '+ago(beat(a))))),
-        h('div',{class:'acts'},h('span',{class:'chip '+(ok?'ok':'warn')},h('span',{class:'dot'}),ok?'en cours':'sans signe de vie')));
-    }):h('div',{class:'empty'},'Aucune session n’a signalé d’activité récemment.'));
+    h('h2',{},'Travail',' · '+rows.length),
+    vTally(),
+    h('p',{class:'note',title:'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'},'Auto : l’agent travaille seul. Pair : vous dialoguez avec lui. Humain : vous décidez, l’agent analyse et challenge.'),
+    S.assignees.me&&!S.me?h('p',{class:'note'},'Indiquez votre identifiant GitHub (en haut de la page) pour que « moi » désigne vos tickets.'):null,
+    blocks.length?blocks:h('div',{class:'empty'},'Aucun ticket ne correspond.'));
 }
 
 /* ---------- views ---------- */
@@ -875,19 +809,11 @@ function copyCmd(text,btn){
   try{navigator.clipboard.writeText(text).then(function(){done(true);},function(){done(false);});}catch(e){done(false);}
 }
 
-var PAGE_SIZE=20, COL_LIMIT=8, PRIO={P0:0,P1:1,P2:2};
+var COL_LIMIT=8, PRIO={P0:0,P1:1,P2:2};
 function prioRank(t){var r=PRIO[lab(t,'priority:')];return r==null?9:r;}
 function byUrgency(a,b){
   var fa=has(a,'needs-human')?0:1, fb=has(b,'needs-human')?0:1; if(fa!==fb)return fa-fb;
   return prioRank(a)-prioRank(b)||String(b.updated).localeCompare(String(a.updated));
-}
-function pager(total){
-  var pages=Math.ceil(total/PAGE_SIZE); if(pages<2)return null;
-  function go(p){S.page=p;render();try{document.getElementById('view').scrollIntoView({block:'start'});}catch(e){}}
-  return h('div',{class:'pager',role:'navigation','aria-label':'Pagination'},
-    h('button',{class:'btn',type:'button',disabled:S.page<=0,onclick:function(){go(S.page-1);}},'Précédent'),
-    h('span',{class:'note'},'Page '+(S.page+1)+' sur '+pages+' · '+total+' tickets'),
-    h('button',{class:'btn',type:'button',disabled:S.page>=pages-1,onclick:function(){go(S.page+1);}},'Suivant'));
 }
 var MULTI_CHOICES=[0,2,3,4,5];
 function multiSeg(cur,onpick,label){
@@ -967,7 +893,7 @@ function ticketRow(t,withLevel,depth,extra){
           a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none'?ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'):null,
           t.r?h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r):null,
           protoOf(t.n)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+protoOf(t.n);}},'Voir le proto'):null,
-          S.tab!=='activite'&&tabOn('activite')&&(phaseOf(t.status)||kids.length)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#activite/workflow/'+t.n;}},'Workflow'):null,
+          S.wf!==t.n&&(phaseOf(t.status)||kids.length)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#file/'+t.n;}},'Détail'):null,
           kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){set('kids',!o.kids);}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
         a.kind==='run'&&hasOpts&&o.open?h('div',{class:'opts'},
           rc.canAuto&&rc.pair?h('div',{class:'grp'},h('button',{class:'tog',type:'button','aria-pressed':String(useAuto),onclick:function(){if(useAuto)o.next=false;o.human=false;set('auto',!useAuto);}},rc.qa?'Navigateur':'Auto'),
@@ -1013,34 +939,6 @@ function vTally(){
   return h('div',{class:'tally',role:'list','aria-label':'Ce qui attend'},tiles.map(function(x){
     return h('div',{class:'tile'+x.cls+(x.n?'':' zero'),role:'listitem'},h('strong',{},String(x.n)),h('span',{},x.label));}));
 }
-var SCOPES=[['prendre','À prendre'],['moi','Assignés à moi'],['tous','Tous']];
-function vFile(){
-  /* a prototype is product work while it is being built, waiting for a decision, or accepted and not yet taken up by a Discovery */
-  var pocs={}; protoList().forEach(function(e){if(e.group==='encours'||(e.group==='acceptes'&&e.sub==='alancer'))pocs[e.n]=1;});
-  function inRole(t){if(pocs[t.n])return S.role==='tous'||S.role==='produit';var p=phaseOf(t.status);return p&&(S.role==='tous'||p.role===S.role);}
-  var mine=tickets().filter(function(t){
-    if(!phaseOf(t.status)&&!pocs[t.n])return false;
-    if(S.scope==='moi')return !!S.me&&t.assignee===S.me;
-    if(S.scope==='prendre')return inRole(t)&&!t.assignee&&!has(t,'needs-human')&&!has(t,'on-hold');
-    return inRole(t);
-  }).sort(byUrgency);
-  var pages=Math.max(1,Math.ceil(mine.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
-  var shown=mine.slice(S.page*PAGE_SIZE,(S.page+1)*PAGE_SIZE);
-  var roleTxt=S.scope==='moi'?'Tous rôles':S.role==='produit'?'Prototypes, Discovery et QA humaine':S.role==='tech'?'Spec, Dev et Review':'Toutes les phases';
-  var scopeSeg=h('div',{class:'seg',role:'group','aria-label':'Tickets'},SCOPES.map(function(c){
-    return h('button',{type:'button','aria-pressed':String(S.scope===c[0]),onclick:function(){S.scope=c[0];S.page=0;store('cp.scope',c[0]);render();}},c[1]);}));
-  return h('div',{class:'list'},
-    h('h2',{},'Ma file · '+(S.scope==='moi'?'assignés à '+(S.me?'@'+S.me:'moi')+' · ':S.scope==='prendre'?'à prendre · ':'')+roleTxt+' · '+mine.length),
-    vTally(),
-    scopeSeg,
-    h('p',{class:'note',title:'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'},'Auto : l’agent travaille seul. Pair : vous dialoguez avec lui. Humain : vous décidez, l’agent analyse et challenge.'),
-    pager(mine.length),
-    shown.length?shown.map(function(t){return ticketRow(t);}):h('div',{class:'empty'},
-      S.scope==='moi'&&!S.me?'Indiquez votre identifiant GitHub (en haut de la page) pour voir les tickets qui vous sont assignés.':
-      S.scope==='moi'?'Aucun ticket ne vous est assigné.':S.scope==='prendre'?'Rien à prendre pour ce rôle pour le moment.':'Rien n’attend ce rôle pour le moment.'),
-    shown.length>5?pager(mine.length):null);
-}
-
 /* ---------- search: keyword (case- and accent-insensitive "contains", every word must match) + level + type ---------- */
 var LEVEL_FR={epic:'epic',story:'story',task:'tâche'}, LEVELS=['epic','story','task'], TYPES=['feature','tech','bug','e2e'];
 function fold(x){return String(x==null?'':x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
@@ -1068,7 +966,7 @@ function filterName(map,k){
 function activeFilters(){
   var out=[]; FGROUPS.forEach(function(g){Object.keys(S[g[0]]).forEach(function(k){if(S[g[0]][k])out.push({map:g[0],group:g[1],key:k});});}); return out;
 }
-function clearSearch(){S.q='';S.levels={};S.types={};S.states={};S.flags={};S.assignees={};S.page=0;document.getElementById('searchText').value='';render();}
+function clearSearch(){S.q='';S.levels={};S.types={};S.states={};S.flags={};S.assignees={};document.getElementById('searchText').value='';render();}
 function buildSearch(){
   var box=document.getElementById('search'), open=store('cp.fold.filters')==='1';
   var chev=h('span',{class:'chev','aria-hidden':'true'},open?'▾':'▸'), panel=h('div',{class:'fpanel',id:'searchFilters',hidden:open?null:true});
@@ -1078,7 +976,7 @@ function buildSearch(){
   box.append(
     h('h2',{},'Recherche'),
     h('label',{for:'searchText',class:'note'},'Mot-clé dans le titre ou le numéro (majuscules et accents ignorés). Plusieurs mots : tous doivent y figurer.'),
-    h('input',{type:'search',id:'searchText',autocomplete:'off',placeholder:'Ex. : profil, #418, mot de passe',oninput:function(e){S.q=e.target.value;S.page=0;render();}}),
+    h('input',{type:'search',id:'searchText',autocomplete:'off',placeholder:'Ex. : profil, #418, mot de passe',oninput:function(e){S.q=e.target.value;render();}}),
     h('div',{class:'filters'},tog,h('div',{class:'filters',id:'activeFilters'})),
     panel);
   updateSearch();
@@ -1101,7 +999,7 @@ function updateSearch(){
     S._sk=sig;
     var grp=function(label,ks,mapName){
       return h('div',{class:'fgrp',role:'group','aria-label':label},h('span',{class:'note'},label),
-        h('div',{class:'chips'},ks.map(function(k){return h('button',{class:'tog',type:'button','data-map':mapName,'data-key':k,'aria-pressed':'false',onclick:function(){S[mapName][k]=!S[mapName][k];S.page=0;render();}},filterName(mapName,k));})));
+        h('div',{class:'chips'},ks.map(function(k){return h('button',{class:'tog',type:'button','data-map':mapName,'data-key':k,'aria-pressed':'false',onclick:function(){S[mapName][k]=!S[mapName][k];render();}},filterName(mapName,k));})));
     };
     f.replaceChildren(grp('Niveau',LEVELS,'levels'),grp('Type',TYPES,'types'),grp('État',keys,'states'),grp('Assigné',akeys,'assignees'),grp('Drapeau',['needs-human','on-hold'],'flags'));
   }
@@ -1112,21 +1010,9 @@ function updateSearch(){
   cnt.textContent=String(act.length); cnt.hidden=!act.length;
   box.replaceChildren.apply(box,act.map(function(a){
     return h('button',{class:'chip acc rm',type:'button','aria-label':'Retirer le filtre '+a.group+' '+filterName(a.map,a.key),
-      onclick:function(){S[a.map][a.key]=false;S.page=0;render();}},a.group+' : '+filterName(a.map,a.key)+' ✕');
+      onclick:function(){S[a.map][a.key]=false;render();}},a.group+' : '+filterName(a.map,a.key)+' ✕');
   }).concat(act.length||S.q?[h('button',{class:'btn ghost',type:'button',onclick:clearSearch},'Réinitialiser')]:[]));
 }
-function vSearch(){
-  var res=tickets().filter(matches).sort(function(a,b){return String(b.updated).localeCompare(String(a.updated));});
-  var pages=Math.max(1,Math.ceil(res.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
-  var shown=res.slice(S.page*PAGE_SIZE,(S.page+1)*PAGE_SIZE);
-  return h('div',{class:'list'},
-    h('h2',{},'Résultats · '+res.length+' sur '+tickets().length+' tickets ouverts'),
-    pager(res.length),
-    S.assignees.me&&!S.me?h('p',{class:'note'},'Indiquez votre identifiant GitHub (en haut de la page) pour que « moi » désigne vos tickets.'):null,
-    shown.length?shown.map(function(t){return ticketRow(t,true);}):h('div',{class:'empty'},'Aucun ticket ne correspond.'),
-    shown.length>5?pager(res.length):null);
-}
-
 /* ---------- sub-tabs: a second row under a main tab, addressed as #tab/sub (one component, reused by every tab that has them) ---------- */
 function subnav(tab,items,cur,id,prefix){
   var el=document.getElementById(id||'subtabs');
@@ -1134,21 +1020,12 @@ function subnav(tab,items,cur,id,prefix){
   el.replaceChildren.apply(el,items.map(function(t){
     return h('a',{href:'#'+(prefix||tab)+'/'+t[0],'aria-current':cur===t[0]?'page':null,onclick:function(){if(id==='subtabs2')S.sub3=t[0];else setSub(tab,t[0]);}},t[1]+(t[2]!=null?' ('+t[2]+')':''));}));
 }
-function setSub(tab,key){S.sub[tab]=key;S.page=0;}
+function setSub(tab,key){S.sub[tab]=key;}
 var DESIGN_SUBS=[['charter','Charte'],['colors','Couleurs'],['type','Typographie'],['space','Espacements'],['components','Composants'],['a11y','Accessibilité']];
-var ACT_SUBS=[['workflow','Workflow'],['sessions','Sessions'],['changements','Changements']];
 var PROTO_SUBS=[['encours','En cours'],['acceptes','Acceptés'],['rejetes','Rejetés']];
 var ACC_SUBS=[['alancer','À lancer'],['encours','En cours'],['termines','Terminés']];
-var SUBS={ensemble:null,design:DESIGN_SUBS,activite:ACT_SUBS,prototypes:PROTO_SUBS};
-var OV_SUBS=[['tableau','Tableau']].concat(PHASES.map(function(p){return [p.key,p.name];}));
-SUBS.ensemble=OV_SUBS;
-function phaseItems(p){
-  return tickets().filter(function(t){return p.statuses.indexOf(t.status)>-1;}).sort(function(a,b){
-    return p.statuses.indexOf(a.status)-p.statuses.indexOf(b.status)||byUrgency(a,b);});
-}
-function ovSubs(){return [['tableau','Tableau']].concat(phasesView().map(function(p){return [p.key,p.name];}));}
+var SUBS={design:DESIGN_SUBS,prototypes:PROTO_SUBS};
 function subItems(tab){
-  if(tab==='ensemble')return ovSubs().map(function(s){var p=phasesView().filter(function(q){return q.key===s[0];})[0];return [s[0],s[1],p?phaseItems(p).length:null];});
   if(tab==='design'){
     var d=S.design; if(!d)return [];
     var ty=d.type||{}, sp=d.space||{};
@@ -1166,42 +1043,8 @@ function subItems(tab){
     return [['tous','Tous',archEntries().length||null]].concat(gs);
   }
   if(tab==='prototypes'){var c=protoCounts();return [['encours','En cours',c.encours||null],['acceptes','Acceptés',c.acceptes||null],['rejetes','Rejetés',c.rejetes||null]];}
-  if(tab==='activite')return [['workflow','Workflow',workflowRows().length||null],['sessions','Sessions',recentActs().length||null],['changements','Changements',Math.min(15,S.evlist.length)||null]];
   return [];
 }
-function vPhase(p){
-  var items=phaseItems(p), count={}, last=null, out=[];
-  items.forEach(function(t){count[t.status]=(count[t.status]||0)+1;});
-  var pages=Math.max(1,Math.ceil(items.length/PAGE_SIZE)); if(S.page>=pages)S.page=pages-1; if(S.page<0)S.page=0;
-  items.slice(S.page*PAGE_SIZE,(S.page+1)*PAGE_SIZE).forEach(function(t){
-    if(t.status!==last){last=t.status;out.push(h('h3',{class:'gh'},(STATUS_FR[t.status]||t.status)+' · '+count[t.status]));}
-    out.push(ticketRow(t,true));
-  });
-  return h('div',{class:'list'},h('h2',{},p.n+' · '+p.name+' · '+items.length),pager(items.length),
-    out.length?out:h('div',{class:'empty'},'Aucun ticket dans cette phase.'),out.length>5?pager(items.length):null);
-}
-function vOverview(){
-  var all=tickets();
-  var cols=phasesView().map(function(p){
-    var items=all.filter(function(t){return p.statuses.indexOf(t.status)>-1;}).sort(byUrgency);
-    var open=!!S.expanded[p.key], shown=open?items:items.slice(0,COL_LIMIT);
-    return h('section',{class:'col','aria-label':p.name},
-      h('header',{},h('strong',{},p.n+' · '+p.name),h('span',{class:'chip'},items.length)),
-      S.role==='tous'?h('span',{class:'own'},p.role==='produit'?'Produit':'Tech'):null,
-      shown.length?shown.map(function(t){
-        return h('div',{class:'card'+(has(t,'needs-human')?' flag':'')},
-          h('div',{class:'t'},h('span',{class:'num mono'},'#'+t.n+' '),t.title),
-          h('div',{class:'meta'},ticketChips(t)));
-      }):h('div',{class:'empty'},'Aucun ticket'),
-      items.length>COL_LIMIT?h('button',{class:'btn',type:'button',onclick:function(){S.expanded[p.key]=!open;render();}},
-        open?'Réduire':'Afficher les '+(items.length-COL_LIMIT)+' autres'):null);
-  });
-  var split=all.filter(function(t){return t.status==='split';}).length;
-  var off=all.filter(function(t){return !t.status&&!has(t,'level:epic');}).length;
-  return h('div',{class:'list'},h('h2',{},'Vue d’ensemble'),h('div',{class:'board'},cols),
-    h('p',{class:'note'},'Tickets ouverts hors file : '+split+' story suivie par ses tâches (split)'+(off?', '+off+' sans statut PILOT.':'.')));
-}
-
 /* ---------- new request: start Discovery, a tech Spec or a bug Spec from scratch ---------- */
 var KINDS=[
   {key:'produit',label:'Idée produit',prefix:'/pilot-discovery ',hint:'Discovery : le PM rédige, l’architecte valide, pour une ou plusieurs stories.'},
@@ -1703,8 +1546,6 @@ function renderConn(){
   var g=S.gh, chips=[], age=g.at?(Date.now()-new Date(g.at).getTime())/3600e3:null;
   if(g.state==='live'){if(age>24)chips.push(h('span',{class:'chip warn'},h('span',{class:'dot'}),'Instantané · '+ago(g.at)));} /* a fresh snapshot is already said by the banner */
   else chips.push(h('span',{class:'chip '+(g.state==='loading'||g.state==='init'?'':'warn')},h('span',{class:'dot'}),'Instantané · '+(g.state==='loading'||g.state==='init'?'lecture…':'absent')));
-  var alive=S.activity.filter(isAlive).length;
-  if(alive)chips.push(h('span',{class:'chip ok'},h('span',{class:'dot'}),'Sessions · '+alive+' en cours'));
   var c=document.getElementById('conn'); c.replaceChildren.apply(c,chips);
 }
 function renderChrome(){
@@ -1713,10 +1554,9 @@ function renderChrome(){
   if(dl.getAttribute('data-k')!==want){dl.setAttribute('data-k',want);dl.replaceChildren.apply(dl,Object.keys(logins).sort().map(function(l){return h('option',{value:l});}));}
   var seg=document.getElementById('roleSeg');
   seg.replaceChildren.apply(seg,[['produit','Produit'],['tech','Tech'],['tous','Tous']].map(function(r){
-    return h('button',{type:'button','aria-pressed':String(S.role===r[0]),onclick:function(){S.role=r[0];S.page=0;store('cp.role',r[0]);render();}},r[1]);}));
-  var alive=S.activity.filter(isAlive).length;
+    return h('button',{type:'button','aria-pressed':String(S.role===r[0]),onclick:function(){S.role=r[0];store('cp.role',r[0]);render();}},r[1]);}));
   var tabs=document.getElementById('tabs');
-  tabs.replaceChildren.apply(tabs,[['file','Ma file'],['ensemble','Vue d’ensemble'],['prototypes','Prototypes'+(protoCounts().encours?' ('+protoCounts().encours+')':'')],['recherche','Recherche'],['activite','Activité'+(alive?' ('+alive+')':'')],['design','Design'],['wiki','Wiki'+(wikiEntries().length?' ('+wikiEntries().length+')':'')],['architecture','Architecture'+(archEntries().length?' ('+archEntries().length+')':'')]].filter(function(t){return tabOn(t[0]);}).map(function(t){
+  tabs.replaceChildren.apply(tabs,[['file','Travail'],['prototypes','Prototypes'+(protoCounts().encours?' ('+protoCounts().encours+')':'')],['design','Design'],['wiki','Wiki'+(wikiEntries().length?' ('+wikiEntries().length+')':'')],['architecture','Architecture'+(archEntries().length?' ('+archEntries().length+')':'')]].filter(function(t){return tabOn(t[0]);}).map(function(t){
     return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]&&!S.viewHelp?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
@@ -1727,19 +1567,18 @@ function render(){
   var hl=document.getElementById('helpLink'); if(H)hl.setAttribute('aria-current','page'); else hl.removeAttribute('aria-current');
   document.getElementById('idea').hidden=H||S.tab!=='file';updateIdea();
   document.getElementById('batch').hidden=H||S.tab!=='file'||S.role==='produit'; /* the sweeps are Spec, Dev and Review: no auto mode for product work */
-  document.getElementById('search').hidden=H||S.tab!=='recherche';updateSearch();
+  document.getElementById('search').hidden=H||S.tab!=='file'||!!S.wf;updateSearch();
   document.getElementById('designEdit').hidden=H||S.tab!=='design';updateDesign();
   document.getElementById('protoNew').hidden=H||S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
   document.getElementById('banner').hidden=H||S.tab==='design'||S.tab==='wiki'||S.tab==='architecture'||(S.tab==='prototypes'&&!!S.viewProto);
-  if(S.tab==='ensemble'&&S.sub.ensemble!=='tableau'&&!phasesView().some(function(p){return p.key===S.sub.ensemble;}))S.sub.ensemble='tableau'; /* a phase this project does not run */
   var pc=document.getElementById('profileChip'), wf=S.gh&&S.gh.workflow;
   pc.hidden=!wf; if(wf){pc.textContent=tr('Profil')+' '+wf.profile; pc.title=profileSummary(wf);}
-  var items=subItems(S.tab), ph=phasesView().filter(function(p){return p.key===S.sub.ensemble;})[0];
+  var items=subItems(S.tab);
   if(H)subnav('aide',HELP_SUBS,S.sub.aide);
   else if(items.length&&!(S.tab==='prototypes'&&S.viewProto))subnav(S.tab,items,S.sub[S.tab]); else subnav('',[],'');
   if(!H&&S.tab==='prototypes'&&!S.viewProto&&S.sub.prototypes==='acceptes')subnav('prototypes',protoSubItems(),S.sub3,'subtabs2','prototypes/acceptes'); else subnav('',[],'','subtabs2');
   var v=document.getElementById('view');
-  v.replaceChildren(H?vHelp():S.tab==='ensemble'?(ph?vPhase(ph):vOverview()):S.tab==='recherche'?vSearch():S.tab==='activite'?vActivity():S.tab==='design'?vDesign():S.tab==='wiki'?vWiki():S.tab==='architecture'?vArch():S.tab==='prototypes'?vProtos():vFile());
+  v.replaceChildren(H?vHelp():S.tab==='design'?vDesign():S.tab==='wiki'?vWiki():S.tab==='architecture'?vArch():S.tab==='prototypes'?vProtos():vWork());
 }
 
 /* ---------- reference panel: the agents and who leads, validates or can be summoned at each step (mirrors `.pilot/pilot-link-roster.md` "Roster") ---------- */
@@ -2013,17 +1852,8 @@ function vHowCases(){
 }
 var HOW_TABS=[
   {id:"file",mod:"",
-    fr:{title:"Ma file",what:"Les tickets qui vous attendent : à valider, bloqués par un drapeau, ou à reprendre. Le formulaire du haut lance une idée.",how:"Ouvrez-la chaque matin ; filtrez par rôle (Produit / Tech) ; indiquez votre login pour voir « mes » tickets.",why:"Vous voyez en un coup d’œil ce qui dépend de vous, sans parcourir GitHub."},
-    en:{title:"My queue",what:"The tickets waiting for you: to approve, blocked by a flag, or to resume. The form at the top starts an idea.",how:"Open it each morning; filter by role (Product / Tech); enter your login to see “my” tickets.",why:"You see at a glance what depends on you, without browsing GitHub."}},
-  {id:"ensemble",mod:"",
-    fr:{title:"Vue d’ensemble",what:"Le tableau de tous les tickets ouverts par phase, avec les commandes à lancer pour chaque phase.",how:"Choisissez une phase ; lancez-la depuis le bloc de commandes, en pair ou en auto.",why:"Vous pilotez le flux : où ça s’accumule, ce qui est bloqué."},
-    en:{title:"Overview",what:"The board of all open tickets by phase, with the commands to run for each phase.",how:"Pick a phase; run it from the command block, in pair or auto mode.",why:"You steer the flow: where work piles up, what is blocked."}},
-  {id:"recherche",mod:"",
-    fr:{title:"Recherche",what:"Une recherche dans les tickets, avec filtres par niveau, type, statut, drapeau et assigné.",how:"Tapez un mot ou un numéro, affinez avec les filtres.",why:"Retrouver un ticket ou une décision sans fouiller."},
-    en:{title:"Search",what:"A search across tickets, filtered by level, type, status, flag and assignee.",how:"Type a word or a number, narrow with filters.",why:"Find a ticket or a decision without digging."}},
-  {id:"activite",mod:"",
-    fr:{title:"Activité",what:"Le workflow des tickets (où en est chacun dans la chaîne, le temps passé à chaque étape, ce qui attend un humain), les sessions d’agents en cours et l’historique des changements de statut.",how:"Consultez le workflow pour savoir quoi débloquer en premier, les sessions pour savoir qui travaille sur quoi, les changements pour ce qui a bougé. Le temps par étape vient de l’instantané (/pilot-dashboard --refresh).",why:"Rend visible ce qui traîne ou attend une personne, et évite deux agents sur le même ticket."},
-    en:{title:"Activity",what:"The tickets’ workflow (where each one stands in the chain, the time spent in each stage, what waits for a human), the running agent sessions and the history of status changes.",how:"Use the workflow to see what to unblock first, the sessions to see who is working on what, the changes for what moved. The time per stage comes from the snapshot (/pilot-dashboard --refresh).",why:"Makes visible what drags or waits for a person, and prevents two agents on one ticket."}},
+    fr:{title:"Travail",what:"Tous les tickets ouverts des phases, en blocs : ce qui attend un humain (drapeau, PR à merger, prototype à décider), ce qui est en cours, ce qui est à lancer, ce qui est en pause. Chaque ligne dit depuis quand le ticket est dans son étape ; le formulaire du haut lance une idée, le bloc de filtres affine.",how:"Lancez ou reprenez depuis la ligne (Ouvrir, en pair ou en auto), revenez suivre, puis lancez la suite. Filtrez par rôle (Produit / Tech), par type, état, drapeau ou assigné (indiquez votre login pour « moi »). « Détail » ouvre la chaîne du ticket avec le temps passé dans chaque phase, et ses sous-tickets. Le temps par étape vient de l’instantané (/pilot-dashboard --refresh).",why:"Vous lancez des tâches, vous revenez les suivre et lancez les suivantes, sans parcourir GitHub."},
+    en:{title:"Work",what:"All the open tickets of the phases, in blocks: what waits for a human (flag, PR to merge, prototype to decide), what is in progress, what is to launch, what is paused. Each row says since when the ticket is in its stage; the form at the top starts an idea, the filter block narrows.",how:"Launch or resume from the row (Open, in pair or auto), come back to follow, then launch the next. Filter by role (Product / Tech), type, state, flag or assignee (enter your login for “me”). “Details” opens the ticket’s chain with the time spent in each phase, and its sub-tickets. The time per stage comes from the snapshot (/pilot-dashboard --refresh).",why:"You launch tasks, come back to follow them and launch the next, without browsing GitHub."}},
   {id:"prototypes",mod:"proto",
     fr:{title:"Prototypes",what:"Des maquettes cliquables de fonctions à tester, construites avec le PM puis le designer, à accepter ou rejeter.",how:"Décrivez la fonction dans l’onglet, puis acceptez ou rejetez la maquette ; une Discovery peut partir d’un prototype accepté (/pilot-proto).",why:"On décide sur du concret avant d’écrire de la spec ou du code."},
     en:{title:"Prototypes",what:"Clickable mockups of features to try, built with the PM then the designer, to accept or reject.",how:"Describe the feature in the tab, then accept or reject the mockup; a Discovery can start from an accepted prototype (/pilot-proto).",why:"You decide on something concrete before any spec or code is written."}},
@@ -2048,7 +1878,7 @@ function vHowModules(){
       return helpCard(x.title,badge,rows);
     })),
     sec('D’où viennent les données du cockpit','Where the cockpit’s data comes from'),
-    para('GitHub reste la vérité. Le cockpit lit un instantané de vos tickets, pris par /pilot-dashboard --refresh, et y ajoute en direct les événements que les agents lui envoient : sessions en cours, changements de statut. Ces envois sont faits au mieux, un échec ne bloque jamais une phase ; un instantané ancien se rafraîchit. Tant qu’aucun instantané n’existe, des données d’exemple sont affichées. La pastille Instantané en haut du cockpit dit son âge, la pastille Profil rappelle le profil du projet.','GitHub remains the truth. The cockpit reads a snapshot of your tickets, taken by /pilot-dashboard --refresh, and adds the events agents send it live: running sessions, status changes. These pushes are best-effort, a failure never blocks a phase; an old snapshot is refreshed. Until a snapshot exists, sample data is shown. The Snapshot chip at the top of the cockpit tells its age, the Profile chip recalls the project’s profile.'));
+    para('GitHub reste la vérité. Le cockpit lit un instantané de vos tickets, pris par /pilot-dashboard --refresh, et y ajoute en direct les changements de statut que les agents lui envoient. Ces envois sont faits au mieux, un échec ne bloque jamais une phase ; un instantané ancien se rafraîchit. Tant qu’aucun instantané n’existe, des données d’exemple sont affichées. La pastille Instantané en haut du cockpit dit son âge, la pastille Profil rappelle le profil du projet.','GitHub remains the truth. The cockpit reads a snapshot of your tickets, taken by /pilot-dashboard --refresh, and adds the status changes agents send it live. These pushes are best-effort, a failure never blocks a phase; an old snapshot is refreshed. Until a snapshot exists, sample data is shown. The Snapshot chip at the top of the cockpit tells its age, the Profile chip recalls the project’s profile.'));
 }
 function agentRoles(k){
   var rows=rosterRows(), cols=[['lead',L('Lead :','Lead:')],['val',L('Validateur :','Validator:')],['sum',L('Convocable :','Summonable:')]];
@@ -2078,10 +1908,11 @@ var HELP_SUBS=[['principes','Principes'],['modes','Modes'],['tickets','Tickets']
 /* ---------- boot ---------- */
 function fromHash(){
   var p=(location.hash||'').slice(1).split('/'), t=p[0];
-  S.viewProto=0; S.viewHelp=t==='aide'?1:0; S.wf=t==='activite'&&p[1]==='workflow'?Number(p[2])||0:0;
+  S.viewProto=0; S.viewHelp=t==='aide'?1:0; S.wf=t==='file'&&/^\d+$/.test(p[1]||'')?Number(p[1]):0;
   if(S.viewHelp&&p[1]&&HELP_SUBS.some(function(s){return s[0]===p[1];}))S.sub.aide=p[1];
   if(t==='proto'){S.tab='prototypes';S.viewProto=Number(p[1])||0;}
-  else if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite'||t==='design'||t==='prototypes'||t==='wiki'||t==='architecture')S.tab=t;
+  else if(t==='file'||t==='ensemble'||t==='recherche'||t==='activite')S.tab='file';
+  else if(t==='design'||t==='prototypes'||t==='wiki'||t==='architecture')S.tab=t;
   if(S.tab==='wiki'&&p[1])S.sub.wiki=p[1];
   if(S.tab==='architecture'&&p[1])S.sub.architecture=p[1];
   var list=SUBS[S.tab];
@@ -2093,7 +1924,7 @@ fromHash();
 markStatic();
 var sv0=store('cp.lang'); setLang(sv0==='fr'||sv0==='en'?sv0:'en',false);
 var me=document.getElementById('meInput'); me.value=S.me;
-me.addEventListener('input',function(){S.me=me.value.trim().replace(/^@/,'');store('cp.me',S.me);S.page=0;render();});
+me.addEventListener('input',function(){S.me=me.value.trim().replace(/^@/,'');store('cp.me',S.me);render();});
 buildIdea();
 buildBatch();
 buildSearch();

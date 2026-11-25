@@ -600,17 +600,16 @@ class FlagTests(unittest.TestCase):
 
 
 class DashboardPayloadTests(unittest.TestCase):
-    def test_claim_returns_event_and_activity(self):
+    def test_claim_returns_the_event(self):
         m, gh = machine([issue(7, ["status:dev-ready", "type:tech"])])
         got = m.claim("dev", 7, "fresh")
-        ev, act = got["event"], got["activity"]
+        ev = got["event"]
+        self.assertNotIn("activity", got)
         self.assertEqual((ev["kind"], ev["n"], ev["action"], ev["phase"], ev["by"], ev["state"]),
                          ("ticket", 7, "claim:fresh", "dev", "bot", "open"))
         self.assertEqual(ev["labels"], ["status:in-dev", "type:tech"])
         self.assertEqual(ev["assignees"], ["bot"])
         self.assertRegex(ev["at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
-        self.assertEqual((act["kind"], act["phase"], act["n"], act["mode"], act["by"]), ("activity", "dev", 7, "fresh", "bot"))
-        self.assertTrue(act["id"].startswith("dev-7-"))
 
     def test_set_flag_unflag_return_the_resulting_state(self):
         m, gh = machine([issue(1, ["status:in-dev"], assignees=["bot"])])
@@ -2382,7 +2381,7 @@ class DemoSnapshotTests(unittest.TestCase):
 
     def test_live_documents(self):
         docs = self.demo.live_documents()
-        self.assertEqual({d["kind"] for d in docs.values()}, {"activity", "ticket"})
+        self.assertEqual({d["kind"] for d in docs.values()}, {"ticket"})
 
 
 class FlowRunDocTests(unittest.TestCase):

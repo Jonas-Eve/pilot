@@ -44,7 +44,7 @@ from a previous run — the whole point is picking up upstream changes.
   see step 4.
 - **The dashboard artifact**, when `.pilot/state.json` has a `dashboardUrl`, is PILOT-owned
   too: it is republished from the current template at the same address (step 5c); its data
-  (snapshot, events, activity) is kept, and anything edited in the page itself is lost.
+  (snapshot, events) is kept, and anything edited in the page itself is lost.
 - **`wiki/`** is project-owned content, never touched here; the `wiki` module itself is the project's
   choice (`modules` in `state.json`, step 5b).
 - **GitHub labels** are re-applied idempotently (create-or-update, never delete) — safe
