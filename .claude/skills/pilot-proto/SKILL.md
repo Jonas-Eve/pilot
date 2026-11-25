@@ -72,7 +72,7 @@ live (except `--accept` and `--reject`, which are one mechanical step). Read `.p
 7. **Finalize** once the human approves: `python3 .pilot/pilot.py set <n> --status poc-review --unassign`.
    Say how to decide: accept (`/pilot-proto <n> --accept`) or reject (`/pilot-proto <n> --reject`), also from
    the dashboard.
-8. **Dashboard** (best-effort, `.pilot/pilot-link-dashboard.md`): push the `event`/`activity` that `pilot.py
+8. **Dashboard** (best-effort, `.pilot/pilot-link-dashboard.md`): push the `event` that `pilot.py
    claim|set|proto` return. Skipped silently when `dashboardUrl` is absent.
 9. Report the ticket number, its state and where to see it.
 

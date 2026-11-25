@@ -144,8 +144,8 @@ computes the route.
 - **Phases from data**: `PHASES` is no longer a constant; a phase absent from the profile is
   hidden or greyed.
 - ~~**Route per ticket**: chips with the effective profile and the signals that added guardrails.~~ Removed in 5.0.0.
-- **"My queue" follows the step's roles**: a ticket where the architect validates shows in the
-  architect's queue only at validation time.
+- **The Travail tab follows the step's roles**: a ticket where the architect validates shows in the
+  architect's view only at validation time.
 - **Launch buttons**: the command text stays simple (`/pilot-spec 123`): the skill reads the
   profile in `state.json` and composes the roster, so the cockpit cannot drift from the skills.
   The cockpit varies only the mode and the options: which button is primary (auto for `lean`,

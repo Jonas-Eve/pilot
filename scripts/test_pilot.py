@@ -72,6 +72,9 @@ class FakeGh:
     def sub_issues(self, number):
         return [copy.deepcopy(self.store[n]) for n in self.subs.get(number, [])]
 
+    def issue_events(self, number):
+        return list(getattr(self, "events", {}).get(number, []))
+
     def me(self):
         if self._me is None:
             raise pilot.GhError("gh: not authenticated")
@@ -597,17 +600,16 @@ class FlagTests(unittest.TestCase):
 
 
 class DashboardPayloadTests(unittest.TestCase):
-    def test_claim_returns_event_and_activity(self):
+    def test_claim_returns_the_event(self):
         m, gh = machine([issue(7, ["status:dev-ready", "type:tech"])])
         got = m.claim("dev", 7, "fresh")
-        ev, act = got["event"], got["activity"]
+        ev = got["event"]
+        self.assertNotIn("activity", got)
         self.assertEqual((ev["kind"], ev["n"], ev["action"], ev["phase"], ev["by"], ev["state"]),
                          ("ticket", 7, "claim:fresh", "dev", "bot", "open"))
         self.assertEqual(ev["labels"], ["status:in-dev", "type:tech"])
         self.assertEqual(ev["assignees"], ["bot"])
         self.assertRegex(ev["at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
-        self.assertEqual((act["kind"], act["phase"], act["n"], act["mode"], act["by"]), ("activity", "dev", 7, "fresh", "bot"))
-        self.assertTrue(act["id"].startswith("dev-7-"))
 
     def test_set_flag_unflag_return_the_resulting_state(self):
         m, gh = machine([issue(1, ["status:in-dev"], assignees=["bot"])])
@@ -684,6 +686,59 @@ class DashboardPayloadTests(unittest.TestCase):
         self.assertEqual((rows[1].get("a"), rows[1].get("r")), ("alice", 9))
         self.assertEqual((rows[2].get("a"), rows[2].get("r")), (None, 9))
         self.assertNotIn("r", rows[3])
+
+    def test_snapshot_carries_the_stage_history_and_the_needs_human_start(self):
+        def ev(kind, label, at):
+            return {"event": kind, "label": {"name": label}, "created_at": at}
+        a = issue(1, ["status:in-dev", "needs-human"]); b = issue(2, ["status:split"]); c = issue(3, ["status:qa"])
+        m, gh = machine([a, b, c])
+        gh.events = {1: [ev("labeled", "status:in-dev", "2026-01-03T00:00:00Z"), ev("labeled", "status:backlog", "2026-01-01T00:00:00Z"),
+                         ev("unlabeled", "status:backlog", "2026-01-02T00:00:00Z"), ev("labeled", "status:dev-ready", "2026-01-02T00:00:00Z"),
+                         ev("labeled", "needs-human", "2026-01-04T00:00:00Z")],
+                     2: [ev("labeled", "status:split", "2026-01-01T00:00:00Z")],
+                     3: [ev("labeled", "needs-human", "2026-01-01T00:00:00Z"), ev("unlabeled", "needs-human", "2026-01-02T00:00:00Z")]}
+        rows = {r["n"]: r for r in m.snapshot()["issues"]}
+        self.assertEqual(rows[1]["h"], [["backlog", "2026-01-01T00:00:00Z"], ["dev-ready", "2026-01-02T00:00:00Z"], ["in-dev", "2026-01-03T00:00:00Z"]])
+        self.assertEqual(rows[1]["nh"], "2026-01-04T00:00:00Z")
+        self.assertNotIn("h", rows[2])  # a split story only holds sub-issues
+        self.assertNotIn("nh", rows[3])  # the flag was lifted
+
+    def test_the_real_client_reads_only_the_label_events_of_a_ticket(self):
+        client = pilot.GhClient("o/r"); seen = {}
+        def pages(path, params=None, per_page=100, max_pages=50):
+            seen["path"], seen["max_pages"] = path, max_pages
+            return [{"event": "labeled"}, {"event": "assigned"}, {"event": "unlabeled"}, {"event": "commented"}]
+        client._pages = pages
+        self.assertEqual([e["event"] for e in client.issue_events(7)], ["labeled", "unlabeled"])
+        self.assertEqual(seen["path"], "repos/o/r/issues/7/events")
+        self.assertEqual(seen["max_pages"], 5)
+
+    def test_a_history_that_does_not_end_on_the_current_status_is_left_out(self):
+        m, gh = machine([issue(1, ["status:in-dev", "needs-human"])])
+        gh.events = {1: [{"event": "labeled", "label": {"name": "status:backlog"}, "created_at": "2026-01-01T00:00:00Z"},
+                         {"event": "labeled", "label": {"name": "needs-human"}, "created_at": "2026-01-02T00:00:00Z"}]}
+        row = m.snapshot()["issues"][0]
+        self.assertNotIn("h", row)
+        self.assertNotIn("nh", row)  # a flag time read from the same truncated events is not trusted either
+
+    def test_snapshot_with_histories_still_fits_a_database_document(self):
+        issues = [issue(n, ["status:in-dev"]) for n in range(1, 2600)]
+        for i in issues:
+            i["title"] = "x" * 60
+        m, gh = machine(issues)
+        gh.events = {n: [{"event": "labeled", "label": {"name": "status:in-dev"}, "created_at": "2026-01-01T00:00:00Z"}] for n in range(1, 2600)}
+        doc = m.snapshot()
+        self.assertTrue(doc["truncated"])
+        self.assertTrue(all("h" in r for r in doc["issues"]))
+        self.assertLessEqual(len(pilot.json.dumps(doc, ensure_ascii=False).encode()), pilot.SNAPSHOT_MAX_BYTES)
+
+    def test_snapshot_keeps_a_ticket_whose_events_cannot_be_read(self):
+        m, gh = machine([issue(1, ["status:qa"])])
+        def boom(number):
+            raise pilot.GhError("boom")
+        gh.issue_events = boom
+        self.assertEqual(m.snapshot()["issues"][0]["n"], 1)
+        self.assertEqual(m.history_failed, 1)  # reported, so a throttled run is not taken for a complete one
 
     def test_snapshot_is_truncated_to_fit_a_database_document(self):
         issues = [issue(n, ["status:backlog"]) for n in range(1, 2600)]
@@ -2326,7 +2381,7 @@ class DemoSnapshotTests(unittest.TestCase):
 
     def test_live_documents(self):
         docs = self.demo.live_documents()
-        self.assertEqual({d["kind"] for d in docs.values()}, {"activity", "ticket"})
+        self.assertEqual({d["kind"] for d in docs.values()}, {"ticket"})
 
 
 class FlowRunDocTests(unittest.TestCase):

@@ -44,7 +44,7 @@ from a previous run — the whole point is picking up upstream changes.
   see step 4.
 - **The dashboard artifact**, when `.pilot/state.json` has a `dashboardUrl`, is PILOT-owned
   too: it is republished from the current template at the same address (step 5c); its data
-  (snapshot, events, activity) is kept, and anything edited in the page itself is lost.
+  (snapshot, events) is kept, and anything edited in the page itself is lost.
 - **`wiki/`** is project-owned content, never touched here; the `wiki` module itself is the project's
   choice (`modules` in `state.json`, step 5b).
 - **GitHub labels** are re-applied idempotently (create-or-update, never delete) — safe
@@ -145,9 +145,9 @@ from a previous run — the whole point is picking up upstream changes.
    `workflow:` labels (standard and lean, no longer created) can be deleted too; change nothing yourself.
 
 5c. **Update the dashboard.** Only when `.pilot/state.json` has a `dashboardUrl`: run
-   `/pilot-dashboard` (reusing this `$PILOT_SRC`), after asking the human whether to
-   republish — it does nothing if the rendered page is unchanged, and a refusal or failure
-   there (e.g. the current user can't edit the artifact) never blocks the rest of the update.
+   `/pilot-dashboard --refresh` (reusing this `$PILOT_SRC`), after asking the human whether to
+   republish (it republishes the page if it changed and refreshes the snapshot and the data the tabs read).
+   A refusal or failure there (e.g. the current user can't edit the artifact) never blocks the rest of the update.
    Without a `dashboardUrl`, don't create one here: mention in the report that
    `/pilot-dashboard` can.
 

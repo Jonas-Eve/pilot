@@ -47,7 +47,7 @@ dismissals are recorded in the test-log comment; `.pilot/pilot-task-advise.md` i
    step 1) — it applies `.pilot/pilot-process.md` §4 "Claim Protocol" (assignee +
    `status:in-qa`, re-read to confirm). Any refusal (`lost-race`, `not-claimable`, …) →
    report `reason` and stop.
-2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event`/`activity` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
+2a. **Dashboard** (best-effort): per `.pilot/pilot-link-dashboard.md`, push the `event` that `pilot.py claim|set|flag|unflag` return, with `ArtifactData` (`ToolSearch` loads it if deferred) — skipped silently when `dashboardUrl` is absent from `.pilot/state.json`.
 3. Gather context: the story's own body (acceptance criteria) and, for each of its dev and
    e2e tasks, the spec (phase 2) and the merged PR (`mcp__github__issue_read`,
    `mcp__github__pull_request_read`) — not the running conversation history. When the `wiki` module is enabled (`.pilot/pilot-process.md` §8), also the story's entries (`python3 .pilot/pilot.py wiki index --ticket <issue>`, each
