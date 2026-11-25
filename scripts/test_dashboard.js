@@ -1069,6 +1069,28 @@ const STUB = (opts) => `
   check('full view: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
+  // ---- prototypes on the board: compact cards, in a column before Discovery ----
+  const BP_SNAP = snapshot([
+    ticket(710, ['type:poc', 'level:story', 'status:poc-review'], { t: 'Proto en revue' }),
+    ticket(711, ['type:poc', 'level:story', 'status:poc-validated'], { t: 'Proto accepté' }),
+    ticket(712, ['type:poc', 'level:story', 'status:poc-draft'], { t: 'Proto en construction' }),
+    ticket(20, ['type:feature', 'level:story', 'status:draft'], { t: 'Story a cadrer' }),
+  ], 120);
+  const BP = [PM(710, { title: 'Proto en revue', parts: 1 }), PM(711, { title: 'Proto accepté', decision: 'accepted', parts: 1 }), PM(712, { title: 'Proto en construction' })];
+  page = await open({ preload: [BP_SNAP], protos: BP, protoHtml: [710, 711].map((n) => ({ n, k: 0, html: '<p>Maquette ' + n + '</p>' })), view: 'board' });
+  view = await tab(page, 'Travail');
+  const pcols = await page.$$eval('#view .board section.col > header strong', (e) => e.map((x) => x.textContent));
+  const pcard = (name) => page.locator('#view .board section[aria-label="Prototypes"] .card', { hasText: name });
+  check('prototypes on the board: their own column, before Discovery', pcols[0] === 'Prototypes' && pcols[1] === '1 · Discovery', JSON.stringify(pcols));
+  check('prototypes on the board: three compact cards, none of the wide list rows', (await page.$$eval('#view .board section[aria-label="Prototypes"] .card', (c) => c.length)) === 3 && (await page.$$('#view .board section[aria-label="Prototypes"] .row')).length === 0);
+  check('prototypes on the board: a card fits its column (no overflow)', await pcard('Proto en revue').evaluate((e) => e.scrollWidth <= e.clientWidth + 1));
+  check('prototypes on the board: to decide, to take up, under construction: the matching action each', (await pcard('Proto en revue').locator('a:has-text("Accepter")').count()) === 1 && (await pcard('Proto en revue').locator('a:has-text("Rejeter")').count()) === 1 && (await pcard('Proto accepté').locator('a:has-text("Lancer la Discovery")').count()) === 1 && (await pcard('Proto en construction').locator('a:has-text("Reprendre")').count()) === 1);
+  check('prototypes on the board: the mockup is one click away, the title links to it', (await pcard('Proto en revue').locator('button:has-text("Plein écran")').count()) === 1 && (await pcard('Proto en revue').locator('.t a').getAttribute('href')) === '#proto/710');
+  check('prototypes on the board: the story to frame is in the Discovery column', /Story a cadrer/.test(await text(page, '#view .board section[aria-label="1 · Discovery"]')));
+  check('prototypes on the board: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.screenshot({ path: path.join(TMP, 'protoboard.png') });
+  await page.close();
+
   // ---- the Discovery only for an accepted prototype; the prototype visible from everywhere it matters ----
   const VSNAP = snapshot([
     ticket(710, ['type:poc', 'level:story', 'status:poc-review'], { t: 'Proto en revue' }),

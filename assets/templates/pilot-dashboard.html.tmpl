@@ -88,6 +88,7 @@ button.tile{cursor:pointer;font:inherit;color:inherit}
 .board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,1fr);gap:12px;align-items:start;overflow-x:auto;padding-bottom:8px}
 .col{background:var(--surface2);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .col header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+@media (min-width:900px) and (hover:hover){.board{max-height:calc(100vh - 140px);overflow:auto}.col header{position:sticky;top:0;z-index:1;background:var(--surface2);padding-bottom:4px}}
 .col .own{font-size:12px;color:var(--muted)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
 .card.flag{border-color:var(--warn)}
@@ -853,7 +854,8 @@ function boardColumn(key,name,own,rows,sorted){
   rows.forEach(function(r){count[r.t.status]=(count[r.t.status]||0)+1;});
   shown.forEach(function(r){
     if(sorted&&r.t.status!==last){last=r.t.status;out.push(h('h3',{class:'gh'},(STATUS_FR[r.t.status]||r.t.status||'sans statut')+' · '+count[r.t.status]));}
-    out.push(has(r.t,'type:poc')?ticketRow(r.t):has(r.t,'level:epic')?epicCard(r.t):boardCard(r));
+    var pe=has(r.t,'type:poc')?protoList().filter(function(x){return x.n===r.t.n;})[0]:null;
+    out.push(pe?protoCard(pe):has(r.t,'level:epic')?epicCard(r.t):boardCard(r));
   });
   return h('section',{class:'col','aria-label':name},
     h('header',{},h('strong',{},name),h('span',{class:'chips'},blocked?h('span',{class:'chip warn',title:'attend un humain'},h('span',{class:'dot'}),String(blocked)):null,h('span',{class:'chip'},String(rows.length)))),
@@ -870,8 +872,8 @@ function vBoard(rows){
       return p.statuses.indexOf(a.t.status)-p.statuses.indexOf(b.t.status)||(+(b.group==='human')-+(a.group==='human'))||byUrgency(a.t,b.t);});
   }
   var cols=phases.map(function(p){return boardColumn(p.key,p.n+' · '+p.name,S.role==='tous'?(p.role==='produit'?'Produit':'Tech'):'',order(p,by[p.key]||[]),true);});
+  if(protos.length)cols.unshift(boardColumn('protos','Prototypes',S.role==='tous'?'Produit':'',protos,false));
   if(epics.length)cols.unshift(boardColumn('epics','Epics','',epics,false));
-  if(protos.length)cols.push(boardColumn('protos','Prototypes','',protos,false));
   if(other.length)cols.push(boardColumn('other','Autres','',other.slice().sort(function(a,b){return byUrgency(a.t,b.t);}),false));
   return h('div',{class:'board'},cols);
 }
@@ -1269,7 +1271,8 @@ function protoFrame(n,full){
   var doc='<!doctype html><meta charset=utf8><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data:; font-src data:">'+html.replace(/^\s*<!doctype[^>]*>/i,'');
   return h('iframe',{class:'prev',title:'Maquette du prototype #'+n,sandbox:'allow-scripts',srcdoc:doc,style:full?'height:calc(100vh - 230px);min-height:420px':'height:'+clampN(m.height,200,900,480)+'px'});
 }
-function protoRow(e){
+/* what a prototype offers: the command of its state (resume, decide, start the Discovery), its mockup; `compact` leaves out the copy button and the inline preview */
+function protoActions(e,compact){
   var m=e.meta||{}, n=e.n, st=e.status, open=!!S.protoOpen[n], hasHtml=Math.floor(Number(m.parts)||0)>0;
   var lead=null, acts=[];
   if(st==='poc-draft'&&e.group==='encours'){lead='/pilot-proto --resume '+n; acts.push(openLink(lead,'Reprendre',true));}
@@ -1280,9 +1283,24 @@ function protoRow(e){
     lead='/pilot-discovery --from-proto '+n;
     acts.push(openLink(lead,'Lancer la Discovery',true),openLink('/pilot-proto '+n+' --reject','Rejeter'));
   }
-  if(lead)acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(ev){copyCmd(lead,ev.target);}},'Copier'));
+  if(lead&&!compact)acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(ev){copyCmd(lead,ev.target);}},'Copier'));
   if(hasHtml)acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+n;}},'Plein écran'));
-  if(hasHtml)acts.push(h('button',{class:'btn ghost',type:'button','aria-expanded':String(open),onclick:function(){S.protoOpen[n]=!open;render();}},(open?'▾ Masquer':'▸ Voir')+' la maquette'));
+  if(hasHtml&&!compact)acts.push(h('button',{class:'btn ghost',type:'button','aria-expanded':String(open),onclick:function(){S.protoOpen[n]=!open;render();}},(open?'▾ Masquer':'▸ Voir')+' la maquette'));
+  return {acts:acts,open:open,hasHtml:hasHtml};
+}
+/* a prototype on the board: a compact card in the Prototypes column */
+function protoCard(e){
+  var m=e.meta||{}, n=e.n, st=e.status, A=protoActions(e,true), stories=arr(m.stories);
+  return h('div',{class:'card'+(st==='poc-review'?' g-human':st==='poc-draft'?' g-going':'')},
+    h('div',{class:'t'},A.hasHtml?h('a',{href:'#proto/'+n},h('span',{class:'num mono'},'#'+n+' '),e.title):[h('span',{class:'num mono'},'#'+n+' '),e.title]),
+    h('div',{class:'meta'},st?h('span',{class:'chip acc'},STATUS_FR[st]||st):null,
+      stories.length?h('span',{class:'chip'},stories.length+' stor'+(stories.length>1?'ies':'y')):null,
+      h('span',{class:'chip'},ago(m.decidedAt||e.updated))),
+    m.brief?h('p',{class:'note'},str(m.brief,140)):null,
+    A.acts.length?h('div',{class:'acts'},A.acts):null);
+}
+function protoRow(e){
+  var m=e.meta||{}, n=e.n, st=e.status, A=protoActions(e,false), acts=A.acts, open=A.open, hasHtml=A.hasHtml;
   var stories=arr(m.stories);
   return h('div',{class:'row'+(st==='poc-review'?' flag':'')},
     h('div',{class:'main'},
