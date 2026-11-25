@@ -73,6 +73,12 @@ nav.tabs.sub a{padding:6px 12px;font-size:13px}
 .tile strong{font-size:18px;font-variant-numeric:tabular-nums}
 .tile span{color:var(--muted);font-size:13px}
 .tile.zero strong{color:var(--muted);font-weight:400}
+button.tile{cursor:pointer;font:inherit;color:inherit}
+.tile:hover{border-color:var(--accent)}
+.tile.on{border-color:var(--accent);background:var(--accent-soft)}
+.bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:6px}
+.bar>i{display:block;height:100%;background:var(--ok)}
+.card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .tile.warn{border-color:var(--warn);background:var(--warn-soft)} .tile.warn strong,.tile.warn span{color:var(--warn)}
 .banner.compact{padding:4px 10px;font-size:12px;color:var(--muted);border-left-width:1px;background:transparent}
 .cmd{font-family:var(--mono);font-size:12px;color:var(--muted)}
@@ -272,6 +278,10 @@ var EN={
 "Travail": "Work",
 "Détail": "Details",
 "Liste": "List",
+"sans drapeau": "no flag",
+"Filtrer sur cette epic": "Filter on this epic",
+"Tout afficher": "Show all",
+"Filtrer : ": "Filter: ",
 "Affichage": "View",
 "Autres": "Others",
 "depuis ": "since ",
@@ -635,7 +645,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), 
-  tab:'file', view:store('cp.view')==='liste'?'liste':'board', expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', epic:0, view:store('cp.view')==='liste'?'liste':'board', expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{},
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -749,7 +759,7 @@ function workItem(t){var since=has(t,'needs-human')&&t.nh?t.nh:enteredAt(t); ret
 /* a prototype is product work while it is being built, waiting for a decision, or accepted and not yet taken up by a Discovery */
 function protoWork(){var o={}; protoList().forEach(function(e){if(e.group==='encours'||(e.group==='acceptes'&&e.sub==='alancer'))o[e.n]=1;}); return o;}
 /* a search or a filter looks at every open ticket (an Epic, a ticket without a status); otherwise the view is the tickets of the phases of the role */
-function filtering(){return !!S.q.trim()||[S.levels,S.types,S.states,S.flags,S.assignees].some(function(m){return Object.keys(m).some(function(k){return m[k];});});}
+function filtering(){return !!S.q.trim()||S.epic>0||[S.levels,S.types,S.states,S.flags,S.assignees].some(function(m){return Object.keys(m).some(function(k){return m[k];});});}
 function workRows(){
   var pocs=protoWork(), any=filtering();
   function inRole(t){if(any)return true; if(pocs[t.n])return S.role==='tous'||S.role==='produit'; var p=phaseOf(t.status); return !!p&&(S.role==='tous'||p.role===S.role);}
@@ -811,6 +821,7 @@ function boardCard(r){
   if(has(t,'on-hold'))chips.push(h('span',{class:'chip'},'en pause'));
   if(t.assignee)chips.push(h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee));
   if(t.k)chips.push(h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'));
+  var ep=epicOf(t); if(ep&&ep.n!==t.n&&S.epic!==ep.n)chips.push(h('button',{class:'chip rm',type:'button',title:ep.title,onclick:function(){S.epic=ep.n;render();}},'Epic #'+ep.n));
   if(hist)chips.push(h('span',{class:'chip'+(stale?' warn':''),title:tr(flag?'bloqué depuis ':'dans cette étape depuis ')+dur(r.ms)},tr(flag?'bloqué depuis ':'depuis ')+dur(r.ms)));
   if(stale)chips.push(h('span',{class:'chip warn'},'sans mouvement'));
   if(a.kind==='run')acts.push(openLink(L.main,L.label,false));
@@ -822,12 +833,27 @@ function boardCard(r){
     h('div',{class:'meta'},chips),
     h('div',{class:'acts'},acts));
 }
+/* an Epic has no status, so no phase: its own column, with its progress; a click keeps only its tickets on the board */
+function epicCard(t){
+  var L=launchOf(t), on=S.epic===t.n, d=t.k&&t.k[1]?Math.round(100*t.k[0]/t.k[1]):0, flag=has(t,'needs-human'), chips=[];
+  if(t.k)chips.push(h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'));
+  if(flag)chips.push(h('span',{class:'chip warn'},h('span',{class:'dot'}),'attend un humain'));
+  if(has(t,'on-hold'))chips.push(h('span',{class:'chip'},'en pause'));
+  return h('div',{class:'card'+(on?' sel':'')+(flag?' g-human':has(t,'on-hold')?' g-pause':'')},
+    h('div',{class:'t'},h('a',{href:'#file/'+t.n},h('span',{class:'num mono'},'#'+t.n+' '),t.title)),
+    t.k&&t.k[1]?h('div',{class:'bar',role:'img','aria-label':t.k[0]+'/'+t.k[1]+' terminés'},h('i',{style:'width:'+d+'%'})):null,
+    h('div',{class:'meta'},chips),
+    h('div',{class:'acts'},
+      h('button',{class:'btn'+(on?' primary':''),type:'button','aria-pressed':String(on),onclick:function(){S.epic=on?0:t.n;render();}},on?'Tout afficher':'Filtrer sur cette epic'),
+      L.a.kind==='run'?openLink(L.main,L.label,false):null,
+      h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#file/'+t.n;}},'Détail')));
+}
 function boardColumn(key,name,own,rows,sorted){
   var open=!!S.expanded[key], shown=open?rows:rows.slice(0,COL_LIMIT), count={}, last=null, out=[], blocked=rows.filter(function(r){return r.group==='human';}).length;
   rows.forEach(function(r){count[r.t.status]=(count[r.t.status]||0)+1;});
   shown.forEach(function(r){
     if(sorted&&r.t.status!==last){last=r.t.status;out.push(h('h3',{class:'gh'},(STATUS_FR[r.t.status]||r.t.status||'sans statut')+' · '+count[r.t.status]));}
-    out.push(has(r.t,'type:poc')?ticketRow(r.t):boardCard(r));
+    out.push(has(r.t,'type:poc')?ticketRow(r.t):has(r.t,'level:epic')?epicCard(r.t):boardCard(r));
   });
   return h('section',{class:'col','aria-label':name},
     h('header',{},h('strong',{},name),h('span',{class:'chips'},blocked?h('span',{class:'chip warn',title:'attend un humain'},h('span',{class:'dot'}),String(blocked)):null,h('span',{class:'chip'},String(rows.length)))),
@@ -837,12 +863,14 @@ function boardColumn(key,name,own,rows,sorted){
 }
 function vBoard(rows){
   var filt=filtering(), phases=filt?phasesOn():phasesView(), pocs=protoWork(), by={}, other=[], protos=[];
-  rows.forEach(function(r){var p=pocs[r.t.n]?null:phaseOf(r.t.status); if(pocs[r.t.n])protos.push(r); else if(p)(by[p.key]=by[p.key]||[]).push(r); else other.push(r);});
+  var epics=tickets().filter(function(t){return has(t,'level:epic')&&matches(t,true);}).map(workItem).sort(function(a,b){return byUrgency(a.t,b.t);});
+  rows.forEach(function(r){if(has(r.t,'level:epic'))return; var p=pocs[r.t.n]?null:phaseOf(r.t.status); if(pocs[r.t.n])protos.push(r); else if(p)(by[p.key]=by[p.key]||[]).push(r); else other.push(r);});
   function order(p,list){
     return list.slice().sort(function(a,b){
       return p.statuses.indexOf(a.t.status)-p.statuses.indexOf(b.t.status)||(+(b.group==='human')-+(a.group==='human'))||byUrgency(a.t,b.t);});
   }
   var cols=phases.map(function(p){return boardColumn(p.key,p.n+' · '+p.name,S.role==='tous'?(p.role==='produit'?'Produit':'Tech'):'',order(p,by[p.key]||[]),true);});
+  if(epics.length)cols.unshift(boardColumn('epics','Epics','',epics,false));
   if(protos.length)cols.push(boardColumn('protos','Prototypes','',protos,false));
   if(other.length)cols.push(boardColumn('other','Autres','',other.slice().sort(function(a,b){return byUrgency(a.t,b.t);}),false));
   return h('div',{class:'board'},cols);
@@ -993,23 +1021,36 @@ var TALLY=[
   {phase:'review',label:'à relire',statuses:['review-ready']},
   {phase:'review',label:'à merger',statuses:['approved']}
 ];
+/* a counter is a filter: the statuses it counts, and the flag it needs (none: neither flagged nor paused); its number is what the filter then lists */
+function tileMatch(t,d){
+  if(d.states.length&&d.states.indexOf(t.status||'none')<0)return false;
+  return d.flags.every(function(f){return f==='none'?!(has(t,'needs-human')||has(t,'on-hold')):has(t,f);});
+}
+function sameKeys(map,list){var k=Object.keys(map).filter(function(x){return map[x];}); return k.length===list.length&&list.every(function(x){return map[x];});}
+function tileActive(d){return sameKeys(S.states,d.states)&&sameKeys(S.flags,d.flags);}
+function tileClick(d){
+  if(tileActive(d)){S.states={};S.flags={};}
+  else{S.states={};S.flags={}; d.states.forEach(function(k){S.states[k]=true;}); d.flags.forEach(function(k){S.flags[k]=true;});}
+  render();
+}
 function vTally(){
   var all=tickets(), on=phasesView().map(function(p){return p.key;}), tiles=[];
-  var blocked=all.filter(function(t){var p=phaseOf(t.status);return p&&on.indexOf(p.key)>-1&&has(t,'needs-human');}).length;
-  if(blocked)tiles.push({n:blocked,label:'bloqués',cls:' warn'});
-  if(S.role!=='tech'&&tabOn('prototypes')){var pn=protoCounts().encours; if(pn)tiles.push({n:pn,label:'prototypes à décider',cls:''});}
-  TALLY.forEach(function(x){
-    if(on.indexOf(x.phase)<0)return;
-    var n=all.filter(function(t){return x.statuses.indexOf(t.status)>-1&&!has(t,'needs-human')&&!has(t,'on-hold');}).length;
-    tiles.push({n:n,label:x.label,cls:''});
-  });
-  return h('div',{class:'tally',role:'list','aria-label':'Ce qui attend'},tiles.map(function(x){
-    return h('div',{class:'tile'+x.cls+(x.n?'':' zero'),role:'listitem'},h('strong',{},String(x.n)),h('span',{},x.label));}));
+  function add(label,cls,d){var n=all.filter(function(t){return tileMatch(t,d);}).length; tiles.push({n:n,label:label,cls:cls,d:d});}
+  var blocked={states:[],flags:['needs-human']}, nb=all.filter(function(t){return tileMatch(t,blocked);}).length;
+  if(nb)add('bloqués',' warn',blocked);
+  if(S.role!=='tech'&&tabOn('prototypes')){var pd={states:['poc-draft','poc-review'],flags:[]}; if(protoCounts().encours)add('prototypes à décider','',pd);}
+  TALLY.forEach(function(x){if(on.indexOf(x.phase)>-1)add(x.label,'',{states:x.statuses,flags:['none']});});
+  return h('div',{class:'tally',role:'group','aria-label':'Ce qui attend'},tiles.map(function(x){
+    var on=tileActive(x.d);
+    return h('button',{class:'tile'+x.cls+(x.n?'':' zero')+(on?' on':''),type:'button','aria-pressed':String(on),title:tr('Filtrer : ')+tr(x.label),onclick:function(){tileClick(x.d);}},h('strong',{},String(x.n)),h('span',{},x.label));}));
 }
 /* ---------- search: keyword (case- and accent-insensitive "contains", every word must match) + level + type ---------- */
 var LEVEL_FR={epic:'epic',story:'story',task:'tâche'}, LEVELS=['epic','story','task'], TYPES=['feature','tech','bug','e2e'];
 function fold(x){return String(x==null?'':x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
-function matches(t){
+function ticketBy(n){if(!S._ix){S._ix={};tickets().forEach(function(x){S._ix[x.n]=x;});} return S._ix[n]||null;}
+/* the Epic a ticket belongs to (a task under a story under an Epic included), or itself when it is one */
+function epicOf(t){var x=t,i=0; while(x&&i<4){if(has(x,'level:epic'))return x; x=x.p?ticketBy(x.p):null; i++;} return null;}
+function matches(t,skipEpic){
   var hay=fold('#'+t.n+' '+t.title), words=fold(S.q).split(/\s+/).filter(Boolean), i;
   for(i=0;i<words.length;i++)if(hay.indexOf(words[i].replace(/^#/,''))<0)return false;
   var lv=LEVELS.filter(function(k){return S.levels[k];}), ty=TYPES.filter(function(k){return S.types[k];});
@@ -1017,13 +1058,15 @@ function matches(t){
   if(ty.length&&ty.indexOf(lab(t,'type:'))<0)return false;
   var st=Object.keys(S.states).filter(function(k){return S.states[k];}), fl=Object.keys(S.flags).filter(function(k){return S.flags[k];});
   if(st.length&&st.indexOf(t.status||'none')<0)return false;
-  if(fl.length&&!fl.some(function(k){return has(t,k);}))return false;
+  if(fl.length&&!fl.some(function(k){return k==='none'?!(has(t,'needs-human')||has(t,'on-hold')):has(t,k);}))return false;
+  if(S.epic&&!skipEpic){var ep=epicOf(t); if(!ep||ep.n!==S.epic)return false;}
   var as=Object.keys(S.assignees).filter(function(k){return S.assignees[k];});
   if(as.length&&!as.some(function(k){return k==='me'?(!!S.me&&t.assignee===S.me):k==='none'?!t.assignee:t.assignee===k;}))return false;
   return true;
 }
 var FGROUPS=[['levels','Niveau'],['types','Type'],['states','État'],['assignees','Assigné'],['flags','Drapeau']];
 function filterName(map,k){
+  if(map==='epic'){var e=ticketBy(k); return '#'+k+(e?' '+e.title:'');}
   if(map==='levels')return LEVEL_FR[k]||k;
   if(map==='states')return k==='none'?'sans statut':(STATUS_FR[k]||k);
   if(map==='flags')return FLAG_FR[k]||k;
@@ -1031,9 +1074,11 @@ function filterName(map,k){
   return k;
 }
 function activeFilters(){
-  var out=[]; FGROUPS.forEach(function(g){Object.keys(S[g[0]]).forEach(function(k){if(S[g[0]][k])out.push({map:g[0],group:g[1],key:k});});}); return out;
+  var out=[]; FGROUPS.forEach(function(g){Object.keys(S[g[0]]).forEach(function(k){if(S[g[0]][k])out.push({map:g[0],group:g[1],key:k});});});
+  if(S.epic)out.push({map:'epic',group:'Epic',key:S.epic});
+  return out;
 }
-function clearSearch(){S.q='';S.levels={};S.types={};S.states={};S.flags={};S.assignees={};document.getElementById('searchText').value='';render();}
+function clearSearch(){S.q='';S.epic=0;S.levels={};S.types={};S.states={};S.flags={};S.assignees={};document.getElementById('searchText').value='';render();}
 function buildSearch(){
   var box=document.getElementById('search'), open=store('cp.fold.filters')==='1';
   var chev=h('span',{class:'chev','aria-hidden':'true'},open?'▾':'▸'), panel=h('div',{class:'fpanel',id:'searchFilters',hidden:open?null:true});
@@ -1049,7 +1094,7 @@ function buildSearch(){
   updateSearch();
 }
 var STATE_ORDER=['draft','backlog','in-spec','dev-ready','in-dev','changes-requested','review-ready','in-review','approved','qa','in-qa','split'];
-var FLAG_FR={'needs-human':'attend un humain','on-hold':'en pause'};
+var FLAG_FR={'needs-human':'attend un humain','on-hold':'en pause','none':'sans drapeau'};
 function stateKeys(){
   /* the PILOT statuses in process order, then any other status present in the tickets, then "sans statut" (epics) */
   var extra={};
@@ -1068,7 +1113,7 @@ function updateSearch(){
       return h('div',{class:'fgrp',role:'group','aria-label':label},h('span',{class:'note'},label),
         h('div',{class:'chips'},ks.map(function(k){return h('button',{class:'tog',type:'button','data-map':mapName,'data-key':k,'aria-pressed':'false',onclick:function(){S[mapName][k]=!S[mapName][k];render();}},filterName(mapName,k));})));
     };
-    f.replaceChildren(grp('Niveau',LEVELS,'levels'),grp('Type',TYPES,'types'),grp('État',keys,'states'),grp('Assigné',akeys,'assignees'),grp('Drapeau',['needs-human','on-hold'],'flags'));
+    f.replaceChildren(grp('Niveau',LEVELS,'levels'),grp('Type',TYPES,'types'),grp('État',keys,'states'),grp('Assigné',akeys,'assignees'),grp('Drapeau',['needs-human','on-hold','none'],'flags'));
   }
   Array.prototype.forEach.call(f.querySelectorAll('.tog'),function(b){
     b.setAttribute('aria-pressed',String(!!S[b.getAttribute('data-map')][b.getAttribute('data-key')]));
@@ -1077,7 +1122,7 @@ function updateSearch(){
   cnt.textContent=String(act.length); cnt.hidden=!act.length;
   box.replaceChildren.apply(box,act.map(function(a){
     return h('button',{class:'chip acc rm',type:'button','aria-label':'Retirer le filtre '+a.group+' '+filterName(a.map,a.key),
-      onclick:function(){S[a.map][a.key]=false;render();}},a.group+' : '+filterName(a.map,a.key)+' ✕');
+      onclick:function(){if(a.map==='epic')S.epic=0; else S[a.map][a.key]=false;render();}},a.group+' : '+filterName(a.map,a.key)+' ✕');
   }).concat(act.length||S.q?[h('button',{class:'btn ghost',type:'button',onclick:clearSearch},'Réinitialiser')]:[]));
 }
 /* ---------- sub-tabs: a second row under a main tab, addressed as #tab/sub (one component, reused by every tab that has them) ---------- */
@@ -1627,7 +1672,7 @@ function renderChrome(){
     return h('a',{href:'#'+t[0],'aria-current':S.tab===t[0]&&!S.viewHelp?'page':null,onclick:function(){S.tab=t[0];setTimeout(render,0);}},t[1]);}));
 }
 function render(){
-  S._km=null;S._po=null;
+  S._km=null;S._po=null;S._ix=null;
   if(!tabOn(S.tab)||(S.viewProto&&!tabOn('prototypes'))){S.tab='file';S.viewProto=0;} /* a tab whose module is off falls back to the queue */
   renderChrome();renderConn();renderBanner();
   var H=!!S.viewHelp; /* the reference page replaces everything under the tabs */
@@ -1919,8 +1964,8 @@ function vHowCases(){
 }
 var HOW_TABS=[
   {id:"file",mod:"",
-    fr:{title:"Travail",what:"Le board des tickets ouverts : une colonne par phase, des cartes qui disent où en est chaque ticket (statut, depuis combien de temps, ce qui attend un humain) et qui le lancent. Une liste groupée par besoin est disponible en option. Le formulaire du haut lance une idée, le bloc de filtres affine.",how:"Lancez ou reprenez depuis une carte (Ouvrir, en pair ou en auto), revenez suivre, puis lancez la suite. Filtrez par rôle (Produit / Tech), type, état, drapeau ou assigné (indiquez votre login pour « moi »). « Détail » ouvre la chaîne du ticket avec le temps passé dans chaque phase, et ses sous-tickets. Le temps par étape vient de l’instantané (/pilot-dashboard --refresh).",why:"Vous voyez d’un coup d’œil où s’accumule le travail et ce qui est bloqué, vous lancez des tâches, vous revenez les suivre et lancez les suivantes."},
-    en:{title:"Work",what:"The board of the open tickets: one column per phase, cards that say where each ticket stands (status, for how long, what waits for a human) and launch it. A list grouped by need is available as an option. The form at the top starts an idea, the filter block narrows.",how:"Launch or resume from a card (Open, in pair or auto), come back to follow, then launch the next. Filter by role (Product / Tech), type, state, flag or assignee (enter your login for “me”). “Details” opens the ticket’s chain with the time spent in each phase, and its sub-tickets. The time per stage comes from the snapshot (/pilot-dashboard --refresh).",why:"You see at a glance where work piles up and what is blocked, you launch tasks, come back to follow them and launch the next."}},
+    fr:{title:"Travail",what:"Le board des tickets ouverts : une colonne par phase, des cartes qui disent où en est chaque ticket (statut, depuis combien de temps, ce qui attend un humain) et qui le lancent, et une colonne d’epics avec leur avancement. Les compteurs du haut sont des filtres : un clic liste exactement ce qu’ils comptent. Une liste groupée par besoin est disponible en option. Le formulaire du haut lance une idée, le bloc de filtres affine.",how:"Lancez ou reprenez depuis une carte (Ouvrir, en pair ou en auto), revenez suivre, puis lancez la suite. Filtrez par rôle (Produit / Tech), type, état, drapeau ou assigné (indiquez votre login pour « moi »). « Filtrer sur cette epic » ne garde que ses tickets (la pastille Epic d’une carte fait de même). « Détail » ouvre la chaîne du ticket avec le temps passé dans chaque phase, et ses sous-tickets. Le temps par étape vient de l’instantané (/pilot-dashboard --refresh).",why:"Vous voyez d’un coup d’œil où s’accumule le travail et ce qui est bloqué, vous lancez des tâches, vous revenez les suivre et lancez les suivantes."},
+    en:{title:"Work",what:"The board of the open tickets: one column per phase, cards that say where each ticket stands (status, for how long, what waits for a human) and launch it, and a column of Epics with their progress. The counters at the top are filters: a click lists exactly what they count. A list grouped by need is available as an option. The form at the top starts an idea, the filter block narrows.",how:"Launch or resume from a card (Open, in pair or auto), come back to follow, then launch the next. Filter by role (Product / Tech), type, state, flag or assignee (enter your login for “me”). “Filter on this epic” keeps only its tickets (so does the Epic chip of a card). “Details” opens the ticket’s chain with the time spent in each phase, and its sub-tickets. The time per stage comes from the snapshot (/pilot-dashboard --refresh).",why:"You see at a glance where work piles up and what is blocked, you launch tasks, come back to follow them and launch the next."}},
   {id:"prototypes",mod:"proto",
     fr:{title:"Prototypes",what:"Des maquettes cliquables de fonctions à tester, construites avec le PM puis le designer, à accepter ou rejeter.",how:"Décrivez la fonction dans l’onglet, puis acceptez ou rejetez la maquette ; une Discovery peut partir d’un prototype accepté (/pilot-proto).",why:"On décide sur du concret avant d’écrire de la spec ou du code."},
     en:{title:"Prototypes",what:"Clickable mockups of features to try, built with the PM then the designer, to accept or reject.",how:"Describe the feature in the tab, then accept or reject the mockup; a Discovery can start from an accepted prototype (/pilot-proto).",why:"You decide on something concrete before any spec or code is written."}},

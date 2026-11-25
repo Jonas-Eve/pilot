@@ -379,6 +379,48 @@ const STUB = (opts) => `
   check('board: English', /since 2 h/.test(view) && /blocked for 2 d/.test(view) && !/\d j\b/.test(view), view);
   await page.close();
 
+  // ---- epics on the board, and the counters as filters ----
+  const EPS = snapshot([
+    ticket(70, ['type:feature', 'level:epic'], { t: 'Epic avis', k: [1, 3] }),
+    ticket(71, ['type:feature', 'level:story', 'status:split'], { t: 'Story avis', p: 70, k: [0, 3] }),
+    ticket(72, ['type:feature', 'level:task', 'status:in-dev'], { t: 'Tache en cours', p: 71, a: 'alice' }),
+    ticket(73, ['type:feature', 'level:task', 'status:dev-ready'], { t: 'Tache prete', p: 71 }),
+    ticket(76, ['type:feature', 'level:task', 'status:dev-ready', 'needs-human'], { t: 'Tache bloquee', p: 71 }),
+    ticket(74, ['type:tech', 'level:task', 'status:backlog'], { t: 'Sans epic' }),
+    ticket(75, ['type:feature', 'level:epic', 'on-hold'], { t: 'Epic pause', k: [0, 2] }),
+  ], 30);
+  page = await open({ preload: [EPS], view: 'board' });
+  view = await tab(page, 'Travail');
+  const bcolNames = () => page.$$eval('#view .board section.col > header strong', (e) => e.map((x) => x.textContent));
+  const bcard = (name) => page.locator('#view .board .card', { hasText: name });
+  const bcards = () => page.$$eval('#view .board section.col:not([aria-label="Epics"]) .card', (c) => c.length);
+  check('epics: their own first column, with the progress of each epic', (await bcolNames())[0] === 'Epics' && /1\/3 terminés/.test(await bcard('Epic avis').textContent()) && (await bcard('Epic avis').locator('.bar').count()) === 1 && /g-pause/.test(await bcard('Epic pause').getAttribute('class')), JSON.stringify(await bcolNames()));
+  check('epics: a task says its epic, whatever the depth (task under a story under an epic); a ticket without one says nothing', /Epic #70/.test(await bcard('Tache en cours').textContent()) && !/Epic #/.test(await bcard('Sans epic').textContent()));
+  check('epics: no epic card among the phases, no epic in Others', (await bcards()) === 4 && (await page.$$('#view .board section[aria-label="Autres"]')).length === 0);
+  await bcard('Tache en cours').locator('button:has-text("Epic #70")').click(); await page.waitForTimeout(150);
+  check('epics: the Epic chip of a card keeps only that epic\'s tickets (its story in Others), as a removable filter', (await bcards()) === 4 && /Story avis/.test(await text(page, '#view .board section[aria-label="Autres"]')) && /Epic : #70 Epic avis/.test(await text(page, '#activeFilters')) && (await text(page, '#filtersCount')) === '1' && /sel/.test(await bcard('Epic avis').getAttribute('class')));
+  check('epics: the cards of the epic no longer repeat its chip', !/Epic #/.test(await bcard('Tache prete').textContent()));
+  await bcard('Epic avis').locator('button:has-text("Tout afficher")').click(); await page.waitForTimeout(150);
+  check('epics: the epic card gives the whole board back', (await bcards()) === 4 && (await page.$eval('#filtersCount', (e) => e.hidden)));
+  await bcard('Epic pause').locator('button:has-text("Filtrer sur cette epic")').click(); await page.waitForTimeout(150);
+  check('epics: an epic with no ticket leaves the board empty, its column stays', (await bcards()) === 0 && (await bcolNames())[0] === 'Epics');
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(150);
+  const tile = (label) => page.locator('#view .tally .tile', { hasText: label });
+  check('counters: buttons, with the number of tickets they list', (await tile('à coder').count()) === 1 && /1/.test(await tile('à coder').textContent()) && (await tile('à coder').getAttribute('aria-pressed')) === 'false');
+  await tile('à coder').click(); await page.waitForTimeout(150);
+  check('counters: a click lists exactly what the counter says, shown as the filters it sets', (await bcards()) === 1 && /Tache prete/.test(await text(page, '#view .board')) && (await tile('à coder').getAttribute('aria-pressed')) === 'true' && /État : prêt à coder/.test(await text(page, '#activeFilters')) && /Drapeau : sans drapeau/.test(await text(page, '#activeFilters')));
+  await tile('bloqués').click(); await page.waitForTimeout(150);
+  check('counters: another counter replaces the first', (await bcards()) === 1 && /Tache bloquee/.test(await text(page, '#view .board')) && (await tile('à coder').getAttribute('aria-pressed')) === 'false' && (await tile('bloqués').getAttribute('aria-pressed')) === 'true');
+  await tile('bloqués').click(); await page.waitForTimeout(150);
+  check('counters: a second click clears it', (await bcards()) === 4 && (await page.$eval('#filtersCount', (e) => e.hidden)));
+  check('epics: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.screenshot({ path: path.join(TMP, 'epics.png') });
+  await page.close();
+  page = await open({ preload: [EPS], view: 'board', lang: 'en' });
+  view = await tab(page, 'Work');
+  check('epics: English', /Filter on this epic/.test(view) && (await page.getAttribute('#view .tally .tile', 'title')).startsWith('Filter: '), view);
+  await page.close();
+
   page = await open({ preload: [snapshot(many.slice(0, 12))] });
   check('12 tickets: a group of 12 folds to 8', (await rows(page)) === 8);
   await page.close();
@@ -561,7 +603,7 @@ const STUB = (opts) => `
   page = await open({ preload: [snapshot([ticket(1, ['type:tech', 'status:backlog']), ticket(2, ['type:tech', 'status:dev-ready']), ticket(3, ['type:tech', 'status:dev-ready', 'needs-human']), ticket(4, ['type:feature', 'status:qa'])])], role: 'tech' });
   check('tech queue summary: blocked first, then Spec, Dev, Review counters', JSON.stringify(await tally(page)) === JSON.stringify(['1bloqués', '1à spécifier', '1à coder', '0à relire', '0à merger']), JSON.stringify(await tally(page)));
   await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
-  check('product queue summary follows the role', JSON.stringify(await tally(page)) === JSON.stringify(['0à cadrer', '1à tester']), JSON.stringify(await tally(page)));
+  check('product queue summary follows the role (the blocked counter is not limited to it)', JSON.stringify(await tally(page)) === JSON.stringify(['1bloqués', '0à cadrer', '1à tester']), JSON.stringify(await tally(page)));
   check('a fresh snapshot shows no connector chip, a compact banner', !(await page.$('#conn .chip')) && !!(await page.$('#banner .banner.compact')));
   await page.close();
 
