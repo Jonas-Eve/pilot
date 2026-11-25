@@ -416,6 +416,25 @@ const STUB = (opts) => `
   check('epics: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'epics.png') });
   await page.close();
+  // ---- the parent of a ticket: a link on its card, the chain on its page ----
+  page = await open({ preload: [EPS, ], view: 'board' });
+  view = await tab(page, 'Travail');
+  const pr = (name) => page.locator('#view .board .card', { hasText: name });
+  check('parent: a card links to its parent', (await pr('Tache en cours').locator('a.chip:has-text("↑ #71")').getAttribute('href')) === '#file/71');
+  await pr('Tache en cours').locator('a.chip:has-text("↑ #71")').click(); await page.waitForTimeout(200);
+  view = await text(page, '#view');
+  check('parent: the link opens the parent, with its own chain above it', (await page.evaluate(() => location.hash)) === '#file/71' && /Story avis/.test(view) && (await page.locator('#view .crumbs a').allTextContents()).join('|') === '#70 Epic avis');
+  await page.goto(FILE + '#file/72'); await page.waitForTimeout(300);
+  check('parent: a ticket page shows its chain, epic first, each one a link', (await page.locator('#view .crumbs a').evaluateAll((as) => as.map((a) => a.textContent + '=' + a.getAttribute('href')))).join('|') === '#70 Epic avis=#file/70|#71 Story avis=#file/71');
+  await page.close();
+  page = await open({ preload: [snapshot([ticket(77, ['type:tech', 'level:task', 'status:backlog'], { t: 'Tache orpheline', p: 999 })], 30)], view: 'board' });
+  view = await tab(page, 'Travail');
+  const orph = page.locator('#view .board .card', { hasText: 'Tache orpheline' }).locator('a.chip:has-text("↑ #999")');
+  check('parent: one that is no longer in the dashboard opens on GitHub', (await orph.getAttribute('href')) === `https://github.com/${REPO}/issues/999` && (await orph.getAttribute('target')) === '_blank');
+  await page.goto(FILE + '#file/77'); await page.waitForTimeout(300);
+  check('parent: and the same in the chain of the ticket page', /issues\/999/.test(await page.locator('#view .crumbs a').getAttribute('href')));
+  check('parent: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
   page = await open({ preload: [EPS], view: 'board', lang: 'en' });
   view = await tab(page, 'Work');
   check('epics: English', /Filter on this epic/.test(view) && (await page.getAttribute('#view .tally .tile', 'title')).startsWith('Filter: '), view);

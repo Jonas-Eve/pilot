@@ -97,6 +97,11 @@ button.tile{cursor:pointer;font:inherit;color:inherit}
 .card.g-pause{border-style:dashed;opacity:.8}
 .card .t a{color:inherit;text-decoration:none}
 .card .t a:hover{text-decoration:underline}
+a.chip{text-decoration:none;color:var(--muted)}
+a.chip:hover{text-decoration:underline}
+.crumbs{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px}
+.crumbs a{color:var(--accent);text-decoration:none}
+.crumbs a:hover{text-decoration:underline}
 .card .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .col h3.gh{margin:4px 0 0}
 .col header .chips{flex-wrap:nowrap}
@@ -784,6 +789,8 @@ function vWorkOf(n){
   var kids=kidsOf(n);
   return h('div',{class:'list'},
     h('a',{class:'btn ghost',href:'#file'},'← Tous les tickets'),
+    parentsOf(t).length?h('nav',{class:'crumbs','aria-label':'Parents'},parentsOf(t).reverse().map(function(q,i){
+      return [i?h('span',{'aria-hidden':'true'},' › '):null,h('a',Object.assign({href:parentHref(q)},q.missing?{target:'_blank',rel:'noopener'}:{}),'#'+q.n+(q.title?' '+q.title:''))];})):null,
     workRow(workItem(t),true),
     kids.length?h('h2',{},'Sous-tickets · '+kids.length):null,
     kids.map(function(x){return workRow(workItem(x),true);}));
@@ -822,7 +829,9 @@ function boardCard(r){
   if(has(t,'on-hold'))chips.push(h('span',{class:'chip'},'en pause'));
   if(t.assignee)chips.push(h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee));
   if(t.k)chips.push(h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'));
-  var ep=epicOf(t); if(ep&&ep.n!==t.n&&S.epic!==ep.n)chips.push(h('button',{class:'chip rm',type:'button',title:ep.title,onclick:function(){S.epic=ep.n;render();}},'Epic #'+ep.n));
+  var par=parentsOf(t)[0];
+  if(par)chips.push(h('a',Object.assign({class:'chip',href:parentHref(par),title:par.title},par.missing?{target:'_blank',rel:'noopener'}:{}),'↑ #'+par.n));
+  var ep=epicOf(t); if(ep&&ep.n!==t.n&&(!par||ep.n!==par.n)&&S.epic!==ep.n)chips.push(h('button',{class:'chip rm',type:'button',title:ep.title,onclick:function(){S.epic=ep.n;render();}},'Epic #'+ep.n));
   if(hist)chips.push(h('span',{class:'chip'+(stale?' warn':''),title:tr(flag?'bloqué depuis ':'dans cette étape depuis ')+dur(r.ms)},tr(flag?'bloqué depuis ':'depuis ')+dur(r.ms)));
   if(stale)chips.push(h('span',{class:'chip warn'},'sans mouvement'));
   if(a.kind==='run')acts.push(openLink(L.main,L.label,false));
@@ -1052,6 +1061,9 @@ function fold(x){return String(x==null?'':x).normalize('NFD').replace(/[\u0300-\
 function ticketBy(n){if(!S._ix){S._ix={};tickets().forEach(function(x){S._ix[x.n]=x;});} return S._ix[n]||null;}
 /* the Epic a ticket belongs to (a task under a story under an Epic included), or itself when it is one */
 function epicOf(t){var x=t,i=0; while(x&&i<4){if(has(x,'level:epic'))return x; x=x.p?ticketBy(x.p):null; i++;} return null;}
+/* the parents of a ticket, nearest first; one that is not in the snapshot (closed) is only its number */
+function parentsOf(t){var out=[],x=t,i=0; while(x&&x.p&&i<4){var q=ticketBy(x.p); out.push(q||{n:x.p,title:'',missing:true}); x=q; i++;} return out;}
+function parentHref(q){return q.missing?'https://github.com/'+S.repo+'/issues/'+q.n:'#file/'+q.n;}
 function matches(t,skipEpic){
   var hay=fold('#'+t.n+' '+t.title), words=fold(S.q).split(/\s+/).filter(Boolean), i;
   for(i=0;i<words.length;i++)if(hay.indexOf(words[i].replace(/^#/,''))<0)return false;
