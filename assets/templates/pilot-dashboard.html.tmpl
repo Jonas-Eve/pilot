@@ -79,12 +79,20 @@ nav.tabs.sub a{padding:6px 12px;font-size:13px}
 .foldcard{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface)} .foldcard summary{cursor:pointer;font-weight:600} .foldcard .cmd{overflow-wrap:anywhere}
 .batch{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--accent-soft);border-radius:10px;padding:10px 14px}
 .batch input{width:64px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 8px}
-.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;align-items:start}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,1fr);gap:12px;align-items:start;overflow-x:auto;padding-bottom:8px}
 .col{background:var(--surface2);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .col header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .col .own{font-size:12px;color:var(--muted)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
 .card.flag{border-color:var(--warn)}
+.card.g-human{border-color:var(--warn);background:var(--warn-soft)}
+.card.g-going{border-left:3px solid var(--accent)}
+.card.g-pause{border-style:dashed;opacity:.8}
+.card .t a{color:inherit;text-decoration:none}
+.card .t a:hover{text-decoration:underline}
+.card .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.col h3.gh{margin:4px 0 0}
+.col header .chips{flex-wrap:nowrap}
 .card .t{font-size:13px;overflow-wrap:anywhere}
 .card .meta{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .empty{color:var(--muted);font-size:13px;padding:14px;border:1px dashed var(--line);border-radius:10px;text-align:center}
@@ -263,6 +271,10 @@ var EN={
 "← Tous les tickets": "← All tickets",
 "Travail": "Work",
 "Détail": "Details",
+"Liste": "List",
+"Affichage": "View",
+"Autres": "Others",
+"depuis ": "since ",
 "Ticket introuvable.": "Ticket not found.",
 "Sous-tickets · ": "Sub-tickets · ",
 "bloqué depuis ": "blocked for ",
@@ -623,7 +635,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(), 
-  tab:'file', expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
+  tab:'file', view:store('cp.view')==='liste'?'liste':'board', expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaMulti:0, ideaDesigner:0, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,url:{},picked:{},pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoWith:0, protoImp:0, viewHelp:0, viewProto:0, sub3:'alancer', sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'}, b:{ph:{review:1,dev:1,spec:1},mode:'',multi:0},
   db:null, snaps:{}, events:{},
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -778,12 +790,62 @@ function vWork(){
     return [h('h2',{},g[1],' · '+list.length),shown.map(function(r){return workRow(r);}),
       list.length>COL_LIMIT?h('button',{class:'btn',type:'button',onclick:function(){S.expanded['w:'+g[0]]=!open;render();}},open?'Réduire':'Afficher les '+(list.length-COL_LIMIT)+' autres'):null];
   }).filter(Boolean);
+  var viewSeg=h('div',{class:'seg',role:'group','aria-label':'Affichage'},[['board','Board'],['liste','Liste']].map(function(c){
+    return h('button',{type:'button','aria-pressed':String(S.view===c[0]),onclick:function(){S.view=c[0];store('cp.view',c[0]);render();}},c[1]);}));
   return h('div',{class:'list'},
-    h('h2',{},'Travail',' · '+rows.length),
+    h('div',{class:'pair'},h('h2',{},'Travail',' · '+rows.length),viewSeg),
     vTally(),
     h('p',{class:'note',title:'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte. Le mode auto travaille seul sur le ticket ; le mode pair vous fait dialoguer avec l’agent.'},'Auto : l’agent travaille seul. Pair : vous dialoguez avec lui. Humain : vous décidez, l’agent analyse et challenge.'),
     S.assignees.me&&!S.me?h('p',{class:'note'},'Indiquez votre identifiant GitHub (en haut de la page) pour que « moi » désigne vos tickets.'):null,
-    blocks.length?blocks:h('div',{class:'empty'},'Aucun ticket ne correspond.'));
+    S.view==='board'?vBoard(rows):(blocks.length?blocks:h('div',{class:'empty'},'Aucun ticket ne correspond.')));
+}
+
+/* the board: one column per phase, the cards in the order of the statuses of that phase; a card says where the ticket stands, for how long, what a human must do, and launches it */
+function boardCard(r){
+  var t=r.t, L=launchOf(t), a=L.a, flag=has(t,'needs-human'), ty=lab(t,'type:'), pr=lab(t,'priority:');
+  var hist=!!(t.h&&t.h.length)||(flag&&!!t.nh), stale=(r.group==='going'||r.group==='queue')&&r.ms>=7*86400000, chips=[], acts=[];
+  if(ty)chips.push(h('span',{class:'chip'},ty));
+  if(pr)chips.push(h('span',{class:'chip '+(pr==='P0'?'crit':pr==='P1'?'warn':'')},pr));
+  if(flag)chips.push(h('span',{class:'chip warn'},h('span',{class:'dot'}),'attend un humain'));
+  else if(t.status==='approved')chips.push(h('span',{class:'chip warn'},'à merger'));
+  if(has(t,'on-hold'))chips.push(h('span',{class:'chip'},'en pause'));
+  if(t.assignee)chips.push(h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee));
+  if(t.k)chips.push(h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'));
+  if(hist)chips.push(h('span',{class:'chip'+(stale?' warn':''),title:tr(flag?'bloqué depuis ':'dans cette étape depuis ')+dur(r.ms)},tr(flag?'bloqué depuis ':'depuis ')+dur(r.ms)));
+  if(stale)chips.push(h('span',{class:'chip warn'},'sans mouvement'));
+  if(a.kind==='run')acts.push(openLink(L.main,L.label,false));
+  else if(a.kind==='human'||a.kind==='merge'||a.kind==='hold'||a.kind==='none')acts.push(ghLink(t,a.kind==='merge'?'Merger sur GitHub':a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'));
+  if(t.r)acts.push(h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r));
+  acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#file/'+t.n;}},'Détail'));
+  return h('div',{class:'card g-'+r.group+(flag?' flag':'')},
+    h('div',{class:'t'},h('a',{href:'#file/'+t.n},h('span',{class:'num mono'},'#'+t.n+' '),t.title)),
+    h('div',{class:'meta'},chips),
+    h('div',{class:'acts'},acts));
+}
+function boardColumn(key,name,own,rows,sorted){
+  var open=!!S.expanded[key], shown=open?rows:rows.slice(0,COL_LIMIT), count={}, last=null, out=[], blocked=rows.filter(function(r){return r.group==='human';}).length;
+  rows.forEach(function(r){count[r.t.status]=(count[r.t.status]||0)+1;});
+  shown.forEach(function(r){
+    if(sorted&&r.t.status!==last){last=r.t.status;out.push(h('h3',{class:'gh'},(STATUS_FR[r.t.status]||r.t.status||'sans statut')+' · '+count[r.t.status]));}
+    out.push(has(r.t,'type:poc')?ticketRow(r.t):boardCard(r));
+  });
+  return h('section',{class:'col','aria-label':name},
+    h('header',{},h('strong',{},name),h('span',{class:'chips'},blocked?h('span',{class:'chip warn',title:'attend un humain'},h('span',{class:'dot'}),String(blocked)):null,h('span',{class:'chip'},String(rows.length)))),
+    own?h('span',{class:'own'},own):null,
+    out.length?out:h('div',{class:'empty'},'Aucun ticket'),
+    rows.length>COL_LIMIT?h('button',{class:'btn',type:'button',onclick:function(){S.expanded[key]=!open;render();}},open?'Réduire':'Afficher les '+(rows.length-COL_LIMIT)+' autres'):null);
+}
+function vBoard(rows){
+  var filt=filtering(), phases=filt?phasesOn():phasesView(), pocs=protoWork(), by={}, other=[], protos=[];
+  rows.forEach(function(r){var p=pocs[r.t.n]?null:phaseOf(r.t.status); if(pocs[r.t.n])protos.push(r); else if(p)(by[p.key]=by[p.key]||[]).push(r); else other.push(r);});
+  function order(p,list){
+    return list.slice().sort(function(a,b){
+      return p.statuses.indexOf(a.t.status)-p.statuses.indexOf(b.t.status)||(+(b.group==='human')-+(a.group==='human'))||byUrgency(a.t,b.t);});
+  }
+  var cols=phases.map(function(p){return boardColumn(p.key,p.n+' · '+p.name,S.role==='tous'?(p.role==='produit'?'Produit':'Tech'):'',order(p,by[p.key]||[]),true);});
+  if(protos.length)cols.push(boardColumn('protos','Prototypes','',protos,false));
+  if(other.length)cols.push(boardColumn('other','Autres','',other.slice().sort(function(a,b){return byUrgency(a.t,b.t);}),false));
+  return h('div',{class:'board'},cols);
 }
 
 /* ---------- views ---------- */
@@ -865,12 +927,17 @@ function protoOf(n){
   if(!S._po){S._po={}; Object.keys(S.protos).forEach(function(k){var m=S.protos[k]; if(Math.floor(Number(m.parts)||0)>0)arr(m.stories).forEach(function(s){S._po[s]=Number(k);});});}
   return S._po[n]||0;
 }
-function ticketRow(t,withLevel,depth,extra){
-  if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
+/* what one ticket launches: its action, its options and the command its main button opens */
+function launchOf(t){
   var a=actionFor(t), o=rowOpts(t.n), rc=rowCmds(t,a,o), autoDefault=!rc.qa&&!!(S.gh&&S.gh.workflow&&S.gh.workflow.rules&&S.gh.workflow.rules.default_mode==='auto'); /* pair leads, as in the skills; auto only when the project's workflow makes it the default (never for QA) */
   /* one launch button; auto (a browser run for QA) is an option like the others, off unless the project's workflow defaults to auto */
   var useAuto=!rc.useHuman&&rc.canAuto&&(!rc.pair||(o.next&&!rc.qa)||(o.auto==null?autoDefault:o.auto)), main=rc.useHuman?rc.human:useAuto?rc.auto:rc.pair;
-  var openBtn=openLink(main,rc.useHuman?'Ouvrir (humain)':useAuto?(rc.qa?'Ouvrir (navigateur)':'Ouvrir (auto)'):(rc.canAuto||rc.humanOK?'Ouvrir (pair)':'Ouvrir en pair'),true);
+  var label=rc.useHuman?'Ouvrir (humain)':useAuto?(rc.qa?'Ouvrir (navigateur)':'Ouvrir (auto)'):(rc.canAuto||rc.humanOK?'Ouvrir (pair)':'Ouvrir en pair');
+  return {a:a,o:o,rc:rc,useAuto:useAuto,main:main,label:label};
+}
+function ticketRow(t,withLevel,depth,extra){
+  if(has(t,'type:poc')){var pe=protoList().filter(function(x){return x.n===t.n;})[0]; if(pe)return protoRow(pe);}
+  var L=launchOf(t), a=L.a, o=L.o, rc=L.rc, useAuto=L.useAuto, main=L.main, openBtn=openLink(main,L.label,true);
   var hasOpts=rc.canAuto||rc.humanOK||rc.multiOK||(rc.withs||[]).length>0||(rc.onlys||[]).length>0;
   depth=depth||0;
   var kids=depth<3?kidsOf(t.n):[];
@@ -1852,8 +1919,8 @@ function vHowCases(){
 }
 var HOW_TABS=[
   {id:"file",mod:"",
-    fr:{title:"Travail",what:"Tous les tickets ouverts des phases, en blocs : ce qui attend un humain (drapeau, PR à merger, prototype à décider), ce qui est en cours, ce qui est à lancer, ce qui est en pause. Chaque ligne dit depuis quand le ticket est dans son étape ; le formulaire du haut lance une idée, le bloc de filtres affine.",how:"Lancez ou reprenez depuis la ligne (Ouvrir, en pair ou en auto), revenez suivre, puis lancez la suite. Filtrez par rôle (Produit / Tech), par type, état, drapeau ou assigné (indiquez votre login pour « moi »). « Détail » ouvre la chaîne du ticket avec le temps passé dans chaque phase, et ses sous-tickets. Le temps par étape vient de l’instantané (/pilot-dashboard --refresh).",why:"Vous lancez des tâches, vous revenez les suivre et lancez les suivantes, sans parcourir GitHub."},
-    en:{title:"Work",what:"All the open tickets of the phases, in blocks: what waits for a human (flag, PR to merge, prototype to decide), what is in progress, what is to launch, what is paused. Each row says since when the ticket is in its stage; the form at the top starts an idea, the filter block narrows.",how:"Launch or resume from the row (Open, in pair or auto), come back to follow, then launch the next. Filter by role (Product / Tech), type, state, flag or assignee (enter your login for “me”). “Details” opens the ticket’s chain with the time spent in each phase, and its sub-tickets. The time per stage comes from the snapshot (/pilot-dashboard --refresh).",why:"You launch tasks, come back to follow them and launch the next, without browsing GitHub."}},
+    fr:{title:"Travail",what:"Le board des tickets ouverts : une colonne par phase, des cartes qui disent où en est chaque ticket (statut, depuis combien de temps, ce qui attend un humain) et qui le lancent. Une liste groupée par besoin est disponible en option. Le formulaire du haut lance une idée, le bloc de filtres affine.",how:"Lancez ou reprenez depuis une carte (Ouvrir, en pair ou en auto), revenez suivre, puis lancez la suite. Filtrez par rôle (Produit / Tech), type, état, drapeau ou assigné (indiquez votre login pour « moi »). « Détail » ouvre la chaîne du ticket avec le temps passé dans chaque phase, et ses sous-tickets. Le temps par étape vient de l’instantané (/pilot-dashboard --refresh).",why:"Vous voyez d’un coup d’œil où s’accumule le travail et ce qui est bloqué, vous lancez des tâches, vous revenez les suivre et lancez les suivantes."},
+    en:{title:"Work",what:"The board of the open tickets: one column per phase, cards that say where each ticket stands (status, for how long, what waits for a human) and launch it. A list grouped by need is available as an option. The form at the top starts an idea, the filter block narrows.",how:"Launch or resume from a card (Open, in pair or auto), come back to follow, then launch the next. Filter by role (Product / Tech), type, state, flag or assignee (enter your login for “me”). “Details” opens the ticket’s chain with the time spent in each phase, and its sub-tickets. The time per stage comes from the snapshot (/pilot-dashboard --refresh).",why:"You see at a glance where work piles up and what is blocked, you launch tasks, come back to follow them and launch the next."}},
   {id:"prototypes",mod:"proto",
     fr:{title:"Prototypes",what:"Des maquettes cliquables de fonctions à tester, construites avec le PM puis le designer, à accepter ou rejeter.",how:"Décrivez la fonction dans l’onglet, puis acceptez ou rejetez la maquette ; une Discovery peut partir d’un prototype accepté (/pilot-proto).",why:"On décide sur du concret avant d’écrire de la spec ou du code."},
     en:{title:"Prototypes",what:"Clickable mockups of features to try, built with the PM then the designer, to accept or reject.",how:"Describe the feature in the tab, then accept or reject the mockup; a Discovery can start from an accepted prototype (/pilot-proto).",why:"You decide on something concrete before any spec or code is written."}},

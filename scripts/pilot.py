@@ -12,7 +12,7 @@
   pilot.py contract [PHASE] [--profile P]      # a phase's contract (statuses it consumes / claims / produces); bare: all, and whether they compose
   pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
   pilot.py workflow show|check|set [PROFILE]   # the project's workflow profile: the chain it runs, and the check that every profile composes
-  pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document, with its stage history (`h`) and `needs-human` start (with `--out`, the result also gives `history_failed`, the tickets whose history could not be read) (`nh`), one label-events call per ticket
+  pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document, with each ticket's stage history (`h`) and `needs-human` start (`nh`), one label-events call per ticket; with `--out` the summary also gives `history_failed`
   pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
   pilot.py flow    doc --in FILE [--out FILE]   # the dashboard's `flowRuns` document of a run of a user flow (no GitHub)
   pilot.py arch    index [--active] [--app A] [--under D] [--depth 1]|search|describe|next-number|inventory|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
@@ -2274,7 +2274,7 @@ def build_parser():
     p.add_argument("--action", required=True, help="what happened, e.g. created or approved")
     p.add_argument("--phase", help="e.g. discovery")
     p = sub.add_parser("snapshot")
-    p.add_argument("--out", help="write the document to this file and print only a summary")
+    p.add_argument("--out", help="write the document to this file and print only a summary (with `history_failed`: the tickets whose stage history could not be read)")
     p = sub.add_parser("doctor")
     p.add_argument("--verbose", action="store_true", help="list every check, not only failures")
     p.add_argument("--no-wiki", action="store_true", help="skip the wiki check (/pilot-wiki repairing a missing wiki/)")

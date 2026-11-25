@@ -60,6 +60,7 @@ const STUB = (opts) => `
     page.errors = []; page.on('pageerror', e => page.errors.push(String(e)));
     if (opts.lang !== null) await page.addInitScript(`try{localStorage.setItem('cp.lang',${JSON.stringify(opts.lang || 'fr')})}catch(e){}`);
     await page.addInitScript(`try{localStorage.setItem('cp.role',${JSON.stringify(opts.role || 'tous')})}catch(e){}`);
+    await page.addInitScript(`try{localStorage.setItem('cp.view',${JSON.stringify(opts.view || 'liste')})}catch(e){}`);
     await page.addInitScript(STUB(opts));
     await page.goto(file); await page.waitForTimeout(350);
     return page;
@@ -315,6 +316,67 @@ const STUB = (opts) => `
   check('back on the tech role', (await rows(page)) === 8);
   check('fold: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'work.png') });
+  await page.close();
+
+  // ---- the board: one column per phase, cards that say where a ticket stands, filters, fold, list as an option ----
+  const BWF = snapshot([
+    ticket(10, ['type:tech', 'priority:P1', 'status:in-dev'], { t: 'Ticket en dev', a: 'alice', h: [['backlog', iso(5 * 1440)], ['in-spec', iso(4 * 1440)], ['dev-ready', iso(3 * 1440 - 60)], ['in-dev', iso(120)]] }),
+    ticket(11, ['type:tech', 'status:in-dev', 'needs-human'], { t: 'Ticket bloque', h: [['in-dev', iso(3 * 1440)]], nh: iso(2 * 1440) }),
+    ticket(12, ['type:feature', 'status:approved'], { t: 'Ticket a merger', h: [['approved', iso(300)]], r: 77 }),
+    ticket(13, ['type:tech', 'status:backlog'], { t: 'Ticket en file', u: iso(9 * 1440) }),
+    ticket(14, ['type:feature', 'level:story', 'status:split'], { t: 'Story decoupee', k: [0, 1] }),
+    ticket(15, ['type:feature', 'level:task', 'status:dev-ready'], { t: 'Tache prete', p: 14 }),
+    ticket(16, ['type:tech', 'status:backlog', 'on-hold'], { t: 'Ticket en pause' }),
+  ], 30);
+  page = await open({ preload: [BWF], view: 'board' });
+  view = await tab(page, 'Travail');
+  const colNames = () => page.$$eval('#view .board section.col > header strong', (e) => e.map((x) => x.textContent));
+  const card = (name) => page.locator('#view .board .card', { hasText: name });
+  const colOf = (name) => page.locator('#view .board section.col', { has: page.locator('.card', { hasText: name }) }).locator('header strong').textContent();
+  check('board: the default view, one column per phase', JSON.stringify(await colNames()) === JSON.stringify(['1 · Discovery', '2 · Spec', '3 · Dev', '4 · Review', '5 · QA humaine']), JSON.stringify(await colNames()));
+  check('board: a ticket is in the column of its phase', (await colOf('Ticket en dev')) === '3 · Dev' && (await colOf('Ticket a merger')) === '4 · Review' && (await colOf('Ticket en file')) === '2 · Spec');
+  check('board: a split story is not a card', (await card('Story decoupee').count()) === 0);
+  check('board: a column counts its tickets and its blocked ones', /3/.test(await text(page, 'section[aria-label="3 · Dev"] header')) && /1/.test(await text(page, 'section[aria-label="3 · Dev"] header .chip.warn')), await text(page, 'section[aria-label="3 · Dev"] header'));
+  check('board: the statuses of a phase head its cards', /dev en cours · 2/.test(await text(page, 'section[aria-label="3 · Dev"]')) && /prêt à coder · 1/.test(await text(page, 'section[aria-label="3 · Dev"]')));
+  check('board: a ticket flagged for a human is marked and says since when it is blocked', /g-human/.test(await card('Ticket bloque').getAttribute('class')) && /attend un humain/.test(await card('Ticket bloque').textContent()) && /bloqué depuis 2 j/.test(await card('Ticket bloque').textContent()));
+  check('board: a ticket in progress says its assignee and since when', /g-going/.test(await card('Ticket en dev').getAttribute('class')) && /@alice/.test(await card('Ticket en dev').textContent()) && /depuis 2 h/.test(await card('Ticket en dev').textContent()) && /P1/.test(await card('Ticket en dev').textContent()));
+  check('board: a ticket with no history shows no duration, an idle one is flagged', !/depuis/.test(await card('Ticket en file').textContent()) && /sans mouvement/.test(await card('Ticket en file').textContent()));
+  check('board: a paused ticket is its own state', /g-pause/.test(await card('Ticket en pause').getAttribute('class')) && /en pause/.test(await card('Ticket en pause').textContent()));
+  const hrefsOf = (name) => card(name).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0])));
+  check('board: a card launches its ticket, a flagged one answers on GitHub, an approved one merges there', JSON.stringify(await hrefsOf('Tache prete')) === JSON.stringify(['/pilot-dev 15']) && /issues\/11/.test((await hrefsOf('Ticket bloque'))[0]) && /issues\/12/.test((await hrefsOf('Ticket a merger'))[0]) && /\/pull\/77/.test((await hrefsOf('Ticket a merger'))[1]), JSON.stringify(await hrefsOf('Tache prete')));
+  await card('Ticket en dev').locator('button:has-text("Détail")').click(); await page.waitForTimeout(200);
+  check('board: a card opens its ticket, with the chain and the launch options', (await page.evaluate(() => location.hash)) === '#file/10' && /Spec 2 j/.test(await text(page, '#view')) && /Ticket en dev/.test(await text(page, '#view')) && /Ouvrir/.test(await text(page, '#view .row')));
+  await page.goto(FILE + '#file'); await page.waitForTimeout(300);
+  await page.fill('#searchText', 'bloque'); await page.waitForTimeout(150);
+  check('board: the filters narrow the cards, the columns stay', (await page.$$eval('#view .board .card', (c) => c.length)) === 1 && (await colNames()).length === 5);
+  await page.fill('#searchText', '#'); await page.waitForTimeout(150);
+  check('board: a search also looks at what is outside the phases (an Others column)', /Story decoupee/.test(await text(page, '#view .board section[aria-label="Autres"]')));
+  await page.fill('#searchText', ''); await page.waitForTimeout(150);
+  check('board: no filter, no Others column', (await page.$$('#view .board section[aria-label="Autres"]')).length === 0);
+  await page.click('#view .seg button:has-text("Liste")'); await page.waitForTimeout(150);
+  check('board: the list is one click away and remembered', !(await page.$('#view .board')) && /Action humaine attendue/.test(await text(page, '#view')) && (await page.evaluate(() => localStorage.getItem('cp.view'))) === 'liste');
+  await page.click('#view .seg button:has-text("Board")'); await page.waitForTimeout(150);
+  check('board: and back', !!(await page.$('#view .board')) && (await page.evaluate(() => localStorage.getItem('cp.view'))) === 'board');
+  check('board: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.screenshot({ path: path.join(TMP, 'board.png') });
+  await page.close();
+  page = await open({ preload: [BWF], view: 'board', role: 'produit' });
+  view = await tab(page, 'Travail');
+  check('board: the role limits the columns (product: Discovery and QA)', JSON.stringify(await colNames()) === JSON.stringify(['1 · Discovery', '5 · QA humaine']), JSON.stringify(await colNames()));
+  await page.close();
+  page = await open({ preload: [snapshot(many)], view: 'board' });
+  view = await tab(page, 'Travail');
+  const devCards = () => page.$$eval('section[aria-label="3 · Dev"] .card', (c) => c.length);
+  check('board: a long column shows 8 cards and an expander', (await devCards()) === 8 && /Afficher les 37 autres/.test(await text(page, 'section[aria-label="3 · Dev"]')));
+  check('board: the most urgent card comes first', /#30/.test(await page.textContent('section[aria-label="3 · Dev"] .card')));
+  await page.click('text=Afficher les 37 autres'); await page.waitForTimeout(150);
+  check('board: expanding shows all and offers to collapse', (await devCards()) === 45 && /Réduire/.test(await text(page, 'section[aria-label="3 · Dev"]')));
+  await page.click('section[aria-label="3 · Dev"] >> text=Réduire'); await page.waitForTimeout(150);
+  check('board: collapsing goes back to 8', (await devCards()) === 8);
+  await page.close();
+  page = await open({ preload: [BWF], view: 'board', lang: 'en' });
+  view = await tab(page, 'Work');
+  check('board: English', /since 2 h/.test(view) && /blocked for 2 d/.test(view) && !/\d j\b/.test(view), view);
   await page.close();
 
   page = await open({ preload: [snapshot(many.slice(0, 12))] });
