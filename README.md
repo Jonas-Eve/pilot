@@ -46,7 +46,7 @@ yet to invoke one. Instead:
    — that's the only piece that needs manual seeding, since `/pilot-init` copies every
    skill and agent (itself included) from a fresh clone in step 2.
 2. Run `/pilot-init` in your project. It takes care of everything else (skills, agents,
-   docs, labels, the status-cascade workflow).
+   docs, labels, the merge workflow).
 
 ## Updating
 

@@ -23,7 +23,7 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 OWNED = (".pilot/", ".github/workflows/pilot-status-on-merge.yml")
-LINTED = (".claude/skills/", ".claude/agents/", "assets/docs/", "assets/templates/", "scripts/pilot.py", "CLAUDE.md")
+LINTED = (".claude/skills/", ".claude/agents/", "assets/docs/", "assets/templates/", "scripts/pilot.py", "scripts/pilot_checks.py", "assets/workflows/", "assets/formats.json", "CLAUDE.md")
 
 
 REVIEWED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/pilot_checks.py",
