@@ -52,7 +52,7 @@ inputs and outputs, the agent and its task doc, the check or judge id and where 
 
 ## 4. Claim, resume, pool
 
-- A workflow that works a ticket **claims** it first: `pilot.py claim <workflow> <issue>` sets the assignee and the in-progress status in one write, then re-reads; a different assignee afterwards means another run won, so stand down. Optimistic, not a lock.
+- A workflow that works a ticket **claims** it first: `pilot.py claim <workflow> <issue> --mode …` sets the assignee and the in-progress status in one write, then re-reads; a different assignee afterwards means another run won, so stand down. Optimistic, not a lock.
 - `pilot.py pool <workflow>` lists claimable tickets: fresh (the workflow's pre-claim status, unassigned) and resumable (in-progress with `can-resume`); highest priority, then blocks, then oldest.
 - **Resume.** `pilot.py run resume <issue>` reads the run comment and continues at the recorded step, with its loop counters and assumptions. An orphaned claim (assigned, in progress, no `needs-human`) resumes only by an explicit `--resume` or `can-resume`, because only a human can tell it is dead. A cleared `needs-human` resumes with the question's answer. A run waiting on a condition (a wait step) is paused: `run resume` re-evaluates it and refuses with the exact reason. A workflow with no ticket creates its `run` issue assigned to the current user.
 
