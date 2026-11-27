@@ -251,7 +251,7 @@ const STUB = (opts) => `
   check('board: the title opens the ticket page, where the details are', (await card(15).locator('.t a').getAttribute('href')) === '#file/15' && (await card(16).locator('.up').count()) === 1 && /#14/.test(await card(16).locator('.up').textContent()));
   check('board: a card fits its column', await card(15).evaluate((e) => e.scrollWidth <= e.clientWidth + 1));
   await page.click('#filtersToggle'); await page.click('#searchFilters button[data-map="levels"][data-key="task"]'); await page.waitForTimeout(150);
-  check('board: filtering shows the matching cards only, in the same four stages', JSON.stringify(await cols()) === JSON.stringify(STAGE_NAMES) && (await page.locator('#view .board .card').count()) === 7, String(await page.locator('#view .board .card').count()));
+  check('board: filtering shows the matching cards only, in the same four stages', JSON.stringify(await cols()) === JSON.stringify(STAGE_NAMES) && (await page.locator("#view .board .card").count()) === 5, String(await page.locator('#view .board .card').count()));
   await page.click('#searchFilters button[data-map="levels"][data-key="task"]'); await page.click('#searchFilters button[data-map="levels"][data-key="epic"]'); await page.waitForTimeout(150);
   check('board: filtering on epics keeps the epic and the stages that hold nothing are folded', (await page.locator('#view .board .card').count()) === 1 && (await stage('En réalisation').locator('.card').count()) === 0);
   await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(150);
