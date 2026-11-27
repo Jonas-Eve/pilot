@@ -1801,6 +1801,31 @@ class TicketTests(unittest.TestCase):
         self.assertEqual(gh2.store[1]["state"], "closed")
 
 
+class PullRequestTests(unittest.TestCase):
+    def machine(self, runs):
+        m, gh = machine([])
+        gh.get_pull = lambda n: {"number": n, "head": {"sha": "abc"}}
+        gh.check_runs = lambda sha: runs
+        gh.create_pull = lambda title, body, head, base: {"number": 7, "html_url": "u", "head": {"sha": "abc"}}
+        gh.merge_pull = lambda n, method: {"merged": True, "sha": "def"}
+        return m
+
+    def test_the_ci_verdict_is_green_pending_or_red(self):
+        done = {"name": "t", "status": "completed", "conclusion": "success"}
+        self.assertEqual(self.machine([]).pr_ci(7)["ci"], "green")  # a docs-only PR runs no check
+        self.assertEqual(self.machine([done]).pr_ci(7)["ci"], "green")
+        self.assertEqual(self.machine([done, {"name": "b", "status": "in_progress", "conclusion": None}]).pr_ci(7)["ci"], "pending")
+        red = self.machine([done, {"name": "b", "status": "completed", "conclusion": "failure"}]).pr_ci(7)
+        self.assertEqual((red["ci"], red["failed"]), ("red", ["b"]))
+
+    def test_a_pr_is_merged_only_on_green(self):
+        self.assertTrue(self.machine([]).pr_merge(7)["merged"])
+        with self.assertRaises(pilot.Refused) as caught:
+            self.machine([{"name": "b", "status": "queued", "conclusion": None}]).pr_merge(7)
+        self.assertEqual(caught.exception.payload["reason"], "ci-not-green")
+        self.assertEqual(self.machine([]).pr_open("br", "t", "b")["pr"], 7)
+
+
 class LabelsTests(unittest.TestCase):
     def test_sync_creates_the_missing_labels_and_patches_the_others(self):
         m, gh = machine([])

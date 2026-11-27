@@ -488,6 +488,20 @@ class GhClient:
         return json.loads(self._run(f"repos/{self.repo}/issues", method="POST",
                                     body={"title": title, "body": body, "labels": labels, "assignees": assignees}))
 
+    def create_pull(self, title, body, head, base):
+        return json.loads(self._run(f"repos/{self.repo}/pulls", method="POST", body={"title": title, "body": body, "head": head, "base": base}))
+
+    def get_pull(self, number):
+        return json.loads(self._run(f"repos/{self.repo}/pulls/{number}"))
+
+    def check_runs(self, sha):
+        """The check runs of a commit (the CI): [{name, status, conclusion}]."""
+        items = json.loads(self._run(f"repos/{self.repo}/commits/{sha}/check-runs?per_page=100")).get("check_runs", [])
+        return [{"name": c["name"], "status": c["status"], "conclusion": c.get("conclusion")} for c in items]
+
+    def merge_pull(self, number, method):
+        return json.loads(self._run(f"repos/{self.repo}/pulls/{number}/merge", method="PUT", body={"merge_method": method}))
+
     def upsert_label(self, name, color, description, exists):
         body = {"color": color, "description": description[:100]}
         if exists:
@@ -1232,6 +1246,28 @@ class Machine:
             return {"ok": True, "issue": number, "status": status, "changed": False}
         result = self.set(number, new, None, (), (), close=(new == "done" and "level:epic" in issue["labels"]))
         return {**result, "changed": True}
+
+    # ---- pull requests: the carrier of a change, and the CI's verdict ------------------------------------------
+    def pr_open(self, branch, title, body, base="main"):
+        made = self.gh.create_pull(title, body, branch, base)
+        return {"ok": True, "pr": made["number"], "url": made.get("html_url", ""), "head": (made.get("head") or {}).get("sha", "")}
+
+    def pr_ci(self, number):
+        """The CI's verdict on a PR now: `pending`, `green` or `red` (no check at all counts as green: a docs-only PR runs none)."""
+        pull = self.gh.get_pull(number)
+        runs = self.gh.check_runs(pull["head"]["sha"])
+        failed = [r["name"] for r in runs if r["status"] == "completed" and r["conclusion"] not in ("success", "neutral", "skipped")]
+        waiting = [r["name"] for r in runs if r["status"] != "completed"]
+        verdict = "red" if failed else "pending" if waiting else "green"
+        return {"ok": True, "pr": number, "ci": verdict, "failed": failed, "waiting": waiting}
+
+    def pr_merge(self, number, method="squash"):
+        """Merge a PR whose CI is green (the only way a PR is merged here; a human approval is the workflow's gate before it)."""
+        verdict = self.pr_ci(number)
+        if verdict["ci"] != "green":
+            raise Refused({"ok": False, "reason": "ci-not-green", **verdict})
+        done = self.gh.merge_pull(number, method)
+        return {"ok": True, "pr": number, "merged": bool(done.get("merged")), "sha": done.get("sha", "")}
 
     def sync_labels(self):
         """Create or update every PILOT label (idempotent), and stamp `lastLabelsSyncAt` in .pilot/state.json when it exists."""
@@ -2459,6 +2495,18 @@ def build_parser():
     p = sub.add_parser("ticket", help="the two human closings of a ticket")
     p.add_argument("action", choices=["close-forming", "drop"])
     p.add_argument("issue", type=int)
+    p = sub.add_parser("pr", help="open a PR, read its CI verdict, merge it once the CI is green")
+    ps = p.add_subparsers(dest="pr_cmd", required=True)
+    w = ps.add_parser("open", parents=[common])
+    w.add_argument("--branch", required=True)
+    w.add_argument("--title", required=True)
+    w.add_argument("--body", default="")
+    w.add_argument("--base", default="main")
+    w = ps.add_parser("ci", parents=[common])
+    w.add_argument("number", type=int)
+    w = ps.add_parser("merge", parents=[common])
+    w.add_argument("number", type=int)
+    w.add_argument("--method", choices=["squash", "rebase", "merge"], default="squash")
     p = sub.add_parser("derive", help="a split story's status from its tasks, an epic's from its stories")
     p.add_argument("issue", type=int)
     p = sub.add_parser("labels", help="create or update every PILOT label")
@@ -2805,6 +2853,10 @@ def run(args, gh):
         return machine.ticket_close_forming(args.issue, drop=args.action == "drop")
     if args.cmd == "derive":
         return machine.derive(args.issue)
+    if args.cmd == "pr":
+        if args.pr_cmd == "open":
+            return machine.pr_open(args.branch, args.title, args.body, args.base)
+        return machine.pr_ci(args.number) if args.pr_cmd == "ci" else machine.pr_merge(args.number, args.method)
     if args.cmd == "labels":
         return machine.sync_labels()
     if args.cmd == "proto-pack":

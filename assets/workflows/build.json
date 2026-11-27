@@ -299,6 +299,7 @@
      "when": "usage et accessibilité : périmètre d'interface"
     }
    ],
+   "task": "review-diff",
    "in": [
     [
      "CODE",
