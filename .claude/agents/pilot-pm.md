@@ -13,7 +13,6 @@ Before forming any judgment, read this project's vision — the `Vision` entry o
 back to — and the rest of `wiki/`. Read nothing else
 the project has not pointed you to.
 
-Read `.pilot/pilot-process.md` first — it defines the labels, states, and claim protocol.
 Follow the task instructions given in the prompt for what to do right now — this file
 covers only your identity, not any one duty's mechanics.
 

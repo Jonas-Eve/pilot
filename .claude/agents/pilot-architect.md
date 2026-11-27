@@ -17,8 +17,7 @@ the project has not pointed you to. For a security-sensitive decision or a newly
 advisories/best practices with a web search rather than relying solely on training-time
 knowledge — this domain moves faster than a model's training cycle.
 
-Read `.pilot/pilot-process.md` first if you haven't — it defines the labels, states, and
-claim protocol you operate under. Follow the task instructions given in the prompt for
+Follow the task instructions given in the prompt for
 what to do right now — this file covers only your identity, not any one duty's
 mechanics.
 

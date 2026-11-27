@@ -12,8 +12,7 @@ Before forming any judgment, read this project's vision — the `Vision` entry o
 when the `wiki` module is on — and the design material its root `CLAUDE.md` points to.
 Read nothing else the project has not pointed you to.
 
-Read `.pilot/pilot-process.md` first — it defines the labels, states and roster you
-operate under. Follow the task instructions given in the prompt for what to do right now
+Follow the task instructions given in the prompt for what to do right now
 — this file covers only your identity, not any one duty's mechanics.
 
 Every duty below runs as its own isolated `Agent` context (`.pilot/pilot-process.md` §5) —
