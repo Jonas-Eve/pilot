@@ -589,6 +589,20 @@ class SnapshotModulesTests(unittest.TestCase):
         self.assertEqual(self.snapshot_in({"projectName": "p", "language": "fr"})["language"], "fr")
         self.assertEqual(self.snapshot_in({"projectName": "p"})["language"], "en")
 
+    def test_the_snapshot_carries_the_steps_of_every_workflow_within_the_size_limit(self):
+        doc = self.snapshot_in({"projectName": "p"})
+        wfs = pilot.load_workflows()
+        steps = doc["workflowSteps"]
+        self.assertEqual(sorted(steps), sorted(wfs))
+        self.assertEqual([x["id"] for x in steps["express"]], [x["id"] for x in wfs["express"]["steps"]])  # the expanded steps: build's included
+        self.assertIn("build-implement", [x["id"] for x in steps["express"]])
+        self.assertEqual(steps["plan"][2], {"id": "audit", "kind": "agent", "agents": ["architect", "techlead"], "title": "Auditor"})
+        for rows in steps.values():
+            for x in rows:
+                self.assertEqual(set(x), {"id", "kind", "agents", "title"})
+                self.assertLessEqual(len(x["title"]), 36)
+        self.assertLess(len(json.dumps(steps, ensure_ascii=False).encode()), pilot.SNAPSHOT_MAX_BYTES // 8)
+
     def test_a_state_without_the_field_or_without_a_state_adds_nothing(self):
         self.assertNotIn("modules", self.snapshot_in({"projectName": "p"}))
         self.assertNotIn("modules", self.snapshot_in(None))
@@ -1472,10 +1486,15 @@ class DemoSnapshotTests(unittest.TestCase):
         labels = {l for r in rows.values() for l in r["l"]}
         self.assertTrue({f"status:{s}" for s in pilot.STATUSES if s not in ("done", "wont-do")} <= labels)  # open tickets only
         self.assertTrue({"needs-human", "on-hold", "can-resume", "express", "fix", "gap", "run:proto"} <= labels)
-        self.assertTrue(labels <= set(pilot.LABELS) | {f"status:{s}" for s in pilot.STATUSES} | {"needs-human", "on-hold", "can-resume", "express", "fix", "gap", "run:proto", "run:technical-frame"})
+        self.assertTrue(labels <= set(pilot.LABELS) | {f"status:{s}" for s in pilot.STATUSES} | {"needs-human", "on-hold", "can-resume", "express", "fix", "gap", "run:proto", "run:technical-frame", "run:design-system", "run:personas-flows"})
         self.assertTrue(any("level:epic" in r["l"] and "k" in r for r in rows.values()))
         self.assertTrue(any("r" in r for r in rows.values()) and any("a" in r for r in rows.values()))
         self.assertEqual(self.doc["workflows"], sorted(self.demo.WORKFLOWS))
+        self.assertEqual(self.doc["workflowSteps"], pilot.workflow_steps(pilot.load_workflows()))
+        admin = {"technical-frame", "design-system", "personas-flows", "functional-frame"}
+        runs = self.demo.live_documents().values()
+        for state in ("running", "waiting-human"):
+            self.assertTrue(any(d["kind"] == "run" and d["workflow"] in admin and d["state"] == state for d in runs), state)
 
     def test_live_documents(self):
         docs = self.demo.live_documents()

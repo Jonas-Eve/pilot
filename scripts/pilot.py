@@ -116,6 +116,13 @@ def expand(raw, wid):
     return wf
 
 
+def workflow_steps(wfs, title_max=36):
+    """What the dashboard's timeline needs of each workflow, from the expanded steps: {id: [{id, kind, agents, title}]}."""
+    short = lambda text: text if len(text) <= title_max else text[:title_max - 1].rstrip() + "…"
+    return {wid: [{"id": s["id"], "kind": s["kind"], "agents": [a["persona"] for a in s.get("agents", [])], "title": short(s.get("title", ""))}
+                  for s in wfs[wid]["steps"]] for wid in sorted(wfs)}
+
+
 def load_workflows(directory=None):
     """Every workflow of the project, expanded: {id: workflow}."""
     directory = directory or workflow_dir()
@@ -927,6 +934,7 @@ class Machine:
             doc["modules"] = modules  # the dashboard's tabs follow the modules a project has on
         doc["language"] = read_language()  # the dashboard opens in it (a reader can switch)
         doc["workflows"] = sorted(self.wfs)  # the dashboard shows the workflows this project runs
+        doc["workflowSteps"] = workflow_steps(self.wfs)  # and, per workflow, the steps its timeline walks through
         while len(json.dumps(doc, ensure_ascii=False).encode()) > SNAPSHOT_MAX_BYTES and rows:
             del rows[max(1, len(rows) * 9 // 10):]
             doc["truncated"] = True

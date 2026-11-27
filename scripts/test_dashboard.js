@@ -229,35 +229,76 @@ const STUB = (opts) => `
     check('no run: no runs section', (await none.$('#view section[aria-label="Runs en cours"]')) === null);
     await none.close(); }
 
-  // ---- the board: a column per status of the levels in view ----
+  // ---- the board: four stages, the exact status a chip on a compact card ----
+  const STAGE_NAMES = ['À cadrer', 'En conception', 'En réalisation', 'À recetter'];
   page = await open({ preload: [V6], view: 'board' });
   await tab(page, 'Travail');
-  const cols = () => page.$$eval('#view .board section.col > header strong', (e) => e.map((x) => x.textContent));
-  const colOf = (name) => page.locator('#view .board section.col', { hasText: name });
-  check('board: one column per status in order, done and dropped hidden while empty', JSON.stringify(await cols()) === JSON.stringify(['en formation', 'à planifier', 'planification en cours', 'planifié', 'prêt à construire', 'construction en cours', 'relecture en cours', 'fusionné, à recetter']), JSON.stringify(await cols()));
-  check('board: a ticket sits in the column of its status', /Tâche prête/.test(await text(page, '#view .board section[aria-label="prêt à construire"]')) && /Tâche en cours/.test(await text(page, '#view .board section[aria-label="construction en cours"]')) && /Story fusionnée/.test(await text(page, '#view .board section[aria-label="fusionné, à recetter"]')));
-  check('board: the epic is a card with its progress and a filter button', (await page.$$('#view .board section[aria-label="planifié"] .card .bar')).length === 1 && (await page.locator('#view .board .card', { hasText: 'Epic planifié' }).locator('button:has-text("Filtrer sur cette epic")').count()) === 1);
-  check('board: no run issue as a card', !/Mon proto/.test(await text(page, '#view .board')));
-  const cc = await page.locator('#view .board .card', { hasText: 'Tâche prête' }).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0])));
-  check('board: a card launches its command', cc.includes('/pilot-build 15'), JSON.stringify(cc));
-  check('board: the blocked card is flagged, and counted in its column header', (await page.locator('#view .board .card.flag', { hasText: 'Tâche bloquée' }).count()) === 1 && (await colOf('prêt à construire').locator('header .chip.warn').count()) === 1);
-  check('board: a card fits its column', await page.locator('#view .board .card', { hasText: 'Tâche prête' }).evaluate((e) => e.scrollWidth <= e.clientWidth + 1));
+  const cols = () => page.$$eval('#view .board section.col > button.sh strong', (e) => e.map((x) => x.textContent));
+  const stage = (name) => page.locator(`#view .board section.col[aria-label="${name}"]`);
+  const card = (n) => page.locator('#view .board .card', { has: page.locator(`.t a[href="#file/${n}"]`) });
+  check('board: four stages in order, not one column per status', JSON.stringify(await cols()) === JSON.stringify(STAGE_NAMES), JSON.stringify(await cols()));
+  check('board: the stages hold their statuses (frame: forming, to-plan; design: planning, planned; build: ready to reviewing; accept: merged)',
+        (await stage('À cadrer').locator('.card').count()) === 2 && (await stage('En conception').locator('.card').count()) === 3 && (await stage('En réalisation').locator('.card').count()) === 6 && (await stage('À recetter').locator('.card').count()) === 1,
+        JSON.stringify(await Promise.all(STAGE_NAMES.map((n) => stage(n).locator('.card').count()))));
+  check('board: the exact status is the chip of the card', /prêt à construire/.test(await text(page, '#view .board .card:has(a[href="#file/15"]) .chip')) && /construction en cours/.test(await card(16).locator('.chip').first().textContent()) && /relecture en cours/.test(await card(17).locator('.chip').first().textContent()) && /planification en cours/.test(await card(13).locator('.chip').first().textContent()));
+  check('board: the stage header counts its cards and the blocked ones', (await stage('En réalisation').locator('button.sh .chip.warn').count()) === 1 && /6/.test(await stage('En réalisation').locator('button.sh .chips').textContent()));
+  check('board: no run issue as a card, nor a done column', !/Mon proto/.test(await text(page, '#view .board')) && (await page.locator('#view .done-fold').count()) === 0);
+  check('board: epics are cards, at their own stage, with progress and the epic filter', (await stage('En conception').locator('.card.epic', { hasText: 'Epic planifié' }).count()) === 1 && (await card(10).locator('.bar').count()) === 1 && /1\/3/.test(await card(10).textContent()) && (await card(10).locator('button:has-text("Filtrer sur cette epic")').count()) === 1);
+  check('board: a parent and its children are all shown (epic, its story, a split story and its tasks)', (await Promise.all([10, 11, 14, 15, 16].map((n) => card(n).count()))).every((c) => c === 1));
+  check('board: a card is compact: number, title, one state chip, at most one action, no command, no flag chips', (await card(15).locator('.chip').count()) === 1 && (await card(15).locator('.acts > *').count()) === 1 && !/\/pilot-/.test(await card(15).textContent()) && (await card(19).locator('.chip').count()) === 1 && (await card(21).locator('.chip').count()) === 1 && !/correction|en écart|express/.test(await card(21).textContent()));
+  check('board: a card launches its command (its one action)', (await card(15).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0])))).includes('/pilot-build 15') && (await card(18).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0])))).includes('/pilot-accept 18'));
+  check('board: a blocked card is flagged and answers on GitHub; a paused or container card has no action', (await page.locator('#view .board .card.flag', { hasText: 'Tâche bloquée' }).count()) === 1 && /Répondre sur GitHub/.test(await card(19).textContent()) && (await card(20).locator('.acts').count()) === 0 && (await card(14).locator('.acts').count()) === 0);
+  check('board: the title opens the ticket page, where the details are', (await card(15).locator('.t a').getAttribute('href')) === '#file/15' && (await card(16).locator('.up').count()) === 1 && /#14/.test(await card(16).locator('.up').textContent()));
+  check('board: a card fits its column', await card(15).evaluate((e) => e.scrollWidth <= e.clientWidth + 1));
   await page.click('#filtersToggle'); await page.click('#searchFilters button[data-map="levels"][data-key="task"]'); await page.waitForTimeout(150);
-  check('board: filtering on tasks keeps the statuses of a task (ready to merged)', JSON.stringify(await cols()) === JSON.stringify(['prêt à construire', 'construction en cours', 'relecture en cours', 'fusionné, à recetter']), JSON.stringify(await cols()));
+  check('board: filtering shows the matching cards only, in the same four stages', JSON.stringify(await cols()) === JSON.stringify(STAGE_NAMES) && (await page.locator('#view .board .card').count()) === 7, String(await page.locator('#view .board .card').count()));
   await page.click('#searchFilters button[data-map="levels"][data-key="task"]'); await page.click('#searchFilters button[data-map="levels"][data-key="epic"]'); await page.waitForTimeout(150);
-  check('board: filtering on epics keeps the statuses of an epic', JSON.stringify(await cols()) === JSON.stringify(['en formation', 'à planifier', 'planification en cours', 'planifié']), JSON.stringify(await cols()));
+  check('board: filtering on epics keeps the epic and the stages that hold nothing are folded', (await page.locator('#view .board .card').count()) === 1 && (await stage('En réalisation').locator('.card').count()) === 0);
   await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(150);
-  await page.locator('#view .board .card', { hasText: 'Epic planifié' }).locator('button:has-text("Filtrer sur cette epic")').click(); await page.waitForTimeout(150);
+  await card(10).locator('button:has-text("Filtrer sur cette epic")').click(); await page.waitForTimeout(150);
   check('board: filtering on an epic keeps it and its tickets', /Story en formation/.test(await text(page, '#view .board')) && !/Story à planifier/.test(await text(page, '#view .board')));
-  await page.locator('#view .board .card', { hasText: 'Epic planifié' }).locator('button:has-text("Tout afficher")').click(); await page.waitForTimeout(150);
+  await card(10).locator('button:has-text("Tout afficher")').click(); await page.waitForTimeout(150);
   await page.click('#view .seg button:has-text("Liste")'); await page.waitForTimeout(150);
   check('list is the other display, and the choice is remembered', (await trows(page)) === 12 && (await page.evaluate(() => localStorage.getItem('cp.view'))) === 'liste');
   check('board: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
   page = await open({ preload: [Object.assign({}, V6, { issues: V6.issues.concat([ticket(50, ['type:feature', 'level:story', 'status:done'], { t: 'Story terminée' }), ticket(51, ['type:feature', 'level:story', 'status:wont-do'], { t: 'Story écartée' })]) })], view: 'board' });
   await tab(page, 'Travail');
-  check('board: the done and dropped columns appear once they hold a ticket', (await cols()).slice(-2).join() === 'terminé,écarté', JSON.stringify(await cols()));
+  check('board: done and dropped are folded away, with their count', /Terminés \(2\)/.test(await text(page, '#view .done-fold')) && !/Story terminée/.test(await text(page, '#view')), await text(page, '#view .done-fold'));
+  await page.click('#view .done-fold button'); await page.waitForTimeout(150);
+  check('board: one click shows them', /Story terminée/.test(await text(page, '#view .done-fold')) && /Story écartée/.test(await text(page, '#view .done-fold')));
   await page.close();
+
+  // ---- the board by role: Product opens To frame and To accept, Tech opens In design and In build, the rest folds ----
+  { const open_ = async (pg) => pg.$$eval('#view .board section.col', (ss) => ss.map((x) => x.querySelector('button.sh').getAttribute('aria-expanded') + ':' + x.getAttribute('aria-label')));
+    let pg = await open({ preload: [V6], view: 'board', role: 'produit' });
+    await tab(pg, 'Travail');
+    check('role Produit: To frame and To accept open, the other two folded', JSON.stringify(await open_(pg)) === JSON.stringify(['true:À cadrer', 'false:En conception', 'false:En réalisation', 'true:À recetter']), JSON.stringify(await open_(pg)));
+    check('role Produit: a folded stage shows only its header and count', (await pg.locator('#view .board section.col[aria-label="En réalisation"] .card').count()) === 0 && /\d/.test(await pg.locator('#view .board section.col[aria-label="En réalisation"] button.sh').textContent()));
+    await pg.click('#view .board section.col[aria-label="En conception"] button.sh'); await pg.waitForTimeout(120);
+    check('role Produit: one click opens a folded stage', (await pg.locator('#view .board section.col[aria-label="En conception"] .card').count()) > 0);
+    await pg.click('#roleSeg >> text=Tech'); await pg.waitForTimeout(150);
+    check('role Tech: In design and In build open, To frame and To accept folded', JSON.stringify(await open_(pg)) === JSON.stringify(['false:À cadrer', 'true:En conception', 'true:En réalisation', 'false:À recetter']), JSON.stringify(await open_(pg)));
+    await pg.click('#view .board section.col[aria-label="À cadrer"] button.sh'); await pg.waitForTimeout(120);
+    await pg.click('#roleSeg >> text=Produit'); await pg.waitForTimeout(150);
+    check('the choice is kept per role, in memory: Produit still has In design open', JSON.stringify(await open_(pg)) === JSON.stringify(['true:À cadrer', 'true:En conception', 'false:En réalisation', 'true:À recetter']), JSON.stringify(await open_(pg)));
+    await pg.click('#roleSeg >> text=Tech'); await pg.waitForTimeout(150);
+    check('the choice is kept per role: Tech still has To frame open', (await open_(pg))[0] === 'true:À cadrer');
+    await pg.click('#roleSeg >> text=Tous'); await pg.waitForTimeout(150);
+    check('role Tous: every stage open', (await open_(pg)).every((x) => x.startsWith('true:')));
+    check('nothing is stored for the stages: only the role, the view and the language', (await pg.evaluate(() => Object.keys(localStorage).sort().join())) === 'cp.lang,cp.role,cp.view', await pg.evaluate(() => Object.keys(localStorage).sort().join()));
+    await pg.close();
+    const NEST = snapshot([
+      ticket(60, ['type:feature', 'level:epic', 'status:planned'], { t: 'Epic parent', k: [0, 2] }),
+      ticket(61, ['type:feature', 'level:story', 'status:planned'], { t: 'Story enfant A', p: 60 }),
+      ticket(62, ['type:feature', 'level:story', 'status:planning'], { t: 'Story enfant B', p: 60 }),
+      ticket(63, ['type:feature', 'level:story', 'status:planned'], { t: 'Story sans lien' }),
+    ], 120);
+    pg = await open({ preload: [NEST], view: 'board' });
+    await tab(pg, 'Travail');
+    const order = await pg.$$eval('#view .board section[aria-label="En conception"] .card', (cs) => cs.map((c) => c.querySelector('.t a').getAttribute('href').slice(6) + (c.classList.contains('child') ? 'c' : '')));
+    check('board: children sit under their parent in the same stage, and every card is there', order.length === 4 && order.indexOf('60') < order.indexOf('61c') && order.indexOf('60') < order.indexOf('62c') && order.includes('63'), JSON.stringify(order));
+    await pg.close(); }
 
   // ---- a ticket's page: the chain of its level with the time in each status, its sub-tickets ----
   { const H = Object.assign({}, V6, { issues: V6.issues.map((i) => (i.n === 16 ? Object.assign({}, i, { h: [['ready', iso(300)], ['building', iso(120)]] }) : i)) });

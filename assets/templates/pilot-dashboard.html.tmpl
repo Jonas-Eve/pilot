@@ -80,10 +80,28 @@ button.tile{cursor:pointer;font:inherit;color:inherit}
 .banner.compact{padding:4px 10px;font-size:12px;color:var(--muted);border-left-width:1px;background:transparent}
 .cmd{font-family:var(--mono);font-size:12px;color:var(--muted)}
 .foldcard{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface)} .foldcard summary{cursor:pointer;font-weight:600} .foldcard .cmd{overflow-wrap:anywhere}
-.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,1fr);gap:12px;align-items:start;overflow-x:auto;padding-bottom:8px}
-.col{background:var(--surface2);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
-.col header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-@media (min-width:900px) and (hover:hover){.board{max-height:calc(100vh - 140px);overflow:auto}.col header{position:sticky;top:0;z-index:1;background:var(--surface2);padding-bottom:4px}}
+.board{display:grid;grid-template-columns:var(--cols,repeat(4,minmax(0,1fr)));gap:12px;align-items:start;padding-bottom:8px}
+.col{background:var(--surface2);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.col .sh{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;border:0;background:transparent;padding:4px 2px;text-align:left;min-height:34px;font-weight:600}
+.col .sh .chev{color:var(--accent);width:1em;display:inline-block}
+.col .sh .nm{flex:1;min-width:0}
+.col.shut{padding-block:4px}
+@media (max-width:760px){.board{grid-template-columns:1fr}}
+.card.child{margin-left:12px;border-left:3px solid var(--line)}
+.card .meta2{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
+.card .prog{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.card a.up{font-size:12px;color:var(--muted);text-decoration:none}
+.card a.up:hover{text-decoration:underline}
+.card .bar{margin-top:4px}
+.done-fold{margin-top:4px}
+.tlwrap{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:8px}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.tl li{display:grid;grid-template-columns:22px 1fr;gap:2px 8px;padding:4px 6px;border-radius:6px;align-items:start}
+.tl li .mk{font-family:var(--mono);color:var(--muted);text-align:center}
+.tl li.done .mk{color:var(--ok)} .tl li.cur{background:var(--accent-soft)} .tl li.cur .mk{color:var(--accent)} .tl li.cur.wait{background:var(--warn-soft)}
+.tl li.next{color:var(--muted)}
+.tl .ti{font-weight:500;overflow-wrap:anywhere} .tl li.next .ti{font-weight:400}
+.tl .sub{grid-column:2;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
 .card.flag{border-color:var(--warn)}
 .card.g-human{border-color:var(--warn);background:var(--warn-soft)}
@@ -432,6 +450,32 @@ var EN={
 "Aucun wiki publié pour ce projet. Activez le module (python3 .pilot/pilot.py module enable wiki), puis publiez-le avec « /pilot-dashboard --refresh ».":"No wiki published for this project. Enable the module (python3 .pilot/pilot.py module enable wiki), then publish it with “/pilot-dashboard --refresh”.",
 "Vue filtrée pour le rôle ":"View filtered for the role ",
 "Workflows":"Workflows",
+"À cadrer":"To frame",
+"En conception":"In design",
+"En réalisation":"In build",
+"À recetter":"To accept",
+"Étapes du workflow":"Workflow steps",
+"Pas encore lancé : toutes les étapes sont à venir.":"Not started yet: every step is upcoming.",
+"Étape inconnue (run ouvert, aucun événement reçu) : toutes les étapes sont à venir.":"Unknown step (open run, no event received): every step is upcoming.",
+"Attendu : ":"Awaited: ",
+"décision humaine à ce gate":"human decision at this gate",
+"réponse humaine à la question posée":"human answer to the question asked",
+"direction donnée par l’humain":"direction given by the human",
+"un humain doit lever la condition d’attente":"a human must lift the waiting condition",
+"un humain doit lever le blocage (voir le commentaire sur GitHub)":"a human must lift the blocker (see the comment on GitHub)",
+"run échoué à cette étape":"run failed at this step",
+"humain (gate)":"human (gate)",
+"humain (si besoin)":"human (if needed)",
+"validateur":"validator",
+"juge":"judge",
+"contrôle":"check",
+"attente":"wait",
+"fin":"end",
+"fait":"done",
+"à venir":"upcoming",
+"prototype · attend un humain":"prototype · waiting for a human",
+"prototype · en cours":"prototype · in progress",
+"Runs de ce module":"Runs of this module",
 "Tickets":"Tickets",
 "Agents":"Agents",
 "Modules":"Modules"
@@ -498,6 +542,7 @@ var WFS=[
   ['technical-frame','/pilot-architecture',0,'Cadre technique','Technical frame','Écrit ou révise une règle technique ; elle prend force à la fusion de la PR.','Writes or revises a technical guideline; it takes force when the PR merges.'],
   ['personas-flows','/pilot-flow',0,'Personas et user flows','Personas and user flows','Rédige ou révise un persona ou un parcours utilisateur du wiki.','Writes or revises a persona or a user flow of the wiki.']
 ];
+function sk(id){var w=wfInfo(id);return w?w[1]:'';} /* a workflow's command */
 function wfInfo(id){for(var i=0;i<WFS.length;i++)if(WFS[i][0]===id)return WFS[i];return null;}
 /* the workflows the snapshot lists; a snapshot without the list means all of them */
 function wfOn(id){var w=S.gh&&S.gh.workflows; return !w||w.indexOf(id)>-1;}
@@ -536,7 +581,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}',
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(),
-  tab:'file', epic:0, view:store('cp.view')==='liste'?'liste':'board', expanded:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaKind:null, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoImp:0, viewHelp:0, viewProto:0, sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'},
+  tab:'file', epic:0, view:store('cp.view')==='liste'?'liste':'board', expanded:{}, so:{produit:{},tech:{},tous:{}}, wfOpen:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaKind:null, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoImp:0, viewHelp:0, viewProto:0, sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'},
   db:null, snaps:{}, events:{}, runs:{},
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -565,7 +610,7 @@ function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updat
 function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
-  S.gh={state:'live',msg:'',live:(s.issues||[]).map(normSnap),at:s.at,total:s.total,truncated:!!s.truncated,modules:(s.modules&&typeof s.modules==='object'&&!Array.isArray(s.modules))?s.modules:null,workflows:Array.isArray(s.workflows)?s.workflows.map(String):null};
+  S.gh={state:'live',msg:'',live:(s.issues||[]).map(normSnap),at:s.at,total:s.total,truncated:!!s.truncated,modules:(s.modules&&typeof s.modules==='object'&&!Array.isArray(s.modules))?s.modules:null,workflows:Array.isArray(s.workflows)?s.workflows.map(String):null,workflowSteps:(s.workflowSteps&&typeof s.workflowSteps==='object'&&!Array.isArray(s.workflowSteps))?s.workflowSteps:null};
   var sv=store('cp.lang'); if(sv!=='fr'&&sv!=='en'&&s.language&&pickLang(s.language)!==LANG)setLang(s.language,false); /* a reader's own choice wins over the project's language */
 }
 function watchSnapshots(){
@@ -679,8 +724,15 @@ function vWorkOf(n){
     parentsOf(t).length?h('nav',{class:'crumbs','aria-label':'Parents'},parentsOf(t).reverse().map(function(q,i){
       return [i?h('span',{'aria-hidden':'true'},' › '):null,h('a',Object.assign({href:parentHref(q)},q.missing?{target:'_blank',rel:'noopener'}:{}),'#'+q.n+(q.title?' '+q.title:''))];})):null,
     workRow(workItem(t),true),
+    wfPanel(t),
     kids.length?h('h2',{},'Sous-tickets · '+kids.length):null,
     kids.map(function(x){return workRow(workItem(x),true);}));
+}
+/* a ticket's workflow: its run's, else the one that would take its status; the button opens its timeline */
+function wfPanel(t){
+  var rr=S.runs[t.n]||null, a=actionFor(t), wid=rr?rr.workflow:(a.kind==='run'?a.id:''), key='t'+t.n;
+  if(!wid||!wfStepsOf(wid))return null;
+  return h('div',{class:'list'},h('div',{class:'refresh'},wfButton(key,wid)),S.wfOpen[key]?h('div',{class:'idea'},wfTimeline(wid,rr,t)):null);
 }
 /* the runs under way: those the events say are not done, and the open run issues no event has spoken of yet */
 function runList(){
@@ -688,6 +740,41 @@ function runList(){
   Object.keys(S.runs).forEach(function(k){var e=S.runs[k]; seen[e.n]=1; if(e.state!=='done')out.push({n:e.n,wf:e.workflow,step:e.step,state:e.state,loops:e.loops||{},at:e.at});});
   issues().forEach(function(t){if(t.run&&!seen[t.n])out.push({n:t.n,wf:t.run,step:'',state:'open',loops:{},at:t.updated});});
   return out.sort(function(a,b){return String(b.at).localeCompare(String(a.at));});
+}
+/* ---------- the workflow timeline: the steps of the run's workflow (from the snapshot's `workflowSteps`) done, current and upcoming, who acts at each, what is awaited ---------- */
+var KIND_LABEL={'human-start':'humain','human-gate':'humain (gate)','human-optional':'humain (si besoin)','agent':'agent','validator':'validateur','judge':'juge','check':'contrôle','wait':'attente','end':'fin'};
+var AWAITED={'human-gate':'décision humaine à ce gate','human-optional':'réponse humaine à la question posée','human-start':'direction donnée par l’humain','wait':'un humain doit lever la condition d’attente'};
+function wfStepsOf(wid){var w=S.gh&&S.gh.workflowSteps; return w&&Array.isArray(w[wid])&&w[wid].length?w[wid]:null;}
+function personaName(p){for(var i=0;i<AGENTS.length;i++)if(AGENTS[i][0]===p)return AGENTS[i][1];return String(p);}
+function wfTimeline(wid,run,t){
+  var steps=wfStepsOf(wid); if(!steps)return null;
+  var cur=-1, done=!!run&&run.state==='done', loops=(run&&run.loops)||{};
+  if(run&&run.step)steps.forEach(function(x,i){if(x.id===run.step)cur=i;});
+  var failed=!!run&&run.state==='failed', waiting=(!!run&&run.state==='waiting-human')||(!!t&&has(t,'needs-human'));
+  var items=steps.map(function(x,i){
+    var st=done||(cur>-1&&i<cur)?'done':i===cur?'cur':'next', lp=Number(loops[x.id])||0, wait=st==='cur'&&waiting&&!failed;
+    var sub=[h('span',{class:'chip'},KIND_LABEL[x.kind]||String(x.kind))].concat((Array.isArray(x.agents)?x.agents:[]).map(function(a){return h('span',{class:'chip acc'},personaName(a));}));
+    if(lp)sub.push(h('span',{class:'chip warn'},lp+' boucle'+(lp>1?'s':'')));
+    if(st==='cur'&&failed)sub.push(h('span',{class:'note'},'run échoué à cette étape'));
+    else if(wait)sub.push(h('span',{class:'note'},'Attendu : '+(AWAITED[x.kind]||'un humain doit lever le blocage (voir le commentaire sur GitHub)')));
+    return h('li',{class:st+(wait?' wait':''),'aria-current':st==='cur'?'step':null},
+      h('span',{class:'mk','aria-hidden':'true'},st==='done'?'✓':st==='cur'?'●':'○'),
+      h('div',{},h('span',{class:'ti'},(i+1)+'. '+str(x.title,60)),' ',h('span',{class:'note'},st==='done'?'fait':st==='cur'?(failed?'échoué':wait?'attend un humain':'en cours'):'à venir')),
+      h('div',{class:'sub'},sub));
+  });
+  return h('div',{class:'tlwrap'},
+    !done&&cur<0?h('p',{class:'note'},run&&run.state==='open'?'Étape inconnue (run ouvert, aucun événement reçu) : toutes les étapes sont à venir.':'Pas encore lancé : toutes les étapes sont à venir.'):null,
+    h('ol',{class:'tl','aria-label':'Étapes du workflow'},items));
+}
+function wfButton(key,wid){
+  if(!wfStepsOf(wid))return null;
+  var open=!!S.wfOpen[key];
+  return h('button',{class:'btn ghost',type:'button','aria-expanded':String(open),onclick:function(){S.wfOpen[key]=!open;render();}},(open?'▾ ':'▸ ')+'Workflow');
+}
+/* the runs of a module's admin workflows, at the top of its tab */
+function moduleRuns(wids){
+  var rs=runList().filter(function(r){return wids.indexOf(r.wf)>-1&&r.state!=='done';});
+  return rs.length?h('section',{class:'list','aria-label':'Runs de ce module'},rs.map(runRow)):null;
 }
 var RUN_STATE={'running':['acc','en cours'],'waiting-human':['warn','attend un humain'],'failed':['crit','échoué'],'open':['','ouvert']};
 function runRow(r){
@@ -697,13 +784,15 @@ function runRow(r){
   if(flag)acts.push(ghLink(t,'Répondre sur GitHub'));
   else if(info&&info[2]&&(r.state!=='running'||(t&&has(t,'can-resume'))))acts.push(openLink(info[1]+' --resume '+r.n,'Reprendre',true));
   if(!flag)acts.push(ghLink({n:r.n},'Voir sur GitHub'));
+  acts.push(wfButton('r'+r.n,r.wf));
   return h('div',{class:'row'+(waiting?' flag':'')},
     h('div',{class:'main'},
       h('div',{class:'t'},h('span',{class:'num'},'#'+r.n+' '),title||(info?L(info[3],info[4]):r.wf)),
       h('div',{class:'meta'},h('span',{class:'chip acc'},info?L(info[3],info[4]):r.wf),h('span',{class:'chip '+st[0]},st[0]==='warn'?h('span',{class:'dot'}):null,st[1]),
         r.step?h('span',{class:'chip'},r.step):null,loops?h('span',{class:'chip'},loops+' boucle'+(loops>1?'s':'')):null,
         t&&has(t,'can-resume')?h('span',{class:'chip'},FLAG_FR['can-resume']):null,h('span',{class:'note'},ago(r.at)))),
-    h('div',{class:'acts'},acts));
+    h('div',{class:'acts'},acts),
+    S.wfOpen['r'+r.n]?wfTimeline(r.wf,r,t):null);
 }
 function vRuns(){
   var rs=runList(); if(!rs.length)return null;
@@ -711,7 +800,8 @@ function vRuns(){
 }
 function vWork(){
   if(S.wf)return vWorkOf(S.wf);
-  var rows=workRows();
+  var rows=workRows(), tix=rows;
+  rows=rows.concat(protosOnBoard().map(function(e){return {proto:e,t:{n:e.n,labels:[]},group:(e.flag||e.state==='waiting-human')?'human':'going',ms:0};}));
   function byGroup(g){
     var list=rows.filter(function(r){return r.group===g;});
     return g==='queue'?list.sort(function(a,b){return byUrgency(a.t,b.t);}):list.sort(function(a,b){return b.ms-a.ms;});
@@ -719,7 +809,7 @@ function vWork(){
   var blocks=WORK_GROUPS.map(function(g){
     var list=byGroup(g[0]); if(!list.length)return null;
     var open=!!S.expanded['w:'+g[0]], shown=open?list:list.slice(0,COL_LIMIT);
-    return [h('h2',{},g[1],' · '+list.length),shown.map(function(r){return workRow(r);}),
+    return [h('h2',{},g[1],' · '+list.length),shown.map(function(r){return r.proto?protoRow(r.proto):workRow(r);}),
       list.length>COL_LIMIT?h('button',{class:'btn',type:'button',onclick:function(){S.expanded['w:'+g[0]]=!open;render();}},open?'Réduire':'Afficher les '+(list.length-COL_LIMIT)+' autres'):null];
   }).filter(Boolean);
   var viewSeg=h('div',{class:'seg',role:'group','aria-label':'Affichage'},[['board','Board'],['liste','Liste']].map(function(c){
@@ -730,10 +820,10 @@ function vWork(){
     vRuns(),
     h('p',{class:'note'},'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte.'),
     S.assignees.me&&!S.me?h('p',{class:'note'},'Indiquez votre identifiant GitHub (en haut de la page) pour que « moi » désigne vos tickets.'):null,
-    S.view==='board'?vBoard(rows):(blocks.length?blocks:h('div',{class:'empty'},'Aucun ticket ne correspond.')));
+    S.view==='board'?vBoard(tix):(blocks.length?blocks:h('div',{class:'empty'},'Aucun ticket ne correspond.')));
 }
 
-/* ---------- the board: one column per status of the level, the cards in the order of urgency; a card says for how long, what a human must do, and launches the ticket ---------- */
+/* ---------- the board: four stages (the exact status is a chip on the card), epics and prototypes under way included; the stages a role does not work on are folded ---------- */
 function flagChips(t){
   var out=[];
   if(has(t,'needs-human'))out.push(h('span',{class:'chip warn'},h('span',{class:'dot'}),FLAG_FR['needs-human']));
@@ -747,58 +837,77 @@ function actButtons(t,a,full){
   if(t.r)acts.push(h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r));
   return acts;
 }
-function boardCard(r){
-  var t=r.t, a=actionFor(t), flag=has(t,'needs-human'), ty=lab(t,'type:'), pr=lab(t,'priority:'), chips=[], acts=actButtons(t,a,false);
-  if(ty)chips.push(h('span',{class:'chip'},ty));
-  if(pr)chips.push(h('span',{class:'chip '+(pr==='P0'?'crit':pr==='P1'?'warn':'')},pr));
-  chips=chips.concat(flagChips(t),[runChip(t)]);
-  if(t.assignee)chips.push(h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee));
-  if(t.k)chips.push(h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'));
-  var par=parentsOf(t)[0];
-  if(par)chips.push(h('a',Object.assign({class:'chip',href:parentHref(par),title:par.title},par.missing?{target:'_blank',rel:'noopener'}:{}),'↑ #'+par.n));
-  var ep=epicOf(t); if(ep&&ep.n!==t.n&&(!par||ep.n!==par.n)&&S.epic!==ep.n)chips.push(h('button',{class:'chip rm',type:'button',title:ep.title,onclick:function(){S.epic=ep.n;render();}},'Epic #'+ep.n));
-  if(t.status&&((t.h&&t.h.length)||(flag&&t.nh)))chips.push(h('span',{class:'chip'+(isStale(r)?' warn':''),title:tr(flag?'bloqué depuis ':'dans cette étape depuis ')+dur(r.ms)},tr(flag?'bloqué depuis ':'depuis ')+dur(r.ms)));
-  if(isStale(r))chips.push(h('span',{class:'chip warn'},'sans mouvement'));
-  acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#file/'+t.n;}},'Détail'));
-  return h('div',{class:'card g-'+r.group+(flag?' flag':'')},
-    h('div',{class:'t'},h('a',{href:'#file/'+t.n},h('span',{class:'num mono'},'#'+t.n+' '),t.title)),
-    h('div',{class:'meta'},chips),
-    h('div',{class:'acts'},acts));
+var STAGES=[['frame','À cadrer',['forming','to-plan']],['design','En conception',['planning','planned']],['build','En réalisation',['ready','building','reviewing']],['accept','À recetter',['merged']]];
+var ROLE_STAGES={produit:['frame','accept'],tech:['design','build']}; /* the stages a role works on stay open; the others fold (one click opens them), "tous" opens all */
+function stageOf(status){for(var i=0;i<STAGES.length;i++)if(STAGES[i][2].indexOf(status)>-1)return STAGES[i][0];return '';}
+function stageOpen(k,n){
+  var o=S.so[S.role]||{}; if(o[k]!==undefined)return o[k];
+  if(filtering())return n>0;
+  var r=ROLE_STAGES[S.role]; return !r||r.indexOf(k)>-1;
 }
-/* an epic shows its progress; a click keeps only its tickets on the board */
-function epicCard(r){
-  var t=r.t, a=actionFor(t), on=S.epic===t.n, d=t.k&&t.k[1]?Math.round(100*t.k[0]/t.k[1]):0, chips=[];
-  if(t.k)chips.push(h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'));
-  chips=chips.concat(flagChips(t));
-  return h('div',{class:'card'+(on?' sel':'')+(has(t,'needs-human')?' g-human':has(t,'on-hold')?' g-pause':'')},
+function setStage(k,v){(S.so[S.role]=S.so[S.role]||{})[k]=v;}
+/* a card is a number, a title (the link to the ticket's page), one state chip and at most one action; the rest is on the ticket's page */
+function cardAction(t){var a=actionFor(t); return a.kind==='run'?openLink(a.cmd,a.label,false):a.kind==='human'?ghLink(t,'Répondre sur GitHub'):null;}
+function boardCard(r,child){
+  var t=r.t, flag=has(t,'needs-human'), epic=has(t,'level:epic'), on=S.epic===t.n, par=parentsOf(t)[0], d=t.k&&t.k[1]?Math.round(100*t.k[0]/t.k[1]):0, act;
+  if(epic)act=h('button',{class:'btn'+(on?' primary':''),type:'button','aria-pressed':String(on),onclick:function(){S.epic=on?0:t.n;render();}},on?'Tout afficher':'Filtrer sur cette epic');
+  else act=cardAction(t);
+  return h('div',{class:'card g-'+r.group+(flag?' flag':'')+(child?' child':'')+(epic?' epic':'')+(on?' sel':'')},
     h('div',{class:'t'},h('a',{href:'#file/'+t.n},h('span',{class:'num mono'},'#'+t.n+' '),t.title)),
     t.k&&t.k[1]?h('div',{class:'bar',role:'img','aria-label':t.k[0]+'/'+t.k[1]+' terminés'},h('i',{style:'width:'+d+'%'})):null,
-    h('div',{class:'meta'},chips),
-    h('div',{class:'acts'},
-      h('button',{class:'btn'+(on?' primary':''),type:'button','aria-pressed':String(on),onclick:function(){S.epic=on?0:t.n;render();}},on?'Tout afficher':'Filtrer sur cette epic'),
-      a.kind==='run'?openLink(a.cmd,a.label,false):null,
-      h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#file/'+t.n;}},'Détail')));
+    h('div',{class:'meta2'},
+      h('span',{class:'chip '+(flag?'warn':'acc'),title:flag?FLAG_FR['needs-human']:null},flag?h('span',{class:'dot'}):null,STATUS_FR[t.status]||t.status||'sans statut'),
+      t.k?h('span',{class:'prog'},t.k[0]+'/'+t.k[1]):null,
+      par?h('a',Object.assign({class:'up',href:parentHref(par),title:par.title},par.missing?{target:'_blank',rel:'noopener'}:{}),'↑ #'+par.n):null),
+    act?h('div',{class:'acts'},act):null);
 }
-function boardColumn(key,name,rows){
-  var open=!!S.expanded[key], shown=open?rows:rows.slice(0,COL_LIMIT), blocked=rows.filter(function(r){return r.group==='human';}).length;
-  return h('section',{class:'col','aria-label':name},
-    h('header',{},h('strong',{},name),h('span',{class:'chips'},blocked?h('span',{class:'chip warn',title:'attend un humain'},h('span',{class:'dot'}),String(blocked)):null,h('span',{class:'chip'},String(rows.length)))),
-    shown.length?shown.map(function(r){return has(r.t,'level:epic')?epicCard(r):boardCard(r);}):h('div',{class:'empty'},'Aucun ticket'),
-    rows.length>COL_LIMIT?h('button',{class:'btn',type:'button',onclick:function(){S.expanded[key]=!open;render();}},open?'Réduire':'Afficher les '+(rows.length-COL_LIMIT)+' autres'):null);
+/* a prototype under way (a run of the proto workflow with its `protos` document): product work waiting to be framed */
+function protoCard(e){
+  var wait=e.flag||e.state==='waiting-human', hasHtml=Math.floor(Number(e.meta.parts)||0)>0, info=wfInfo('proto');
+  return h('div',{class:'card proto g-'+(wait?'human':'going')+(wait?' flag':'')},
+    h('div',{class:'t'},h('a',{href:hasHtml?'#proto/'+e.n:'#prototypes'},h('span',{class:'num mono'},'#'+e.n+' '),e.title)),
+    h('div',{class:'meta2'},h('span',{class:'chip '+(wait?'warn':'acc')},wait?h('span',{class:'dot'}):null,wait?'prototype · attend un humain':'prototype · en cours')),
+    h('div',{class:'acts'},wait?ghLink({n:e.n},'Répondre sur GitHub'):openLink((info?info[1]:'/pilot-proto')+' --resume '+e.n,'Reprendre',false)));
 }
-/* the statuses of the levels in view (all of them when no level is filtered) */
-function statusCols(){
-  var lv=LEVELS.filter(function(k){return S.levels[k];}), set={};
-  (lv.length?lv:LEVELS).forEach(function(l){LEVEL_STATUSES[l].forEach(function(s){set[s]=1;});});
-  return STATUSES.filter(function(s){return set[s];});
+function filtersBesidesQ(){return S.epic>0||[S.levels,S.types,S.states,S.flags,S.assignees].some(function(m){return Object.keys(m).some(function(k){return m[k];});});}
+function protosOnBoard(){
+  if(!moduleOn('prototypes')||S.role==='tech'||filtersBesidesQ())return [];
+  var words=fold(S.q).split(/\s+/).filter(Boolean);
+  return protoList().filter(function(e){var hay=fold('#'+e.n+' '+e.title); return e.group==='encours'&&words.every(function(w){return hay.indexOf(w.replace(/^#/,''))>-1;});});
+}
+/* a parent and its children are all cards: a child sits under its parent when both are in the stage, else on its own */
+function nest(list){
+  var ids={}, kids={}, roots=[], out=[], seen={};
+  list.forEach(function(r){ids[r.t.n]=1;});
+  list.forEach(function(r){var p=r.t.p; if(p&&ids[p]&&p!==r.t.n)(kids[p]=kids[p]||[]).push(r); else roots.push(r);});
+  function add(r,d){if(seen[r.t.n])return; seen[r.t.n]=1; out.push({r:r,child:d>0}); (kids[r.t.n]||[]).forEach(function(c){add(c,d+1);});}
+  roots.forEach(function(r){add(r,0);}); list.forEach(function(r){add(r,0);});
+  return out;
+}
+var STAGE_LIMIT=10;
+function stageCol(st,rows,protos){
+  var n=rows.length+protos.length, open=stageOpen(st[0],n), blocked=rows.filter(function(r){return r.group==='human';}).length+protos.filter(function(e){return e.flag||e.state==='waiting-human';}).length;
+  var items=nest(rows).map(function(x){return boardCard(x.r,x.child);}).concat(protos.map(protoCard));
+  var more=!!S.expanded['st:'+st[0]], shown=more?items:items.slice(0,STAGE_LIMIT);
+  return h('section',{class:'col'+(open?'':' shut'),'aria-label':st[1]},
+    h('button',{class:'sh',type:'button','aria-expanded':String(open),onclick:function(){setStage(st[0],!open);render();}},
+      h('span',{class:'chev','aria-hidden':'true'},open?'▾':'▸'),h('strong',{class:'nm'},st[1]),
+      h('span',{class:'chips'},blocked?h('span',{class:'chip warn',title:'attend un humain'},h('span',{class:'dot'}),String(blocked)):null,h('span',{class:'chip'},String(n)))),
+    open?(shown.length?shown:h('div',{class:'empty'},'Aucun ticket')):null,
+    open&&items.length>STAGE_LIMIT?h('button',{class:'btn',type:'button',onclick:function(){S.expanded['st:'+st[0]]=!more;render();}},more?'Réduire':'Afficher les '+(items.length-STAGE_LIMIT)+' autres'):null);
 }
 function vBoard(rows){
-  var by={}, other=[];
-  rows.forEach(function(r){var s=r.t.status; if(STATUSES.indexOf(s)>-1)(by[s]=by[s]||[]).push(r); else other.push(r);});
+  var by={}, other=[], done=[];
+  rows.forEach(function(r){var s=r.t.status, k=stageOf(s); if(k)(by[k]=by[k]||[]).push(r); else if(s==='done'||s==='wont-do')done.push(r); else other.push(r);});
   function order(list){return list.slice().sort(function(a,b){return (+(b.group==='human')-+(a.group==='human'))||byUrgency(a.t,b.t);});}
-  var cols=statusCols().filter(function(s){return by[s]||(s!=='done'&&s!=='wont-do');}).map(function(s){return boardColumn(s,STATUS_FR[s],order(by[s]||[]));});
-  if(other.length)cols.push(boardColumn('other','Autres',order(other)));
-  return h('div',{class:'board'},cols);
+  var protos=protosOnBoard(), cols=STAGES.map(function(st){return stageCol(st,order(by[st[0]]||[]),st[0]==='frame'?protos:[]);});
+  if(other.length)cols.push(stageCol(['other','Autres',[]],order(other),[]));
+  var shut=!!S.expanded.done, ids=STAGES.map(function(st){return stageOpen(st[0],(by[st[0]]||[]).length+(st[0]==='frame'?protos.length:0));});
+  var style='--cols:'+ids.concat(other.length?[true]:[]).map(function(o){return o?'minmax(0,1fr)':'minmax(120px,170px)';}).join(' ');
+  return h('div',{},h('div',{class:'board',style:style},cols),
+    done.length?h('div',{class:'done-fold'},h('button',{class:'fold',type:'button','aria-expanded':String(shut),onclick:function(){S.expanded.done=!shut;render();}},
+      h('span',{class:'chev','aria-hidden':'true'},shut?'▾':'▸'),'Terminés ('+done.length+')'),
+      shut?h('div',{class:'board',style:'--cols:repeat(auto-fill,minmax(220px,1fr));margin-top:8px'},nest(order(done)).map(function(x){return boardCard(x.r,x.child);})):null):null);
 }
 
 /* ---------- rows ---------- */
@@ -1131,7 +1240,7 @@ function updateProtoNew(){
 
 /* ---------- design tab: shows the project's `design` document, edited through a /pilot-design session ---------- */
 function designText(){var el=document.getElementById('designText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
-function designCmd(){var t=designText();return '/pilot-design'+(t?' '+t:'');}
+function designCmd(){var t=designText();return sk('design-system')+(t?' '+t:'');}
 function buildDesign(){
   var box=document.getElementById('designEdit');
   foldCard(box,'designE','Créer ou modifier').append(
@@ -1179,7 +1288,8 @@ function dsec(title,body){return h('section',{class:'list','aria-label':title},h
 function drow(){var a=[].slice.call(arguments);return h('div',{class:'row'},h('div',{class:'main'},a));}
 function vDesign(){
   var d=S.design;
-  if(!d)return h('div',{class:'list'},h('h2',{},'Design'),h('div',{class:'empty'},S.db?'Aucun design system pour ce projet. Utilisez « Créer ou modifier » ci-dessus pour le lancer.':'La base partagée n’est pas disponible dans cette vue.'));
+  var mr=moduleRuns(['design-system']);
+  if(!d)return h('div',{class:'list'},h('h2',{},'Design'),mr,h('div',{class:'empty'},S.db?'Aucun design system pour ce projet. Utilisez « Créer ou modifier » ci-dessus pour le lancer.':'La base partagée n’est pas disponible dans cette vue.'));
   var c=d.charter||{}, logo=typeof c.logo==='string'&&/^<svg[\s>]/i.test(c.logo)&&c.logo.length<=20000?c.logo:'';
   var charter=(c.name||c.summary||logo||arr(c.colors).length||c.voice||c.rules)?h('div',{class:'list'},
     logo?h('img',{class:'logo',alt:'Logo '+str(c.name,80),src:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(logo)}):null,
@@ -1201,7 +1311,7 @@ function vDesign(){
     return drow(h('div',{class:'t'},str(x.name,80)),previewFrame(d,x),x.description?h('p',{class:'note'},str(x.description)):null,x.rules?h('p',{class:'note'},str(x.rules)):null);})):null;
   var a11y=arr(d.a11y).length?h('div',{class:'list'},arr(d.a11y).map(function(x){return drow(h('span',{},str(x)));})):null;
   var secs={charter:dsec('Charte graphique',charter),colors:dsec('Couleurs',colors),type:dsec('Typographie',type),space:dsec('Espacements et rayons',space),components:dsec('Composants',comps),a11y:dsec('Accessibilité',a11y)};
-  return h('div',{class:'list'},h('h2',{},'Design · mis à jour '+ago(d.at)),
+  return h('div',{class:'list'},h('h2',{},'Design · mis à jour '+ago(d.at)),mr,
     secs[S.sub.design]||secs.charter);
 }
 /* ---------- wiki tab: the project's `wiki` document (built by `pilot.py wiki snapshot`), read-only ---------- */
@@ -1267,8 +1377,8 @@ function flowLastRun(e){
 function wikiActions(e){
   var id=str(e.id,80); if(!FLOW_ID.test(id))return null;
   var k=wikiKind(e), pf=(k==='Persona'||k==='UserFlow'), acts=[];
-  if(pf){acts.push(openLink('/pilot-flow --edit '+id+' ','Modifier'),openLink('/pilot-flow --remove '+id,'Retirer'));}
-  else if(k!=='Behavior'&&k!=='Vision'){acts.push(openLink('/pilot-wiki --edit '+id+' ','Modifier'),openLink('/pilot-wiki --remove '+id,'Retirer'));} /* a behavior changes through /pilot-need */
+  if(pf){acts.push(openLink(sk('personas-flows')+' --edit '+id+' ','Modifier'),openLink(sk('personas-flows')+' --remove '+id,'Retirer'));}
+  else if(k!=='Behavior'&&k!=='Vision'){acts.push(openLink(sk('functional-frame')+' --edit '+id+' ','Modifier'),openLink(sk('functional-frame')+' --remove '+id,'Retirer'));} /* a behavior changes through /pilot-need */
   return acts.length?h('div',{class:'refresh'},acts):null;
 }
 function wikiEntry(e){
@@ -1292,7 +1402,7 @@ function flowNewCard(){
       lbl=h('label',{for:'flowNewText',class:'note'});
   function text(){return ta.value.replace(/\s*\n\s*/g,' ').trim();}
   function update(){
-    var t=text(), c='/pilot-flow --new '+kind+(t?' '+t:'');
+    var t=text(), c=sk('personas-flows')+' --new '+kind+(t?' '+t:'');
     bp.setAttribute('aria-pressed',String(kind==='persona')); bf.setAttribute('aria-pressed',String(kind==='flow'));
     lbl.textContent=tr(kind==='persona'?'Décrivez le persona : qui est cette personne, ses contraintes, comment elle utilise le produit. Le designer le rédige avec vous.':'Décrivez le parcours : l’objectif et les personas concernés. Le QA propose les étapes avec vous.');
     ta.setAttribute('placeholder',tr(kind==='persona'?'Ex. : Marie, 74 ans, malvoyante, utilise son téléphone avec un zoom à 200 %':'Ex. : trouver un lieu accessible de plain-pied près de soi'));
@@ -1309,13 +1419,13 @@ function flowNewCard(){
   update(); return card;
 }
 function vWiki(){
-  var w=S.wiki;
-  if(!w)return h('div',{class:'list'},h('h2',{},'Wiki'),h('div',{class:'empty'},S.db?'Aucun wiki publié pour ce projet. Activez le module (python3 .pilot/pilot.py module enable wiki), puis publiez-le avec « /pilot-dashboard --refresh ».':'La base partagée n’est pas disponible.'));
+  var w=S.wiki, mr=moduleRuns(['functional-frame','personas-flows']);
+  if(!w)return h('div',{class:'list'},h('h2',{},'Wiki'),mr,h('div',{class:'empty'},S.db?'Aucun wiki publié pour ce projet. Activez le module (python3 .pilot/pilot.py module enable wiki), puis publiez-le avec « /pilot-dashboard --refresh ».':'La base partagée n’est pas disponible.'));
   var cur=S.sub.wiki, shown=wikiEntries().filter(function(e){return cur==='tous'||wikiDomain(e)===cur;}), counts={}, pages=[], by={};
   shown.forEach(function(e){counts[e.status]=(counts[e.status]||0)+1; var k=wikiDomain(e); if(!by[k]){by[k]=[];pages.push(k);} by[k].push(e);});
   var sum=Object.keys(WIKI_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+WIKI_CLS[k]},counts[k]+' '+WIKI_FR[k]);});
-  return h('div',{class:'list'},h('h2',{},'Wiki · mis à jour '+ago(w.at)+(w.truncated?' · textes raccourcis':'')),
-    h('div',{class:'refresh'},openLink('/pilot-wiki','Interroger le wiki',true),openLink('/pilot-wiki --lint','Contrôler le wiki')),
+  return h('div',{class:'list'},h('h2',{},'Wiki · mis à jour '+ago(w.at)+(w.truncated?' · textes raccourcis':'')),mr,
+    h('div',{class:'refresh'},openLink(sk('functional-frame'),'Interroger le wiki',true),openLink(sk('functional-frame')+' --lint','Contrôler le wiki')),
     flowNewCard(),
     sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
     pages.length?pages.map(function(k){return h('section',{class:'list','aria-label':k},h('h2',{},k),by[k].map(wikiEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
@@ -1337,9 +1447,9 @@ function archGroups(){
 function archActions(e){
   var id=str(e.id,80); if(!FLOW_ID.test(id))return null;
   var adr=/(^|\/)adr\//.test(str(e.path,200)), live=e.status==='proposed'||(e.status==='accepted'&&!adr), acts=[]; /* an accepted ADR is replaced by a later one, never edited */
-  if(e.status==='proposed')acts.push(openLink('/pilot-architecture --accept '+id,'Accepter',true));
-  if(live)acts.push(openLink('/pilot-architecture --edit '+id+' ','Modifier'));
-  if(live&&str(e.path,200)!=='overview.md')acts.push(openLink('/pilot-architecture --remove '+id,'Retirer'));
+  if(e.status==='proposed')acts.push(openLink(sk('technical-frame')+' --accept '+id,'Accepter',true));
+  if(live)acts.push(openLink(sk('technical-frame')+' --edit '+id+' ','Modifier'));
+  if(live&&str(e.path,200)!=='overview.md')acts.push(openLink(sk('technical-frame')+' --remove '+id,'Retirer'));
   return acts.length?h('div',{class:'refresh'},acts):null;
 }
 function archEntry(e){
@@ -1354,13 +1464,13 @@ function archEntry(e){
     archActions(e));
 }
 function vArch(){
-  var a=S.arch;
-  if(!a)return h('div',{class:'list'},h('h2',{},'Architecture'),h('div',{class:'empty'},S.db?'Aucune architecture publiée pour ce projet. Activez le module (python3 .pilot/pilot.py module enable architecture), puis publiez-la avec « /pilot-dashboard --refresh ».':'La base partagée n’est pas disponible.'));
+  var a=S.arch, mr=moduleRuns(['technical-frame']);
+  if(!a)return h('div',{class:'list'},h('h2',{},'Architecture'),mr,h('div',{class:'empty'},S.db?'Aucune architecture publiée pour ce projet. Activez le module (python3 .pilot/pilot.py module enable architecture), puis publiez-la avec « /pilot-dashboard --refresh ».':'La base partagée n’est pas disponible.'));
   var cur=S.sub.architecture, shown=archEntries().filter(function(e){return cur==='tous'||archGroup(e)===cur;}), counts={}, pages=[], by={};
   shown.forEach(function(e){counts[e.status]=(counts[e.status]||0)+1; var k=archGroup(e); if(!by[k]){by[k]=[];pages.push(k);} by[k].push(e);});
   var sum=Object.keys(ARCH_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+ARCH_CLS[k]},counts[k]+' '+ARCH_FR[k]);});
-  return h('div',{class:'list'},h('h2',{},'Architecture · mis à jour '+ago(a.at)+(a.truncated?' · textes raccourcis':'')),
-    h('div',{class:'refresh'},openLink('/pilot-architecture','Interroger l’architecture',true),openLink('/pilot-architecture --guideline','Ajouter une règle'),openLink('/pilot-architecture --lint','Contrôler le fonds')),
+  return h('div',{class:'list'},h('h2',{},'Architecture · mis à jour '+ago(a.at)+(a.truncated?' · textes raccourcis':'')),mr,
+    h('div',{class:'refresh'},openLink(sk('technical-frame'),'Interroger l’architecture',true),openLink(sk('technical-frame')+' --guideline','Ajouter une règle'),openLink(sk('technical-frame')+' --lint','Contrôler le fonds')),
     sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
     pages.length?archGroups().map(function(g){return g[0];}).filter(function(k){return by[k];}).map(function(k){return h('section',{class:'list','aria-label':archLabel(k)},h('h2',{},archLabel(k)),by[k].map(archEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
 }
@@ -1520,8 +1630,8 @@ function vHowTickets(){
 
 var HOW_TABS=[
   {id:"file",mod:"",
-    fr:{title:"Travail",what:"Les tickets ouverts, un board par statut (colonnes selon les niveaux filtrés) ou une liste groupée par besoin, et les runs en cours : workflow, étape, état. Les compteurs du haut sont des filtres.",how:"Lancez ou reprenez depuis une carte : « Ouvrir » écrit la commande du workflow qui prend le ticket. Un run en pause se relance avec --resume. Filtrez par rôle (Produit / Tech), niveau, type, état, drapeau ou assigné. « Détail » ouvre la chaîne de statuts du ticket avec le temps passé dans chacun.",why:"Vous voyez où s’accumule le travail et ce qui est bloqué, et vous lancez la suite."},
-    en:{title:"Work",what:"The open tickets, a board by status (columns follow the filtered levels) or a list grouped by need, and the runs under way: workflow, step, state. The counters at the top are filters.",how:"Launch or resume from a card: “Open” writes the command of the workflow that takes the ticket. A paused run restarts with --resume. Filter by role (Product / Tech), level, type, state, flag or assignee. “Details” opens the ticket’s chain of statuses with the time spent in each.",why:"You see where work piles up and what is blocked, and you launch the next."}},
+    fr:{title:"Travail",what:"Les tickets ouverts (epics, stories, tâches, prototypes en cours), un board en quatre étapes (À cadrer, En conception, En réalisation, À recetter ; le statut exact est sur la carte) ou une liste groupée par besoin, et les runs en cours : workflow, étape, état. Les compteurs du haut sont des filtres.",how:"Lancez ou reprenez depuis une carte : « Ouvrir » écrit la commande du workflow qui prend le ticket. Un run en pause se relance avec --resume. Le rôle ouvre les étapes qui le concernent (Produit : À cadrer et À recetter ; Tech : En conception et En réalisation) et replie les autres d’un clic ; Tous les ouvre. Filtrez par niveau, type, état, drapeau ou assigné. Le titre d’une carte ouvre la page du ticket : chaîne de statuts avec le temps passé, sous-tickets, et « Workflow », la frise des étapes du run (faites, en cours, à venir, qui agit, ce qui est attendu), aussi sur chaque run en cours.",why:"Vous voyez où s’accumule le travail et ce qui est bloqué, et vous lancez la suite."},
+    en:{title:"Work",what:"The open tickets (epics, stories, tasks, prototypes under way), a board in four stages (To frame, In design, In build, To accept; the exact status is on the card) or a list grouped by need, and the runs under way: workflow, step, state. The counters at the top are filters.",how:"Launch or resume from a card: “Open” writes the command of the workflow that takes the ticket. A paused run restarts with --resume. The role opens the stages that concern it (Product: To frame and To accept; Tech: In design and In build) and folds the others in one click; All opens them. Filter by level, type, state, flag or assignee. A card’s title opens the ticket’s page: chain of statuses with the time spent, sub-tickets, and “Workflow”, the timeline of the run’s steps (done, current, upcoming, who acts, what is awaited), also on each run under way.",why:"You see where work piles up and what is blocked, and you launch the next."}},
   {id:"prototypes",mod:"proto",
     fr:{title:"Prototypes",what:"Des maquettes cliquables de fonctions à tester, avec l’état de leur run : en cours, ou terminé (accepté ou rejeté).",how:"Décrivez la fonction dans l’onglet ; reprenez ou rejetez un prototype en cours ; un prototype accepté nourrit un besoin (/pilot-need --proto).",why:"On décide sur du concret avant d’écrire un besoin."},
     en:{title:"Prototypes",what:"Clickable mockups of features to try, with their run’s state: under way, or finished (accepted or rejected).",how:"Describe the feature in the tab; resume or reject a prototype under way; an accepted prototype feeds a need (/pilot-need --proto).",why:"You decide on something concrete before writing a need."}},

@@ -13,6 +13,10 @@ import datetime
 import hashlib
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pilot  # noqa: E402  (the steps of the workflows: the same function `pilot.py snapshot` uses)
 
 REPO = "Jonas-Eve/pilot"
 
@@ -56,6 +60,8 @@ def tickets():
     add(701, "run:proto Itinéraire sans escalier : choisir ses contraintes", ["run:proto"], 2, None, None, "alice")
     add(702, "run:proto Alerte ascenseur en panne sur le trajet", ["run:proto", "needs-human"], 5)
     add(710, "run:technical-frame Règle de nommage des modules", ["run:technical-frame"], 1, None, None, "carol")
+    add(711, "run:design-system Thème à fort contraste", ["run:design-system"], 1, None, None, "bob")
+    add(712, "run:personas-flows Persona : Léa, 16 ans, daltonienne", ["run:personas-flows", "needs-human"], 3)
     for i in range(24):
         status = ["ready", "reviewing", "merged", "ready"][i % 4]
         labels = ["type:tech", "level:task", f"status:{status}", f"priority:P{(i % 3)}"]
@@ -101,7 +107,7 @@ def snapshot():
     rows.sort(key=lambda r: r["u"], reverse=True)
     return {"repo": REPO, "at": iso(0.5), "source": "demo", "total": len(rows), "truncated": False, "issues": rows,
             "modules": {"wiki": True, "architecture": True, "dashboard": True, "design": True, "proto": True},
-            "language": "fr", "workflows": WORKFLOWS}
+            "language": "fr", "workflows": WORKFLOWS, "workflowSteps": pilot.workflow_steps(pilot.load_workflows())}
 
 
 WORKFLOWS = ["accept", "build", "design-system", "express", "functional-frame", "need", "personas-flows", "plan", "proto", "report", "technical-frame"]
@@ -134,6 +140,8 @@ def live_documents():
         "run-705": run(705, "proto", "proto-accepte", "done", 150, "end", result="accepted"),
         "run-706": run(706, "proto", "proto-accepte", "done", 260, "end", result="rejected"),
         "run-710": run(710, "technical-frame", "gate", "waiting-human", 1.0),
+        "run-711": run(711, "design-system", "build", "running", 0.6, loops={"check": 1}),
+        "run-712": run(712, "personas-flows", "challenge", "waiting-human", 2.0),
     }
 
 
