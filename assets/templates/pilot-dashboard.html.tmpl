@@ -1435,7 +1435,11 @@ var AGENTS=[
   ['qa','QA','Comprend ce qui est testé : rédige les parcours, aide à remplir un signalement, prépare le plan d’une recette et le joue ou y guide un humain.','Understands what is tested: writes the flows, helps fill a report, prepares a recette’s test plan and plays it or guides a human through it.'],
   ['designer','Designer','Comprend l’usage : design system, prototypes, personas ; relit l’usage et l’accessibilité d’une interface.','Understands usage: design system, prototypes, personas; reviews an interface’s usage and accessibility.']
 ];
+/* persona -> workflow -> role (lead writes, validator checks the deliverable alone, reviewer reads the local diff): a copy of the workflow data, checked by test_pilot.py */
+var ROLES_IN={"architect":{"build":["reviewer"],"design-system":["validator"],"express":["lead","reviewer"],"functional-frame":["validator"],"need":["validator"],"plan":["lead"],"technical-frame":["lead"]},"designer":{"build":["reviewer"],"design-system":["lead"],"express":["reviewer"],"personas-flows":["lead"],"proto":["lead"]},"dev":{"build":["lead"],"design-system":["lead"],"express":["lead"],"plan":["validator"],"technical-frame":["lead"]},"e2e":{"build":["lead"]},"pm":{"build":["reviewer"],"express":["lead","reviewer"],"functional-frame":["lead"],"need":["lead"],"personas-flows":["validator"],"plan":["validator"],"proto":["validator"],"report":["lead"]},"qa":{"accept":["lead"],"personas-flows":["lead"],"report":["lead"]},"techlead":{"build":["validator"],"design-system":["validator"],"express":["lead","validator"],"plan":["lead"],"technical-frame":["validator"]}};
+var ROLE_WORD={lead:['rédige','leads'],validator:['valide','validates'],reviewer:['relit','reviews']};
 function L(fr,en){return LANG==='fr'?fr:en;}
+function agentIn(key){var d=ROLES_IN[key]||{};return Object.keys(d).filter(wfOn).map(function(wf){return wf+' ('+d[wf].map(function(r){return L(ROLE_WORD[r][0],ROLE_WORD[r][1]);}).join(', ')+')';}).join(' · ');}
 function helpCard(title,badge,rows){
   return h('div',{class:'row'},h('div',{class:'main'},
     h('div',{class:'t'},title,badge?h('span',{class:'chip'},badge):null),
@@ -1549,7 +1553,7 @@ function vHelp(){
   var lang=h('div',{class:'pair'},h('span',{class:'note'},'Langue'),h('div',{class:'seg',role:'group','aria-label':'Langue',id:'langSeg'},['fr','en'].map(function(l){return h('button',{type:'button',lang:l,'aria-pressed':String(LANG===l),onclick:function(){setLang(l,true);}},l.toUpperCase());})));
   var HOW={principes:vHowPrinciples,workflows:vHowWorkflows,tickets:vHowTickets,modules:vHowModules};
   if(HOW[sub])return h('div',{class:'list'},lang,HOW[sub]());
-  return h('div',{class:'list'},lang,h('div',{class:'agents'},AGENTS.map(function(a){return helpCard(a[1],'',[[L('Rôle :','What:'),L(a[2],a[3])]]);})));
+  return h('div',{class:'list'},lang,h('div',{class:'agents'},AGENTS.map(function(a){return helpCard(a[1],'',[[L('Rôle :','What:'),L(a[2],a[3])],[L('Intervient dans :','Takes part in:'),agentIn(a[0])||'—']]);})));
 }
 var HELP_SUBS=[['principes','Principes'],['workflows','Workflows'],['tickets','Tickets'],['modules','Modules'],['agents','Agents']];
 

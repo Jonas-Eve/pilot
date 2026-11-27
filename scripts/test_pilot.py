@@ -1954,6 +1954,22 @@ class DashboardPayloadTests(unittest.TestCase):
             self.assertEqual((set(row["c"]), row["k"], set(row["p"])), (set(got["consumes"]), got["claims"], set(got["produces"])), wf)
 
 
+class DashboardRolesTests(unittest.TestCase):
+    def test_the_help_roles_are_the_workflow_data(self):
+        """The template's ROLES_IN table (who leads, validates or reviews in which workflow) is derived from the workflow files."""
+        page = (pathlib.Path(__file__).resolve().parent.parent / "assets" / "templates" / "pilot-dashboard.html.tmpl").read_text(encoding="utf-8")
+        table = json.loads(re.search(r"var ROLES_IN=(\{.*?\});\n", page).group(1))
+        want = {}
+        for wf_id, wf in pilot.load_workflows().items():
+            for step in wf["steps"]:
+                for agent in step.get("agents") or []:
+                    role = "reviewer" if step["id"] in ("review", "build-review") else "validator" if step["kind"] == "validator" else "lead"
+                    roles = want.setdefault(agent["persona"], {}).setdefault(wf_id, [])
+                    if role not in roles:
+                        roles.append(role)
+        self.assertEqual(table, want)
+
+
 class JudgeTests(unittest.TestCase):
     def passes(self, answers):
         return [[{"q": i, "answer": a, "quote": "x"} for i, a in enumerate(row)] for row in answers]
