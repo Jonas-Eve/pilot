@@ -4,7 +4,7 @@
 
 Usage:
   python3 scripts/demo_snapshot.py --out FILE        # the `snapshots/Jonas-Eve__pilot` document
-  python3 scripts/demo_snapshot.py --dir DIR         # that document + a few events, a design document, a wiki document, an architecture document and prototypes
+  python3 scripts/demo_snapshot.py --dir DIR         # that document + a few events (tickets and runs), a design document, a wiki document, an architecture document and prototypes
 
 Timestamps are relative to now, so re-run it to refresh the demo. Stdlib only.
 """
@@ -29,54 +29,55 @@ def tickets():
     def add(n, title, labels, h, p=None, k=None, a=None, r=None):
         t.append((n, title, labels, h, p, k, a, r))
 
-    add(100, "Parcours voyageur accessible de bout en bout", ["type:feature", "level:epic"], 30, k=[3, 9])
-    add(101, "Itinéraire sans escalier entre deux correspondances", ["type:feature", "level:story", "status:split", "priority:P1"], 6, 100, [1, 3])
-    add(111, "Calcul de l'itinéraire sans escalier", ["type:feature", "level:task", "status:in-dev", "priority:P1"], 2, 101, None, "alice")
-    add(112, "Écran de choix des contraintes", ["type:feature", "level:task", "status:review-ready", "priority:P1"], 5, 101, None, None, 61)
-    add(113, "E2E : itinéraire sans escalier", ["type:e2e", "level:task", "status:dev-ready", "priority:P1"], 8, 101)
-    add(102, "Alerte ascenseur en panne sur le trajet", ["type:feature", "level:story", "status:backlog", "priority:P0"], 20, 100)
-    add(103, "Profil voyageur senior", ["type:feature", "level:story", "status:qa", "priority:P1"], 40, 100)
-    add(104, "Notification de relais humain", ["type:feature", "level:story", "status:draft", "priority:P2"], 3, 100, None, "carol")
-    add(200, "Plateforme multi-organisations", ["type:feature", "level:epic"], 70, k=[1, 4])
-    add(201, "Inviter un administrateur dans son organisation", ["type:feature", "level:story", "status:split", "priority:P1"], 12, 200, [1, 2])
-    add(211, "API d'invitation et jeton à usage unique", ["type:tech", "level:task", "status:changes-requested", "priority:P1"], 4, 201, None, None, 58)
-    add(212, "Écran d'acceptation d'invitation", ["type:feature", "level:task", "status:in-review", "priority:P1"], 3, 201, None, "bob", 59)
-    add(202, "Renommer son organisation", ["type:feature", "level:story", "status:in-qa", "priority:P2"], 50, 200, None, "bob")
-    add(203, "Supprimer son organisation", ["type:feature", "level:story", "status:backlog", "priority:P2", "needs-human"], 90, 200)
-    add(301, "Cache des états d'équipements", ["type:tech", "level:story", "status:in-spec", "priority:P1"], 7, None, None, "alice")
-    add(302, "Migration du stockage des profils", ["type:tech", "level:story", "status:approved", "priority:P2"], 1, None, None, None, 60)
-    add(303, "Tier-2 : source de credential déléguée", ["type:tech", "level:story", "status:backlog", "priority:P2", "on-hold"], 200)
-    add(304, "Purge planifiée des comptes jamais confirmés", ["type:tech", "level:story", "status:dev-ready", "priority:P2"], 26)
-    add(401, "Pictogramme PMR masqué en mode sombre", ["type:bug", "level:task", "status:dev-ready", "priority:P0"], 9)
-    add(402, "Le jeton expiré n'est pas détecté", ["type:bug", "level:task", "status:backlog", "priority:P1"], 15)
-    add(403, "Le flux s'interrompt si un message part pendant la réponse", ["type:bug", "level:task", "status:in-dev", "priority:P1", "needs-human"], 18, None, None, "carol")
-    add(701, "Itinéraire sans escalier : choisir ses contraintes", ["type:poc", "level:story", "status:poc-draft"], 2, None, None, "alice")
-    add(702, "Alerte ascenseur en panne sur le trajet", ["type:poc", "level:story", "status:poc-review"], 5)
-    add(703, "Relais humain depuis l'application", ["type:poc", "level:story", "status:poc-validated"], 30)
-    add(704, "Profil voyageur senior", ["type:poc", "level:story", "status:poc-validated"], 48)
+    add(100, "Parcours voyageur accessible de bout en bout", ["type:feature", "level:epic", "status:planned"], 30, k=[3, 9])
+    add(101, "Itinéraire sans escalier entre deux correspondances", ["type:feature", "level:story", "status:planned", "priority:P1"], 6, 100, [1, 3])
+    add(111, "Calcul de l'itinéraire sans escalier", ["type:feature", "level:task", "status:building", "priority:P1"], 2, 101, None, "alice")
+    add(112, "Écran de choix des contraintes", ["type:feature", "level:task", "status:reviewing", "priority:P1"], 5, 101, None, None, 61)
+    add(113, "Test e2e de l'itinéraire sans escalier", ["type:feature", "level:task", "status:ready", "priority:P1"], 8, 101)
+    add(102, "Alerte ascenseur en panne sur le trajet", ["type:feature", "level:story", "status:to-plan", "priority:P0"], 20, 100)
+    add(103, "Profil voyageur senior", ["type:feature", "level:story", "status:merged", "priority:P1"], 40, 100)
+    add(104, "Notification de relais humain", ["type:feature", "level:story", "status:forming", "priority:P2"], 3, 100, None, "carol")
+    add(200, "Plateforme multi-organisations", ["type:feature", "level:epic", "status:planned"], 70, k=[1, 4])
+    add(201, "Inviter un administrateur dans son organisation", ["type:feature", "level:story", "status:planned", "priority:P1"], 12, 200, [1, 2])
+    add(211, "API d'invitation et jeton à usage unique", ["type:tech", "level:task", "status:reviewing", "priority:P1"], 4, 201, None, None, 58)
+    add(212, "Écran d'acceptation d'invitation", ["type:feature", "level:task", "status:building", "priority:P1"], 3, 201, None, "bob", 59)
+    add(202, "Renommer son organisation", ["type:feature", "level:story", "status:merged", "priority:P2"], 50, 200)
+    add(203, "Supprimer son organisation", ["type:feature", "level:story", "status:to-plan", "priority:P2", "needs-human"], 90, 200)
+    add(301, "Cache des états d'équipements", ["type:tech", "level:story", "status:planning", "priority:P1"], 7, None, None, "alice")
+    add(302, "Migration du stockage des profils", ["type:tech", "level:story", "status:ready", "priority:P2"], 1)
+    add(303, "Tier-2 : source de credential déléguée", ["type:tech", "level:story", "status:to-plan", "priority:P2", "on-hold"], 200)
+    add(304, "Purge planifiée des comptes jamais confirmés", ["type:tech", "level:story", "status:ready", "priority:P2"], 26)
+    add(401, "Pictogramme PMR masqué en mode sombre", ["type:feature", "level:task", "status:ready", "priority:P0", "fix"], 9)
+    add(402, "Le jeton expiré n'est pas détecté", ["type:tech", "level:task", "status:ready", "priority:P1", "fix"], 15)
+    add(403, "Le flux s'interrompt si un message part pendant la réponse", ["type:tech", "level:task", "status:building", "priority:P1", "needs-human"], 18, None, None, "carol")
+    add(404, "Reprise d'un build interrompu", ["type:tech", "level:task", "status:building", "priority:P1", "can-resume"], 22, None, None, "alice")
+    add(405, "Correctif : horaires affichés au mauvais fuseau", ["type:feature", "level:story", "status:reviewing", "priority:P0", "express"], 4, None, None, "bob", 62)
+    add(406, "Carte des équipements hors ligne", ["type:feature", "level:task", "status:ready", "priority:P1", "gap"], 11)
+    add(701, "run:proto Itinéraire sans escalier : choisir ses contraintes", ["run:proto"], 2, None, None, "alice")
+    add(702, "run:proto Alerte ascenseur en panne sur le trajet", ["run:proto", "needs-human"], 5)
+    add(710, "run:technical-frame Règle de nommage des modules", ["run:technical-frame"], 1, None, None, "carol")
     for i in range(24):
-        status = ["backlog", "dev-ready", "review-ready", "backlog"][i % 4]
+        status = ["ready", "reviewing", "merged", "ready"][i % 4]
         labels = ["type:tech", "level:task", f"status:{status}", f"priority:P{(i % 3)}"]
-        add(500 + i, f"Tâche technique d'exemple {i + 1}", labels, 24 + i * 5, None, None, None, 70 + i if status == "review-ready" else None)
+        add(500 + i, f"Tâche technique d'exemple {i + 1}", labels, 24 + i * 5, None, None, None, 70 + i if status == "reviewing" else None)
     return t
 
 
-CHAIN = ["draft", "backlog", "in-spec", "dev-ready", "in-dev", "review-ready", "in-review", "approved", "qa", "in-qa"]
+TASK_CHAIN = ["ready", "building", "reviewing", "merged"]
+STORY_CHAIN = ["forming", "to-plan", "planning", "ready", "building", "reviewing", "merged"]
 
 
 def history(labels, hours):
     """The stages a demo ticket went through (what `pilot.py snapshot` reads from the label events): the current
-    one entered `hours` ago, each earlier one a plausible stretch before."""
+    one entered `hours` ago, each earlier one a plausible stretch before. A planned parent has none."""
     status = next((l[len("status:"):] for l in labels if l.startswith("status:")), "")
-    if status == "changes-requested":  # sent back from a review
-        before = history(["status:in-review"], hours + 8)
-        return before + [[status, iso(hours)]]
-    if status not in CHAIN or status in ("draft", "backlog"):
-        return [[status, iso(hours)]] if status in CHAIN else None
+    chain = TASK_CHAIN if "level:task" in labels else STORY_CHAIN
+    if status not in chain:
+        return None
     out, back = [[status, iso(hours)]], hours
-    for i in range(CHAIN.index(status) - 1, 0, -1):
+    for i in range(chain.index(status) - 1, -1, -1):
         back += 6 + (i * 7) % 29
-        out.insert(0, [CHAIN[i], iso(back)])
+        out.insert(0, [chain[i], iso(back)])
     return out
 
 
@@ -92,32 +93,47 @@ def snapshot():
             row["k"] = k
         if pr:
             row["r"] = pr
-        if "status:split" not in labels:
-            if history(labels, hours):  # as `pilot.py snapshot`: no history, no flag time either
-                row["h"] = history(labels, hours)
-                if "needs-human" in labels:
-                    row["nh"] = iso(hours)
+        if history(labels, hours):  # as `pilot.py snapshot`: no history, no flag time either
+            row["h"] = history(labels, hours)
+            if "needs-human" in labels:
+                row["nh"] = iso(hours)
         rows.append(row)
     rows.sort(key=lambda r: r["u"], reverse=True)
     return {"repo": REPO, "at": iso(0.5), "source": "demo", "total": len(rows), "truncated": False, "issues": rows,
-            "modules": {"wiki": True, "architecture": True, "dashboard": True, "design": True, "proto": True}}
+            "modules": {"wiki": True, "architecture": True, "dashboard": True, "design": True, "proto": True},
+            "language": "fr", "workflows": WORKFLOWS}
+
+
+WORKFLOWS = ["accept", "build", "design-system", "express", "functional-frame", "need", "personas-flows", "plan", "proto", "report", "technical-frame"]
 
 
 def live_documents():
-    """The events a phase would have pushed, as `events` documents."""
+    """The events a workflow would have pushed, as `events` documents: tickets (`pilot.py claim|set|flag`) and run steps (`pilot.py run`)."""
+    def run(n, workflow, step, state, hours, action="advance:ok", loops=None, **extra):
+        return {"kind": "run", "n": n, "workflow": workflow, "step": step, "state": state, "loops": loops or {}, "action": action,
+                "by": "alice", "at": iso(hours), **extra}
     return {
-        "event-600": {"kind": "ticket", "n": 600, "title": "Tâche créée par un split depuis le dernier instantané",
-                      "labels": ["type:feature", "level:task", "status:dev-ready", "priority:P1"],
-                      "assignees": [], "state": "open", "action": "created", "phase": "spec", "parent": 101,
+        "event-600": {"kind": "ticket", "n": 600, "title": "Tâche créée par une conception depuis le dernier instantané",
+                      "labels": ["type:feature", "level:task", "status:ready", "priority:P1"],
+                      "assignees": [], "state": "open", "action": "created", "phase": "plan", "parent": 101,
                       "by": "alice", "at": iso(0.2)},
-        "event-105": {"kind": "ticket", "n": 105, "title": "Story approuvée en Discovery",
-                      "labels": ["type:feature", "level:story", "status:backlog", "priority:P1"],
-                      "assignees": [], "state": "open", "action": "approved", "phase": "discovery", "parent": 100,
+        "event-105": {"kind": "ticket", "n": 105, "title": "Story clôturée après le besoin",
+                      "labels": ["type:feature", "level:story", "status:to-plan", "priority:P1"],
+                      "assignees": [], "state": "open", "action": "close-forming", "phase": "need", "parent": 100,
                       "by": "carol", "at": iso(0.1)},
         "event-111": {"kind": "ticket", "n": 111, "title": "Calcul de l'itinéraire sans escalier",
-                      "labels": ["type:feature", "level:task", "status:in-dev", "priority:P1"],
-                      "assignees": ["alice"], "state": "open", "action": "claim:fresh", "phase": "dev",
+                      "labels": ["type:feature", "level:task", "status:building", "priority:P1"],
+                      "assignees": ["alice"], "state": "open", "action": "claim:fresh", "phase": "build",
                       "by": "alice", "at": iso(0.4)},
+        "run-111": run(111, "build", "implement", "running", 0.4, "start"),
+        "run-301": run(301, "plan", "ask", "waiting-human", 0.8, loops={"check": 1}),
+        "run-701": run(701, "proto", "build", "running", 0.3),
+        "run-702": run(702, "proto", "gate", "waiting-human", 1.5),
+        "run-703": run(703, "proto", "proto-accepte", "done", 29, "end", result="accepted"),
+        "run-704": run(704, "proto", "proto-accepte", "done", 40, "end", result="accepted"),
+        "run-705": run(705, "proto", "proto-accepte", "done", 150, "end", result="accepted"),
+        "run-706": run(706, "proto", "proto-accepte", "done", 260, "end", result="rejected"),
+        "run-710": run(710, "technical-frame", "gate", "waiting-human", 1.0),
     }
 
 
@@ -256,14 +272,13 @@ def proto_documents():
                           brief="Tester un écran où le voyageur indique ses contraintes (escalier, ascenseur, distance) avant le calcul."),
         "proto-702": meta(702, "Alerte ascenseur en panne sur le trajet", parts=1, height=340, at=iso(5),
                           brief="Tester l'alerte et la proposition d'un itinéraire de remplacement quand un ascenseur est en panne."),
-        "proto-703": meta(703, "Relais humain depuis l'application", parts=1, height=260, at=iso(30), decision="accepted", decidedAt=iso(29),
+        "proto-703": meta(703, "Relais humain depuis l'application", parts=1, height=260, at=iso(30),
                           brief="Tester le bouton qui met le voyageur en relation avec un conseiller."),
-        "proto-704": meta(704, "Profil voyageur senior", parts=1, height=300, at=iso(48), decision="accepted", decidedAt=iso(40), stories=[103, 111],
+        "proto-704": meta(704, "Profil voyageur senior", parts=1, height=300, at=iso(48),
                           brief="Tester un profil qui agrandit les textes et simplifie les écrans."),
-        "proto-705": meta(705, "Carte des équipements en temps réel", parts=1, height=260, at=iso(200), decision="accepted", decidedAt=iso(150), stories=[990],
+        "proto-705": meta(705, "Carte des équipements en temps réel", parts=1, height=260, at=iso(200),
                           brief="Tester l'affichage en direct de l'état des ascenseurs sur une carte."),
-        "proto-706": meta(706, "Assistant vocal de bout en bout", parts=1, height=260, at=iso(300), decision="rejected", decidedAt=iso(260),
-                          reason="Trop coûteux pour le gain observé : le bouton de relais humain couvre déjà le besoin.",
+        "proto-706": meta(706, "Assistant vocal de bout en bout", parts=1, height=260, at=iso(300),
                           brief="Tester un assistant vocal qui guide tout le trajet."),
     }
     parts = {"protoHtml-702-0": {"n": 702, "k": 0, "html": PROTO_HTML},

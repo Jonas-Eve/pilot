@@ -1105,8 +1105,11 @@ class Machine:
             self.gh.patch_comment(comment_id, text)
 
     def _run_event(self, number, record, action):
-        return {"kind": "run", "n": number, "workflow": record["workflow"], "step": record["step"], "state": record["state"],
-                "loops": record["loops"], "action": action, "by": self.gh.me(), "at": now_iso()}
+        event = {"kind": "run", "n": number, "workflow": record["workflow"], "step": record["step"], "state": record["state"],
+                 "loops": record["loops"], "action": action, "by": self.gh.me(), "at": now_iso()}
+        if record.get("result"):
+            event["result"] = record["result"]  # a finished run's outcome (a prototype's accepted or rejected), shown by the dashboard
+        return event
 
     @staticmethod
     def step_view(step):

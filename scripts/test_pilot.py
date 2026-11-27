@@ -1462,28 +1462,28 @@ class DemoSnapshotTests(unittest.TestCase):
         for row in self.doc["issues"]:
             self.assertTrue({"n", "t", "l", "u"} <= set(row))
 
-    def test_parents_progress_and_every_phase_are_covered(self):
+    def test_parents_progress_and_every_status_are_covered(self):
         rows = {r["n"]: r for r in self.doc["issues"]}
         for row in rows.values():
             if "p" in row:
                 self.assertIn(row["p"], rows)
             if "k" in row:
                 self.assertLessEqual(row["k"][0], row["k"][1])
-        statuses = {l for r in rows.values() for l in r["l"] if l.startswith("status:")}
-        self.assertTrue({f"status:{s}" for s in ("draft", "backlog", "in-spec", "dev-ready", "in-dev", "changes-requested",
-                                                 "review-ready", "in-review", "approved", "qa", "in-qa", "split")} <= statuses)
+        labels = {l for r in rows.values() for l in r["l"]}
+        self.assertTrue({f"status:{s}" for s in pilot.STATUSES if s not in ("done", "wont-do")} <= labels)  # open tickets only
+        self.assertTrue({"needs-human", "on-hold", "can-resume", "express", "fix", "gap", "run:proto"} <= labels)
+        self.assertTrue(labels <= set(pilot.LABELS) | {f"status:{s}" for s in pilot.STATUSES} | {"needs-human", "on-hold", "can-resume", "express", "fix", "gap", "run:proto", "run:technical-frame"})
         self.assertTrue(any("level:epic" in r["l"] and "k" in r for r in rows.values()))
         self.assertTrue(any("r" in r for r in rows.values()) and any("a" in r for r in rows.values()))
-        self.assertTrue(any("needs-human" in r["l"] for r in rows.values()) and any("on-hold" in r["l"] for r in rows.values()))
-
-    def test_a_changes_requested_ticket_is_unassigned_like_the_review_leaves_it(self):
-        for row in self.doc["issues"]:
-            if "status:reviewing" in row["l"] or "status:approved" in row["l"]:
-                self.assertNotIn("a", row)
+        self.assertEqual(self.doc["workflows"], sorted(self.demo.WORKFLOWS))
 
     def test_live_documents(self):
         docs = self.demo.live_documents()
-        self.assertEqual({d["kind"] for d in docs.values()}, {"ticket"})
+        self.assertEqual({d["kind"] for d in docs.values()}, {"ticket", "run"})
+        for doc in docs.values():
+            if doc["kind"] == "run":
+                self.assertIn(doc["workflow"], self.doc["workflows"])
+                self.assertIn(doc["state"], ("running", "waiting-human", "done"))
 
 
 class WorkflowDataTests(unittest.TestCase):
@@ -1923,14 +1923,18 @@ class DashboardPayloadTests(unittest.TestCase):
         self.assertEqual((events[0]["n"], events[0]["action"], events[0]["phase"]), (2, "created", "plan"))
         run = m.run_start("plan", 1)["event"]
         self.assertEqual((run["kind"], run["workflow"], run["step"]), ("run", "plan", "eligibility"))
+        self.assertNotIn("result", run)
+        self.assertEqual(m.run_end(1, "accepted")["event"]["result"], "accepted")
 
-    def test_the_snapshot_lists_open_tickets_newest_first_and_names_the_workflows(self):
-        raws = [ticket(1), ticket(2), issue(3, ["status:ready"], pr=True), ticket(4, state="closed")]
-        raws[0]["updated_at"], raws[1]["updated_at"] = "2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z"
-        m, gh = machine(raws)
-        doc = m.snapshot()
-        self.assertEqual([r["n"] for r in doc["issues"]], [2, 1])
-        self.assertIn("build", doc["workflows"])
+    def test_the_dashboard_routes_a_status_by_the_contracts(self):
+        """The template's CONTRACTS table is what `pilot.py contract` prints for the workflows that take a ticket status."""
+        page = (pathlib.Path(__file__).resolve().parent.parent / "assets" / "templates" / "pilot-dashboard.html.tmpl").read_text(encoding="utf-8")
+        table = json.loads(re.search(r"var CONTRACTS=(\{.*\});", page).group(1))
+        m, _gh = machine([])
+        self.assertEqual(set(table), {"need", "plan", "build", "accept"})
+        for wf, row in table.items():
+            got = pilot.workflow_contract(m.wfs, wf)
+            self.assertEqual((set(row["c"]), row["k"], set(row["p"])), (set(got["consumes"]), got["claims"], set(got["produces"])), wf)
 
 
 class JudgeTests(unittest.TestCase):

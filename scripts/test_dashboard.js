@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /* Browser test of assets/templates/pilot-dashboard.html.tmpl: renders it (as /pilot-dashboard does),
  * loads it in headless Chromium with a stubbed `window.claude` (an in-memory db with the
- * `snapshots`, `events` and `activity` collections) and checks the snapshot view, the live event
- * and activity layers, pagination, the stale-snapshot hint and the renderer's HTML escaping.
+ * `snapshots`, `events`, `design`, `wiki`, `flowRuns`, `architecture`, `protos` and `protoHtml` collections) and checks the
+ * snapshot view, the live ticket and run events, the board by status, the command each status launches, the runs, the module tabs,
+ * the reference pages, the language switch and the renderer's HTML escaping.
  * Run: node scripts/test_dashboard.js   (needs `playwright` with a Chromium available) */
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -28,10 +29,10 @@ const ticket = (n, labels, extra = {}) => ({ n, t: `Ticket ${n}`, l: labels, u: 
 const STUB = (opts) => `
 (() => {
   const OPTS = ${JSON.stringify(opts)};
-  const data = { snapshots: {}, events: {}, activity: {}, design: {}, wiki: {}, flowRuns: {}, architecture: {}, protos: {}, protoHtml: {} }; const listeners = { snapshots: [], events: [], activity: [], design: [], wiki: [], flowRuns: [], architecture: [], protos: [], protoHtml: [] };
+  const names = ['snapshots', 'events', 'design', 'wiki', 'flowRuns', 'architecture', 'protos', 'protoHtml'];
+  const data = {}; const listeners = {}; names.forEach((c) => { data[c] = {}; listeners[c] = []; });
   (OPTS.preload || []).forEach(d => { data.snapshots[d.repo.replace('/', '__')] = d; });
   (OPTS.events || []).forEach((d, k) => { data.events['e' + k] = d; });
-  (OPTS.activity || []).forEach((d, k) => { data.activity['a' + k] = d; });
   (OPTS.design || []).forEach((d, k) => { data.design['d' + k] = d; });
   (OPTS.wiki || []).forEach((d, k) => { data.wiki['w' + k] = d; });
   (OPTS.flowRuns || []).forEach((d, k) => { data.flowRuns['f' + k] = d; });
@@ -55,7 +56,7 @@ const STUB = (opts) => `
   const results = [];
   const check = (name, ok, detail) => { results.push(!!ok); console.log((ok ? 'PASS ' : 'FAIL ') + name + (ok ? '' : '  -> ' + detail)); };
   const open = async (opts, file = FILE) => {
-    const page = await browser.newPage({ viewport: { width: 400, height: 900 } });
+    const page = await browser.newPage({ viewport: { width: 400, height: 900 }, deviceScaleFactor: 1 });
     page.setDefaultTimeout(6000);
     page.errors = []; page.on('pageerror', e => page.errors.push(String(e)));
     if (opts.lang !== null) await page.addInitScript(`try{localStorage.setItem('cp.lang',${JSON.stringify(opts.lang || 'fr')})}catch(e){}`);
@@ -65,32 +66,17 @@ const STUB = (opts) => `
     await page.goto(file); await page.waitForTimeout(350);
     return page;
   };
-  // the launch button follows the row's Auto (QA: Navigateur) option: read both commands by flipping it, then put it back
-  const modeHrefs = async (pg, n) => {
-    const row = pg.locator('#view .row', { hasText: '#' + n + ' ' }).first();
-    const href = async () => decodeURIComponent((await row.locator('a.btn').first().getAttribute('href')).split('?q=')[1].split('&repo=')[0]);
-    if (!(await row.locator('button:has-text("Options")').count())) return row.locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
-    const wasOpen = (await row.locator('.opts').count()) > 0;
-    if (!wasOpen) await row.locator('button:has-text("Options")').click();
-    const tog = row.locator('.opts .tog', { hasText: /^(Auto|Navigateur)$/ });
-    const cur = await href();
-    let out;
-    if (!(await tog.count())) out = [null, cur];
-    else {
-      const pressed = (await tog.getAttribute('aria-pressed')) === 'true';
-      await tog.click(); const other = await href(); await tog.click();
-      out = pressed ? [cur, other] : [other, cur];
-    }
-    if (!wasOpen) await row.locator('button:has-text("Options")').click();
-    return out.filter((x) => x !== null);
-  };
   const text = (page, sel) => page.textContent(sel);
   const tab = async (page, name) => { try { await page.click(`nav >> text=${name}`, { timeout: 3000 }); } catch (e) { return ''; } await page.waitForTimeout(150); return text(page, '#view'); };
-  const rows = (page) => page.$$eval('#view .row', (r) => r.length);
+  const hrefs = (page, sel) => page.$$eval(sel, (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel, text: a.textContent.trim() })));
+  const cmdOfHref = (h) => decodeURIComponent((h.split('?q=')[1] || h).split('&repo=')[0]);
+  const trows = (page) => page.$$eval('#view > .list > .row', (r) => r.length);          // the tickets of the work list (runs are in their own section)
+  const rowCmds = async (page, n) => (await page.locator('#view .row', { hasText: '#' + n + ' ' }).first().locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0]) + '|' + a.textContent.trim())));
 
-  const BASE = snapshot([ticket(99, ['type:tech', 'status:dev-ready', 'priority:P1'], { t: 'Ticket de l instantane' })], 120);
-  const ev = (o) => ({ kind: 'ticket', n: 99, title: 'Ticket de l instantane', labels: ['type:tech', 'status:in-dev'], assignees: ['alice'],
-                       state: 'open', action: 'set', phase: 'dev', by: 'alice', at: iso(5), ...o });
+  const BASE = snapshot([ticket(99, ['type:tech', 'level:task', 'status:ready', 'priority:P1'], { t: 'Ticket de l instantane' })], 120);
+  const ev = (o) => ({ kind: 'ticket', n: 99, title: 'Ticket de l instantane', labels: ['type:tech', 'level:task', 'status:building'], assignees: ['alice'],
+                       state: 'open', action: 'set', phase: 'build', by: 'alice', at: iso(5), ...o });
+  const run = (o) => ({ kind: 'run', n: 99, workflow: 'build', step: 'implement', state: 'running', loops: {}, action: 'advance:ok', by: 'alice', at: iso(5), ...o });
 
   // ---- identity, and no connector at all ----
   let page = await open({ preload: [BASE] });
@@ -106,15 +92,13 @@ const STUB = (opts) => `
   check('no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
-  // ---- stale snapshot: hint with a copyable command ----
-  page = await open({ preload: [snapshot([ticket(1, ['status:backlog'])], 60 * 30)] });
+  page = await open({ preload: [snapshot([ticket(1, ['status:ready'])], 60 * 30)] });
   let b = await text(page, '#banner');
   check('stale snapshot (> 24 h): hint and copy button for /pilot-dashboard --refresh', /Instantané ancien/.test(b) && /Copier \/pilot-dashboard --refresh/.test(b), b);
   await page.click('text=Copier /pilot-dashboard --refresh'); await page.waitForTimeout(200);
   check('copy button gives feedback instead of throwing', page.errors.length === 0 && /Copié|Copie impossible/.test(await text(page, '#banner')), page.errors.join('|'));
   await page.close();
 
-  // ---- no snapshot yet ----
   page = await open({});
   b = await text(page, '#banner');
   check('no snapshot: examples named as such, with the command to run', /Données d.exemple/.test(b) && /Aucun instantané/.test(b) && /Copier \/pilot-dashboard --refresh/.test(b), b);
@@ -123,745 +107,266 @@ const STUB = (opts) => `
   // ---- live events fold over the snapshot ----
   page = await open({ preload: [BASE], events: [ev({})] });
   let view = await tab(page, 'Travail');
-  check('event newer than the snapshot moves the ticket (dev-ready -> in-dev)', /dev en cours/.test(view) && !/prêt à coder/.test(view), view);
+  check('ticket event newer than the snapshot moves the ticket (ready -> building)', /construction en cours/.test(view) && !/prêt à construire/.test(view), view);
   check('banner counts the applied change', /1 changement appliqué depuis/.test(await text(page, '#banner')), await text(page, '#banner'));
   await page.close();
-
   page = await open({ preload: [BASE], events: [ev({ at: iso(300) })] });
   view = await tab(page, 'Travail');
-  check('event older than the snapshot is ignored', /prêt à coder/.test(view) && !/dev en cours/.test(view), view);
+  check('event older than the snapshot is ignored', /prêt à construire/.test(view) && !/construction en cours/.test(view), view);
   await page.close();
-
   page = await open({ preload: [BASE], events: [ev({ state: 'closed', labels: ['status:done'] })] });
   check('closed event removes the ticket', !/Ticket de l instantane/.test(await tab(page, 'Travail')));
   await page.close();
-
-  page = await open({ preload: [BASE], events: [ev({ n: 7, title: 'Nouveau ticket', labels: ['type:feature', 'status:backlog'], assignees: [] })] });
+  page = await open({ preload: [BASE], events: [ev({ n: 7, title: 'Nouveau ticket', labels: ['type:feature', 'level:story', 'status:to-plan'], assignees: [], parent: 99, pr: 12 })] });
   view = await tab(page, 'Travail');
-  check('event for a ticket absent from the snapshot adds it', /Nouveau ticket/.test(view) && /à spécifier/.test(view), view);
+  check('event for a ticket absent from the snapshot adds it, with its parent and PR', /Nouveau ticket/.test(view) && /à planifier/.test(view) && /PR #12/.test(view) && /Sous-tickets \(1\)/.test(view), view);
   await page.close();
-
-  page = await open({ preload: [BASE], events: [ev({ at: iso(30) }), ev({ at: iso(2), labels: ['type:tech', 'status:review-ready'], assignees: [] })] });
+  page = await open({ preload: [BASE], events: [ev({ at: iso(30) }), ev({ at: iso(2), labels: ['type:tech', 'level:task', 'status:reviewing'], assignees: [] })] });
   view = await tab(page, 'Travail');
-  check('latest event per ticket wins', /à relire/.test(view) && !/dev en cours/.test(view), view);
+  check('latest event per ticket wins', /relecture en cours/.test(view) && !/construction en cours/.test(view), view);
   await page.close();
-
   page = await open({ preload: [BASE] });
-  check('before the pushed event: dev-ready', /prêt à coder/.test(await tab(page, 'Travail')));
+  check('before the pushed event: ready', /prêt à construire/.test(await tab(page, 'Travail')));
   await page.evaluate((e) => window.__push('events', 'live1', e), ev({}));
   await page.waitForTimeout(200);
-  check('real time: a pushed event updates the board without reload', /dev en cours/.test(await text(page, '#view')) && !/prêt à coder/.test(await text(page, '#view')));
+  check('real time: a pushed event updates the list without reload', /construction en cours/.test(await text(page, '#view')) && !/prêt à construire/.test(await text(page, '#view')));
   check('real time: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
-  // ---- work view: groups by what a ticket needs, time in the stage, detail page ----
-  const WF = snapshot([
-    ticket(10, ['type:tech', 'status:in-dev'], { t: 'Ticket en dev', a: 'alice', h: [['backlog', iso(5 * 1440)], ['in-spec', iso(4 * 1440)], ['dev-ready', iso(3 * 1440 - 60)], ['in-dev', iso(120)]] }),
-    ticket(11, ['type:tech', 'status:in-dev', 'needs-human'], { t: 'Ticket bloque', h: [['in-dev', iso(3 * 1440)]], nh: iso(2 * 1440) }),
-    ticket(12, ['type:feature', 'status:approved'], { t: 'Ticket a merger', h: [['approved', iso(300)]] }),
-    ticket(13, ['type:tech', 'status:backlog'], { t: 'Ticket en file', u: iso(9 * 1440) }),
-    ticket(14, ['type:feature', 'level:story', 'status:split'], { t: 'Story decoupee', k: [0, 1] }),
-    ticket(15, ['type:feature', 'level:task', 'status:dev-ready'], { t: 'Tache de la story', p: 14 }),
-  ], 30);
-  page = await open({ preload: [WF] });
+  // ---- the work view: every status leads to the skill of the workflow that takes it ----
+  const V6 = snapshot([
+    ticket(10, ['type:feature', 'level:epic', 'status:planned'], { t: 'Epic planifié', k: [1, 3] }),
+    ticket(11, ['type:feature', 'level:story', 'status:forming'], { t: 'Story en formation', p: 10 }),
+    ticket(12, ['type:feature', 'level:story', 'status:to-plan', 'priority:P0'], { t: 'Story à planifier' }),
+    ticket(13, ['type:tech', 'level:story', 'status:planning', 'can-resume'], { t: 'Story en planification', a: 'alice' }),
+    ticket(14, ['type:feature', 'level:story', 'status:planned'], { t: 'Story découpée', k: [1, 2] }),
+    ticket(15, ['type:feature', 'level:task', 'status:ready', 'priority:P1'], { t: 'Tâche prête', p: 14 }),
+    ticket(16, ['type:tech', 'level:task', 'status:building'], { t: 'Tâche en cours', p: 14, a: 'bob' }),
+    ticket(17, ['type:tech', 'level:task', 'status:reviewing'], { t: 'Tâche en relecture', r: 55 }),
+    ticket(18, ['type:feature', 'level:story', 'status:merged'], { t: 'Story fusionnée' }),
+    ticket(19, ['type:tech', 'level:task', 'status:ready', 'needs-human'], { t: 'Tâche bloquée' }),
+    ticket(20, ['type:tech', 'level:story', 'status:ready', 'on-hold'], { t: 'Story en pause' }),
+    ticket(21, ['type:feature', 'level:task', 'status:ready', 'fix', 'gap', 'express'], { t: 'Tâche drapeaux' }),
+    ticket(30, ['run:proto'], { t: 'run:proto Mon proto' }),
+    ticket(31, ['run:technical-frame', 'needs-human'], { t: 'run:technical-frame Une règle' }),
+  ], 120);
+  V6.workflows = ['accept', 'build', 'express', 'need', 'plan', 'proto', 'report'];
+  page = await open({ preload: [V6] });
   view = await tab(page, 'Travail');
-  const wfRow = (name) => text(page, `#view .row:has-text("${name}")`);
-  check('work: tickets grouped by what they need', /Action humaine attendue · 2/.test(view) && /En cours · 1/.test(view) && /À lancer · 2/.test(view) && !/En pause/.test(view), view);
-  check('work: a split story is left out', !/Story decoupee/.test(view), view);
-  check('work: a row carries the launch button of the other views, a flagged one the way to answer', /Ouvrir/.test(await wfRow('Ticket en file')) && /Copier/.test(await wfRow('Ticket en file')) && /Répondre sur GitHub/.test(await wfRow('Ticket bloque')));
-  check('work: a row says since when the ticket is in its stage, the chain stays in the detail', /dans cette étape depuis 2 h/.test(await wfRow('Ticket en dev')) && !/Spec 2 j/.test(await wfRow('Ticket en dev')));
-  check('work: the flagged ticket is blocked since the flag, not the stage', /bloqué depuis 2 j/.test(await wfRow('Ticket bloque')) && /attend un humain/.test(view), view);
-  check('work: an approved ticket awaits its merge', /à merger/.test(await wfRow('Ticket a merger')));
-  check('work: human action first', view.indexOf('Ticket bloque') < view.indexOf('Ticket en dev'), view);
-  check('work: a ticket with no history shows no time in its stage, and is still flagged when idle', !/dans cette étape/.test(await wfRow('Ticket en file')) && /sans mouvement/.test(await wfRow('Ticket en file')), view);
-  check('work: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.click('#view .row:has-text("Ticket en dev") >> text=Détail'); await page.waitForTimeout(200);
-  view = await text(page, '#view');
-  check('work: a row opens its ticket (the address follows), with the time in each phase', (await page.evaluate(() => location.hash)) === '#file/10' && /Ticket en dev/.test(view) && !/Ticket bloque/.test(view) && /Spec 2 j/.test(view) && /Dev 3 j/.test(view) && /Tous les tickets/.test(view), view);
-  await page.goto(FILE + '#file/14'); await page.waitForTimeout(400);
-  view = await text(page, '#view');
-  check('work: a story shows its sub-tickets, each with its launch button', /Story decoupee/.test(view) && /Sous-tickets · 1/.test(view) && /Tache de la story/.test(view) && /Ouvrir/.test(await wfRow('Tache de la story')), view);
-  await page.click('#view >> text=Tous les tickets'); await page.waitForTimeout(200);
-  check('work: back to all the tickets', /Action humaine attendue/.test(await text(page, '#view')) && (await page.evaluate(() => location.hash)) === '#file');
-  for (const old of ['#activite', '#ensemble/dev', '#recherche']) {
-    await page.goto(FILE + old); await page.waitForTimeout(300);
-    check(`work: the former address ${old} opens the work view`, (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Travail' && /Travail ·/.test(await text(page, '#view')));
-  }
-  check('work: no page errors on the detail', page.errors.length === 0, page.errors.join('|'));
-  await page.close();
-  // a story waiting for QA is a queued run, a paused ticket has its own group and no idle flag, an Epic opens on its sub-tickets
-  const WF2 = snapshot([
-    ticket(20, ['type:feature', 'level:story', 'status:qa'], { t: 'Story a tester', h: [['qa', iso(300)]] }),
-    ticket(21, ['type:tech', 'status:backlog', 'on-hold'], { t: 'Ticket en pause', u: iso(20 * 1440), p: 22 }),
-    ticket(22, ['type:feature', 'level:epic'], { t: 'Epic parent', k: [0, 1] }),
-  ], 30);
-  page = await open({ preload: [WF2] });
-  view = await tab(page, 'Travail');
-  check('work: QA is queued, not a human action; a paused ticket is apart and never idle', !/Action humaine attendue/.test(view) && /À lancer · 1/.test(view) && /En pause · 1/.test(view) && !/sans mouvement/.test(view), view);
-  await page.goto(FILE + '#file/22'); await page.waitForTimeout(400);
-  view = await text(page, '#view');
-  check('work: an Epic (no status) opens on its sub-tickets', /Epic parent/.test(view) && /Sous-tickets · 1/.test(view) && /Ticket en pause/.test(view), view);
-  await page.close();
-  page = await open({ preload: [WF], role: 'produit' });
-  check('work: the role limits the phases shown', /Aucun ticket ne correspond/.test(await tab(page, 'Travail')));
-  await page.close();
-  // a live event continues the snapshot's history: a new status opens a stage, a flag starts its own clock
-  page = await open({ preload: [WF], events: [
-    ev({ n: 10, title: 'Ticket en dev', labels: ['type:tech', 'status:review-ready'], assignees: ['alice'], at: iso(10) }),
-    ev({ n: 13, title: 'Ticket en file', labels: ['type:tech', 'status:backlog', 'needs-human'], assignees: [], action: 'flag', at: iso(10) })] });
-  view = await tab(page, 'Travail');
-  check('work: a live event moves the ticket to its new stage', /à relire/.test(await wfRow('Ticket en dev')) && /À lancer · 2/.test(view), view);
-  await page.goto(FILE + '#file/10'); await page.waitForTimeout(400);
-  check('work: the earlier stages keep their time after a live event', /Dev 3 j/.test(await text(page, '#view')) && /Review/.test(await text(page, '#view')));
-  await page.goto(FILE + '#file'); await page.waitForTimeout(300);
-  check('work: a live flag starts the blocked clock at the event', /bloqué depuis 10 min/.test(await wfRow('Ticket en file')) && /Action humaine attendue · 3/.test(await text(page, '#view')));
-  await page.close();
-  // English: the day unit follows the language
-  page = await open({ preload: [WF], lang: 'en' });
-  view = await tab(page, 'Work');
-  check('work: English units', /blocked for 2 d/.test(view) && !/\d j\b/.test(view), view);
-  await page.close();
-
-  // ---- open in Claude Code: links with the command typed in ----
-  const hrefs = (page, sel) => page.$$eval(sel, (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel, text: a.textContent.trim() })));
-  const QA_SNAP = snapshot([ticket(99, ['type:tech', 'status:dev-ready', 'priority:P1']), ticket(50, ['type:feature', 'status:qa', 'priority:P1']), ticket(51, ['type:feature', 'status:in-qa', 'can-resume', 'priority:P2'])], 120);
-  page = await open({ preload: [QA_SNAP] });
-  await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
-  const links = await hrefs(page, '#view .row a.btn');
-  const base = 'https://claude.ai/code/new?q=';
-  const repoParam = '&repo=' + encodeURIComponent(REPO);
-  const find = (cmd) => links.find((l) => l.href === base + encodeURIComponent(cmd) + repoParam);
-  const both = async (n) => JSON.stringify(await modeHrefs(page, n));
-  check('auto-capable ticket: one launch button, auto and pair behind the Auto option', (await both(99)) === JSON.stringify(['/pilot-dev 99 --auto', '/pilot-dev 99']), await both(99));
-  check('QA ticket: the browser run is the Navigateur option, pair the default', (await both(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), await both(50));
-  check('QA resume: the browser run and pair too', (await both(51)) === JSON.stringify(['/pilot-qa --resume 51 --browser', '/pilot-qa --resume 51']), await both(51));
-  check('links open in a new tab without opener', links.length >= 3 && links.every((l) => l.target === '_blank' && /noopener/.test(l.rel)), JSON.stringify(links));
-  check('the command and the repository are URL-encoded (documented claude.ai/code/new?q=&repo= form)', links.every((l) => !/ /.test(l.href)) && links.every((l) => l.href.endsWith(repoParam)) && links.every((l) => l.href.startsWith(base)));
-  check('one copy button per row stays as a fallback', (await page.$$eval('#view .row button', (b) => b.filter((x) => x.textContent === 'Copier').length)) === (await rows(page)));
-  await page.screenshot({ path: path.join(TMP, 'links.png') });
-  await page.close();
-
-  page = await open({ preload: [snapshot([ticket(1, ['status:backlog'])], 60 * 30)] });
-  check('stale snapshot: open link for the refresh command', (await hrefs(page, '#banner a.btn')).some((l) => l.href === base + encodeURIComponent('/pilot-dashboard --refresh') + repoParam));
-  await page.close();
-  page = await open({});
-  check('no snapshot: open link for the refresh command', (await hrefs(page, '#banner a.btn')).some((l) => /pilot-dashboard%20--refresh/.test(l.href)));
-  await page.close();
-
-  // ---- new request: Discovery / tech Spec / bug Spec from scratch ----
-  page = await open({ preload: [BASE], role: 'tech' });
-  check('new request card is folded by default, behind a chevron', (await page.getAttribute('#ideaToggle', 'aria-expanded')) === 'false' && (await page.$eval('#ideaBody', (e) => e.hidden)));
-  await page.click('#ideaToggle');
-  check('the chevron opens it', (await page.getAttribute('#ideaToggle', 'aria-expanded')) === 'true' && !(await page.$eval('#ideaBody', (e) => e.hidden)));
-  const ideaOpen = () => page.$eval('#ideaOpen', (a) => ({ href: a.getAttribute('href'), disabled: a.getAttribute('aria-disabled'), target: a.target, rel: a.rel }));
-  const encBase = 'https://claude.ai/code/new?q=';
-  const encRepo = '&repo=' + encodeURIComponent(REPO);
-  check('new request card is shown on "Travail" and hidden on the other tabs',
-        !(await page.$eval('#idea', (e) => e.hidden)) && (await tab(page, 'Architecture')) !== null && (await page.$eval('#idea', (e) => e.hidden)) &&
-        (await tab(page, 'Travail')) !== null && !(await page.$eval('#idea', (e) => e.hidden)));
-  check('empty text: link disabled without a target, copy disabled, command previewed',
-        (await ideaOpen()).href === null && (await ideaOpen()).disabled === 'true' && (await page.isDisabled('#ideaCopy')) &&
-        /^\/pilot-spec --tech …$/.test(await text(page, '#ideaCmd')), JSON.stringify(await ideaOpen()) + await text(page, '#ideaCmd'));
-  await page.fill('#ideaText', 'Mon besoin');
-  let o = await ideaOpen();
-  check('tech role defaults to the tech Spec command, link carries command and repo',
-        o.href === encBase + encodeURIComponent('/pilot-spec --tech Mon besoin') + encRepo && o.disabled === null && o.target === '_blank' && /noopener/.test(o.rel), JSON.stringify(o));
-  check('tech role offers only the tech need and the bug', JSON.stringify(await page.$$eval('#kindSeg button', (b) => b.map((x) => x.textContent))) === JSON.stringify(['Besoin technique', 'Bug']));
-  await page.click('#roleSeg >> text=Tous');
-  await page.click('#kindSeg >> text=Idée produit');
-  check('product idea -> /pilot-discovery', (await ideaOpen()).href === encBase + encodeURIComponent('/pilot-discovery Mon besoin') + encRepo && /^\/pilot-discovery Mon besoin$/.test(await text(page, '#ideaCmd')));
-  await page.click('#kindSeg >> text=Bug');
-  check('bug -> /pilot-spec --bug', (await ideaOpen()).href === encBase + encodeURIComponent('/pilot-spec --bug Mon besoin') + encRepo);
-  await page.click('#roleSeg >> text=Produit');
-  check('a kind chosen by hand is kept when the role changes', (await ideaOpen()).href.includes(encodeURIComponent('/pilot-spec --bug')));
-  await page.fill('#ideaText', 'ligne 1\n   ligne 2\n\nligne 3');
-  check('multi-line text becomes a single-line command', (await text(page, '#ideaCmd')) === '/pilot-spec --bug ligne 1 ligne 2 ligne 3', await text(page, '#ideaCmd'));
-  check('text length is capped', (await page.getAttribute('#ideaText', 'maxlength')) === '1500');
-  check('new request: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.screenshot({ path: path.join(TMP, 'idea.png') });
-  await page.close();
-
-  page = await open({ preload: [BASE] });
-  await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
-  await page.click('#ideaToggle');
-  await page.fill('#ideaText', 'Idée');
-  check('product role defaults to /pilot-discovery', (await page.$eval('#ideaOpen', (a) => a.getAttribute('href'))).includes(encodeURIComponent('/pilot-discovery Idée')));
-  await page.close();
-
-  // typing is not lost nor interrupted by a live update
-  page = await open({ preload: [BASE] });
-  await page.click('#ideaToggle');
-  await page.click('#ideaText'); await page.keyboard.type('texte en cours');
-  await page.evaluate((e) => window.__push('events', 'live2', e), ev({}));
-  await page.waitForTimeout(250);
-  check('a live update keeps the typed text and the focus',
-        (await page.inputValue('#ideaText')) === 'texte en cours' && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'ideaText');
-  await page.keyboard.type('!');
-  check('typing continues after the update', (await page.inputValue('#ideaText')) === 'texte en cours!');
-  await page.close();
-
-  // ---- long groups fold: the first rows, then the others on demand ----
-  const many = [];
-  for (let n = 1; n <= 45; n++) many.push(ticket(n, ['type:tech', 'status:dev-ready', n === 30 ? 'priority:P0' : 'priority:P2']));
-  page = await open({ preload: [snapshot(many)] });
-  check('a group shows its first 8 rows and offers the others', (await rows(page)) === 8 && /À lancer · 45/.test(await text(page, '#view')) && /Afficher les 37 autres/.test(await text(page, '#view')), await text(page, '#view'));
-  check('most urgent ticket (P0) comes first', /#30/.test(await page.textContent('#view .row')), await page.textContent('#view .row'));
-  await page.click('button:has-text("Afficher les 37 autres")'); await page.waitForTimeout(150);
-  check('all the rows once opened, and a way back', (await rows(page)) === 45 && /Réduire/.test(await text(page, '#view')));
-  await page.click('button:has-text("Réduire")'); await page.waitForTimeout(150);
-  check('folded again', (await rows(page)) === 8);
-  await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(150);
-  check('changing role shows what that role has', /Aucun ticket ne correspond/.test(await text(page, '#view')));
-  await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(150);
-  check('back on the tech role', (await rows(page)) === 8);
-  check('fold: no page errors', page.errors.length === 0, page.errors.join('|'));
+  check('work list: the tickets, run issues left out (12 tickets)', (await trows(page)) === 12 && /Travail · 12/.test(view) && !/Mon proto/.test(view.split('Runs en cours')[0] || ''), view.slice(0, 200));
+  const cmd = async (n) => (await rowCmds(page, n)).map((x) => x.split('|')[0]);
+  check('forming: /pilot-need (no number)', (await cmd(11)).includes('/pilot-need'), JSON.stringify(await cmd(11)));
+  check('to-plan: /pilot-plan <n>', (await cmd(12)).includes('/pilot-plan 12'), JSON.stringify(await cmd(12)));
+  check('planning: /pilot-plan --resume <n>', (await cmd(13)).includes('/pilot-plan --resume 13'), JSON.stringify(await cmd(13)));
+  check('ready: /pilot-build <n>', (await cmd(15)).includes('/pilot-build 15'), JSON.stringify(await cmd(15)));
+  check('building and reviewing: /pilot-build --resume <n>', (await cmd(16)).includes('/pilot-build --resume 16') && (await cmd(17)).includes('/pilot-build --resume 17'), JSON.stringify([await cmd(16), await cmd(17)]));
+  check('merged: /pilot-accept <n>', (await cmd(18)).includes('/pilot-accept 18'), JSON.stringify(await cmd(18)));
+  check('planned (a container) and an epic: no command, only GitHub', (await cmd(14)).every((c) => !/\/pilot-/.test(c)) && (await cmd(10)).every((c) => !/\/pilot-/.test(c)), JSON.stringify([await cmd(14), await cmd(10)]));
+  check('needs-human: a reply on GitHub, no command; on-hold: only a look on GitHub', /Répondre sur GitHub/.test((await rowCmds(page, 19)).join()) && !(await cmd(19)).some((c) => /\/pilot-/.test(c)) && !(await cmd(20)).some((c) => /\/pilot-/.test(c)) && /Voir sur GitHub/.test((await rowCmds(page, 20)).join()));
+  const rowText = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' }).first().textContent();
+  check('flags are chips: needs-human, on-hold, can-resume, fix, gap, express', /attend un humain/.test(await rowText(19)) && /en pause/.test(await rowText(20)) && /reprise possible/.test(await rowText(13)) && /correction/.test(await rowText(21)) && /en écart/.test(await rowText(21)) && /express/.test(await rowText(21)));
+  check('the command is shown on its row, with the status in words', /\/pilot-build 15/.test(await rowText(15)) && /prêt à construire/.test(await rowText(15)));
+  check('the open PR links to GitHub', (await hrefs(page, '#view .row a:has-text("PR #55")')).length === 1);
+  const groups = await page.$$eval('#view > .list > h2', (h) => h.map((x) => x.textContent));
+  check('groups: action awaited, in progress, to launch, paused, no action', groups.some((g) => /^Action humaine attendue/.test(g)) && groups.some((g) => /^En cours/.test(g)) && groups.some((g) => /^À lancer/.test(g)) && groups.some((g) => /^En pause/.test(g)) && groups.some((g) => /^Sans action/.test(g)), JSON.stringify(groups));
+  check('work view: no pilot-auto, no removed phase command anywhere', !/pilot-(auto|discovery|spec|dev|review|qa)\b/.test(await page.content()));
+  const tiles = await page.$$eval('#view .tile', (t) => t.map((x) => x.textContent));
+  check('counters: blocked, forming, to plan, to build, to accept', JSON.stringify(tiles) === JSON.stringify(['1bloqués', '1en formation', '1à planifier', '2à construire', '1à recetter']), JSON.stringify(tiles));
+  await page.click('#view .tile >> text=à construire'); await page.waitForTimeout(150);
+  check('a counter is a filter: the ready tickets that are neither blocked nor paused', (await trows(page)) === 2, String(await trows(page)));
+  await page.click('#view .tile >> text=à construire'); await page.waitForTimeout(150);
+  check('clicking it again lifts the filter', (await trows(page)) === 12);
+  check('no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.screenshot({ path: path.join(TMP, 'work.png') });
   await page.close();
 
-  // ---- the board: one column per phase, cards that say where a ticket stands, filters, fold, list as an option ----
-  const BWF = snapshot([
-    ticket(10, ['type:tech', 'priority:P1', 'status:in-dev'], { t: 'Ticket en dev', a: 'alice', h: [['backlog', iso(5 * 1440)], ['in-spec', iso(4 * 1440)], ['dev-ready', iso(3 * 1440 - 60)], ['in-dev', iso(120)]] }),
-    ticket(11, ['type:tech', 'status:in-dev', 'needs-human'], { t: 'Ticket bloque', h: [['in-dev', iso(3 * 1440)]], nh: iso(2 * 1440) }),
-    ticket(12, ['type:feature', 'status:approved'], { t: 'Ticket a merger', h: [['approved', iso(300)]], r: 77 }),
-    ticket(13, ['type:tech', 'status:backlog'], { t: 'Ticket en file', u: iso(9 * 1440) }),
-    ticket(14, ['type:feature', 'level:story', 'status:split'], { t: 'Story decoupee', k: [0, 1] }),
-    ticket(15, ['type:feature', 'level:task', 'status:dev-ready'], { t: 'Tache prete', p: 14 }),
-    ticket(16, ['type:tech', 'status:backlog', 'on-hold'], { t: 'Ticket en pause' }),
-  ], 30);
-  page = await open({ preload: [BWF], view: 'board' });
-  view = await tab(page, 'Travail');
-  const colNames = () => page.$$eval('#view .board section.col > header strong', (e) => e.map((x) => x.textContent));
-  const card = (name) => page.locator('#view .board .card', { hasText: name });
-  const colOf = (name) => page.locator('#view .board section.col', { has: page.locator('.card', { hasText: name }) }).locator('header strong').textContent();
-  check('board: the default view, one column per phase', JSON.stringify(await colNames()) === JSON.stringify(['1 · Discovery', '2 · Spec', '3 · Dev', '4 · Review', '5 · QA humaine']), JSON.stringify(await colNames()));
-  check('board: a ticket is in the column of its phase', (await colOf('Ticket en dev')) === '3 · Dev' && (await colOf('Ticket a merger')) === '4 · Review' && (await colOf('Ticket en file')) === '2 · Spec');
-  check('board: a split story is not a card', (await card('Story decoupee').count()) === 0);
-  check('board: a column counts its tickets and its blocked ones', /3/.test(await text(page, 'section[aria-label="3 · Dev"] header')) && /1/.test(await text(page, 'section[aria-label="3 · Dev"] header .chip.warn')), await text(page, 'section[aria-label="3 · Dev"] header'));
-  check('board: the statuses of a phase head its cards', /dev en cours · 2/.test(await text(page, 'section[aria-label="3 · Dev"]')) && /prêt à coder · 1/.test(await text(page, 'section[aria-label="3 · Dev"]')));
-  check('board: a ticket flagged for a human is marked and says since when it is blocked', /g-human/.test(await card('Ticket bloque').getAttribute('class')) && /attend un humain/.test(await card('Ticket bloque').textContent()) && /bloqué depuis 2 j/.test(await card('Ticket bloque').textContent()));
-  check('board: a ticket in progress says its assignee and since when', /g-going/.test(await card('Ticket en dev').getAttribute('class')) && /@alice/.test(await card('Ticket en dev').textContent()) && /depuis 2 h/.test(await card('Ticket en dev').textContent()) && /P1/.test(await card('Ticket en dev').textContent()));
-  check('board: a ticket with no history shows no duration, an idle one is flagged', !/depuis/.test(await card('Ticket en file').textContent()) && /sans mouvement/.test(await card('Ticket en file').textContent()));
-  check('board: a paused ticket is its own state', /g-pause/.test(await card('Ticket en pause').getAttribute('class')) && /en pause/.test(await card('Ticket en pause').textContent()));
-  const hrefsOf = (name) => card(name).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0])));
-  check('board: a card launches its ticket, a flagged one answers on GitHub, an approved one merges there', JSON.stringify(await hrefsOf('Tache prete')) === JSON.stringify(['/pilot-dev 15']) && /issues\/11/.test((await hrefsOf('Ticket bloque'))[0]) && /issues\/12/.test((await hrefsOf('Ticket a merger'))[0]) && /\/pull\/77/.test((await hrefsOf('Ticket a merger'))[1]), JSON.stringify(await hrefsOf('Tache prete')));
-  await card('Ticket en dev').locator('button:has-text("Détail")').click(); await page.waitForTimeout(200);
-  check('board: a card opens its ticket, with the chain and the launch options', (await page.evaluate(() => location.hash)) === '#file/10' && /Spec 2 j/.test(await text(page, '#view')) && /Ticket en dev/.test(await text(page, '#view')) && /Ouvrir/.test(await text(page, '#view .row')));
-  await page.goto(FILE + '#file'); await page.waitForTimeout(300);
-  await page.fill('#searchText', 'bloque'); await page.waitForTimeout(150);
-  check('board: the filters narrow the cards, the columns stay', (await page.$$eval('#view .board .card', (c) => c.length)) === 1 && (await colNames()).length === 5);
-  await page.fill('#searchText', '#'); await page.waitForTimeout(150);
-  check('board: a search also looks at what is outside the phases (an Others column)', /Story decoupee/.test(await text(page, '#view .board section[aria-label="Autres"]')));
-  await page.fill('#searchText', ''); await page.waitForTimeout(150);
-  check('board: no filter, no Others column', (await page.$$('#view .board section[aria-label="Autres"]')).length === 0);
-  await page.click('#view .seg button:has-text("Liste")'); await page.waitForTimeout(150);
-  check('board: the list is one click away and remembered', !(await page.$('#view .board')) && /Action humaine attendue/.test(await text(page, '#view')) && (await page.evaluate(() => localStorage.getItem('cp.view'))) === 'liste');
-  await page.click('#view .seg button:has-text("Board")'); await page.waitForTimeout(150);
-  check('board: and back', !!(await page.$('#view .board')) && (await page.evaluate(() => localStorage.getItem('cp.view'))) === 'board');
-  check('board: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.screenshot({ path: path.join(TMP, 'board.png') });
-  await page.close();
-  page = await open({ preload: [BWF], view: 'board', role: 'produit' });
-  view = await tab(page, 'Travail');
-  check('board: the role limits the columns (product: Discovery and QA)', JSON.stringify(await colNames()) === JSON.stringify(['1 · Discovery', '5 · QA humaine']), JSON.stringify(await colNames()));
-  await page.close();
-  page = await open({ preload: [snapshot(many)], view: 'board' });
-  view = await tab(page, 'Travail');
-  const devCards = () => page.$$eval('section[aria-label="3 · Dev"] .card', (c) => c.length);
-  check('board: a long column shows 8 cards and an expander', (await devCards()) === 8 && /Afficher les 37 autres/.test(await text(page, 'section[aria-label="3 · Dev"]')));
-  check('board: the most urgent card comes first', /#30/.test(await page.textContent('section[aria-label="3 · Dev"] .card')));
-  await page.click('text=Afficher les 37 autres'); await page.waitForTimeout(150);
-  check('board: expanding shows all and offers to collapse', (await devCards()) === 45 && /Réduire/.test(await text(page, 'section[aria-label="3 · Dev"]')));
-  await page.click('section[aria-label="3 · Dev"] >> text=Réduire'); await page.waitForTimeout(150);
-  check('board: collapsing goes back to 8', (await devCards()) === 8);
-  await page.close();
-  page = await open({ preload: [BWF], view: 'board', lang: 'en' });
-  view = await tab(page, 'Work');
-  check('board: English', /since 2 h/.test(view) && /blocked for 2 d/.test(view) && !/\d j\b/.test(view), view);
-  await page.close();
-
-  // ---- epics on the board, and the counters as filters ----
-  const EPS = snapshot([
-    ticket(70, ['type:feature', 'level:epic'], { t: 'Epic avis', k: [1, 3] }),
-    ticket(71, ['type:feature', 'level:story', 'status:split'], { t: 'Story avis', p: 70, k: [0, 3] }),
-    ticket(72, ['type:feature', 'level:task', 'status:in-dev'], { t: 'Tache en cours', p: 71, a: 'alice' }),
-    ticket(73, ['type:feature', 'level:task', 'status:dev-ready'], { t: 'Tache prete', p: 71 }),
-    ticket(76, ['type:feature', 'level:task', 'status:dev-ready', 'needs-human'], { t: 'Tache bloquee', p: 71 }),
-    ticket(74, ['type:tech', 'level:task', 'status:backlog'], { t: 'Sans epic' }),
-    ticket(75, ['type:feature', 'level:epic', 'on-hold'], { t: 'Epic pause', k: [0, 2] }),
-  ], 30);
-  page = await open({ preload: [EPS], view: 'board' });
-  view = await tab(page, 'Travail');
-  const bcolNames = () => page.$$eval('#view .board section.col > header strong', (e) => e.map((x) => x.textContent));
-  const bcard = (name) => page.locator('#view .board .card', { hasText: name });
-  const bcards = () => page.$$eval('#view .board section.col:not([aria-label="Epics"]) .card', (c) => c.length);
-  check('epics: their own first column, with the progress of each epic', (await bcolNames())[0] === 'Epics' && /1\/3 terminés/.test(await bcard('Epic avis').textContent()) && (await bcard('Epic avis').locator('.bar').count()) === 1 && /g-pause/.test(await bcard('Epic pause').getAttribute('class')), JSON.stringify(await bcolNames()));
-  check('epics: a task says its epic, whatever the depth (task under a story under an epic); a ticket without one says nothing', /Epic #70/.test(await bcard('Tache en cours').textContent()) && !/Epic #/.test(await bcard('Sans epic').textContent()));
-  check('epics: no epic card among the phases, no epic in Others', (await bcards()) === 4 && (await page.$$('#view .board section[aria-label="Autres"]')).length === 0);
-  await bcard('Tache en cours').locator('button:has-text("Epic #70")').click(); await page.waitForTimeout(150);
-  check('epics: the Epic chip of a card keeps only that epic\'s tickets (its story in Others), as a removable filter', (await bcards()) === 4 && /Story avis/.test(await text(page, '#view .board section[aria-label="Autres"]')) && /Epic : #70 Epic avis/.test(await text(page, '#activeFilters')) && (await text(page, '#filtersCount')) === '1' && /sel/.test(await bcard('Epic avis').getAttribute('class')));
-  check('epics: the cards of the epic no longer repeat its chip', !/Epic #/.test(await bcard('Tache prete').textContent()));
-  await bcard('Epic avis').locator('button:has-text("Tout afficher")').click(); await page.waitForTimeout(150);
-  check('epics: the epic card gives the whole board back', (await bcards()) === 4 && (await page.$eval('#filtersCount', (e) => e.hidden)));
-  await bcard('Epic pause').locator('button:has-text("Filtrer sur cette epic")').click(); await page.waitForTimeout(150);
-  check('epics: an epic with no ticket leaves the board empty, its column stays', (await bcards()) === 0 && (await bcolNames())[0] === 'Epics');
-  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(150);
-  const tile = (label) => page.locator('#view .tally .tile', { hasText: label });
-  check('counters: buttons, with the number of tickets they list', (await tile('à coder').count()) === 1 && /1/.test(await tile('à coder').textContent()) && (await tile('à coder').getAttribute('aria-pressed')) === 'false');
-  await tile('à coder').click(); await page.waitForTimeout(150);
-  check('counters: a click lists exactly what the counter says, shown as the filters it sets', (await bcards()) === 1 && /Tache prete/.test(await text(page, '#view .board')) && (await tile('à coder').getAttribute('aria-pressed')) === 'true' && /État : prêt à coder/.test(await text(page, '#activeFilters')) && /Drapeau : sans drapeau/.test(await text(page, '#activeFilters')));
-  await tile('bloqués').click(); await page.waitForTimeout(150);
-  check('counters: another counter replaces the first', (await bcards()) === 1 && /Tache bloquee/.test(await text(page, '#view .board')) && (await tile('à coder').getAttribute('aria-pressed')) === 'false' && (await tile('bloqués').getAttribute('aria-pressed')) === 'true');
-  await tile('bloqués').click(); await page.waitForTimeout(150);
-  check('counters: a second click clears it', (await bcards()) === 4 && (await page.$eval('#filtersCount', (e) => e.hidden)));
-  check('epics: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.screenshot({ path: path.join(TMP, 'epics.png') });
-  await page.close();
-  // ---- the parent of a ticket: a link on its card, the chain on its page ----
-  page = await open({ preload: [EPS, ], view: 'board' });
-  view = await tab(page, 'Travail');
-  const pr = (name) => page.locator('#view .board .card', { hasText: name });
-  check('parent: a card links to its parent', (await pr('Tache en cours').locator('a.chip:has-text("↑ #71")').getAttribute('href')) === '#file/71');
-  await pr('Tache en cours').locator('a.chip:has-text("↑ #71")').click(); await page.waitForTimeout(200);
-  view = await text(page, '#view');
-  check('parent: the link opens the parent, with its own chain above it', (await page.evaluate(() => location.hash)) === '#file/71' && /Story avis/.test(view) && (await page.locator('#view .crumbs a').allTextContents()).join('|') === '#70 Epic avis');
-  await page.goto(FILE + '#file/72'); await page.waitForTimeout(300);
-  check('parent: a ticket page shows its chain, epic first, each one a link', (await page.locator('#view .crumbs a').evaluateAll((as) => as.map((a) => a.textContent + '=' + a.getAttribute('href')))).join('|') === '#70 Epic avis=#file/70|#71 Story avis=#file/71');
-  await page.close();
-  page = await open({ preload: [snapshot([ticket(77, ['type:tech', 'level:task', 'status:backlog'], { t: 'Tache orpheline', p: 999 })], 30)], view: 'board' });
-  view = await tab(page, 'Travail');
-  const orph = page.locator('#view .board .card', { hasText: 'Tache orpheline' }).locator('a.chip:has-text("↑ #999")');
-  check('parent: one that is no longer in the dashboard opens on GitHub', (await orph.getAttribute('href')) === `https://github.com/${REPO}/issues/999` && (await orph.getAttribute('target')) === '_blank');
-  await page.goto(FILE + '#file/77'); await page.waitForTimeout(300);
-  check('parent: and the same in the chain of the ticket page', /issues\/999/.test(await page.locator('#view .crumbs a').getAttribute('href')));
-  check('parent: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.close();
-  page = await open({ preload: [EPS], view: 'board', lang: 'en' });
-  view = await tab(page, 'Work');
-  check('epics: English', /Filter on this epic/.test(view) && (await page.getAttribute('#view .tally .tile', 'title')).startsWith('Filter: '), view);
-  await page.close();
-
-  page = await open({ preload: [snapshot(many.slice(0, 12))] });
-  check('12 tickets: a group of 12 folds to 8', (await rows(page)) === 8);
-  await page.close();
-
-  // ---- row options: --next and --multi behind a chevron ----
-  const OPT_SNAP = snapshot([
-    ticket(99, ['type:tech', 'status:dev-ready', 'priority:P0']), ticket(70, ['type:feature', 'status:review-ready', 'priority:P1']),
-    ticket(60, ['type:tech', 'status:in-dev', 'priority:P1']), ticket(50, ['type:feature', 'status:qa', 'priority:P1']),
-    ticket(80, ['type:bug', 'level:task', 'status:backlog', 'priority:P1']), ticket(81, ['type:tech', 'level:story', 'status:backlog', 'priority:P1']),
-  ], 120);
-  page = await open({ preload: [OPT_SNAP] });
-  await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(150);
-  const rowOf = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' });
-  const rowHrefs = (n) => modeHrefs(page, n);
-  const optBtn = (n) => rowOf(n).locator('button:has-text("Options")');
-  check('options are folded by default: no panel, a chevron button on every row that can be launched with an option (auto, human, multi)',
-        (await page.$$('#view .opts')).length === 0 && (await optBtn(99).count()) === 1 && (await optBtn(70).count()) === 1 &&
-        (await optBtn(60).count()) === 1 && (await optBtn(50).count()) === 1);
-  await optBtn(99).click(); await page.waitForTimeout(100);
-  const panel99 = () => rowOf(99).locator('.opts');
-  check('chevron opens the panel with --next and multi', (await panel99().count()) === 1 && /Enchaîner \(--next\)/.test(await panel99().textContent()) && /Multi/.test(await panel99().textContent()));
-  check('the other rows stay folded', (await rowOf(70).locator('.opts').count()) === 0);
-  check('default commands unchanged', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto', '/pilot-dev 99']), JSON.stringify(await rowHrefs(99)));
-  // a reclaim (changes-requested) has no approach to propose: no Humain option
-  const RC_SNAP = snapshot([ticket(301, ['type:tech', 'status:changes-requested', 'priority:P1']), ticket(302, ['type:tech', 'status:dev-ready', 'priority:P1'])], 120);
-  const rcPage = await open({ preload: [RC_SNAP] });
-  await rcPage.click('#roleSeg >> text=Tous'); await rcPage.waitForTimeout(150);
-  const rcRow = (n) => rcPage.locator('#view .row', { hasText: '#' + n + ' ' });
-  await rcRow(302).locator('button:has-text("Options")').click(); await rcPage.waitForTimeout(100);
-  const rcHas302 = (await rcRow(302).locator('.opts .tog', { hasText: /^Humain$/ }).count()) === 1;
-  const rcOpts301 = await rcRow(301).locator('button:has-text("Options")').count();
-  if (rcOpts301) { await rcRow(301).locator('button:has-text("Options")').click(); await rcPage.waitForTimeout(100); }
-  check('reclaim row: no Humain option, a dev-ready row keeps it', rcHas302 && (await rcRow(301).locator('.opts .tog', { hasText: /^Humain$/ }).count()) === 0, String(rcHas302));
-  await rcPage.close();
-  // ---- --human: its own option, exclusive with Auto and --next, compatible with multi; never on QA ----
-  const launchOf = async (n) => decodeURIComponent((await rowOf(n).locator('a.btn').first().getAttribute('href')).split('?q=')[1].split('&repo=')[0]);
-  const humanTog = (n) => rowOf(n).locator('.opts .tog', { hasText: /^Humain$/ });
-  await optBtn(60).click(); await page.waitForTimeout(100);
-  const h60 = await launchOf(60);
-  await humanTog(60).click(); await page.waitForTimeout(100);
-  check('resume row (pair only): a Humain option, off by default, launches --human', h60 === '/pilot-dev --resume 60' && (await launchOf(60)) === '/pilot-dev --resume 60 --human' && /humain/.test(await rowOf(60).textContent()), h60 + ' / ' + (await launchOf(60)));
-  await humanTog(60).click(); await optBtn(60).click(); await page.waitForTimeout(100);
-  await humanTog(99).click(); await page.waitForTimeout(100);
-  check('dev row: Humain replaces Auto and hides --next', (await launchOf(99)) === '/pilot-dev 99 --human' && (await panel99().locator('text=Enchaîner').count()) === 0, await launchOf(99));
-  await panel99().locator('.tog', { hasText: /^Auto$/ }).click(); await page.waitForTimeout(100);
-  check('Auto switches Humain off', (await launchOf(99)) === '/pilot-dev 99 --auto' && (await humanTog(99).getAttribute('aria-pressed')) === 'false', await launchOf(99));
-  await panel99().locator('.tog', { hasText: /^Auto$/ }).click(); await page.waitForTimeout(100);
-  await optBtn(50).click(); await page.waitForTimeout(100);
-  check('QA row: no Humain option', (await humanTog(50).count()) === 0);
-  await optBtn(50).click(); await page.waitForTimeout(100);
-  await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
-  check('--next: the launch button rides the ticket through /pilot-auto', (await rowOf(99).locator('a.btn').first().getAttribute('href')).includes(encodeURIComponent('/pilot-auto 99 --next')));
-  await panel99().locator('.seg button', { hasText: /^3$/ }).click(); await page.waitForTimeout(100);
-  check('--next + multi 3: /pilot-auto 99 --multi 3 --next', (await rowOf(99).locator('a.btn').first().getAttribute('href')).includes(encodeURIComponent('/pilot-auto 99 --multi 3 --next')));
-  check('active options shown as chips and in the command line', /enchaîné/.test(await rowOf(99).textContent()) && /multi 3/.test(await rowOf(99).textContent()) && /\/pilot-auto 99 --multi 3 --next/.test(await rowOf(99).locator('.cmd').textContent()));
-  await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
-  check('multi without --next: /pilot-dev 99 --auto --multi 3', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto --multi 3', '/pilot-dev 99 --multi 3']), JSON.stringify(await rowHrefs(99)));
-  await page.evaluate((e) => window.__push('events', 'live4', e), ev({ n: 70, title: 'Ticket 70', labels: ['type:feature', 'status:review-ready'] }));
-  await page.waitForTimeout(250);
-  check('a live update keeps the opened panel and the chosen options', (await panel99().count()) === 1 && JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto --multi 3', '/pilot-dev 99 --multi 3']));
-  await optBtn(99).click(); await page.waitForTimeout(100);
-  check('chevron folds the panel again, the options stay applied', (await panel99().count()) === 0 && /multi 3/.test(await rowOf(99).textContent()));
-  await optBtn(70).click(); await rowOf(70).locator('.opts .seg button', { hasText: /^2$/ }).click(); await page.waitForTimeout(100);
-  check('review row: multi forwarded (/pilot-review 70 --auto --multi 2)', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --auto --multi 2', '/pilot-review 70 --multi 2']), JSON.stringify(await rowHrefs(70)));
-  await optBtn(99).click(); await page.waitForTimeout(100);
-  await panel99().locator('.tog', { hasText: 'designer' }).click(); await panel99().locator('.tog', { hasText: 'tech lead' }).click(); await page.waitForTimeout(100);
-  check('dev row: --with adds the chosen personas, auto and pair alike', JSON.stringify(await rowHrefs(99)) === JSON.stringify(['/pilot-dev 99 --auto --multi 3 --with techlead,designer', '/pilot-dev 99 --multi 3 --with techlead,designer']), JSON.stringify(await rowHrefs(99)));
-  await panel99().locator('text=Enchaîner').click(); await page.waitForTimeout(100);
-  check('--next hides --with and drops it from the commands', (await panel99().locator('text=Avec').count()) === 0 && (await rowOf(99).locator('a.btn').first().getAttribute('href')).includes(encodeURIComponent('/pilot-auto 99 --multi 3 --next')));
-  await panel99().locator('text=Enchaîner').click(); await optBtn(99).click(); await page.waitForTimeout(100);
-  const panel70 = () => rowOf(70).locator('.opts');
-  await panel70().locator('.tog', { hasText: 'PM' }).click(); await page.waitForTimeout(100);
-  check('review row: --only drops --auto, keeps --multi, replaces --with', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --multi 2 --only pm']) && (await panel70().locator('text=Avec').count()) === 0, JSON.stringify(await rowHrefs(70)));
-  await panel70().locator('.tog', { hasText: 'PM' }).click(); await panel70().locator('.grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
-  check('review row: --with architect', JSON.stringify(await rowHrefs(70)) === JSON.stringify(['/pilot-review 70 --auto --multi 2 --with architect', '/pilot-review 70 --multi 2 --with architect']), JSON.stringify(await rowHrefs(70)));
-  await optBtn(50).click(); await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await page.waitForTimeout(100);
-  check('QA row: --with designer applies to the pair command only', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50 --with designer']), JSON.stringify(await rowHrefs(50)));
-  await rowOf(50).locator('.opts .tog', { hasText: 'designer' }).click(); await optBtn(50).click(); await page.waitForTimeout(100);
-  await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
-  check('spec row of a bug offers the architect, not the designer; a tech story offers the designer',
-        (await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).textContent()).includes('architecte') && !(await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).textContent()).includes('designer') &&
-        (await rowOf(81).locator('.opts .grp', { hasText: 'Avec' }).textContent()).includes('designer'));
-  await rowOf(80).locator('.opts .grp', { hasText: 'Avec' }).locator('.tog', { hasText: 'architecte' }).click(); await page.waitForTimeout(100);
-  check('bug spec: /pilot-spec 80 --auto --with architect', JSON.stringify(await rowHrefs(80)) === JSON.stringify(['/pilot-spec 80 --auto --with architect', '/pilot-spec 80 --with architect']), JSON.stringify(await rowHrefs(80)));
-  await optBtn(80).click(); await optBtn(81).click(); await page.waitForTimeout(100);
-  check('resume rows get no --next, QA rows neither --multi nor --next', JSON.stringify(await rowHrefs(60)) === JSON.stringify(['/pilot-dev --resume 60']) && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify([await rowHrefs(60), await rowHrefs(50)]));
-  await optBtn(50).click(); await page.waitForTimeout(100);
-  check('QA row options: an environment address, no --next', (await rowOf(50).locator('.opts #qaUrl-50').count()) === 1 && (await rowOf(50).locator('.opts .tog', { hasText: 'Enchaîner' }).count()) === 0);
-  await rowOf(50).locator('#qaUrl-50').fill('https://staging.example.com'); await page.waitForTimeout(150);
-  check('QA row: the address goes to the auto command only, and typing keeps the focus',
-        (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'qaUrl-50' && JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser --url https://staging.example.com', '/pilot-qa 50']), JSON.stringify(await rowHrefs(50)));
-  await rowOf(50).locator('#qaUrl-50').fill('javascript:alert(1)'); await page.waitForTimeout(150);
-  check('QA row: anything but an http(s) address is dropped', JSON.stringify(await rowHrefs(50)) === JSON.stringify(['/pilot-qa 50 --browser', '/pilot-qa 50']), JSON.stringify(await rowHrefs(50)));
-  await rowOf(50).locator('#qaUrl-50').fill(''); await optBtn(50).click(); await page.waitForTimeout(100);
-  check('row options: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.screenshot({ path: path.join(TMP, 'options.png') });
-  await page.close();
-
-  // ---- batch: /pilot-auto with --again / --next / --multi, folded by default ----
-  page = await open({ preload: [BASE] });
-  const batchOpen = () => page.$eval('#batchOpen', (a) => ({ href: a.getAttribute('href'), disabled: a.getAttribute('aria-disabled') }));
-  const batchCmdText = () => text(page, '#batchCmd');
-  const bt = (grp, label) => page.locator(`#${grp} button`, { hasText: label }).first().click();
-  check('batch card: shown on "Travail", folded by default', !(await page.$eval('#batch', (e) => e.hidden)) && (await page.getAttribute('#batchToggle', 'aria-expanded')) === 'false' && (await page.$eval('#batchBody', (e) => e.hidden)));
-  check('batch card hidden on the other tabs', (await tab(page, 'Architecture')) !== null && (await page.$eval('#batch', (e) => e.hidden)));
-  await tab(page, 'Travail');
-  await page.click('#batchToggle');
-  check('batch default: bare /pilot-auto, all phases', (await batchCmdText()) === '/pilot-auto', await batchCmdText());
-  await bt('batchMode', '--again');
-  check('--again', (await batchCmdText()) === '/pilot-auto --again', await batchCmdText());
-  await bt('batchMulti', /^3$/);
-  check('--multi 3 goes before --again (the documented order)', (await batchCmdText()) === '/pilot-auto --multi 3 --again', await batchCmdText());
-  await bt('batchPh', 'spec');
-  check('a subset of phases is listed explicitly', (await batchCmdText()) === '/pilot-auto review dev --multi 3 --again', await batchCmdText());
-  await bt('batchMode', '--next');
-  check('--next replaces --again (they never combine)', (await batchCmdText()) === '/pilot-auto review dev --multi 3 --next', await batchCmdText());
-  check('open link carries the command and the repo', (await batchOpen()).href === 'https://claude.ai/code/new?q=' + encodeURIComponent('/pilot-auto review dev --multi 3 --next') + '&repo=' + encodeURIComponent(REPO), JSON.stringify(await batchOpen()));
-  await bt('batchPh', 'review'); await bt('batchPh', 'dev');
-  check('no phase selected: link and copy disabled', (await batchOpen()).href === null && (await batchOpen()).disabled === 'true' && (await page.isDisabled('#batchCopy')));
-  check('batch: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.screenshot({ path: path.join(TMP, 'batch.png') });
-  await page.close();
-
-  // ---- the role shows only what matters to it ----
-  const tabNames = (pg) => pg.$$eval('#tabs a', (as) => as.map((x) => x.textContent.replace(/\s*\(\d+\)$/, '')));
-  page = await open({ preload: [BASE], role: 'produit' });
-  check('product role: no Architecture tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Travail', 'Prototypes', 'Design', 'Wiki']), JSON.stringify(await tabNames(page)));
-  check('product role: no batch card, no tech need request', await page.$eval('#batch', (e) => e.hidden));
-  await tab(page, 'Travail');
-  check('product role: the work view shows only Discovery and QA humaine tickets', !/Ticket 4|dev en cours|à relire/.test(await text(page, '#view')));
-  await page.close();
-  page = await open({ preload: [BASE], role: 'tech' });
-  check('tech role: no Prototypes, Design nor Wiki tab', JSON.stringify(await tabNames(page)) === JSON.stringify(['Travail', 'Architecture']), JSON.stringify(await tabNames(page)));
-  await page.goto(FILE + '#design'); await page.waitForTimeout(200);
-  check('tech role: a hidden tab falls back to the work view', /Travail ·/.test(await text(page, '#view')));
-  await page.close();
-
-  // ---- architecture: reference entries, the overview and accepted rules and decisions are checked against the code; a proposed or superseded one is not ----
-  { const REF = { kind: 'architecture', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
-      { id: 'layering', title: 'Layering', description: 'Domain never imports adapters.', path: 'guidelines/layering.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Domain never imports adapters.' },
-      { id: 'data-model', title: 'Data model', description: 'The tables.', path: 'reference/data-model.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', verifiedAt: iso(120), text: 'Table catalog.' },
-      { id: 'stack', title: 'Stack', description: 'Versions.', path: 'apps/web/reference/stack.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Node 22.' },
-      { id: 'overview', title: 'Overview', description: 'Apps.', path: 'overview.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'One CLI.' },
-      { id: '0002-store', title: 'Store', description: 'Stored.', path: 'adr/0002-store.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Stored.' },
-      { id: 'draft-ref', title: 'Draft ref', description: 'Idea.', path: 'reference/draft-ref.md', status: 'proposed', tickets: [], supersedes: '', supersededBy: '', text: 'Idea.' },
-      { id: '0003-draft', title: 'Draft', description: 'Idea.', path: 'adr/0003-draft.md', status: 'proposed', tickets: [], supersedes: '', supersededBy: '', text: 'Idea.' },
-      { id: '0001-old', title: 'Old', description: 'Old.', path: 'adr/0001-old.md', status: 'superseded', tickets: [], supersedes: '', supersededBy: '0002-store', text: 'Old.' } ] };
-    const pg = await open({ preload: [BASE], architecture: [REF] });
-    await pg.goto(FILE + '#architecture'); await pg.waitForTimeout(350);
-    const v = await text(pg, '#view');
-    const refLinks = await hrefs(pg, '#view .refresh a.btn');
-    const cmdsOf = refLinks.map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]));
-    check('architecture: a button adds a rule, one checks the reference', cmdsOf.includes('/pilot-architecture --guideline') && cmdsOf.includes('/pilot-architecture --verify') && /Ajouter une règle/.test(v) && /Vérifier contre le code/.test(v), JSON.stringify(cmdsOf));
-    check('architecture: each reference entry, accepted rule and accepted ADR has its own check; a proposed or superseded one has none', cmdsOf.includes('/pilot-architecture --verify data-model') && cmdsOf.includes('/pilot-architecture --verify stack') && cmdsOf.includes('/pilot-architecture --verify layering') && cmdsOf.includes('/pilot-architecture --verify 0002-store') && !cmdsOf.some((c) => /--verify (0003-draft|0001-old|draft-ref)/.test(c)), JSON.stringify(cmdsOf));
-    check('architecture: every entry in force says whether it was checked, a proposed or superseded one does not', (v.match(/non vérifié/g) || []).length === 4 && (v.match(/vérifié il y a/g) || []).length === 1 && /Référence/.test(v), v);
-    const has = (c) => cmdsOf.some((x) => x.trim() === c);
-    check('architecture: a rule can be edited and removed', has('/pilot-architecture --edit layering') && has('/pilot-architecture --remove layering'), JSON.stringify(cmdsOf));
-    check('architecture: an accepted ADR is replaced, never edited nor removed', cmdsOf.some((x) => x.startsWith('/pilot-architecture --adr "remplace 0002-store :')) && !has('/pilot-architecture --edit 0002-store') && !has('/pilot-architecture --remove 0002-store'), JSON.stringify(cmdsOf));
-    check('architecture: a proposed ADR can be edited or removed, a superseded one is history', has('/pilot-architecture --edit 0003-draft') && has('/pilot-architecture --remove 0003-draft') && !cmdsOf.some((x) => /0001-old/.test(x)), JSON.stringify(cmdsOf));
-    check('architecture: only a proposed entry can be accepted', has('/pilot-architecture --accept 0003-draft') && has('/pilot-architecture --accept draft-ref') && !cmdsOf.some((x) => /--accept (layering|0002-store|0001-old|overview)/.test(x)), JSON.stringify(cmdsOf));
-    check('architecture: the overview is checked and edited, never removed', has('/pilot-architecture --verify overview') && has('/pilot-architecture --edit overview') && !has('/pilot-architecture --remove overview'), JSON.stringify(cmdsOf));
-    check('architecture: a removable entry offers Retirer, nothing is deprecated any more', /Retirer/.test(v) && !/Déprécier/.test(v));
-    check('architecture reference: no page errors', pg.errors.length === 0, pg.errors.join('|'));
+  // ---- a workflow the snapshot does not list gives no command, no request kind, no help card ----
+  { const NARROW = Object.assign({}, V6, { workflows: ['need', 'build'] });
+    const pg = await open({ preload: [NARROW] });
+    await tab(pg, 'Travail');
+    const c = async (n) => (await rowCmds(pg, n)).map((x) => x.split('|')[0]);
+    check('workflows listed by the snapshot: only their statuses lead to a command', (await c(11)).includes('/pilot-need') && (await c(15)).includes('/pilot-build 15') && !(await c(12)).some((x) => /\/pilot-plan/.test(x)) && !(await c(18)).some((x) => /\/pilot-accept/.test(x)), JSON.stringify([await c(12), await c(18)]));
+    await pg.click('#ideaToggle');
+    check('workflows listed by the snapshot: only their request kinds are offered', JSON.stringify(await pg.$$eval('#kindSeg button', (b) => b.map((x) => x.textContent))) === JSON.stringify(['Besoin produit']), JSON.stringify(await pg.$$eval('#kindSeg button', (b) => b.map((x) => x.textContent))));
+    await pg.goto(FILE + '#aide/workflows'); await pg.waitForTimeout(250);
+    const hv = await text(pg, '#view');
+    check('workflows listed by the snapshot: the help lists only those', /\/pilot-need/.test(hv) && /\/pilot-build/.test(hv) && !/\/pilot-plan/.test(hv) && !/\/pilot-express/.test(hv), hv.slice(0, 200));
     await pg.close(); }
 
-  // ---- Auto is an option like the others: it switches what the row launches and copies ----
-  page = await open({ preload: [snapshot([ticket(99, ['type:tech', 'status:dev-ready'])])], role: 'tech' });
-  await page.evaluate(() => { window.__clip = []; navigator.clipboard.writeText = (t) => { window.__clip.push(t); return Promise.resolve(); }; });
-  const launch = () => page.$eval('#view .row a.btn', (a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0]));
-  check('one launch button, pair by default', (await page.$$('#view .row a.btn')).length === 1 && (await launch()) === '/pilot-dev 99');
-  await page.click('#view .row >> text=Options');
-  check('Auto is a toggle in Options, off by default', (await page.getAttribute('#view .row .opts .tog:text-is("Auto")', 'aria-pressed')) === 'false');
-  await page.click('#view .row .opts .tog:text-is("Auto")');
-  await page.click('#view .row button:text-is("Copier")');
-  check('Auto on: the button and Copier use the auto command', (await launch()) === '/pilot-dev 99 --auto' && JSON.stringify(await page.evaluate(() => window.__clip)) === JSON.stringify(['/pilot-dev 99 --auto']), await launch());
+  // ---- runs: the events of kind run, and the open run issues ----
+  { const RUNS = [
+      run({ n: 16, workflow: 'build', step: 'implement', state: 'running', loops: { check: 1, judge: 1 } }),
+      run({ n: 13, workflow: 'plan', step: 'ask', state: 'waiting-human', at: iso(3) }),
+      run({ n: 40, workflow: 'need', step: 'gate', state: 'waiting-human', at: iso(2) }),
+      run({ n: 41, workflow: 'accept', step: 'gate', state: 'failed', at: iso(1) }),
+      run({ n: 42, workflow: 'plan', step: 'end', state: 'done', at: iso(1) }),
+      run({ n: 31, workflow: 'technical-frame', step: 'gate', state: 'waiting-human', at: iso(1) }),
+      run({ n: 43, workflow: 'design-system', step: 'gate', state: 'waiting-human', at: iso(1) }),
+    ];
+    const pg = await open({ preload: [V6], events: RUNS });
+    await tab(pg, 'Travail');
+    const sec = () => text(pg, '#view section[aria-label="Runs en cours"]');
+    const rr = (n) => pg.locator('#view section[aria-label="Runs en cours"] .row', { hasText: '#' + n + ' ' }).first();
+    const rc = async (n) => (await rr(n).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0]) + '|' + a.textContent.trim())));
+    const s = await sec();
+    check('runs: the ones not done, plus the open run issue no event spoke of (30); a done run is not there', /Runs en cours · 7/.test(s) && !/#42 /.test(s) && /#30 /.test(s), s.slice(0, 300));
+    check('runs: workflow, step and state on each row; loops counted', /Réalisation/.test(await rr(16).textContent()) && /implement/.test(await rr(16).textContent()) && /en cours/.test(await rr(16).textContent()) && /2 boucles/.test(await rr(16).textContent()) && /échoué/.test(await rr(41).textContent()) && /ouvert/.test(await rr(30).textContent()));
+    check('runs: the title is the ticket\'s, or the run issue\'s without its prefix, else the workflow\'s', /Tâche en cours/.test(await rr(16).textContent()) && /Mon proto/.test(await rr(30).textContent()) && !/run:proto/.test(await rr(30).textContent()) && /Besoin/.test(await rr(40).textContent()));
+    check('runs: a run in progress is not resumed (it may be alive), unless its ticket can-resume', !(await rc(16)).some((c) => /--resume/.test(c)));
+    check('runs: a waiting or failed run is resumed with --resume', (await rc(40)).some((c) => c.startsWith('/pilot-need --resume 40|')) && (await rc(41)).some((c) => c.startsWith('/pilot-accept --resume 41|')) && (await rc(13)).some((c) => c.startsWith('/pilot-plan --resume 13|')), JSON.stringify([await rc(40), await rc(41)]));
+    check('runs: an open run issue no event spoke of can be resumed; a flagged one is answered on GitHub, never resumed', (await rc(30)).some((c) => c.startsWith('/pilot-proto --resume 30|')) && /Répondre sur GitHub/.test((await rc(31)).join()) && !(await rc(31)).some((c) => /--resume/.test(c)));
+    check('runs: a workflow with no --resume mode has no resume button', !(await rc(43)).some((c) => /--resume/.test(c)));
+    check('a ticket with a run shows it on its row', /run build · implement/.test(await pg.locator('#view > .list > .row', { hasText: '#16 ' }).first().textContent()));
+    check('a run waiting for a human puts its ticket in the human group', (await pg.$$eval('#view > .list > h2', (h) => h.map((x) => x.textContent))).some((g) => /^Action humaine attendue · 2/.test(g)));
+    const pgc = await open({ preload: [V6], events: [run({ n: 16, state: 'running' })] });
+    await pgc.evaluate((e) => window.__push('events', 'l2', e), run({ n: 41, workflow: 'build', step: 'merge', state: 'waiting-human', at: iso(0) })); await pgc.waitForTimeout(250);
+    check('runs: a pushed run event shows without reload', /#41 /.test(await text(pgc, '#view section[aria-label="Runs en cours"]')));
+    await pgc.close();
+    check('runs: no page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.screenshot({ path: path.join(TMP, 'runs.png') });
+    await pg.close();
+    const none = await open({ preload: [BASE] });
+    check('no run: no runs section', (await none.$('#view section[aria-label="Runs en cours"]')) === null);
+    await none.close(); }
+
+  // ---- the board: a column per status of the levels in view ----
+  page = await open({ preload: [V6], view: 'board' });
+  await tab(page, 'Travail');
+  const cols = () => page.$$eval('#view .board section.col > header strong', (e) => e.map((x) => x.textContent));
+  const colOf = (name) => page.locator('#view .board section.col', { hasText: name });
+  check('board: one column per status in order, done and dropped hidden while empty', JSON.stringify(await cols()) === JSON.stringify(['en formation', 'à planifier', 'planification en cours', 'planifié', 'prêt à construire', 'construction en cours', 'relecture en cours', 'fusionné, à recetter']), JSON.stringify(await cols()));
+  check('board: a ticket sits in the column of its status', /Tâche prête/.test(await text(page, '#view .board section[aria-label="prêt à construire"]')) && /Tâche en cours/.test(await text(page, '#view .board section[aria-label="construction en cours"]')) && /Story fusionnée/.test(await text(page, '#view .board section[aria-label="fusionné, à recetter"]')));
+  check('board: the epic is a card with its progress and a filter button', (await page.$$('#view .board section[aria-label="planifié"] .card .bar')).length === 1 && (await page.locator('#view .board .card', { hasText: 'Epic planifié' }).locator('button:has-text("Filtrer sur cette epic")').count()) === 1);
+  check('board: no run issue as a card', !/Mon proto/.test(await text(page, '#view .board')));
+  const cc = await page.locator('#view .board .card', { hasText: 'Tâche prête' }).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0])));
+  check('board: a card launches its command', cc.includes('/pilot-build 15'), JSON.stringify(cc));
+  check('board: the blocked card is flagged, and counted in its column header', (await page.locator('#view .board .card.flag', { hasText: 'Tâche bloquée' }).count()) === 1 && (await colOf('prêt à construire').locator('header .chip.warn').count()) === 1);
+  check('board: a card fits its column', await page.locator('#view .board .card', { hasText: 'Tâche prête' }).evaluate((e) => e.scrollWidth <= e.clientWidth + 1));
+  await page.click('#filtersToggle'); await page.click('#searchFilters button[data-map="levels"][data-key="task"]'); await page.waitForTimeout(150);
+  check('board: filtering on tasks keeps the statuses of a task (ready to merged)', JSON.stringify(await cols()) === JSON.stringify(['prêt à construire', 'construction en cours', 'relecture en cours', 'fusionné, à recetter']), JSON.stringify(await cols()));
+  await page.click('#searchFilters button[data-map="levels"][data-key="task"]'); await page.click('#searchFilters button[data-map="levels"][data-key="epic"]'); await page.waitForTimeout(150);
+  check('board: filtering on epics keeps the statuses of an epic', JSON.stringify(await cols()) === JSON.stringify(['en formation', 'à planifier', 'planification en cours', 'planifié']), JSON.stringify(await cols()));
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(150);
+  await page.locator('#view .board .card', { hasText: 'Epic planifié' }).locator('button:has-text("Filtrer sur cette epic")').click(); await page.waitForTimeout(150);
+  check('board: filtering on an epic keeps it and its tickets', /Story en formation/.test(await text(page, '#view .board')) && !/Story à planifier/.test(await text(page, '#view .board')));
+  await page.locator('#view .board .card', { hasText: 'Epic planifié' }).locator('button:has-text("Tout afficher")').click(); await page.waitForTimeout(150);
+  await page.click('#view .seg button:has-text("Liste")'); await page.waitForTimeout(150);
+  check('list is the other display, and the choice is remembered', (await trows(page)) === 12 && (await page.evaluate(() => localStorage.getItem('cp.view'))) === 'liste');
+  check('board: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.close();
+  page = await open({ preload: [Object.assign({}, V6, { issues: V6.issues.concat([ticket(50, ['type:feature', 'level:story', 'status:done'], { t: 'Story terminée' }), ticket(51, ['type:feature', 'level:story', 'status:wont-do'], { t: 'Story écartée' })]) })], view: 'board' });
+  await tab(page, 'Travail');
+  check('board: the done and dropped columns appear once they hold a ticket', (await cols()).slice(-2).join() === 'terminé,écarté', JSON.stringify(await cols()));
   await page.close();
 
-  // ---- the queue opens with what is waiting ----
-  const tally = (pg) => pg.$$eval('#view .tally .tile', (t) => t.map((x) => x.textContent));
-  page = await open({ preload: [snapshot([ticket(1, ['type:tech', 'status:backlog']), ticket(2, ['type:tech', 'status:dev-ready']), ticket(3, ['type:tech', 'status:dev-ready', 'needs-human']), ticket(4, ['type:feature', 'status:qa'])])], role: 'tech' });
-  check('tech queue summary: blocked first, then Spec, Dev, Review counters', JSON.stringify(await tally(page)) === JSON.stringify(['1bloqués', '1à spécifier', '1à coder', '0à relire', '0à merger']), JSON.stringify(await tally(page)));
-  await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
-  check('product queue summary follows the role (the blocked counter is not limited to it)', JSON.stringify(await tally(page)) === JSON.stringify(['1bloqués', '0à cadrer', '1à tester']), JSON.stringify(await tally(page)));
-  check('a fresh snapshot shows no connector chip, a compact banner', !(await page.$('#conn .chip')) && !!(await page.$('#banner .banner.compact')));
+  // ---- a ticket's page: the chain of its level with the time in each status, its sub-tickets ----
+  { const H = Object.assign({}, V6, { issues: V6.issues.map((i) => (i.n === 16 ? Object.assign({}, i, { h: [['ready', iso(300)], ['building', iso(120)]] }) : i)) });
+    const pg = await open({ preload: [H] });
+    await pg.goto(FILE + '#file/16'); await pg.waitForTimeout(300);
+    const chain = await pg.$$eval('#view .row .meta .chip[aria-current], #view .row .meta .chip.ok, #view .row .meta .chip.acc', (c) => c.map((x) => x.textContent));
+    check('ticket page: the chain of a task (ready to merged) with the time spent, the current step marked', /prêt à construire 3 h/.test(chain.join('|')) && (await pg.$eval('#view .chip[aria-current=step]', (e) => e.textContent)).startsWith('construction en cours') && !/planifié/.test(await text(pg, '#view')), chain.join('|'));
+    await pg.goto(FILE + '#file/14'); await pg.waitForTimeout(300);
+    check('ticket page: a split story shows its sub-tickets and the chain of a story', /Sous-tickets · 2/.test(await text(pg, '#view')) && /Tâche prête/.test(await text(pg, '#view')) && /planifié/.test(await text(pg, '#view')) && /en formation/.test(await text(pg, '#view')));
+    check('ticket page: the parent is a crumb', (await pg.$$('#view nav.crumbs a')).length === 0);
+    await pg.goto(FILE + '#file/15'); await pg.waitForTimeout(300);
+    check('ticket page: a task shows its parent as a crumb', (await pg.$$('#view nav.crumbs a')).length === 1 && /Story découpée/.test(await text(pg, '#view nav.crumbs')));
+    await pg.goto(FILE + '#file/9999'); await pg.waitForTimeout(300);
+    check('ticket page: an unknown ticket says so', /Ticket introuvable/.test(await text(pg, '#view')));
+    check('ticket page: no page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.close(); }
+
+  // ---- the role: human F (feature) or human T (tech) ----
+  { let pg = await open({ preload: [V6], role: 'produit' });
+    await tab(pg, 'Travail');
+    check('role Produit: the feature tickets only, the product tabs', (await pg.locator('#view > .list > .row .chip', { hasText: /^tech$/ }).count()) === 0 && (await pg.locator('#view > .list > .row .chip', { hasText: /^feature$/ }).count()) > 0 && JSON.stringify(await pg.$$eval('#tabs a', (a) => a.map((x) => x.textContent.replace(/ \(\d+\)$/, '')))) === JSON.stringify(['Travail', 'Prototypes', 'Design', 'Wiki']));
+    check('role Produit: the requests of a product role (need, report, express), not the technical one', (await pg.click('#ideaToggle'), JSON.stringify(await pg.$$eval('#kindSeg button', (b) => b.map((x) => x.textContent)))) === JSON.stringify(['Besoin produit', 'Signalement', 'Express']));
+    await pg.close();
+    pg = await open({ preload: [V6], role: 'tech' });
+    await tab(pg, 'Travail');
+    check('role Tech: the tech tickets only, the Architecture tab', (await pg.locator('#view > .list > .row .chip', { hasText: /^feature$/ }).count()) === 0 && JSON.stringify(await pg.$$eval('#tabs a', (a) => a.map((x) => x.textContent.replace(/ \(\d+\)$/, '')))) === JSON.stringify(['Travail', 'Architecture']));
+    await pg.click('#ideaToggle');
+    check('role Tech: the technical request (plan) is the default', (await pg.$eval('#ideaCmd', (e) => e.textContent)) === '/pilot-plan …' && JSON.stringify(await pg.$$eval('#kindSeg button', (b) => b.map((x) => x.textContent))) === JSON.stringify(['Besoin technique', 'Signalement', 'Express']));
+    await pg.fill('#searchText', 'Story'); await pg.waitForTimeout(150);
+    check('role: a search looks at every ticket', (await pg.locator('#view > .list > .row .chip', { hasText: /^feature$/ }).count()) > 0);
+    await pg.close(); }
+
+  // ---- new request: the workflow that takes a request ----
+  page = await open({ preload: [V6] });
+  await tab(page, 'Travail');
+  check('new request: folded by default, the list comes first', await page.$eval('#ideaBody', (e) => e.hidden));
+  await page.click('#ideaToggle');
+  const iCmd = () => text(page, '#ideaCmd');
+  const iHref = async () => decodeURIComponent((await page.$eval('#ideaOpen', (a) => a.getAttribute('href') || '')).split('?q=')[1].split('&repo=')[0]);
+  check('new request: all four kinds with no role; need by default, no link while the text is empty', JSON.stringify(await page.$$eval('#kindSeg button', (b) => b.map((x) => x.textContent))) === JSON.stringify(['Besoin produit', 'Besoin technique', 'Signalement', 'Express']) && (await iCmd()) === '/pilot-need …' && (await page.$eval('#ideaOpen', (a) => a.getAttribute('aria-disabled'))) === 'true');
+  await page.fill('#ideaText', 'signaler un ascenseur\nen panne'); await page.waitForTimeout(100);
+  check('new request: the text becomes one line of the command, the link opens it', (await iCmd()) === '/pilot-need signaler un ascenseur en panne' && (await iHref()) === (await iCmd()) && !(await page.$eval('#ideaCopy', (b) => b.disabled)), await iCmd());
+  for (const [label, prefix] of [['Besoin technique', '/pilot-plan '], ['Signalement', '/pilot-report '], ['Express', '/pilot-express ']]) {
+    await page.click('#kindSeg >> text=' + label); await page.waitForTimeout(80);
+    check('new request: ' + label + ' writes ' + prefix.trim(), (await iCmd()) === prefix + 'signaler un ascenseur en panne' && (await iHref()) === (await iCmd()), await iCmd());
+  }
+  check('new request: the summary says a draft is under way', /brouillon en cours/.test(await text(page, '#ideaSum')));
+  check('new request: no multi, no --with, no pilot-discovery', !/--multi|--with|pilot-discovery|pilot-auto/.test(await text(page, '#idea')));
+  check('new request: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
-  // ---- new request: --multi for a product idea only ----
-  page = await open({ preload: [BASE] });
-  await page.click('#ideaToggle'); await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(100);
-  await page.fill('#ideaText', 'Mon idée');
-  check('product idea: multi choices shown', !(await page.$eval('#ideaMultiWrap', (e) => e.hidden)));
-  await page.locator('#ideaMultiSeg button', { hasText: /^3$/ }).click();
-  check('product idea + multi: /pilot-discovery <idea> --multi 3', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3' && (await page.$eval('#ideaOpen', (a) => a.getAttribute('href'))).includes(encodeURIComponent('/pilot-discovery Mon idée --multi 3')), await text(page, '#ideaCmd'));
-  await page.click('#ideaWithSeg >> text=Designer');
-  check('product idea + designer: --with designer after --multi', (await text(page, '#ideaCmd')) === '/pilot-discovery Mon idée --multi 3 --with designer', await text(page, '#ideaCmd'));
-  await page.click('#roleSeg >> text=Tous'); await page.click('#kindSeg >> text=Besoin technique');
-  check('tech need + designer: --with designer, no --multi', (await text(page, '#ideaCmd')) === '/pilot-spec --tech Mon idée --with designer', await text(page, '#ideaCmd'));
-  await page.click('#kindSeg >> text=Bug');
-  check('bug report: the designer is summonable too, no --multi', !(await page.$eval('#ideaWithWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée --with designer', await text(page, '#ideaCmd'));
-  check('bug / tech need: no multi choice, no --multi in the command', (await page.$eval('#ideaMultiWrap', (e) => e.hidden)) && (await text(page, '#ideaCmd')) === '/pilot-spec --bug Mon idée --with designer', await text(page, '#ideaCmd'));
-  await page.close();
-
-  // ---- sub-issues of an epic or a story: listed under it, each one launchable ----
-  const KIDS_SNAP = snapshot([
-    ticket(10, ['type:feature', 'level:epic'], { t: 'Epic parent', k: [4, 6] }),
-    ticket(11, ['type:feature', 'level:story', 'status:backlog', 'priority:P1'], { t: 'Story A', p: 10, k: [1, 3] }),
-    ticket(12, ['type:feature', 'level:story', 'status:qa', 'priority:P2'], { t: 'Story B', p: 10 }),
-    ticket(13, ['type:tech', 'level:task', 'status:dev-ready', 'priority:P1'], { t: 'Tâche de A', p: 11 }),
-    ticket(14, ['type:tech', 'level:task', 'status:in-dev', 'needs-human'], { t: 'Tâche bloquée de A', p: 11 }),
-    ticket(20, ['type:tech', 'level:story', 'status:backlog'], { t: 'Sans parent' }),
-  ], 120);
-  page = await open({ preload: [KIDS_SNAP] });
-  await tab(page, 'Travail'); await page.fill('#searchText', '#'); await page.waitForTimeout(150); /* a search looks at every ticket, the Epic included */
-  const kidsBtn = (scope) => scope.locator('button:has-text("Sous-tickets")');
-  const topRow = (n) => page.locator('#view > .list > .row', { has: page.locator(`.main > .t:has-text("#${n} ")`) });
-  check('parent row: progress chip and a collapsed sub-tickets chevron with the open count',
-        /4\/6 terminés/.test(await topRow(10).textContent()) && (await kidsBtn(topRow(10)).first().textContent()).includes('Sous-tickets (2)') &&
-        (await page.$$('#view .kids')).length === 0);
-  check('a ticket without sub-issues has no sub-tickets chevron', (await kidsBtn(topRow(20)).count()) === 0);
-  await kidsBtn(topRow(10)).first().click(); await page.waitForTimeout(100);
-  const kidNames = () => page.$$eval('#view .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()));
-  check('opening lists the open sub-issues, most urgent first', JSON.stringify(await kidNames()) === JSON.stringify(['#11 Story A', '#12 Story B']), JSON.stringify(await kidNames()));
-  const kidCmds = (sel) => page.locator(sel).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
-  check('each sub-issue can be launched on its own (/pilot-spec 11, /pilot-qa 12)',
-        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(1) > .acts')) === JSON.stringify(['/pilot-spec 11']) &&
-        JSON.stringify(await kidCmds('#view .kids > .row:nth-child(2) > .acts')) === JSON.stringify(['/pilot-qa 12']), JSON.stringify(await kidCmds('#view .kids > .row > .acts')));
-  await page.locator('#view .kids > .row:nth-child(1) > .acts button:has-text("Sous-tickets")').click(); await page.waitForTimeout(100);
-  check('nesting goes one level further (story -> tasks), blocked task flagged', JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))) === JSON.stringify(['#14 Tâche bloquée de A', '#13 Tâche de A']), JSON.stringify(await page.$$eval('#view .kids .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim()))));
-  check('a task is launchable (/pilot-dev 13) and has no sub-tickets chevron', (await kidCmds('#view .kids .kids > .row:has-text("#13 ") > .acts')).includes('/pilot-dev 13') && (await page.locator('#view .kids .kids button:has-text("Sous-tickets")').count()) === 0);
-  await page.evaluate((e) => window.__push('events', 'live5', e), ev({ n: 13, title: 'Tâche de A', labels: ['type:tech', 'level:task', 'status:in-dev'], assignees: [] }));
-  await page.waitForTimeout(250);
-  check('a live update keeps the nesting and moves the sub-ticket (dev-ready -> in-dev)',
-        (await page.$$('#view .kids .kids')).length === 1 && /dev en cours/.test(await page.locator('#view .kids .kids > .row:has-text("#13 ")').textContent()));
-  await kidsBtn(topRow(10)).first().click(); await page.waitForTimeout(100);
-  check('the chevron folds the epic\'s whole subtree (a ticket opened elsewhere in the list keeps its own state)', (await topRow(10).locator('.kids').count()) === 0 && (await topRow(11).locator('.kids').count()) === 1);
-  check('sub-tickets: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.screenshot({ path: path.join(TMP, 'kids.png') });
-  await page.close();
-
-  // ---- events that carry a parent and a PR (a ticket created, or a PR opened, since the snapshot) ----
-  const EV_SNAP = snapshot([
-    ticket(10, ['type:feature', 'level:epic'], { t: 'Epic', k: [0, 1] }),
-    ticket(11, ['type:feature', 'level:story', 'status:split', 'priority:P1'], { t: 'Story A', p: 10, k: [0, 1] }),
-    ticket(13, ['type:tech', 'level:task', 'status:in-dev'], { t: 'Tâche en cours', p: 11, a: 'alice' }),
-  ], 120);
-  page = await open({ preload: [EV_SNAP], events: [
-    ev({ n: 30, title: 'Tâche créée par un split', labels: ['type:tech', 'level:task', 'status:dev-ready'], assignees: [], action: 'created', phase: 'spec', parent: 11, at: iso(10) }),
-    ev({ n: 13, title: 'Tâche en cours', labels: ['type:tech', 'level:task', 'status:review-ready'], assignees: [], action: 'set', phase: null, pr: 77, at: iso(5) }),
-    ev({ n: 40, title: 'Idée approuvée', labels: ['type:feature', 'level:story', 'status:backlog'], assignees: [], action: 'approved', phase: 'discovery', at: iso(3) }),
-  ] });
-  await tab(page, 'Travail'); await page.fill('#searchText', '#'); await page.waitForTimeout(150);
-  const evRow = (n) => page.locator('#view > .list > .row', { has: page.locator(`:scope > .main > .t:has-text("#${n} ")`) });
-  check('a ticket created since the snapshot is nested under its parent from the event alone', (await evRow(11).locator('button:has-text("Sous-tickets (2)")').count()) === 1, await evRow(11).textContent());
-  await evRow(11).locator('button:has-text("Sous-tickets")').click(); await page.waitForTimeout(100);
-  check('both sub-tickets are listed under the story', JSON.stringify(await page.$$eval('#view > .list > .row:has(.kids) .kids > .row > .main > .t', (e) => e.map((x) => x.textContent.trim().split(' ')[0]).sort())) === JSON.stringify(['#13', '#30']));
-  const prLinks = (n) => evRow(n).locator('a:has-text("PR #")').evaluateAll((as) => as.map((a) => a.href));
-  check('an event carrying a PR gives the ticket its PR link', JSON.stringify(await prLinks(13)) === JSON.stringify([`https://github.com/${REPO}/pull/77`]), JSON.stringify(await prLinks(13)));
-  check('events: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.close();
-
-  // ---- search: keyword (case/accent-insensitive contains) + level + type ----
-  const SEARCH_SNAP = snapshot([
-    ticket(10, ['type:feature', 'level:epic'], { t: 'Profil d\'accessibilité : page profil' }),
-    ticket(11, ['type:feature', 'level:story', 'status:qa'], { t: 'Saisir mes données sensibles' }),
-    ticket(12, ['type:tech', 'level:story', 'status:backlog'], { t: 'Cache des états d\'équipements' }),
-    ticket(13, ['type:bug', 'level:task', 'status:backlog'], { t: 'Bug : pictogramme masqué' }),
-    ticket(14, ['type:feature', 'level:task', 'status:dev-ready'], { t: 'ÉCRAN du Profil voyageur' }),
-    ticket(15, ['type:feature', 'level:story', 'status:split'], { t: 'Story déjà découpée' }),
-  ], 120);
-  page = await open({ preload: [SEARCH_SNAP] });
-  view = await tab(page, 'Travail');
-  check('filters are folded by default behind a chevron, with no count', (await page.getAttribute('#filtersToggle', 'aria-expanded')) === 'false' && (await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.$eval('#filtersCount', (e) => e.hidden)));
-  await page.click('#filtersToggle');
-  check('the chevron opens the filter panel: five groups', !(await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.locator('#searchFilters .fgrp').count()) === 5);
-  check('work view: the search card and the new-request card are both there',
-        !(await page.$eval('#search', (e) => e.hidden)) && !(await page.$eval('#idea', (e) => e.hidden)) && (await page.evaluate(() => location.hash)) === '#file');
-  check('no filter: the tickets of the phases, epics and split stories left out', (await rows(page)) === 4 && /Travail · 4/.test(view), view);
-  const names = () => page.$$eval('#view .row .t', (e) => e.map((x) => x.textContent.trim()));
-  await page.fill('#searchText', 'PROFIL');
-  check('keyword: case-insensitive contains on the title', (await rows(page)) === 2 && (await names()).every((n) => /profil/i.test(n)), JSON.stringify(await names()));
-  await page.fill('#searchText', 'ecran');
-  check('keyword: accent-insensitive (ecran matches ÉCRAN)', (await rows(page)) === 1 && /#14/.test((await names())[0]), JSON.stringify(await names()));
-  await page.fill('#searchText', 'profil voyageur');
-  check('several words: all must be present', (await rows(page)) === 1 && /#14/.test((await names())[0]), JSON.stringify(await names()));
-  await page.fill('#searchText', '#12');
-  check('keyword: matches the ticket number', (await rows(page)) === 1 && /#12/.test((await names())[0]), JSON.stringify(await names()));
-  await page.fill('#searchText', 'zzz');
-  check('no match: empty state', (await rows(page)) === 0 && /Aucun ticket ne correspond/.test(await text(page, '#view')));
-  await page.fill('#searchText', '');
-  await page.click('#searchFilters >> text=epic'); await page.waitForTimeout(100);
-  check('level filter: epic only', (await rows(page)) === 1 && /#10/.test((await names())[0]) && /epic/.test(await text(page, '#view .row .meta')), JSON.stringify(await names()));
-  await page.click('#searchFilters >> text=story'); await page.waitForTimeout(100);
-  check('level filter: several levels are OR-ed (epic + story)', (await rows(page)) === 4, String(await rows(page)));
-  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
-  await page.click('#searchFilters >> text=bug'); await page.waitForTimeout(100);
-  check('type filter: bug only', (await rows(page)) === 1 && /#13/.test((await names())[0]), JSON.stringify(await names()));
-  await page.click('#searchFilters >> text=bug');
-  await page.click('#searchFilters >> text=feature'); await page.click('#searchFilters >> text=tâche'); await page.fill('#searchText', 'profil'); await page.waitForTimeout(100);
-  check('keyword + type + level are AND-ed', (await rows(page)) === 1 && /#14/.test((await names())[0]), JSON.stringify(await names()));
-  check('filter buttons reflect their state', (await page.getAttribute('#searchFilters >> text=feature', 'aria-pressed')) === 'true' && (await page.getAttribute('#searchFilters >> text=bug', 'aria-pressed')) === 'false');
-  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
-  check('reset clears the keyword and the filters', (await page.inputValue('#searchText')) === '' && (await rows(page)) === 4);
-  await page.fill('#searchText', '#'); await page.waitForTimeout(100); /* a search looks at every ticket */
-  check('search results: levels shown as chips', /story/.test(await text(page, '#view')) && /epic/.test(await text(page, '#view')));
-  const searchCmds = () => page.$$eval('#view .row a.btn', (as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0])));
-  check('an epic and a split story get a /pilot-auto action (auto only, no pair)', (await searchCmds()).includes('/pilot-auto 10') && (await searchCmds()).includes('/pilot-auto 15') && !(await searchCmds()).includes('/pilot-spec 15'), JSON.stringify(await searchCmds()));
-  const epicRow = page.locator('#view .row', { hasText: '#10 ' });
-  check('an epic row has no pair button', (await epicRow.locator('a.btn', { hasText: /pair/ }).count()) === 0 && (await epicRow.locator('a.btn', { hasText: /auto/ }).count()) === 1);
-  await epicRow.locator('button:has-text("Options")').click(); await page.waitForTimeout(100);
-  await epicRow.locator('.opts >> text=Enchaîner').click(); await epicRow.locator('.opts .seg button', { hasText: /^3$/ }).click(); await page.waitForTimeout(100);
-  check('epic options: /pilot-auto 10 --multi 3 --next', (await searchCmds()).includes('/pilot-auto 10 --multi 3 --next'), JSON.stringify(await searchCmds()));
-  await page.fill('#searchText', ''); await page.waitForTimeout(100);
-  check('no active filter and no keyword: no chip, no reset button', (await page.locator('#activeFilters').textContent()) === '');
-  await page.click('#searchText'); await page.keyboard.type('profil');
-  await page.evaluate((e) => window.__push('events', 'live3', e), ev({}));
-  await page.waitForTimeout(250);
-  check('a live update keeps the typed keyword and the focus', (await page.inputValue('#searchText')) === 'profil' && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'searchText');
-  check('search: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.screenshot({ path: path.join(TMP, 'search.png') });
-  await page.close();
-
-  // ---- search: state filter (and flags) ----
-  const STATE_SNAP = snapshot([
-    ticket(10, ['type:feature', 'level:epic'], { t: 'Epic sans statut' }),
-    ticket(11, ['type:feature', 'level:story', 'status:qa'], { t: 'Story à tester' }),
-    ticket(12, ['type:tech', 'level:story', 'status:backlog'], { t: 'Story backlog' }),
-    ticket(13, ['type:bug', 'level:task', 'status:backlog', 'needs-human'], { t: 'Bug backlog bloqué' }),
-    ticket(14, ['type:feature', 'level:task', 'status:dev-ready', 'on-hold'], { t: 'Tâche en pause' }),
-    ticket(15, ['type:feature', 'level:story', 'status:split'], { t: 'Story découpée' }),
+  // ---- search: keyword, level, type, state, flag, assignee ----
+  const SEARCH = snapshot([
+    ticket(10, ['type:feature', 'level:epic', 'status:planned'], { t: 'Profil d\'accessibilité : page profil' }),
+    ticket(11, ['type:feature', 'level:story', 'status:merged'], { t: 'Saisir mes données sensibles', a: 'alice' }),
+    ticket(12, ['type:tech', 'level:story', 'status:to-plan'], { t: 'Cache des états d\'équipements', a: 'bob' }),
+    ticket(13, ['type:tech', 'level:task', 'status:ready', 'needs-human'], { t: 'Tâche bloquée' }),
+    ticket(14, ['type:feature', 'level:task', 'status:ready', 'on-hold'], { t: 'ÉCRAN du Profil voyageur' }),
+    ticket(15, ['type:feature', 'level:story', 'status:planned', 'fix'], { t: 'Story déjà découpée' }),
     ticket(16, ['type:tech', 'level:task', 'status:scoping'], { t: 'Statut hors processus' }),
   ], 120);
-  page = await open({ preload: [STATE_SNAP] });
+  page = await open({ preload: [SEARCH] });
   await tab(page, 'Travail');
-  await page.click('#filtersToggle');
-  const stBtn = (grp, key) => page.locator(`#searchFilters button[data-map="${grp}"][data-key="${key}"]`);
-  const nums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
+  const names = () => page.$$eval('#view > .list > .row > .main > .t', (e) => e.map((x) => x.textContent.trim().split(' ')[0]).sort());
   const setOf = (...a) => JSON.stringify(a.sort());
-  check('state filter: one chip per PILOT status in process order, "sans statut", and a status found in the tickets but not in the process',
-        (await stBtn('states', 'qa').count()) === 1 && (await stBtn('states', 'none').count()) === 1 && (await stBtn('states', 'scoping').count()) === 1 &&
-        (await page.locator('#searchFilters button[data-map="states"]').first().getAttribute('data-key')) === 'draft');
-  check('state chips use the French names', /à tester/.test(await stBtn('states', 'qa').textContent()) && /sans statut/.test(await stBtn('states', 'none').textContent()));
-  await stBtn('states', 'qa').click(); await page.waitForTimeout(100);
-  check('one state: only those tickets', JSON.stringify(await nums()) === setOf('#11'), JSON.stringify(await nums()));
-  await stBtn('states', 'backlog').click(); await page.waitForTimeout(100);
-  check('several states are OR-ed', JSON.stringify(await nums()) === setOf('#11', '#12', '#13'), JSON.stringify(await nums()));
-  await page.locator('#searchFilters button[data-map="types"][data-key="bug"]').click(); await page.waitForTimeout(100);
-  check('state + type are AND-ed', JSON.stringify(await nums()) === setOf('#13'), JSON.stringify(await nums()));
-  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
-  await stBtn('states', 'none').click(); await page.waitForTimeout(100);
-  check('"sans statut" finds the epics', JSON.stringify(await nums()) === setOf('#10'), JSON.stringify(await nums()));
-  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
-  await stBtn('states', 'scoping').click(); await page.waitForTimeout(100);
-  check('a status outside the process still filters', JSON.stringify(await nums()) === setOf('#16'), JSON.stringify(await nums()));
-  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
-  await stBtn('flags', 'needs-human').click(); await page.waitForTimeout(100);
-  check('flag "attend un humain"', JSON.stringify(await nums()) === setOf('#13'), JSON.stringify(await nums()));
-  await stBtn('flags', 'on-hold').click(); await page.waitForTimeout(100);
-  check('flags are OR-ed', JSON.stringify(await nums()) === setOf('#13', '#14'), JSON.stringify(await nums()));
-  await stBtn('states', 'backlog').click(); await page.waitForTimeout(100);
-  check('flag + state are AND-ed', JSON.stringify(await nums()) === setOf('#13'), JSON.stringify(await nums()));
-  check('chips reflect their state', (await stBtn('states', 'backlog').getAttribute('aria-pressed')) === 'true' && (await stBtn('states', 'qa').getAttribute('aria-pressed')) === 'false');
-  check('active filters are listed as removable chips with a count, even when the panel is folded',
-        (await page.locator('#activeFilters .chip.rm').allTextContents()).map((x) => x.trim()).sort().join('|') === 'Drapeau : attend un humain ✕|Drapeau : en pause ✕|État : à spécifier ✕' &&
-        (await text(page, '#filtersCount')) === '3', await page.locator('#activeFilters').textContent());
+  check('filters are folded by default behind a chevron, with no count', (await page.getAttribute('#filtersToggle', 'aria-expanded')) === 'false' && (await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.$eval('#filtersCount', (e) => e.hidden)));
   await page.click('#filtersToggle');
-  check('folding the panel keeps the chips and the count', (await page.$eval('#searchFilters', (e) => e.hidden)) && (await page.locator('#activeFilters .chip.rm').count()) === 3 && (await text(page, '#filtersCount')) === '3');
-  await page.locator('#activeFilters .chip.rm', { hasText: 'en pause' }).click(); await page.waitForTimeout(100);
-  check('a chip removes its filter', JSON.stringify(await nums()) === setOf('#13') && (await text(page, '#filtersCount')) === '2' && (await page.locator('#activeFilters .chip.rm').count()) === 2, JSON.stringify(await nums()));
-  await page.click('#filtersToggle');
+  const btn = (map, key) => page.locator(`#searchFilters button[data-map="${map}"][data-key="${key}"]`);
+  check('the filter panel: five groups; the states in process order, "sans statut" and an unknown one', (await page.locator('#searchFilters .fgrp').count()) === 5 && (await page.locator('#searchFilters button[data-map="states"]').first().getAttribute('data-key')) === 'forming' && (await btn('states', 'scoping').count()) === 1 && (await btn('states', 'none').count()) === 1);
+  check('the type filter is feature or tech; the flag filter has the six flags', (await page.locator('#searchFilters button[data-map="types"]').allTextContents()).join() === 'feature,tech' && (await page.locator('#searchFilters button[data-map="flags"]').count()) === 7);
+  await page.fill('#searchText', 'PROFIL');
+  check('keyword: case-insensitive contains on the title', setOf(...(await names())) === setOf('#10', '#14'), JSON.stringify(await names()));
+  await page.fill('#searchText', 'ecran');
+  check('keyword: accent-insensitive', JSON.stringify(await names()) === JSON.stringify(['#14']));
+  await page.fill('#searchText', '#12');
+  check('keyword: matches the ticket number', JSON.stringify(await names()) === JSON.stringify(['#12']));
+  await page.fill('#searchText', 'zzz');
+  check('no match: empty state', (await trows(page)) === 0 && /Aucun ticket ne correspond/.test(await text(page, '#view')));
+  await page.fill('#searchText', '');
+  await btn('states', 'merged').click(); await page.waitForTimeout(100);
+  check('state filter: one status, with its French name', JSON.stringify(await names()) === JSON.stringify(['#11']) && /fusionné, à recetter/.test(await btn('states', 'merged').textContent()));
+  await btn('states', 'ready').click(); await page.waitForTimeout(100);
+  check('several states are OR-ed', setOf(...(await names())) === setOf('#11', '#13', '#14'));
+  await btn('types', 'tech').click(); await page.waitForTimeout(100);
+  check('state + type are AND-ed', JSON.stringify(await names()) === JSON.stringify(['#13']));
   await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
-  check('reset clears state and flag filters', (await nums()).length === 4 && (await stBtn('states', 'backlog').getAttribute('aria-pressed')) === 'false' && (await stBtn('flags', 'on-hold').getAttribute('aria-pressed')) === 'false');
-  check('state filter: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.screenshot({ path: path.join(TMP, 'states.png') });
-  await page.close();
-
-  // ---- assignee (chip, "à prendre" / "assignés à moi", search filter) and the open PR link ----
-  const ASSIGN_SNAP = snapshot([
-    ticket(1, ['type:tech', 'status:dev-ready', 'priority:P1'], { t: 'Libre dev' }),
-    ticket(2, ['type:tech', 'status:in-dev', 'priority:P1'], { t: 'À alice dev', a: 'alice', r: 33 }),
-    ticket(3, ['type:tech', 'status:dev-ready', 'needs-human'], { t: 'Libre mais bloqué' }),
-    ticket(4, ['type:feature', 'status:review-ready', 'priority:P2'], { t: 'Libre review' }),
-    ticket(5, ['type:feature', 'status:qa', 'priority:P2'], { t: 'Libre qa' }),
-    ticket(6, ['type:feature', 'status:in-qa', 'priority:P2'], { t: 'À alice qa', a: 'alice' }),
-    ticket(7, ['type:tech', 'status:in-review', 'priority:P2'], { t: 'À bob review', a: 'bob', r: 34 }),
-    ticket(8, ['type:tech', 'status:changes-requested', 'priority:P2'], { t: 'Corrections demandées' }),
-    ticket(9, ['type:tech', 'status:in-dev', 'priority:P2'], { t: 'Ancien verdict, assigné', a: 'carol' }),
-  ], 120);
-  page = await open({ preload: [ASSIGN_SNAP], role: 'tech' });
-  const fileNums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
-  const setOf2 = (...a) => JSON.stringify(a.sort());
-  check('default scope "Tous": the role\'s tickets, assigned or not', JSON.stringify(await fileNums()) === setOf2('#1', '#2', '#3', '#4', '#7', '#8', '#9'), JSON.stringify(await fileNums()));
-  check('an assignee shows as a chip', /@alice/.test(await page.locator('#view .row', { hasText: '#2 ' }).textContent()) && !/@/.test(await page.locator('#view .row', { hasText: '#1 ' }).textContent()));
-  const prHref = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' }).locator('a:has-text("PR #")').evaluateAll((as) => as.map((a) => ({ href: a.href, text: a.textContent.trim(), target: a.target, rel: a.rel })));
-  check('a ticket with an open PR links to it (new tab, no opener)', JSON.stringify(await prHref(2)) === JSON.stringify([{ href: `https://github.com/${REPO}/pull/33`, text: 'PR #33', target: '_blank', rel: 'noopener' }]), JSON.stringify(await prHref(2)));
-  check('a ticket without a PR has no PR link', (await prHref(1)).length === 0);
-  check('the known assignees are offered in the identity field', (await page.locator('#meList option').evaluateAll((o) => o.map((x) => x.value).sort())).join(',') === 'alice,bob,carol');
-  await page.evaluate((e) => window.__push('events', 'live6', e), ev({ n: 1, title: 'Libre dev', labels: ['type:tech', 'status:in-dev'], assignees: ['bob'] }));
-  await page.waitForTimeout(250);
-  check('a live event assigning a ticket shows the new assignee on its row', /@bob/.test(await page.locator('#view .row', { hasText: '#1 ' }).textContent()));
-  check('assignee: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.close();
-
-  page = await open({ preload: [ASSIGN_SNAP] });
-  await page.fill('#meInput', 'alice');
-  await tab(page, 'Travail'); await page.click('#filtersToggle');
-  const asBtn = (key) => page.locator(`#searchFilters button[data-map="assignees"][data-key="${key}"]`);
-  const sNums = async () => (await page.locator('#view .row > .main > .t').allTextContents()).map((x) => x.trim().split(' ')[0]).sort();
-  check('assignee filter: moi, non assigné and each assignee found', (await asBtn('me').count()) === 1 && (await asBtn('none').count()) === 1 && (await asBtn('alice').count()) === 1 && (await asBtn('bob').count()) === 1);
-  await asBtn('none').click(); await page.waitForTimeout(100);
-  check('"non assigné"', JSON.stringify(await sNums()) === setOf2('#1', '#3', '#4', '#5', '#8'), JSON.stringify(await sNums()));
+  await btn('flags', 'fix').click(); await page.waitForTimeout(100);
+  check('flag fix', JSON.stringify(await names()) === JSON.stringify(['#15']));
+  await btn('flags', 'needs-human').click(); await page.waitForTimeout(100);
+  check('flags are OR-ed', setOf(...(await names())) === setOf('#13', '#15'));
+  check('active filters are chips with a count, even when the panel is folded', (await text(page, '#filtersCount')) === '2' && (await page.locator('#activeFilters .chip.rm').allTextContents()).map((x) => x.trim()).sort().join('|') === 'Drapeau : attend un humain ✕|Drapeau : correction ✕');
+  await page.locator('#activeFilters .chip.rm', { hasText: 'correction' }).click(); await page.waitForTimeout(100);
+  check('a chip removes its filter', JSON.stringify(await names()) === JSON.stringify(['#13']));
   await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
-  await asBtn('me').click(); await page.waitForTimeout(100);
-  check('"moi" = the identity typed at the top', JSON.stringify(await sNums()) === setOf2('#2', '#6'), JSON.stringify(await sNums()));
-  await asBtn('bob').click(); await page.waitForTimeout(100);
-  check('assignees are OR-ed (moi + bob)', JSON.stringify(await sNums()) === setOf2('#2', '#6', '#7'), JSON.stringify(await sNums()));
-  check('chips: "Assigné : moi ✕" and "Assigné : @bob ✕"', (await page.locator('#activeFilters .chip.rm').allTextContents()).map((x) => x.trim()).sort().join('|') === 'Assigné : @bob ✕|Assigné : moi ✕');
-  await page.fill('#meInput', '');
-  await page.waitForTimeout(100);
-  check('"moi" without an identity: a hint, and only the other assignees left', /Indiquez votre identifiant GitHub/.test(await text(page, '#view')) && JSON.stringify(await sNums()) === setOf2('#7'), JSON.stringify(await sNums()));
-  check('search by assignee: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await btn('states', 'none').click(); await page.waitForTimeout(100);
+  check('no filter, no chip; a status-less ticket has none', (await trows(page)) === 0);
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await btn('levels', 'epic').click(); await page.waitForTimeout(100);
+  check('level filter: epic only', JSON.stringify(await names()) === JSON.stringify(['#10']) && /epic/.test(await text(page, '#view > .list > .row .meta')));
+  await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(100);
+  await page.fill('#meInput', 'alice'); await page.waitForTimeout(100);
+  await btn('assignees', 'me').click(); await page.waitForTimeout(100);
+  check('assignee: "moi" is the identity typed at the top', JSON.stringify(await names()) === JSON.stringify(['#11']));
+  await btn('assignees', 'bob').click(); await page.waitForTimeout(100);
+  check('assignees are OR-ed', setOf(...(await names())) === setOf('#11', '#12'));
+  await page.fill('#meInput', ''); await page.waitForTimeout(100);
+  check('"moi" without an identity: a hint', /Indiquez votre identifiant GitHub/.test(await text(page, '#view')));
+  check('search: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
-
   // ---- design tab: the project's design document, edited through a /pilot-design session ----
   const DESIGN = { kind: 'design', repo: REPO, at: iso(30),
     charter: { name: 'myAVI <img src=x onerror=window.__pwn=1>', summary: 'Voyager sans obstacle', logo: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>',
@@ -892,10 +397,8 @@ const STUB = (opts) => `
   check('design: a live document fills every section', /Voyager sans obstacle/.test(dv) && /clair #FFFFFF/.test(dv) && /sombre #0E141B/.test(dv) && /IBM Plex Sans/.test(dv) && /22 px · 600/.test(dv) && /Espacement m/.test(dv) && /Rayon s/.test(dv) && /Cible de 44 px/.test(dv) && /Contraste AA minimum/.test(dv) && /Clair et bienveillant/.test(dv), dv);
   check('design: the edit card now says "Modifier", the typed request is kept', /^Modifier/.test(await text(page, '#designHint')) && (await page.inputValue('#designText')).includes('fort contraste'));
   await page.click('#subtabs >> text=Couleurs'); await page.waitForTimeout(150);
-  check('design: the command targets the open section, with the request', (await dCmd()) === '/pilot-design --section colors ajouter un thème à fort contraste' && (await dHref()) === (await dCmd()), await dCmd());
-  await page.click('#designAll'); await page.waitForTimeout(100);
-  check('design: "Tout le design system" drops the section', (await dCmd()) === '/pilot-design ajouter un thème à fort contraste' && /tout le design system/.test(await text(page, '#designHint')), await dCmd());
-  await page.click('#designAll'); await page.click('#subtabs >> text=Charte'); await page.waitForTimeout(150);
+  check('design: the command is the request, whatever the section', (await dCmd()) === '/pilot-design ajouter un thème à fort contraste' && (await dHref()) === (await dCmd()), await dCmd());
+  await page.click('#subtabs >> text=Charte'); await page.waitForTimeout(150);
   check('design: HTML in a value stays text, an invalid hex gets no swatch', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && /myAVI <img src=x/.test(dv) && !(await page.$('#view [style*="evil"]')), dv);
   check('design: a valid logo renders as an image', (await page.$$('#view img.logo')).length === 1 && (await page.$eval('#view img.logo', (i) => i.src.startsWith('data:image/svg+xml'))));
   await page.evaluate((d) => window.__push('design', 'd0', Object.assign({}, d, { charter: Object.assign({}, d.charter, { logo: '<img src=x onerror=1>' }) })), DESIGN); await page.waitForTimeout(200);
@@ -954,9 +457,9 @@ const STUB = (opts) => `
   check('design sub-tabs: a section shows only itself, the address follows',
         /clair #FFFFFF/.test(await text(page, '#view')) && !/Voyager sans obstacle/.test(await text(page, '#view')) && (await page.evaluate(() => location.hash)) === '#design/colors');
   await page.screenshot({ path: path.join(TMP, 'design-subtabs.png') });
-  check('design sub-tabs: the edit card follows the open section (/pilot-design --section colors)', (await text(page, '#designCmd')) === '/pilot-design --section colors', await text(page, '#designCmd'));
+  check('design sub-tabs: the command has no section flag', (await text(page, '#designCmd')) === '/pilot-design', await text(page, '#designCmd'));
   await page.click('#subtabs >> text=Accessibilité'); await page.waitForTimeout(200);
-  check('design sub-tabs: moving on updates the section of the command', (await text(page, '#designCmd')) === '/pilot-design --section a11y' && /Contraste AA minimum/.test(await text(page, '#view')), await text(page, '#designCmd'));
+  check('design sub-tabs: moving on shows the section', /Contraste AA minimum/.test(await text(page, '#view')));
   await page.close();
   page = await open({ preload: [BASE] });
   await page.goto(FILE + '#design'); await page.waitForTimeout(350);
@@ -968,286 +471,6 @@ const STUB = (opts) => `
   check('design sub-tabs: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
 
-  // ---- prototypes tab: type:poc tickets joined to their metadata; sub-tabs En cours / Acceptés (3 more) / Rejetés ----
-  const PSNAP = snapshot([
-    ticket(701, ['type:poc', 'level:story', 'status:poc-draft'], { t: 'Proto brouillon' }),
-    ticket(702, ['type:poc', 'level:story', 'status:poc-review'], { t: 'Proto à décider' }),
-    ticket(703, ['type:poc', 'level:story', 'status:poc-validated'], { t: 'Proto accepté sans story' }),
-    ticket(704, ['type:poc', 'level:story', 'status:poc-validated'], { t: 'Proto accepté avec stories' }),
-    ticket(801, ['type:feature', 'level:story', 'status:in-dev'], { t: 'Story du proto 704' }),
-  ], 120);
-  const PM = (n, o = {}) => Object.assign({ kind: 'proto', n, repo: REPO, title: 'Proto ' + n, brief: 'Brief du proto ' + n, parts: 0, at: iso(60) }, o);
-  const PROTOS = [
-    PM(702, { title: 'Proto à décider', parts: 2, height: 300 }),
-    PM(704, { title: 'Proto accepté avec stories', decision: 'accepted', decidedAt: iso(30), stories: [801, 802] }),
-    PM(705, { title: 'Proto terminé', decision: 'accepted', decidedAt: iso(20), stories: [803] }),
-    PM(706, { title: 'Proto rejeté', decision: 'rejected', decidedAt: iso(10), reason: 'Trop complexe pour le gain', parts: 1 }),
-    PM(900, { repo: 'o/other', title: 'Proto d un autre projet' }),
-  ];
-  const PHTML = [
-    { n: 702, k: 0, html: '<!doctype html><h1 id="t">Maquette A</h1><button id="b" onclick="document.getElementById(\'t\').textContent=\'cliqué\'">Cliquer</button>' },
-    { n: 702, k: 1, html: '<p id="end">fin de la maquette</p><script>try{parent.__pwn=1}catch(e){document.body.setAttribute("data-blocked","1")}<\/script>' },
-    { n: 706, k: 0, html: '<p>Maquette rejetée</p>' },
-  ];
-  page = await open({ preload: [PSNAP], protos: PROTOS, protoHtml: PHTML });
-  const mainTabs = () => page.$$eval('nav#tabs a', (as) => as.map((a) => a.textContent));
-  const pSubs = () => page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent));
-  const pSubs2 = () => page.$$eval('#subtabs2 a', (as) => as.map((a) => a.textContent));
-  const pRows = () => page.$$eval('#view .row .t', (ts) => ts.map((t) => t.textContent));
-  await page.click('nav >> text=Prototypes'); await page.waitForTimeout(250);
-  check('prototypes: the third main tab, with the count of those in progress', JSON.stringify((await mainTabs()).slice(0, 2)) === JSON.stringify(['Travail', 'Prototypes (2)']), JSON.stringify(await mainTabs()));
-  check('prototypes: sub-tabs En cours / Acceptés / Rejetés with their counts', JSON.stringify(await pSubs()) === JSON.stringify(['En cours (2)', 'Acceptés (3)', 'Rejetés (1)']), JSON.stringify(await pSubs()));
-  check('prototypes: "En cours" lists the draft and the one to decide, not the others', JSON.stringify((await pRows()).map((x) => x.replace(/^#\d+ /, '')).sort()) === JSON.stringify(['Proto brouillon', 'Proto à décider']), JSON.stringify(await pRows()));
-  check('prototypes: a draft is resumed, one under review is accepted or rejected (never sent to the Discovery yet) — all by command',
-        JSON.stringify(await rowHrefs(701)) === JSON.stringify(['/pilot-proto --resume 701']) &&
-        JSON.stringify(await rowHrefs(702)) === JSON.stringify(['/pilot-proto 702 --accept', '/pilot-proto 702 --reject']), JSON.stringify(await rowHrefs(702)));
-  check('prototypes: no link to GitHub anywhere in the list', (await page.$$('#view a[href*="github.com"]')).length === 0);
-  check('prototypes: the brief is shown', /Brief du proto 702/.test(await text(page, '#view')));
-  check('prototypes: a prototype with no mockup says so; one with a mockup does not',
-        /Pas de maquette enregistrée/.test(await page.locator('#view .row', { hasText: '#701 ' }).textContent()) && !/Pas de maquette enregistrée/.test(await page.locator('#view .row', { hasText: '#702 ' }).textContent()));
-  await page.click('#subtabs >> text=Acceptés'); await page.waitForTimeout(200);
-  check('prototypes: Acceptés has its own three sub-tabs, with counts', JSON.stringify(await pSubs2()) === JSON.stringify(['À lancer (1)', 'En cours (1)', 'Terminés (1)']), JSON.stringify(await pSubs2()));
-  await page.screenshot({ path: path.join(TMP, 'protos.png') });
-  check('prototypes: accepted and not started: only the Discovery and a rejection are offered', (await pRows()).join().includes('Proto accepté sans story') && JSON.stringify(await rowHrefs(703)) === JSON.stringify(['/pilot-discovery --from-proto 703', '/pilot-proto 703 --reject']), JSON.stringify(await rowHrefs(703)));
-  await page.click('#subtabs2 >> text=En cours'); await page.waitForTimeout(200);
-  check('prototypes: accepted with a story still open: in progress, its stories are listed',
-        (await pRows()).join().includes('Proto accepté avec stories') && /2 stories : #801 #802/.test(await text(page, '#view')) && (await page.evaluate(() => location.hash)) === '#prototypes/acceptes/encours', await text(page, '#view'));
-  await page.click('#subtabs2 >> text=Terminés'); await page.waitForTimeout(200);
-  check('prototypes: accepted with no story left open: finished (it need not be an open ticket)', (await pRows()).join().includes('Proto terminé') && !/Lancer la Discovery/.test(await text(page, '#view')));
-  await page.click('#subtabs >> text=Rejetés'); await page.waitForTimeout(200);
-  check('prototypes: rejected ones stay, with their reason, and no third level', (await pRows()).join().includes('Proto rejeté') && /Raison : Trop complexe pour le gain/.test(await text(page, '#view')) && (await page.$$('#subtabs2 a')).length === 0);
-  check('prototypes: another project\'s prototype is not shown', !/d un autre projet/.test(await page.textContent('body')));
-  await page.goto(FILE + '#prototypes/encours'); await page.waitForTimeout(300);
-  const row702 = page.locator('#view .row', { hasText: '#702 ' });
-  await row702.locator('button:has-text("la maquette")').click(); await page.waitForTimeout(500);
-  check('viewer: the mockup (read in two parts) is in an isolated frame that may run its own script only',
-        (await page.$eval('#view iframe.prev', (f) => f.getAttribute('sandbox'))) === 'allow-scripts' && /Content-Security-Policy[^>]*default-src 'none'[^>]*script-src 'unsafe-inline'/.test(await page.$eval('#view iframe.prev', (f) => f.getAttribute('srcdoc'))) &&
-        (await page.$eval('#view iframe.prev', (f) => f.style.height)) === '300px');
-  const pf = await (await page.$('#view iframe.prev')).contentFrame();
-  check('viewer: both parts are joined and the page is interactive', /fin de la maquette/.test(await pf.textContent('body')) && (await pf.$('#b')) !== null);
-  await pf.click('#b'); await page.waitForTimeout(100);
-  check('viewer: the mockup\'s own script works (click) but cannot reach the page', (await pf.textContent('#t')) === 'cliqué' && (await pf.$eval('body', (b) => b.getAttribute('data-blocked'))) === '1' && (await page.evaluate(() => window.__pwn)) === undefined);
-  await row702.locator('button:has-text("la maquette")').click(); await page.waitForTimeout(100);
-  check('viewer: hidden again on demand', (await page.$$('#view iframe.prev')).length === 0);
-  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(200);
-  check('new prototype card: folded by default; command with the idea, and with the architect when asked',
-        (await page.$eval('#protoNBody', (e) => e.hidden)) && (await page.$eval('#protoNew', (e) => !e.hidden)) && (await text(page, '#protoCmd')) === '/pilot-proto');
-  await page.click('#protoNToggle'); await page.fill('#protoText', 'Choisir un itinéraire\nsans escalier'); await page.click('#protoWith'); await page.waitForTimeout(100);
-  const pHref = async () => decodeURIComponent((await page.$eval('#protoOpen', (a) => a.getAttribute('href'))).split('?q=')[1].split('&repo=')[0]);
-  check('new prototype card: /pilot-proto <idea> --with architect, and the link carries it', (await text(page, '#protoCmd')) === '/pilot-proto Choisir un itinéraire sans escalier --with architect' && (await pHref()) === (await text(page, '#protoCmd')), await text(page, '#protoCmd'));
-  await page.click('#protoSrcImp'); await page.waitForTimeout(100);
-  const openOff = () => page.$eval('#protoOpen', (a) => a.getAttribute('aria-disabled') === 'true');
-  check('import: the address field replaces "with", and the link stays off until the address is a claude.ai artifact',
-        !(await page.$eval('#protoUrlWrap', (e) => e.hidden)) && (await page.$eval('#protoWithWrap', (e) => e.hidden)) && (await openOff()));
-  await page.fill('#protoUrl', 'https://evil.example/artifact/abc'); await page.waitForTimeout(50);
-  check('import: another host is refused', await openOff());
-  await page.fill('#protoUrl', 'https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K'); await page.waitForTimeout(100);
-  check('import: /pilot-proto --from-artifact <url> <note>, and the link carries it',
-        (await text(page, '#protoCmd')) === '/pilot-proto --from-artifact https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K Choisir un itinéraire sans escalier' && (await pHref()) === (await text(page, '#protoCmd')), await text(page, '#protoCmd'));
-  await page.fill('#protoUrl', 'https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K?sk=abc123'); await page.waitForTimeout(100);
-  check('import: a share link (?sk=…) is accepted and the key is dropped from the command',
-        (await text(page, '#protoCmd')) === '/pilot-proto --from-artifact https://claude.ai/artifact/UW8nJwYM98FHMFTsY15r1K Choisir un itinéraire sans escalier' && !!(await pHref()), await text(page, '#protoCmd'));
-  await page.click('#protoSrcIdea'); await page.waitForTimeout(100);
-  check('back to an idea: the architect option returns', !(await page.$eval('#protoWithWrap', (e) => e.hidden)) && (await text(page, '#protoCmd')).indexOf('--from-artifact') < 0);
-  check('new prototype card hidden on the other tabs', (await tab(page, 'Travail')) !== null && (await page.$eval('#protoNew', (e) => e.hidden)));
-  await page.evaluate((d) => window.__push('protos', 'p702', Object.assign({}, d, { decision: 'accepted', decidedAt: new Date().toISOString() })), PM(702, { title: 'Proto à décider', parts: 2 }));
-  await page.click('nav >> text=Prototypes'); await page.waitForTimeout(300);
-  check('a live update moves a prototype: accepted, so one fewer in progress', JSON.stringify(await pSubs()) === JSON.stringify(['En cours (1)', 'Acceptés (4)', 'Rejetés (1)']), JSON.stringify(await pSubs()));
-  check('prototypes: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.close();
-  page = await open({ preload: [PSNAP], protos: PROTOS });
-  await page.goto(FILE + '#prototypes/acceptes/termines'); await page.waitForTimeout(350);
-  check('#prototypes/acceptes/termines opens that third level directly', (await pRows()).join().includes('Proto terminé') && (await page.$eval('#subtabs2 a[aria-current=page]', (a) => a.textContent)).startsWith('Terminés'));
-  await tab(page, 'Travail'); await page.fill('#searchText', '702'); await page.waitForTimeout(200);
-  check('search shows a prototype with its state in words and the command to accept it, not the Discovery', /prototype à décider/.test(await text(page, '#view')) && JSON.stringify(await rowHrefs(702)) === JSON.stringify(['/pilot-proto 702 --accept', '/pilot-proto 702 --reject']), await text(page, '#view'));
-  await page.close();
-  page = await open({ preload: [BASE] });
-  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
-  check('prototypes: with none at all, a hint to start one', /Aucun prototype pour l’instant/.test(await text(page, '#view')) && /Prototypes$/.test((await mainTabs())[1]));
-  await page.close();
-
-  // ---- prototype in full screen: its own address, a way back, the whole screen for the frame ----
-  page = await open({ preload: [PSNAP], protos: PROTOS, protoHtml: PHTML });
-  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
-  check('full view: only a prototype that has a mockup offers it', (await page.locator('#view .row', { hasText: '#702 ' }).locator('button:has-text("Plein écran")').count()) === 1 && (await page.locator('#view .row', { hasText: '#701 ' }).locator('button:has-text("Plein écran")').count()) === 0);
-  await page.locator('#view .row', { hasText: '#702 ' }).locator('button:has-text("Plein écran")').click(); await page.waitForTimeout(500);
-  check('full view: the address is #proto/<n> and the prototype is on its own, no sub-tabs and no card',
-        (await page.evaluate(() => location.hash)) === '#proto/702' && (await page.$$('#subtabs a')).length === 0 && (await page.$eval('#protoNew', (e) => e.hidden)) && /#702 Proto à décider/.test(await text(page, '#view')));
-  check('full view: the ticket banner is out of the way', await page.$eval('#banner', (e) => e.hidden));
-  const big = await page.$eval('#view iframe.prev', (f) => f.getBoundingClientRect().height);
-  await page.screenshot({ path: path.join(TMP, 'protofull.png') });
-  check('full view: the frame takes the room of the screen, more than the list\'s 300 px', big >= 420, String(big));
-  const ff = await (await page.$('#view iframe.prev')).contentFrame();
-  check('full view: it is the same live mockup (its own script runs)', (await ff.click('#b'), await ff.textContent('#t')) === 'cliqué');
-  await page.click('#view >> text=← Prototypes'); await page.waitForTimeout(300);
-  check('full view: the way back returns to the list with its sub-tabs', (await page.evaluate(() => location.hash)) === '#prototypes' && (await page.$$('#subtabs a')).length === 3);
-  await page.goto(FILE + '#proto/702'); await page.waitForTimeout(500);
-  check('full view: a direct link #proto/702 opens it', /#702 Proto à décider/.test(await text(page, '#view')) && (await page.$('#view iframe.prev')) !== null && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)).startsWith('Prototypes'));
-  await page.goto(FILE + '#proto/999'); await page.waitForTimeout(300);
-  check('full view: an unknown prototype says so and offers the way back', /Prototype introuvable/.test(await text(page, '#view')) && (await page.$('#view >> text=← Prototypes')) !== null);
-  check('full view: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.close();
-
-  // ---- prototypes on the board: compact cards, in a column before Discovery ----
-  const BP_SNAP = snapshot([
-    ticket(710, ['type:poc', 'level:story', 'status:poc-review'], { t: 'Proto en revue' }),
-    ticket(711, ['type:poc', 'level:story', 'status:poc-validated'], { t: 'Proto accepté' }),
-    ticket(712, ['type:poc', 'level:story', 'status:poc-draft'], { t: 'Proto en construction' }),
-    ticket(20, ['type:feature', 'level:story', 'status:draft'], { t: 'Story a cadrer' }),
-  ], 120);
-  const BP = [PM(710, { title: 'Proto en revue', parts: 1 }), PM(711, { title: 'Proto accepté', decision: 'accepted', parts: 1 }), PM(712, { title: 'Proto en construction' })];
-  page = await open({ preload: [BP_SNAP], protos: BP, protoHtml: [710, 711].map((n) => ({ n, k: 0, html: '<p>Maquette ' + n + '</p>' })), view: 'board' });
-  view = await tab(page, 'Travail');
-  const pcols = await page.$$eval('#view .board section.col > header strong', (e) => e.map((x) => x.textContent));
-  const pcard = (name) => page.locator('#view .board section[aria-label="Prototypes"] .card', { hasText: name });
-  check('prototypes on the board: their own column, before Discovery', pcols[0] === 'Prototypes' && pcols[1] === '1 · Discovery', JSON.stringify(pcols));
-  check('prototypes on the board: three compact cards, none of the wide list rows', (await page.$$eval('#view .board section[aria-label="Prototypes"] .card', (c) => c.length)) === 3 && (await page.$$('#view .board section[aria-label="Prototypes"] .row')).length === 0);
-  check('prototypes on the board: a card fits its column (no overflow)', await pcard('Proto en revue').evaluate((e) => e.scrollWidth <= e.clientWidth + 1));
-  check('prototypes on the board: to decide, to take up, under construction: the matching action each', (await pcard('Proto en revue').locator('a:has-text("Accepter")').count()) === 1 && (await pcard('Proto en revue').locator('a:has-text("Rejeter")').count()) === 1 && (await pcard('Proto accepté').locator('a:has-text("Lancer la Discovery")').count()) === 1 && (await pcard('Proto en construction').locator('a:has-text("Reprendre")').count()) === 1);
-  check('prototypes on the board: the mockup is one click away, the title links to it', (await pcard('Proto en revue').locator('button:has-text("Plein écran")').count()) === 1 && (await pcard('Proto en revue').locator('.t a').getAttribute('href')) === '#proto/710');
-  check('prototypes on the board: the story to frame is in the Discovery column', /Story a cadrer/.test(await text(page, '#view .board section[aria-label="1 · Discovery"]')));
-  check('prototypes on the board: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.screenshot({ path: path.join(TMP, 'protoboard.png') });
-  await page.close();
-
-  // ---- the Discovery only for an accepted prototype; the prototype visible from everywhere it matters ----
-  const VSNAP = snapshot([
-    ticket(710, ['type:poc', 'level:story', 'status:poc-review'], { t: 'Proto en revue' }),
-    ticket(711, ['type:poc', 'level:story', 'status:poc-validated'], { t: 'Proto accepté' }),
-    ticket(801, ['type:feature', 'level:story', 'status:backlog', 'priority:P1'], { t: 'Story issue du proto' }),
-  ], 120);
-  const VP = [PM(710, { title: 'Proto en revue', parts: 1 }), PM(711, { title: 'Proto accepté', decision: 'accepted', parts: 1 }), PM(712, { title: 'Proto source', decision: 'accepted', stories: [801], parts: 1 })];
-  const VH = [710, 711, 712].map((n) => ({ n, k: 0, html: '<p id="t">Maquette ' + n + '</p>' }));
-  page = await open({ preload: [VSNAP], protos: VP, protoHtml: VH });
-  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
-  const allHrefs = async () => (await page.$$eval('#view a.btn', (as) => as.map((a) => decodeURIComponent(a.href.split('?q=')[1] || '').split('&repo=')[0]))).join(' | ');
-  check('discovery rule: a prototype under review offers Accepter / Rejeter and no Discovery', /pilot-proto 710 --accept/.test(await allHrefs()) && /pilot-proto 710 --reject/.test(await allHrefs()) && !/from-proto 710/.test(await allHrefs()), await allHrefs());
-  await page.click('#subtabs >> text=Acceptés'); await page.waitForTimeout(250);
-  check('discovery rule: the Discovery is offered once accepted', /pilot-discovery --from-proto 711/.test(await allHrefs()), await allHrefs());
-  await tab(page, 'Travail'); await page.fill('#searchText', 'proto'); await page.waitForTimeout(250);
-  check('from everywhere: in a search a prototype is its prototype row (state, command, and its mockup one tap away)',
-        (await page.locator('#view .row', { hasText: '#710 ' }).locator('button:has-text("Plein écran")').count()) === 1 && !/from-proto 710/.test(await allHrefs()));
-  await page.locator('#view .row', { hasText: '#711 ' }).locator('button:has-text("la maquette")').click(); await page.waitForTimeout(500);
-  check('from everywhere: the mockup opens in place from a search', (await page.$('#view iframe.prev')) !== null);
-  await page.goto(FILE + '#file'); await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(250);
-  const storyRow = page.locator('#view .row', { hasText: '#801 ' });
-  check('from everywhere: a story created from a prototype offers it (Travail)', (await storyRow.locator('button:has-text("Voir le proto")').count()) === 1);
-  await storyRow.locator('button:has-text("Voir le proto")').click(); await page.waitForTimeout(500);
-  check('from everywhere: it opens that prototype in full screen', (await page.evaluate(() => location.hash)) === '#proto/712' && /#712 Proto source/.test(await text(page, '#view')) && (await page.$('#view iframe.prev')) !== null);
-  check('from everywhere: no page errors', page.errors.length === 0, page.errors.join('|'));
-  await page.evaluate(() => { location.hash = 'file'; }); await page.waitForTimeout(100);
-  await page.fill('#searchText', ''); /* a search looks at every ticket, whatever the role */
-  await page.click('#roleSeg >> text=Produit'); await page.waitForTimeout(150);
-  const myFile = await text(page, '#view');
-  check('work view (product): a prototype to decide and an accepted one to launch',
-        /#710 Proto en revue/.test(myFile) && /#711 Proto accepté/.test(myFile) && /Accepter/.test(myFile) && /Lancer la Discovery/.test(myFile), myFile.slice(280, 700));
-  await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(150);
-  check('work view (tech): no prototype', !/Proto en revue/.test(await text(page, '#view')));
-
-  // reference page (#aide): the agents and the roster, kept in step with pilot-link-roster.md "Roster"
-  await page.evaluate(() => { location.hash = 'file'; }); await page.waitForTimeout(100);
-  check('reference page: a discreet info button, and the tab is untouched until it is used',
-        (await text(page, '#helpLink')) === 'i' && (await page.$eval('#helpLink', (a) => a.getAttribute('href'))) === '#aide' && !(await page.$eval('#idea', (e) => e.hidden)));
-  await page.click('#roleSeg >> text=Tous'); await page.waitForTimeout(100);
-  await page.click('#helpLink'); await page.waitForTimeout(150);
-  check('reference page: opens on Principes (#aide), replacing the tab content, no tab marked current, its sub-tabs',
-        (await page.$$('#langSeg button')).length === 2 && (await page.$eval('#idea', (e) => e.hidden)) && (await page.$eval('#banner', (e) => e.hidden)) &&
-        (await page.$$('#tabs a[aria-current="page"]')).length === 0 && (await page.$eval('#helpLink', (a) => a.getAttribute('aria-current'))) === 'page' &&
-        JSON.stringify(await page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent + (a.getAttribute('aria-current') ? '*' : '')))) === JSON.stringify(['Principes*', 'Modes', 'Tickets', 'Connaissances', 'Cas particuliers', 'Modules', 'Agents', 'Steps']));
-  const tabText = {}; let phaseCards = 0;
-  for (const sub of ['principes', 'modes', 'tickets', 'connaissances', 'cas']) {
-    await page.evaluate((s) => { location.hash = 'aide/' + s; }, sub); await page.waitForTimeout(120);
-    tabText[sub] = await page.$eval('#view', (e) => e.innerText);
-    if (sub === 'principes') phaseCards = (await page.$$('#view .agents .row')).length;
-  }
-  const how = Object.values(tabText).join('\n');
-  check('reference page: Principes explains the 5 phases of the project, who decides, the knowledge bundles and where to start',
-        phaseCards === 5 && /Discovery/.test(how) && /QA humaine/.test(how) && /needs-human/.test(how) && /Wiki : ce que fait le produit/i.test(how) && /Architecture : comment le produit est construit/i.test(how) && /Design : à quoi le produit ressemble/i.test(how) && /Prototypes : décider sur du concret/i.test(how) && /Parcours utilisateur/i.test(how) && /\/pilot-discovery/.test(how) && /\/pilot-help/.test(how), how.slice(0, 200));
-  check('reference page: the tabs are separate (a section lives in one tab only)',
-        /Le profil du projet/i.test(tabText.principes) && !/Le profil du projet/i.test(tabText.tickets) && /Trois modes/i.test(tabText.modes) && !/Trois modes/i.test(tabText.principes) && /Priorité/.test(tabText.tickets) && /Cas particuliers|sort du chemin habituel/.test(tabText.cas) && /Wiki : ce que fait/i.test(tabText.connaissances), Object.keys(tabText).join());
-  check('reference page: Principes explains levels, types, the status chain, flags, the off-path cases and the mode',
-        /epic .*story .*task/.test(how) && /feature :/.test(how) && /bug :/.test(how) && /needs-human/.test(how) && /Depends on #N/.test(how) && /--resume/.test(how) && /--tech/.test(how) && /--multi/.test(how) && /[Mm]ode par défaut/.test(how) && /--human/.test(how) && /--pair/.test(how) && /Analyser l’existant/.test(how) && /Challenger/.test(how) && /qui propose/.test(how) && /Priorité/.test(how) && /Prise en charge/.test(how) && /Le profil du projet/i.test(how) && /--refresh/.test(how) && /ticket bug/.test(how), how.slice(0, 200));
-  // the page and /pilot-help describe the same system: every command, flag, status and module it cites exists in the skills and the process
-  const ROOT = path.resolve(__dirname, '..');
-  const skillsDir = path.join(ROOT, '.claude/skills');
-  const skillText = fs.readdirSync(skillsDir).map((d) => fs.readFileSync(path.join(skillsDir, d, 'SKILL.md'), 'utf8')).join('\n');
-  const processText = fs.readFileSync(path.join(ROOT, 'assets/docs/pilot-process.md'), 'utf8');
-  const pyText = fs.readFileSync(path.join(ROOT, 'scripts/pilot.py'), 'utf8');
-  const cited = { cmds: new Set(), flags: new Set(), statuses: [], mods: new Set() };
-  for (const sub of ['principes', 'modes', 'tickets', 'connaissances', 'cas', 'modules', 'agents', 'steps']) {
-    await page.evaluate((s) => { location.hash = 'aide/' + s; }, sub); await page.waitForTimeout(120);
-    const t = await page.$eval('#view', (e) => e.innerText);
-    (t.match(/\/pilot-[a-z]+/g) || []).forEach((c) => cited.cmds.add(c.slice(1)));
-    (t.match(/(?<![\w-])--[a-z]+/g) || []).forEach((f) => cited.flags.add(f));
-    (t.match(/module enable (\w+)/g) || []).forEach((m) => cited.mods.add(m.split(' ')[2]));
-    if (sub === 'tickets') cited.statuses = (await text(page, '#statusChain')).split(' → ');
-  }
-  const noCmd = [...cited.cmds].filter((c) => !fs.existsSync(path.join(skillsDir, c, 'SKILL.md')));
-  const noFlag = [...cited.flags].filter((f) => !skillText.includes(f) && !processText.includes(f));
-  const noStatus = cited.statuses.filter((st) => !processText.includes('status:' + st));
-  check('reference page: every command it cites is an installed skill', noCmd.length === 0 && cited.cmds.size >= 8, noCmd.join(','));
-  const uncitedSkills = fs.readdirSync(skillsDir).filter((d) => !cited.cmds.has(d));
-  check('reference page: every installed skill is cited at least once (the page and /pilot-help list the same commands)', uncitedSkills.length === 0, uncitedSkills.join(','));
-  check('reference page: every phase card carries its command, and the chain keeps changes-requested out of the line',
-        (/Commande :/.test(how)) && cited.statuses.indexOf('changes-requested') < 0 && /changes-requested : la relecture/.test(how), how.slice(0, 100));
-  check('reference page: every flag it cites exists in a skill or in the process', noFlag.length === 0 && cited.flags.size >= 5, noFlag.join(','));
-  check('reference page: every status of its chain is a status of the process', noStatus.length === 0 && cited.statuses.length >= 9, noStatus.join(','));
-  check('reference page: every module it tells to enable is a module of pilot.py', cited.mods.size === 0 || [...cited.mods].every((m) => new RegExp("'" + m + "'").test(pyText)), [...cited.mods].join(','));
-  await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(100);
-  await page.evaluate(() => { location.hash = 'aide/modules'; }); await page.waitForTimeout(150);
-  const mods = await page.$eval('#view', (e) => e.innerText);
-  check('reference page: Modules explains where the cockpit data comes from', /D’où viennent les données du cockpit/i.test(mods) && /instantané/.test(mods));
-  check('reference page: Modules gives one card per cockpit tab, each with what, how and why; the optional ones say they are on',
-        (await page.$$('#view .agents .row')).length === 5 && (mods.match(/Rôle :/g) || []).length === 5 && (mods.match(/Comment :/g) || []).length === 5 && (mods.match(/Intérêt :/g) || []).length === 5 &&
-        (mods.match(/actif/g) || []).length === 1 && (mods.match(/masqué par le rôle/g) || []).length === 3 && /python3 \.pilot\/pilot\.py module enable/.test(mods) === false && /Wiki/.test(mods) && /Architecture/.test(mods) && /\/pilot-architecture/.test(mods), mods.slice(0, 200));
-  // the role filter (Produit / Tech / Tous) applies to the help pages too
-  const roleTab = async (role, sub) => { await page.click('#roleSeg >> text=' + role); await page.evaluate((s) => { location.hash = 'aide/' + s; }, sub); await page.waitForTimeout(150); return page.$eval('#view', (e) => e.innerText); };
-  {
-    const P = { pr: await roleTab('Produit', 'principes') };
-    P.mo = await roleTab('Produit', 'modes'); P.ti = await roleTab('Produit', 'tickets'); P.kn = await roleTab('Produit', 'connaissances'); P.ca = await roleTab('Produit', 'cas');
-    check('role Produit: Principes shows Discovery and QA, the product commands and a note, not Spec, Dev nor /pilot-auto',
-          /Vue filtrée pour le rôle Produit/.test(P.pr) && /1\. Discovery/.test(P.pr) && /5\. QA humaine/.test(P.pr) && !/2\. Spec/.test(P.pr) && !/3\. Dev/.test(P.pr) && /\/pilot-discovery/.test(P.pr) && /\/pilot-proto/.test(P.pr) && !/\/pilot-auto/.test(P.pr), P.pr.slice(0, 200));
-    check('role Produit: Modes offers --human on Discovery, /pilot-design and /pilot-proto only',
-          /Disponible pour : Discovery, \/pilot-design, \/pilot-proto\./.test(P.mo), P.mo.slice(0, 300));
-    check('role Produit: Tickets shows the product types, not tech nor e2e', /feature :/.test(P.ti) && /poc :/.test(P.ti) && /bug :/.test(P.ti) && !/(^|\n)tech :/.test(P.ti) && !/e2e :/.test(P.ti), P.ti.slice(0, 300));
-    check('role Produit: Connaissances shows wiki, design and prototypes, and says the architecture is hidden by the role',
-          /Wiki : ce que fait/i.test(P.kn) && /Design : à quoi/i.test(P.kn) && /Prototypes : décider/i.test(P.kn) && !/Architecture : comment/i.test(P.kn) && /Masqués par le rôle : Architecture/.test(P.kn), P.kn.slice(0, 200));
-    check('role Produit: Special cases leave out the tech-only rows', !/--tech/.test(P.ca) && !/Une PR approuvée/.test(P.ca) && /needs-human/.test(P.ca) && /Un défaut découvert/.test(P.ca), P.ca.slice(0, 200));
-    const T = { pr: await roleTab('Tech', 'principes') };
-    T.mo = await roleTab('Tech', 'modes'); T.ti = await roleTab('Tech', 'tickets'); T.kn = await roleTab('Tech', 'connaissances'); T.ca = await roleTab('Tech', 'cas');
-    check('role Tech: Principes shows Spec, Dev and Review and /pilot-auto, not Discovery',
-          /Vue filtrée pour le rôle Tech/.test(T.pr) && /2\. Spec/.test(T.pr) && /3\. Dev/.test(T.pr) && /4\. Review/.test(T.pr) && !/1\. Discovery/.test(T.pr) && /\/pilot-auto/.test(T.pr) && !/\/pilot-discovery/.test(T.pr), T.pr.slice(0, 200));
-    check('role Tech: Modes offers --human on Spec, Dev and Review', /Disponible pour : Spec, Dev, Review\./.test(T.mo), T.mo.slice(0, 300));
-    check('role Tech: Tickets shows the tech types, not feature', /(^|\n)tech :/.test(T.ti) && /e2e :/.test(T.ti) && !/feature :/.test(T.ti), T.ti.slice(0, 300));
-    check('role Tech: Connaissances shows the architecture, not the wiki, design nor prototypes', /Architecture : comment/i.test(T.kn) && !/Wiki : ce que fait/i.test(T.kn) && !/Prototypes : décider/i.test(T.kn) && /Masqués par le rôle : Wiki, Design, Prototypes/.test(T.kn), T.kn.slice(0, 200));
-    check('role Tech: Special cases keep the tech rows', /--tech/.test(T.ca) && /Une PR approuvée/.test(T.ca), T.ca.slice(0, 200));
-    const A = await roleTab('Tous', 'principes');
-    check('role Tous: no filter note and every phase', !/Vue filtrée/.test(A) && /1\. Discovery/.test(A) && /4\. Review/.test(A), A.slice(0, 100));
-    await page.click('#roleSeg >> text=Tech'); await page.waitForTimeout(100);
-  }
-  await page.click('#subtabs >> text=Agents'); await page.waitForTimeout(150);
-  const agentsTxt = await text(page, '#view');
-  check('reference page: each agent lists the steps where it is Lead, Validateur and Convocable',
-        (agentsTxt.match(/Lead :/g) || []).length === 7 && (agentsTxt.match(/Validateur :/g) || []).length === 7 && (agentsTxt.match(/Convocable :/g) || []).length === 7 &&
-        /Lead : Dev/.test(agentsTxt) && /Validateur : Discovery/.test(agentsTxt), agentsTxt.slice(0, 300));
-  check('reference page: Agents shows the 7 agents and no table, no button but the language',
-        (await page.$$('#view .agents .row')).length === 7 && (await page.$$('#view button:not(#langSeg button), #view a.btn')).length === 0 && (await page.$$('#view table')).length === 0);
-  await page.click('#subtabs >> text=Steps'); await page.waitForTimeout(150);
-  check('reference page: Steps shows the table and the rule, #aide/steps, no agent cards',
-        (await page.evaluate(() => location.hash)) === '#aide/steps' && (await page.$$('#view table')).length === 1 && (await page.$$('#view .agents .row')).length === 0 && /le lead ouvre la discussion/.test(await text(page, '#view')));
-  const docRows = fs.readFileSync(path.resolve(__dirname, '../assets/docs/pilot-link-roster.md'), 'utf8').split('\n')
-    .filter((l) => /^\| (Discovery|Spec|Dev|Review|QA|Proto|Design)\b/.test(l)).map((l) => l.split('|').slice(1, 5).map((c) => new Set((c.match(/pilot-(\w+)/g) || []).map((x) => x.slice(6)))));
-  const KEYS = [['pm', 'PM'], ['architect', 'Architecte'], ['techlead', 'Tech lead'], ['dev', 'Dev'], ['e2e', 'E2E'], ['qa', 'QA'], ['designer', 'Designer']];
-  const roster = (await page.$$eval('#view tbody tr', (trs) => trs.map((tr) => [...tr.querySelectorAll('td')].map((td) => td.textContent))))
-    .map((cells) => cells.map((c) => new Set(KEYS.filter(([, n]) => new RegExp('\\b' + n + '\\b', 'i').test(c)).map(([k]) => k))));
-  const same = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
-  check('reference page: the roster has the same steps and the same personas per column as pilot-link-roster.md',
-        docRows.length === roster.length && docRows.every((d, i) => [0, 1, 2].every((k) => same(d[k + 1], roster[i][k]))), JSON.stringify([docRows.length, roster.length]));
-  check('reference page: the table shows one row per step, with Lead, Validateur and Convocable',
-        (await page.$$('#view tbody tr')).length === docRows.length && /Discovery[\s\S]*PM[\s\S]*Architecte[\s\S]*Designer/.test(await text(page, '#view tbody tr')));
-  await page.click('#tabs >> text=Travail'); await page.waitForTimeout(150);
-  check('reference page: clicking another tab leaves it, no back button needed',
-        (await page.evaluate(() => location.hash)) === '#file' && !(await page.$eval('#idea', (e) => e.hidden)) && /Travail ·/.test(await text(page, '#view')) && (await page.$$('#subtabs a')).length === 0);
 
   // ---- wiki tab: the project's wiki document (built by `pilot.py wiki snapshot`), read-only ----
   const WIKI = { kind: 'wiki', repo: REPO, at: iso(20), total: 4, truncated: false, entries: [
@@ -1257,16 +480,15 @@ const STUB = (opts) => `
     { id: 'old-rule', title: 'Old rule', description: 'Not built yet.', path: 'old-rule.md', status: 'proposed', derived: '', display: 'proposed', tickets: [], verifiedAt: '', text: '' }] };
   { let page = await open({ preload: [BASE] });
   await page.goto(FILE + '#wiki'); await page.waitForTimeout(350);
-  check('wiki tab: empty state names the commands, no ticket banner', /Aucun wiki publié/.test(await text(page, '#view')) && /pilot-wiki --bootstrap/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Wiki');
+  check('wiki tab: empty state names the commands, no ticket banner', /Aucun wiki publié/.test(await text(page, '#view')) && /module enable wiki/.test(await text(page, '#view')) && !/bootstrap/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Wiki');
   await page.evaluate((d) => window.__push('wiki', 'w0', d), WIKI); await page.waitForTimeout(200);
   const wv = await text(page, '#view');
   check('wiki tab: the tab counts the entries, the page shows them grouped by page', (await page.$$eval('#tabs a', (a) => a.map((x) => x.textContent))).includes('Wiki (4)') && /search/.test(wv) && /Search places by name/.test(wv) && /A traveler searches places by name\./.test(wv) && /output/.test(wv), wv);
   check('wiki sub-tabs: Tous, then one per functional domain with its count',
         JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))) === JSON.stringify(['Tous (4)', 'général (1)', 'output (1)', 'search (2)']), JSON.stringify(await page.$$eval('#subtabs a', (a) => a.map((x) => x.textContent))));
   check('wiki summary: one chip per status', /2 implémenté/.test(wv) && /1 spécifié/.test(wv) && /1 proposé/.test(wv) && !/déprécié/.test(wv), wv);
-  check('wiki entry chips: who verified it (QA here)', /vérifié[^·]*· QA/.test(wv), wv);
   check('wiki entry chips: stamp, never verified, in-flight status, ticket link',
-        /vérifié il y a|vérifié /.test(wv) && /non vérifié/.test(wv) && /en review/.test(wv) && (await page.$eval('#view a[href$="/issues/12"]', (a) => a.getAttribute('href'))) === 'https://github.com/' + REPO + '/issues/12');
+        /vérifié il y a|vérifié /.test(wv) && /en relecture/.test(wv) && !/non vérifié/.test(wv) && (await page.$eval('#view a[href$="/issues/12"]', (a) => a.getAttribute('href'))) === 'https://github.com/' + REPO + '/issues/12');
   check('wiki: HTML in an entry stays text', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && (await page.$eval('#view .row details', (d) => d.textContent)).includes('<img src=x'));
   await page.click('#subtabs >> text=search'); await page.waitForTimeout(150);
   const wf = await text(page, '#view');
@@ -1294,33 +516,34 @@ const STUB = (opts) => `
   await page.close();
   }
 
-  // ---- persona / user-flow entries: a launcher that writes the /pilot-flow command ----
+
+  // ---- user-flow entries: a launcher that writes the /pilot-accept command (personas are chosen one at a time) ----
   const WIKI_FLOWS = { kind: 'wiki', repo: REPO, at: iso(5), total: 3, truncated: false, entries: [
-    { id: 'marie-senior', type: 'Persona', title: 'Marie', description: 'Senior.', path: 'persona/marie-senior.md', status: 'implemented', tickets: [], text: 'Senior.' },
-    { id: 'paul-aidant', type: 'Persona', title: 'Paul', description: 'Carer.', path: 'persona/paul-aidant.md', status: 'implemented', tickets: [], text: 'Carer.' },
+    { id: 'marie-senior', type: 'Persona', title: 'Marie', description: 'Senior.', path: 'persona/marie-senior.md', status: '', tickets: [], text: 'Senior.' },
+    { id: 'paul-aidant', type: 'Persona', title: 'Paul', description: 'Carer.', path: 'persona/paul-aidant.md', status: '', tickets: [], text: 'Carer.' },
     { id: 'find-a-place', type: 'UserFlow', title: 'Find a place', description: 'Search.', path: 'user-flow/find-a-place.md', status: 'implemented', tickets: [], text: 'Goal.\nPersonas: marie-senior\n1. Open the search -> a field.' }] };
   { let page = await open({ preload: [BASE], wiki: [WIKI_FLOWS] });
   await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(400);
   const cmdOf = async () => page.$eval('#view .flow-launch + .cmd', (e) => e.textContent);
   const hrefOf = async () => page.$eval('#view .flow-launch + .cmd + .refresh a', (a) => a.getAttribute('href'));
-  check('flow launcher: the personas the flow lists are pre-picked, the command is written',
-        (await cmdOf()) === '/pilot-flow find-a-place --as marie-senior' && decodeURIComponent(await hrefOf()).includes('/pilot-flow find-a-place --as marie-senior'), await cmdOf());
+  check('flow launcher: /pilot-accept <flow>, no persona by default, the link opens it', (await cmdOf()) === '/pilot-accept find-a-place' && decodeURIComponent(await hrefOf()).includes('/pilot-accept find-a-place'), await cmdOf());
+  await page.click('#view .flow-launch .tog:nth-of-type(1)'); await page.waitForTimeout(100);
+  check('flow launcher: a persona is picked with --persona', (await cmdOf()) === '/pilot-accept find-a-place --persona marie-senior', await cmdOf());
   await page.click('#view .flow-launch .tog:nth-of-type(2)'); await page.waitForTimeout(100);
-  check('flow launcher: picking a second persona adds it', (await cmdOf()) === '/pilot-flow find-a-place --as marie-senior,paul-aidant', await cmdOf());
-  await page.fill('#flowUrl-find-a-place', 'https://staging.example.com'); await page.waitForTimeout(100);
-  check('flow launcher: an environment address is passed as --url', (await cmdOf()).endsWith(' --url https://staging.example.com'), await cmdOf());
-  await page.fill('#flowUrl-find-a-place', 'javascript:alert(1)'); await page.waitForTimeout(100);
-  check('flow launcher: anything but an http(s) address is dropped', !/--url/.test(await cmdOf()), await cmdOf());
-  await page.click('#view .flow-launch .tog:nth-of-type(1)'); await page.click('#view .flow-launch .tog:nth-of-type(2)'); await page.waitForTimeout(100);
-  check('flow launcher: no persona picked, no link', (await page.$eval('#view .flow-launch + .cmd + .refresh a', (a) => a.getAttribute('aria-disabled') === 'true' && !a.hasAttribute('href'))), await cmdOf());
+  check('flow launcher: one persona at a time', (await cmdOf()) === '/pilot-accept find-a-place --persona paul-aidant', await cmdOf());
+  await page.click('#view .flow-launch .tog:nth-of-type(2)'); await page.waitForTimeout(100);
+  check('flow launcher: picking it again lifts it; no --as, no --url', (await cmdOf()) === '/pilot-accept find-a-place' && !(await page.$('#flowUrl-find-a-place')));
   await page.goto(FILE + '#wiki/persona'); await page.waitForTimeout(300);
-  const pcmds = await page.$$eval('#view .flow-launch + .cmd', (a) => a.map((x) => x.textContent));
-  check('persona launcher: the flow is chosen, the persona is the one of the entry', pcmds.length === 2 && pcmds.every((c) => c.startsWith('/pilot-flow find-a-place --as ')) && pcmds[0].endsWith('--as marie-senior') && pcmds[1].endsWith('--as paul-aidant'), pcmds.join(' | '));
+  check('a persona has no launcher of its own (a flow is tested as a persona)', (await page.$('#view .flow-launch')) === null);
   await page.evaluate((d) => window.__push('wiki', 'w9', d), Object.assign({}, WIKI_FLOWS, { entries: WIKI_FLOWS.entries.map((e) => (e.type === 'UserFlow' ? Object.assign({}, e, { status: 'proposed' }) : e)) })); await page.waitForTimeout(250);
   await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(300);
   check('flow launcher: a flow that is not implemented yet has no launcher, only a note', (await page.$('#view .flow-launch')) === null && /Pas encore livré/.test(await text(page, '#view')));
-  check('flow launcher: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
+  const NA = await open({ preload: [Object.assign({}, BASE, { workflows: ['need'] })], wiki: [WIKI_FLOWS] });
+  await NA.goto(FILE + '#wiki/user-flow'); await NA.waitForTimeout(400);
+  check('flow launcher: without the accept workflow in the snapshot, no launcher', (await NA.$('#view .flow-launch')) === null && !/pilot-accept/.test(await NA.$eval('#view', (e) => e.innerHTML)));
+  check('flow launcher: no page errors', NA.errors.length === 0, NA.errors.join('|'));
+  await NA.close();
   }
 
   // ---- a user flow's state since it was last played, and the creation card ----
@@ -1368,14 +591,10 @@ const STUB = (opts) => `
   await page.evaluate((d) => window.__push('flowRuns', 'f5', d), run({ flow: 'other-flow' })); await page.waitForTimeout(300);
   check('creation card: a re-render (a new document arrives) keeps the text, the kind and the open card',
         (await page.$eval('#flowNewText', (e) => e.value)) === 'Une description' && (await page.$eval('#view .foldcard', (d) => d.open)) && (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona Une description');
-  await page.goto(FILE + '#wiki/user-flow'); await page.waitForTimeout(300);
-  await page.fill('#flowUrl-find-a-place', 'https://staging.example.com'); await page.click('#view .flow-launch .tog:nth-of-type(2)');
-  await page.evaluate((d) => window.__push('flowRuns', 'f6', d), run({ flow: 'another-flow' })); await page.waitForTimeout(300);
-  check('flow launcher: a re-render keeps the picked personas and the address', (await page.$eval('#flowUrl-find-a-place', (e) => e.value)) === 'https://staging.example.com'
-        && (await page.$eval('#view .flow-launch + .cmd', (e) => e.textContent)) === '/pilot-flow find-a-place --as marie-senior,paul-aidant --url https://staging.example.com', await page.$eval('#view .flow-launch + .cmd', (e) => e.textContent));
   check('flow status and creation card: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
   }
+
 
   // ---- wiki: what happened at a flow's last run, and what a person can ask of each entry ----
   { const run = { kind: 'flowRun', repo: REPO, flow: 'find-a-place', at: iso(48), hash: 'x', result: 'failed', bugs: [99], report: 'https://claude.ai/artifact/abc',
@@ -1395,18 +614,19 @@ const STUB = (opts) => `
     check('wiki: a persona is edited and removed through /pilot-flow, never checked against the code', c.includes('/pilot-flow --edit marie-senior') && c.includes('/pilot-flow --remove marie-senior') && !c.some((x) => /--lint marie-senior/.test(x)), JSON.stringify(c));
     check('wiki entries: no page errors', pg.errors.length === 0, pg.errors.join('|'));
     await pg.close(); }
-  { const DOC = { kind: 'wiki', repo: REPO, at: iso(20), total: 3, truncated: false, entries: [
-      { id: 'filter-a11y', type: 'Behavior', title: 'Filter', description: 'Filters.', path: 'search/filter-a11y.md', status: 'implemented', derived: '', tickets: [], verifiedAt: '', text: 'Filters.' },
-      { id: 'saved-places', type: 'Behavior', title: 'Saved', description: 'Saved.', path: 'search/saved-places.md', status: 'proposed', derived: '', tickets: [], verifiedAt: '', text: 'Saved.' },
-      { id: 'vision', type: 'Vision', title: 'Vision', description: 'Why.', path: 'product/vision.md', status: 'implemented', derived: '', tickets: [], verifiedAt: '', text: 'Why.' },
-      { id: 'planned', type: 'Behavior', title: 'Planned', description: 'Planned.', path: 'search/planned.md', status: 'specified', derived: '', tickets: [], verifiedAt: '', text: 'Planned.' } ] };
+  { const DOC = { kind: 'wiki', repo: REPO, at: iso(20), total: 4, truncated: false, entries: [
+      { id: 'filter-a11y', type: 'Behavior', title: 'Filter', description: 'Filters.', path: 'search/filter-a11y.md', status: 'implemented', derived: 'verified', tickets: [], verifiedAt: '', text: 'Filters.' },
+      { id: 'saved-places', type: 'Behavior', title: 'Saved', description: 'Saved.', path: 'search/saved-places.md', status: 'proposed', derived: 'in-qa', tickets: [], verifiedAt: '', text: 'Saved.' },
+      { id: 'vision', type: 'Vision', title: 'Vision', description: 'Why.', path: 'product/vision.md', status: '', derived: '', tickets: [], verifiedAt: '', text: 'Why.' },
+      { id: 'words', type: 'Frame', title: 'Words', description: 'Shared words.', path: 'search/words.md', status: 'provisional', derived: 'in-dev', tickets: [], verifiedAt: '', text: 'Words.' } ] };
     const pg = await open({ preload: [BASE], wiki: [DOC] });
     await pg.goto(FILE + '#wiki'); await pg.waitForTimeout(350);
-    const c = (await hrefs(pg, '#view .row a.btn')).map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]).trim());
-    check('wiki: an implemented behavior is checked, edited, never retired from here', c.includes('/pilot-wiki --lint filter-a11y') && c.includes('/pilot-wiki --edit filter-a11y') && !c.some((x) => /--deprecate filter-a11y/.test(x)), JSON.stringify(c));
-    check('wiki: a proposed behavior can be edited or removed, not checked against the code', c.includes('/pilot-wiki --edit saved-places') && c.includes('/pilot-wiki --remove saved-places') && !c.some((x) => /--lint saved-places/.test(x)), JSON.stringify(c));
-    check('wiki: the vision has no action from here', !c.some((x) => /vision/.test(x)), JSON.stringify(c));
-    check('wiki: a specified behavior is only edited', c.includes('/pilot-wiki --edit planned') && !c.some((x) => /--(lint|deprecate) planned/.test(x)), JSON.stringify(c));
+    const c = (await hrefs(pg, '#view a.btn')).map((l) => decodeURIComponent((l.href.split('?q=')[1] || l.href).split('&repo=')[0]).trim());
+    const wv = await text(pg, '#view');
+    check('wiki: a behavior is never edited or removed from here (a change of behavior goes through /pilot-need); the vision neither', !c.some((x) => /filter-a11y|saved-places|vision/.test(x)), JSON.stringify(c));
+    check('wiki: a frame entry is edited or removed through /pilot-wiki', c.includes('/pilot-wiki --edit words') && c.includes('/pilot-wiki --remove words'), JSON.stringify(c));
+    check('wiki: the whole wiki is asked or linted', c.includes('/pilot-wiki') && c.includes('/pilot-wiki --lint') && !c.some((x) => /--lint \w/.test(x)), JSON.stringify(c));
+    check('wiki: provisional status and the derived states in v6 words', /provisoire/.test(wv) && /recetté/.test(wv) && /à recetter/.test(wv) && /en construction/.test(wv) && !/en review|en QA|en dev\b/.test(wv), wv);
     await pg.close(); }
 
   // ---- architecture tab: the project's `architecture` document (built by `pilot.py arch snapshot`), read-only ----
@@ -1420,7 +640,7 @@ const STUB = (opts) => `
     { id: 'deploy', title: 'Deploy', description: 'How a release goes out.', path: 'runbooks/deploy.md', status: 'accepted', tickets: [], supersedes: '', supersededBy: '', text: 'Run the deploy workflow.' }] };
   { let page = await open({ preload: [BASE] });
   await page.goto(FILE + '#architecture'); await page.waitForTimeout(350);
-  check('architecture tab: empty state names the commands, no ticket banner', /Aucune architecture publiée/.test(await text(page, '#view')) && /pilot-architecture --bootstrap/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Architecture');
+  check('architecture tab: empty state names the commands, no ticket banner', /Aucune architecture publiée/.test(await text(page, '#view')) && /module enable architecture/.test(await text(page, '#view')) && !/bootstrap/.test(await text(page, '#view')) && (await page.$eval('#banner', (e) => e.hidden)) && (await page.$eval('nav a[aria-current=page]', (a) => a.textContent)) === 'Architecture');
   await page.evaluate((d) => window.__push('architecture', 'r0', d), ARCH); await page.waitForTimeout(200);
   const av = await text(page, '#view');
   check('architecture tab: counted in the tab, grouped by overview, rules, decisions and runbooks', (await page.$$eval('#tabs a', (a) => a.map((x) => x.textContent))).includes('Architecture (7)') && /Vue d’ensemble/.test(av) && /Règles/.test(av) && /Décisions/.test(av) && /Procédures/.test(av) && /Run the deploy workflow/.test(av) && /Catalog stored/.test(av), av);
@@ -1435,6 +655,10 @@ const STUB = (opts) => `
   const af = await text(page, '#view');
   check('architecture sub-tab: shows only that group, the address follows', /Catalog stored/.test(af) && !/Layering/.test(af) && (await page.evaluate(() => location.hash)) === '#architecture/adr', af);
   await page.evaluate((d) => window.__push('architecture', 'r1', Object.assign({}, d, { repo: 'o/other', entries: [{ id: 'x', title: 'Autre projet', path: 'overview.md', status: 'proposed', tickets: [], text: '' }] })), ARCH); await page.waitForTimeout(150);
+  await page.click('#subtabs >> text=Tous'); await page.waitForTimeout(150);
+  { const cm = (await hrefs(page, '#view a.btn')).map((l) => decodeURIComponent((l.href.split('?q=')[1] || l.href).split('&repo=')[0]).trim());
+    check('architecture: the whole body is asked, a rule added or the body linted; no --adr, --verify or --bootstrap', cm.includes('/pilot-architecture') && cm.includes('/pilot-architecture --guideline') && cm.includes('/pilot-architecture --lint') && !cm.some((x) => /--(adr|verify|bootstrap)/.test(x)), JSON.stringify(cm.slice(0, 5)));
+    check('architecture: a rule is edited or removed, an accepted ADR neither, the root overview is not removed', cm.includes('/pilot-architecture --edit layering') && cm.includes('/pilot-architecture --remove layering') && !cm.some((x) => /--(edit|remove) 0002-store/.test(x)) && cm.includes('/pilot-architecture --edit overview') && !cm.includes('/pilot-architecture --remove overview'), JSON.stringify(cm)); }
   check('architecture: another repo\'s document is not shown', !/Autre projet/.test(await text(page, '#view')));
   check('architecture tab: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
@@ -1456,6 +680,119 @@ const STUB = (opts) => `
   await page.close();
   }
 
+
+
+  // ---- prototypes tab: the `protos` mockups joined to their run (issue and events) ----
+  const PSNAP = snapshot([
+    ticket(701, ['run:proto'], { t: 'run:proto Proto brouillon' }),
+    ticket(702, ['run:proto', 'needs-human'], { t: 'run:proto Proto à décider' }),
+    ticket(707, ['run:proto'], { t: 'run:proto Proto en cours' }),
+  ], 120);
+  const PM = (n, o = {}) => Object.assign({ kind: 'proto', n, repo: REPO, title: 'Proto ' + n, brief: 'Brief du proto ' + n, parts: 0, at: iso(60) }, o);
+  const PROTOS = [
+    PM(701, { title: 'Proto brouillon' }),
+    PM(702, { title: 'Proto à décider', parts: 2, height: 300 }),
+    PM(703, { title: 'Proto accepté', parts: 1 }),
+    PM(704, { title: 'Proto fini sans verdict connu' }),
+    PM(706, { title: 'Proto rejeté', parts: 1 }),
+    PM(707, { title: 'Proto en cours', parts: 1 }),
+    PM(900, { repo: 'o/other', title: 'Proto d un autre projet' }),
+  ];
+  const PHTML = [
+    { n: 702, k: 0, html: '<!doctype html><h1 id="t">Maquette A</h1><button id="b" onclick="document.getElementById(\'t\').textContent=\'cliqué\'">Cliquer</button>' },
+    { n: 702, k: 1, html: '<p id="end">fin de la maquette</p><script>try{parent.__pwn=1}catch(e){document.body.setAttribute("data-blocked","1")}<\/script>' },
+    { n: 706, k: 0, html: '<p>Maquette rejetée</p>' },
+  ];
+  const PEVENTS = [
+    run({ n: 702, workflow: 'proto', step: 'gate', state: 'waiting-human' }),
+    run({ n: 703, workflow: 'proto', step: 'proto-accepte', state: 'done', result: 'accepted' }),
+    run({ n: 706, workflow: 'proto', step: 'proto-accepte', state: 'done', result: 'rejected' }),
+    run({ n: 707, workflow: 'proto', step: 'build', state: 'running' }),
+  ];
+  page = await open({ preload: [PSNAP], protos: PROTOS, protoHtml: PHTML, events: PEVENTS });
+  const pSubs = () => page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent));
+  const pRows = () => page.$$eval('#view .row .t', (ts) => ts.map((t) => t.textContent.replace(/^#\d+ /, '')).sort());
+  const pCmds = async (n) => (await page.locator('#view .row', { hasText: '#' + n + ' ' }).first().locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0]))));
+  await page.click('nav >> text=Prototypes'); await page.waitForTimeout(250);
+  check('prototypes: the tab counts those under way (an open run issue or a run not done)', JSON.stringify((await page.$$eval('nav#tabs a', (as) => as.map((a) => a.textContent))).slice(0, 2)) === JSON.stringify(['Travail', 'Prototypes (3)']));
+  check('prototypes: sub-tabs En cours / Terminés with their counts', JSON.stringify(await pSubs()) === JSON.stringify(['En cours (3)', 'Terminés (3)']), JSON.stringify(await pSubs()));
+  check('prototypes: "En cours" lists the three, not the others nor another project\'s', JSON.stringify(await pRows()) === JSON.stringify(['Proto brouillon', 'Proto en cours', 'Proto à décider']), JSON.stringify(await pRows()));
+  check('prototypes: one under way is resumed or rejected, by command', (await pCmds(707)).includes('/pilot-proto --resume 707') && (await pCmds(707)).includes('/pilot-proto 707 --reject'), JSON.stringify(await pCmds(707)));
+  check('prototypes: one flagged is answered on GitHub, never resumed', !(await pCmds(702)).some((c) => /--resume/.test(c)) && (await pCmds(702)).some((c) => /\/issues\/702$/.test(c)) && /attend un humain/.test(await page.locator('#view .row', { hasText: '#702 ' }).textContent()), JSON.stringify(await pCmds(702)));
+  check('prototypes: the brief is shown', /Brief du proto 702/.test(await text(page, '#view')));
+  check('prototypes: a prototype with no mockup says so; one with a mockup does not', /Pas de maquette enregistrée/.test(await page.locator('#view .row', { hasText: '#701 ' }).textContent()) && !/Pas de maquette enregistrée/.test(await page.locator('#view .row', { hasText: '#702 ' }).textContent()));
+  await page.click('#subtabs >> text=Terminés'); await page.waitForTimeout(200);
+  check('prototypes: Terminés lists the finished ones, with their verdict when known', JSON.stringify(await pRows()) === JSON.stringify(['Proto accepté', 'Proto fini sans verdict connu', 'Proto rejeté']) && /accepté/.test(await page.locator('#view .row', { hasText: '#703 ' }).textContent()) && /rejeté/.test(await page.locator('#view .row', { hasText: '#706 ' }).textContent()));
+  check('prototypes: a finished one feeds a need (/pilot-need --proto), a rejected one does not', (await pCmds(703)).includes('/pilot-need --proto 703') && (await pCmds(704)).includes('/pilot-need --proto 704') && !(await pCmds(706)).some((c) => /pilot-need/.test(c)), JSON.stringify([await pCmds(703), await pCmds(706)]));
+  check('prototypes: no removed command (accept, discovery, from-proto)', !/--accept|pilot-discovery|--from-proto/.test((await page.$$eval('#view a', (as) => as.map((a) => decodeURIComponent(a.href)))).join()));
+  await page.click('#subtabs >> text=En cours'); await page.waitForTimeout(200);
+  await page.locator('#view .row', { hasText: '#702 ' }).locator('button:has-text("la maquette")').click(); await page.waitForTimeout(500);
+  const fr = await page.$('#view iframe.prev');
+  check('prototypes: the mockup loads from its parts in a frame with scripts only', !!fr && (await fr.getAttribute('sandbox')) === 'allow-scripts' && /Content-Security-Policy[^>]*default-src 'none'/.test(await fr.getAttribute('srcdoc')) && /Maquette A/.test(await fr.getAttribute('srcdoc')) && /fin de la maquette/.test(await fr.getAttribute('srcdoc')));
+  const mf = await fr.contentFrame(); await mf.click('#b'); 
+  check('prototypes: the mockup is interactive and cannot reach the page', (await mf.$eval('#t', (e) => e.textContent)) === 'cliqué' && (await page.evaluate(() => window.__pwn)) === undefined);
+  await page.locator('#view .row', { hasText: '#702 ' }).locator('button:has-text("Plein écran")').click(); await page.waitForTimeout(500);
+  check('prototypes: full screen has its own address and a way back', (await page.evaluate(() => location.hash)) === '#proto/702' && (await page.locator('#view a:has-text("← Prototypes")').count()) === 1 && (await page.$$('#view iframe.prev')).length === 1);
+  await page.goto(FILE + '#proto/9999'); await page.waitForTimeout(300);
+  check('prototypes: an unknown prototype says so', /Prototype introuvable/.test(await text(page, '#view')));
+  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(250);
+  await page.click('#protoNToggle'); await page.waitForTimeout(100);
+  const pnCmd = () => text(page, '#protoCmd');
+  check('new prototype: from an idea, the bare command first, no link while empty', (await pnCmd()) === '/pilot-proto' && (await page.$eval('#protoOpen', (a) => a.getAttribute('aria-disabled'))) === 'true');
+  await page.fill('#protoText', 'choisir un itinéraire'); await page.waitForTimeout(100);
+  check('new prototype: the idea becomes the command, with no --with', (await pnCmd()) === '/pilot-proto choisir un itinéraire' && !(await page.$('#protoWith')));
+  await page.click('#protoSrcImp'); await page.fill('#protoUrl', 'https://claude.ai/artifact/abc123?sk=zzz'); await page.waitForTimeout(100);
+  check('new prototype: an imported artifact (its ?sk=… dropped)', (await pnCmd()) === '/pilot-proto --from-artifact https://claude.ai/artifact/abc123 choisir un itinéraire', await pnCmd());
+  await page.fill('#protoUrl', 'https://example.com/x'); await page.waitForTimeout(100);
+  check('new prototype: anything but an artifact address gives no link', (await page.$eval('#protoOpen', (a) => a.getAttribute('aria-disabled'))) === 'true');
+  check('prototypes: no page errors', page.errors.length === 0, page.errors.join('|'));
+  await page.screenshot({ path: path.join(TMP, 'protos.png') });
+  await page.close();
+  page = await open({ preload: [BASE], protos: PROTOS });
+  await page.goto(FILE + '#prototypes'); await page.waitForTimeout(300);
+  check('prototypes: with no run issue and no event, they are finished', /Aucun prototype dans cette vue/.test(await text(page, '#view')));
+  await page.close();
+
+  // ---- the reference pages ("i") ----
+  { const pg = await open({ preload: [V6] });
+    const get = async (sub) => { await pg.goto(FILE + '#aide/' + sub); await pg.waitForTimeout(250); return pg.$eval('#view', (e) => e.innerText); };
+    const subs = async () => pg.$$eval('#subtabs a', (a) => a.map((x) => x.textContent));
+    const pr = await get('principes');
+    check('help: the "i" opens it, five sub-tabs', JSON.stringify(await subs()) === JSON.stringify(['Principes', 'Workflows', 'Tickets', 'Modules', 'Agents']) && (await pg.$eval('#helpLink', (a) => a.getAttribute('aria-current'))) === 'page', JSON.stringify(await subs()));
+    check('help: principles name the six commands and the cockpit refresh', ['/pilot-need', '/pilot-plan', '/pilot-build', '/pilot-accept', '/pilot-report', '/pilot-express', '/pilot-dashboard --refresh'].every((c) => pr.includes(c)), pr.slice(0, 300));
+    const wf = await get('workflows');
+    check('help: workflows lists those the snapshot lists, with their command and the statuses they take and produce', /\/pilot-build/.test(wf) && /Prend :\s*building, ready, reviewing/.test(wf) && /Produit :\s*merged, reviewing/.test(wf) && !/\/pilot-design/.test(wf), wf.slice(0, 400));
+    const tk = await get('tickets');
+    check('help: tickets give the statuses per level and the command of each status', /epic : forming → to-plan → planning → planned → done → wont-do/.test(tk) && /task : ready → building → reviewing → merged → done/.test(tk) && /merged\s+\/pilot-accept <n°>/.test(tk) && /ready\s+\/pilot-build <n°>/.test(tk) && /reviewing\s+\/pilot-build --resume <n°>/.test(tk), tk.slice(0, 600));
+    check('help: the flags are explained', ['needs-human', 'on-hold', 'can-resume', 'express', 'fix', 'gap'].every((f) => tk.includes(f)));
+    const md = await get('modules');
+    check('help: modules describe the five tabs, the runs and where the data comes from', ['Travail', 'Prototypes', 'Design', 'Wiki', 'Architecture'].every((t) => md.includes(t)) && /étapes de run/.test(md));
+    const ag = await get('agents');
+    check('help: the seven personas', ['PM', 'Architecte', 'Tech lead', 'Dev', 'E2E', 'QA', 'Designer'].every((a) => ag.includes(a)));
+    check('help: no removed notion anywhere (phases, roster, modes, --human, --multi, pilot-auto, poc, Steps)', !/(?:^|\W)(?:phase|roster|--human|--multi|--auto|--next|pilot-auto|type:poc|poc-|Steps?)(?:\W|$)/i.test([pr, wf, tk, md, ag].join('\n')), [pr, wf, tk, md, ag].join('\n').match(/.{20}(?:phase|roster|--human|--multi|pilot-auto|poc-|Steps?).{20}/i));
+    check('help: a role filters the starting points', (await (async () => { const p2 = await open({ preload: [V6], role: 'tech' }); await p2.goto(FILE + '#aide/principes'); await p2.waitForTimeout(250); const t = await p2.$eval('#view', (e) => e.innerText); await p2.close(); return /Vue filtrée pour le rôle Tech/.test(t) && !/\/pilot-need "…"/.test(t) && /\/pilot-build/.test(t); })()));
+    check('help: no page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.close(); }
+
+  const ROUTES = ['file', 'file/16', 'prototypes/encours', 'prototypes/termines', 'proto/702',
+    'aide/principes', 'aide/workflows', 'aide/tickets', 'aide/modules', 'aide/agents',
+    'design/charter', 'design/colors', 'design/type', 'design/space', 'design/components', 'design/a11y'];
+  page = await open({ preload: [V6], protos: PROTOS, protoHtml: PHTML, events: PEVENTS.concat([run({ n: 16 }), run({ n: 40, workflow: 'need', state: 'waiting-human' })]) });
+  { const wide = [];
+    for (const view of ['liste', 'board']) {
+      await page.evaluate((v) => localStorage.setItem('cp.view', v), view); await page.goto(FILE + '#file'); await page.waitForTimeout(250);
+      for (const scheme of ['light', 'dark']) {
+        await page.emulateMedia({ colorScheme: scheme });
+        for (const r of (view === 'liste' ? ROUTES : ['file'])) {
+          await page.evaluate((x) => { location.hash = x; }, r); await page.waitForTimeout(150);
+          const w = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+          if (w > 0) wide.push(view + ' ' + scheme + ' #' + r + ' (+' + w + 'px)');
+        }
+      }
+    }
+    check('every tab and sub-tab fits a 400px phone, light and dark', wide.length === 0 && page.errors.length === 0, wide.join(', ') + ' ' + page.errors.join(' | ')); }
+  await page.close();
+
   // ---- tabs follow the modules the snapshot says the project has on ----
   {
     const tabs = async (pg) => pg.$$eval('#tabs a', (a) => a.map((x) => x.textContent.replace(/ \(\d+\)$/, '')));
@@ -1475,11 +812,9 @@ const STUB = (opts) => `
       const off = withMods({ dashboard: true, wiki: false, architecture: false, design: false, proto: false });
       const p2 = await open({ preload: [off] });
       const get = async (sub) => { await p2.goto(FILE + '#aide/' + sub); await p2.waitForTimeout(250); return p2.$eval('#view', (e) => e.innerText); };
-      const k = await get('connaissances'), pr2 = await get('principes'), md = await get('modes');
-      check('modules off: Connaissances shows no section of a module that is off, only how to enable them',
-            !/Wiki : ce que fait/i.test(k) && !/Architecture : comment/i.test(k) && !/Design : à quoi/i.test(k) && !/Prototypes : décider/i.test(k) && /Modules désactivés pour ce projet : Wiki, Architecture, Design, Prototypes/.test(k) && /module enable/.test(k), k.slice(0, 300));
-      check('modules off: Principes does not suggest the commands of a module that is off, and Modes does not offer --human on them',
-            !/\/pilot-wiki|\/pilot-architecture|\/pilot-proto|\/pilot-design|\/pilot-flow/.test(pr2) && !/\/pilot-design|\/pilot-proto/.test(md), pr2.slice(0, 200));
+      const md = await get('modules'), pr2 = await get('principes');
+      check('modules off: the modules page says so and how to enable them', /désactivé/.test(md) && /module enable wiki/.test(md) && /module enable architecture/.test(md), md.slice(0, 300));
+      check('modules off: the starting points do not suggest the commands of a module that is off', !/\/pilot-wiki|\/pilot-architecture|\/pilot-proto|\/pilot-design|\/pilot-flow/.test(pr2), pr2.slice(0, 200));
       await p2.close();
     }
     check('modules: no page errors', page.errors.length === 0, page.errors.join('|'));
@@ -1490,139 +825,7 @@ const STUB = (opts) => `
     await page.close();
   }
 
-  // ---- the phases and the profile follow the workflow the snapshot says the project runs ----
-  {
-    const rulesFor = (qa) => ({ qa, e2e_task: qa, feature_done_goes_to: qa ? 'status:qa' : 'status:done',
-      default_mode: qa ? 'pair' : 'auto', spec: { tech: { architect: qa ? 'validates' : 'on-signal' } },
-      review: qa ? { feature: ['pilot-pm', 'pilot-techlead'], e2e: ['pilot-pm', 'pilot-techlead'], tech: ['pilot-techlead'], bug: ['pilot-techlead'] }
-                 : { feature: ['pilot-techlead'], e2e: ['pilot-techlead'], tech: ['pilot-techlead'], bug: ['pilot-techlead'] } });
-    const LEAN = { profile: 'lean', phases: ['dev', 'discovery', 'proto', 'review', 'spec'], rules: rulesFor(false) };
-    const STANDARD = { profile: 'standard', phases: ['dev', 'discovery', 'proto', 'qa', 'review', 'spec'], rules: rulesFor(true) };
-    const issues = [ticket(11, ['type:feature', 'level:story', 'status:qa', 'priority:P1'], { t: 'Story restée à tester' }),
-                    ticket(12, ['type:tech', 'status:dev-ready', 'priority:P1'], { t: 'Tâche prête' })];
-    const withWf = (w) => Object.assign({}, snapshot(issues, 120), w ? { workflow: w } : {});
-    const chip = (pg) => pg.$eval('#profileChip', (e) => ({ hidden: e.hidden, text: e.textContent, title: e.title }));
 
-    let page = await open({ preload: [withWf(LEAN)] });
-    let c = await chip(page);
-    check('profile: the chip shows the project\'s profile, with its rules as the tooltip',
-          !c.hidden && c.text === 'Profil lean' && /Pas de QA humaine/.test(c.title) && /Pas de tâche e2e/.test(c.title) && /Relecture : Tech lead seul/.test(c.title), JSON.stringify(c));
-    await page.click('nav >> text=Travail'); await page.waitForTimeout(200);
-    check('profile: a ticket left at a status of a dropped phase is not in the work view, the others are',
-          !/Story restée à tester/.test(await text(page, '#view')) && /Tâche prête/.test(await text(page, '#view')));
-    await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
-    check('profile: the help page states the profile and its rules', /Profil du projet : lean\. Pas de QA humaine\. Pas de tâche e2e\. Relecture : Tech lead seul\./.test(await text(page, '#profileNote')), await text(page, '#profileNote'));
-    check('profile: the help page states the default mode and the Spec rule of a tech story',
-          /Mode par défaut : auto \(sans vous\)\./.test(await text(page, '#profileNote')) && /Spec tech : le tech lead seul ; l’architecte intervient/.test(await text(page, '#profileNote')), await text(page, '#profileNote'));
-    let table = await text(page, '#view table');
-    check('profile: lean has no human QA row, and a tech Spec is the tech lead alone',
-          !/QA humaine/.test(table) && /Spec · tech\s*Tech lead/.test(table) && /Spec · feature/.test(table) && !/Spec · feature ou tech/.test(table), table);
-    check('profile: lean reviews with the tech lead alone, in one row', /Review\s*Tech lead/.test(table) && !/Review · feature/.test(table), table);
-    const helpTab = async (pg, sub) => { await pg.goto(FILE + '#aide/' + sub); await pg.waitForTimeout(250); return pg.$eval('#view', (e) => e.innerText); };
-    const lp = await helpTab(page, 'principes'), lm = await helpTab(page, 'modes'), lt = await helpTab(page, 'tickets');
-    const chain = await text(page, '#statusChain');
-    const lc = await helpTab(page, 'cas');
-    check('profile: Principes of lean follow the rules (tech lead alone reviews, no QA phase, no QA row to start)', /Relecture par : Tech lead\./.test(lp) && !/5\. QA humaine/.test(lp), lp.slice(0, 300));
-    check('profile: Modes of lean state the default mode auto and no QA exception', /Mode par défaut de ce projet : auto/.test(lm) && !/la QA/.test(lm), lm.slice(0, 300));
-    check('profile: Tickets of lean have no e2e type, no QA in the end of life and no qa statuses', !/e2e :/.test(lt) && !/QA humaine/.test(lt) && !/in-qa/.test(chain), lt.slice(0, 300));
-    check('profile: Special cases of lean have no QA nor E2E agent as a bug finder', /Dev créent|Dev crée/.test(lc) && !/QA/.test(lc.split('Un défaut découvert')[1].split('\n')[0]) && !/E2E/.test(lc.split('Un défaut découvert')[1].split('\n')[0]), lc.slice(0, 300));
-    await page.goto(FILE + '#aide/agents'); await page.waitForTimeout(250);
-    const agents = await text(page, '#view');
-    check('profile: lean shows neither the QA nor the E2E persona', !/Déroule avec vous le plan de test/.test(agents) && !/test de bout en bout/.test(agents) && /Implémente un ticket spécifié/.test(agents), agents.slice(0, 200));
-    check('profile: no page errors', page.errors.length === 0, page.errors.join('|'));
-    await page.close();
-
-    page = await open({ preload: [withWf(STANDARD)] });
-    await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
-    table = await text(page, '#view table');
-    check('profile: standard keeps the QA row, the architect validates a tech Spec and the PM reviews a feature apart',
-          /QA humaine/.test(table) && /Spec · tech\s*Tech lead[^]*Architecte/.test(table) && /Review · feature ou e2e/.test(table) && /Review · tech ou bug/.test(table)
-          && /Mode par défaut : pair \(avec vous\)\./.test(await text(page, '#profileNote')), table);
-    await page.goto(FILE + '#aide/agents'); await page.waitForTimeout(250);
-    check('profile: standard shows the QA and E2E personas', /Déroule avec vous le plan de test/.test(await text(page, '#view')) && /test de bout en bout/.test(await text(page, '#view')));
-    await page.close();
-
-    page = await open({ preload: [withWf(null)] });
-    await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
-    table = await text(page, '#view table');
-    check('profile: a project without a workflow keeps the whole table as before', /Spec · feature ou tech/.test(table) && /QA humaine/.test(table), table);
-    await page.close();
-
-    page = await open({ preload: [withWf(LEAN)], lang: 'en' });
-    c = await chip(page);
-    await page.goto(FILE + '#aide/steps'); await page.waitForTimeout(250);
-    check('profile: the default mode, the Spec rule and the rows are translated',
-          /Default mode: auto \(without you\)\./.test(await text(page, '#profileNote')) && /Tech spec: the tech lead alone/.test(await text(page, '#profileNote'))
-          && /Spec · tech/.test(await text(page, '#view table')) && /the architect too on dependencies/.test(await text(page, '#view table')), await text(page, '#view'));
-    check('profile: the chip and the rules are translated',
-          c.text === 'Profile lean' && /No human QA/.test(c.title) && /Review: Tech lead alone/.test(c.title) && /Project profile: lean\. No human QA\. No e2e task\. Review: Tech lead alone\./.test(await text(page, '#profileNote')),
-          JSON.stringify(c) + ' ' + (await text(page, '#profileNote')));
-    await page.close();
-
-    page = await open({ preload: [withWf(STANDARD)] });
-    await page.click('nav >> text=Travail'); await page.waitForTimeout(200);
-    check('profile: standard keeps the QA phase and shows its rules',
-          /Story restée à tester/.test(await text(page, '#view')) && (await chip(page)).text === 'Profil standard' && /QA humaine pour les features/.test((await chip(page)).title));
-    await page.close();
-
-    page = await open({ preload: [withWf(null)] });
-    await page.click('nav >> text=Travail'); await page.waitForTimeout(200);
-    check('profile: a snapshot without the field shows the whole chain and no chip, as before',
-          (await chip(page)).hidden && /Story restée à tester/.test(await text(page, '#view')));
-    await page.close();
-  }
-
-  // ---- the launch buttons and chips follow the route the snapshot gives a ticket and the workflow's default mode ----
-  {
-    const modeRules = (mode) => ({ qa: true, e2e_task: true, feature_done_goes_to: 'status:qa', default_mode: mode,
-      review: { feature: ['pilot-pm', 'pilot-techlead'], e2e: ['pilot-pm', 'pilot-techlead'], tech: ['pilot-techlead'], bug: ['pilot-techlead'] } });
-    const wf = (mode) => ({ profile: mode === 'pair' ? 'standard' : 'lean', phases: ['dev', 'discovery', 'proto', 'qa', 'review', 'spec'], rules: modeRules(mode) });
-    const issues = [ticket(31, ['type:tech', 'status:dev-ready', 'priority:P1'], { t: 'Ticket ordinaire' }),
-                    ticket(32, ['type:tech', 'status:dev-ready', 'priority:P0'], { t: 'Ticket urgent' })];
-    const snap = (w) => Object.assign({}, snapshot(issues, 120), w ? { workflow: w } : {});
-    const rowOf2 = (pg, n) => pg.locator('#view .row', { hasText: '#' + n + ' ' }).first();
-    const links = async (pg, n) => rowOf2(pg, n).locator('a.btn').evaluateAll((as) => as.map((a) => ({ cmd: decodeURIComponent(a.href.split('?q=')[1].split('&repo=')[0]), primary: a.classList.contains('primary') })));
-
-    let page = await open({ preload: [snap(wf('pair'))] });
-    let l = await links(page, 31);
-    check('mode: a workflow whose default is pair launches pair, Auto is off in Options',
-          l.length === 1 && l[0].cmd === '/pilot-dev 31' && l[0].primary && JSON.stringify(await modeHrefs(page, 31)) === JSON.stringify(['/pilot-dev 31 --auto', '/pilot-dev 31']), JSON.stringify(l));
-    l = await links(page, 32);
-    check('mode: an urgent ticket launches like any other (no ticket is held back from auto)', l.length === 1 && l[0].cmd === '/pilot-dev 32' && l[0].primary, JSON.stringify(l));
-    check('mode: no ticket shows a pair-only or profile chip', !/pair seulement|profil /.test(await rowOf2(page, 31).textContent()) && !/pair seulement|profil /.test(await rowOf2(page, 32).textContent()));
-    check('mode: no page errors', page.errors.length === 0, page.errors.join('|'));
-    await page.close();
-
-    page = await open({ preload: [snap(wf('auto'))] });
-    l = await links(page, 31);
-    check('mode: a workflow whose default is auto launches auto, one button',
-          l.length === 1 && l[0].cmd === '/pilot-dev 31 --auto' && l[0].primary, JSON.stringify(l));
-    check('mode: an urgent ticket follows the auto default too', JSON.stringify((await links(page, 32)).map((x) => x.cmd)) === JSON.stringify(['/pilot-dev 32 --auto']));
-    await page.close();
-
-    page = await open({ preload: [snap(null)] });
-    l = await links(page, 31);
-    check('mode: without a workflow, pair is the default', l.length === 1 && l[0].cmd === '/pilot-dev 31' && l[0].primary, JSON.stringify(l));
-    await page.close();
-
-  }
-
-  // every tab and sub-tab fits a phone, in both themes, with no script error
-  const ROUTES = ['file', 'file/99',
-    'prototypes/encours', 'prototypes/acceptes/alancer', 'prototypes/acceptes/encours', 'prototypes/acceptes/termines', 'prototypes/rejetes', 'proto/702',
-    'aide/principes', 'aide/modes', 'aide/tickets', 'aide/connaissances', 'aide/cas', 'aide/modules', 'aide/agents', 'aide/steps',
-    'design/charter', 'design/colors', 'design/type', 'design/space', 'design/components', 'design/a11y'];
-  const wide = [];
-  for (const scheme of ['light', 'dark']) {
-    await page.emulateMedia({ colorScheme: scheme });
-    for (const r of ROUTES) {
-      await page.evaluate((x) => { location.hash = x; }, r); await page.waitForTimeout(150);
-      const w = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-      if (w > 0) wide.push(scheme + ' #' + r + ' (+' + w + 'px)');
-    }
-  }
-  check('every tab and sub-tab fits a 400px phone, light and dark', wide.length === 0 && page.errors.length === 0, wide.join(', ') + ' ' + page.errors.join(' | '));
-  await page.close();
 
   // ---- language: English shows no French left, French stays, the choice sticks and follows the project ----
   {
@@ -1641,10 +844,16 @@ const STUB = (opts) => `
       }
       return out;
     };
-    const full = { preload: [PSNAP], design: [DESIGN], wiki: [WIKI], architecture: [ARCH], protos: PROTOS, protoHtml: PHTML };
+    const EN6 = snapshot(V6.issues.map((i) => Object.assign({}, i, { t: (i.l.some((l) => l.startsWith('run:')) ? 'run:proto ' : '') + 'Item ' + i.n })), 120);
+    const full = { preload: [EN6], design: [DESIGN], wiki: [WIKI], architecture: [ARCH], protos: PROTOS, protoHtml: PHTML,
+      events: PEVENTS.concat([run({ n: 16, loops: { check: 1 } }), run({ n: 40, workflow: 'need', state: 'waiting-human' }), run({ n: 41, workflow: 'accept', state: 'failed' })]) };
     let page = await open(Object.assign({ lang: 'en' }, full));
     const left = await leftovers(page, ROUTES.concat(['wiki', 'architecture', 'architecture/guidelines']));
     check('language: English shows no French in any tab', left.length === 0, left.join('\n   '));
+    await page.close();
+    page = await open(Object.assign({ lang: 'en', view: 'board' }, full));
+    const lb = await leftovers(page, ['file']);
+    check('language: English shows no French on the board', lb.length === 0, lb.join('\n   '));
     await page.evaluate(() => { location.hash = 'aide/agents'; }); await page.waitForTimeout(150);
     check('language: English page is marked lang=en and the button says so', (await page.$eval('html', (e) => e.lang)) === 'en' && (await page.$eval('#langSeg button[aria-pressed=true]', (b) => b.textContent)) === 'EN');
     check('language: page errors', page.errors.length === 0, page.errors.join('|'));
