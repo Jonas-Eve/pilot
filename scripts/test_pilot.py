@@ -1864,6 +1864,22 @@ class ConfigTests(unittest.TestCase):
                     pilot.config_set(key, "x", path)
 
 
+class LabelMigrationTests(unittest.TestCase):
+    def test_v5_labels_become_v6_labels_and_the_rest_is_reported(self):
+        m, gh = machine([issue(1, ["status:dev-ready", "type:feature", "level:story"]), issue(2, ["status:in-review", "type:bug", "level:task"]),
+                         issue(3, ["level:epic", "type:feature"]), issue(4, ["type:poc", "status:poc-review"]), issue(5, ["status:ready", "type:tech"])])
+        dry = m.migrate_labels()
+        by = {c["issue"]: c for c in dry["changes"]}
+        self.assertEqual(by[1]["add"], ["status:ready"])
+        self.assertEqual((by[2]["add"], by[2]["remove"]), (["fix", "status:reviewing", "type:tech"], ["status:in-review", "type:bug"]))
+        self.assertEqual(by[3]["add"], ["status:planned"])
+        self.assertNotIn(5, by)  # already v6
+        self.assertEqual(sorted(dry["unmapped"][0]["labels"]), ["status:poc-review", "type:poc"])
+        self.assertIn("status:dev-ready", names(gh.store[1]))  # a dry run writes nothing
+        m.migrate_labels(apply=True)
+        self.assertEqual(names(gh.store[1]), ["level:story", "status:ready", "type:feature"])
+
+
 class LabelsTests(unittest.TestCase):
     def test_sync_creates_the_missing_labels_and_patches_the_others(self):
         m, gh = machine([])

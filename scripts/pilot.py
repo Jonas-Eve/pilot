@@ -215,6 +215,13 @@ def required_labels(wfs=None):
 CHECKS = pilot_checks.CHECKS  # check id -> function(Ctx) -> problems: one per `check` step of the workflows
 
 
+# What a v5 label becomes (`labels migrate`); a label with no entry has no equivalent and is reported.
+STATUS_MIGRATION = {"draft": "forming", "backlog": "to-plan", "in-spec": "planning", "dev-ready": "ready", "in-dev": "building",
+                    "review-ready": "reviewing", "in-review": "reviewing", "changes-requested": "reviewing", "approved": "reviewing",
+                    "split": "planned", "qa": "merged", "in-qa": "merged", "done": "done", "wont-do": "wont-do"}
+TYPE_MIGRATION = {"type:bug": ("type:tech", "fix"), "type:e2e": ("type:tech", None)}
+
+
 # name -> (color, description): the one list of PILOT labels (`pilot.py labels sync` creates them)
 LABELS = {
     "type:feature": ("1D76DB", "PILOT: a ticket that changes what the product does; validated by the PM, run by human F"),
@@ -1337,6 +1344,41 @@ class Machine:
             raise Refused({"ok": False, "reason": "ci-not-green", **verdict})
         done = self.gh.merge_pull(number, method)
         return {"ok": True, "pr": number, "merged": bool(done.get("merged")), "sha": done.get("sha", "")}
+
+    def migrate_labels(self, apply=False):
+        """Move the open tickets of a v5 project to the v6 labels: statuses (`STATUS_MIGRATION`), `type:bug`/`type:e2e`, an epic with no
+        status to `planned`. A prototype ticket, or any label with no equivalent, is only reported. Dry run unless `apply`."""
+        changes, unmapped = [], []
+        for raw in self.gh.open_issues():
+            labels = set(normalize(raw)["labels"])
+            add, remove, stuck = set(), set(), []
+            for label in sorted(labels):
+                if label.startswith("status:"):
+                    name = label[len("status:"):]
+                    if name in STATUSES:
+                        continue
+                    if name in STATUS_MIGRATION:
+                        remove.add(label)
+                        add.add(f"status:{STATUS_MIGRATION[name]}")
+                    else:
+                        stuck.append(label)
+                elif label in TYPE_MIGRATION:
+                    new, flag = TYPE_MIGRATION[label]
+                    remove.add(label)
+                    add |= {new} | ({flag} if flag else set())
+                elif label == "type:poc":
+                    stuck.append(label)
+            if "level:epic" in labels and not any(l.startswith("status:") for l in labels):
+                add.add("status:planned")
+            if stuck:
+                unmapped.append({"issue": raw["number"], "labels": stuck})
+            if add or remove:
+                changes.append({"issue": raw["number"], "remove": sorted(remove), "add": sorted(add - labels)})
+        if apply:
+            for change in changes:
+                current = set(normalize(self.gh.get_issue(change["issue"]))["labels"])
+                self._write(change["issue"], current - set(change["remove"]) | set(change["add"]))
+        return {"ok": True, "applied": apply, "changes": changes, "unmapped": unmapped}
 
     def sync_labels(self):
         """Create or update every PILOT label (idempotent), and stamp `lastLabelsSyncAt` in .pilot/state.json when it exists."""
@@ -2593,8 +2635,9 @@ def build_parser():
     p.add_argument("value", nargs="?")
     p = sub.add_parser("derive", help="a split story's status from its tasks, an epic's from its stories")
     p.add_argument("issue", type=int)
-    p = sub.add_parser("labels", help="create or update every PILOT label")
-    p.add_argument("action", choices=["sync"])
+    p = sub.add_parser("labels", help="create or update every PILOT label, or move a v5 project's tickets to the v6 labels")
+    p.add_argument("action", choices=["sync", "migrate"])
+    p.add_argument("--apply", action="store_true", help="migrate: write the changes (default: a dry run)")
     p = sub.add_parser("check", help="run one code check of a workflow step")
     p.add_argument("id")
     p.add_argument("--arg", action="append", default=[], metavar="KEY=VALUE", help="what the check reads (paths, JSON files, ids)")
@@ -2952,7 +2995,7 @@ def run(args, gh):
             return machine.pr_open(args.branch, args.title, args.body, args.base)
         return machine.pr_ci(args.number) if args.pr_cmd == "ci" else machine.pr_merge(args.number, args.method)
     if args.cmd == "labels":
-        return machine.sync_labels()
+        return machine.migrate_labels(args.apply) if args.action == "migrate" else machine.sync_labels()
     if args.cmd == "proto-pack":
         return machine.proto_pack(args.issue, args.html, args.out, args.brief, args.height)
     if args.cmd == "event":
