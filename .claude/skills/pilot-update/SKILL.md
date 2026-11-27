@@ -29,7 +29,7 @@ Copied verbatim by `pilot-init`, overwritten here with no merge:
 | the dashboard artifact | `assets/templates/pilot-dashboard.html.tmpl` |
 
 Never touched: the project's own skills and agents (no match upstream), `wiki/`, `architecture/`,
-`.github/pull_request_template.md`, anything outside the markers, `.pilot/state.json` beyond step 6.
+`.github/pull_request_template.md`, anything outside the markers, `.pilot/state.json` beyond step 8.
 
 ## Steps
 
@@ -54,7 +54,7 @@ Never touched: the project's own skills and agents (no match upstream), `wiki/`,
    If `gh` is unavailable, give the human the command and go on.
 
 5. **Modules and config.** `python3 .pilot/pilot.py module list`. A `state.json` with no `modules` predates them:
-   in step 6 set `dashboard` on when it has a `dashboardUrl` (with `design` and `proto`), `wiki` off. Say which
+   in step 8 set `dashboard` on when it has a `dashboardUrl` (with `design` and `proto`), `wiki` off. Say which
    modules exist (`.pilot/pilot-process.md` §7) and that each is turned on by its own skill; enable nothing here,
    never change `wiki/` or `architecture/`. With `wiki` on and `wiki/` missing, `doctor` fails until `/pilot-wiki`
    repairs it; with entries in the earlier format (`wiki lint` reporting `no-frontmatter`), offer
@@ -67,7 +67,8 @@ Never touched: the project's own skills and agents (no match upstream), `wiki/`,
    Tell the human: `python3 .pilot/pilot.py labels migrate` is the migration step: a dry run that shows how the old
    `status:` and `type:` labels map to the new ones and lists what it cannot map; `--apply` writes. Run the dry run,
    include its output in the report, run `--apply` only if the human agrees, and leave the unmapped tickets to them.
-   Also remind them of the CI advice of `/pilot-init` (docs-only paths excluded, no e2e in CI).
+   Also remind them of the CI advice of `/pilot-init` (docs-only paths excluded, no e2e in CI), and to compare their
+   `.github/pull_request_template.md` with `$PILOT_SRC/assets/github/pull_request_template.md`.
 
 7. **Dashboard.** Only with a `dashboardUrl`: after asking, run `/pilot-dashboard --refresh` (reusing
    `$PILOT_SRC`); it republishes at the same address when the template changed. A refusal or failure never blocks
