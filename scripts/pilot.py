@@ -275,10 +275,10 @@ MODULES = {
     "proto": {"skills": ["pilot-proto"], "requires": ["dashboard"], "use": "/pilot-proto"},
 }
 WIKI_SNAPSHOT_MAX_BYTES = 240_000  # a database document holds at most 256 KiB
-WIKI_STATUSES = ("proposed", "specified", "implemented")  # the only ones a file holds
+WIKI_STATUSES = ("proposed", "specified", "implemented", "provisional")  # the only ones a file holds
 OKF_VERSION = "0.2"  # the Open Knowledge Format the wiki follows (https://github.com/GoogleCloudPlatform/open-knowledge-format)
 WIKI_RESERVED = ("index.md", "log.md")  # OKF: never concept files
-WIKI_OKF_STATUS = {"proposed": "draft", "specified": "draft", "implemented": "stable"}
+WIKI_OKF_STATUS = {"proposed": "draft", "specified": "draft", "implemented": "stable", "provisional": "draft"}
 WIKI_VERIFIER = "process:pilot-wiki"
 WIKI_VERIFIERS = ("process:pilot-wiki", "process:pilot-dev", "process:pilot-qa")  # who verified: a lint, a Dev PR, a QA run
 WIKI_DEFAULT_TYPE = "Behavior"

@@ -4,306 +4,72 @@
 Reply in the user's language, as concisely as possible without omitting information: lead with the outcome, then only what the user must know or decide (what changed, what is unverified, what is theirs to do). No recap of the steps taken, no restating the question, no filler, no list where one sentence does. Details go in the PR or the docs, not in the reply.
 
 ## 1. WHAT THIS REPO IS
-This repo packages PILOT — a 5-phase ticket-process framework — for reuse across
-projects, as a **plain repo consuming projects clone and copy from**, not a Claude Code
-plugin. A plugin was tried first, but plugin installation turned out to be local to
-whichever machine/container runs it (a Codespace, a local CLI) and never reached Claude
-Code on the web or the mobile app, so the distribution model here is deliberately just
-"clone this repo, copy its `.claude/skills/`/`.claude/agents/` into your project's own
-`.claude/`" — same paths on both sides, the same mechanism as any other project-local
-skill, which works identically on every surface. This repo is not itself an application,
-but it has a vision: the process and the tools it gives its users (maintainers of
-the projects that copy it, the humans driving a phase, the agents running one), in the `Vision`
-entry of its wiki (`wiki/product/vision.md`). The PM and designer personas read it first.
+This repo packages PILOT — a set of **workflows** where the human decides (through documents in a formatted intermediate language), agents execute and code checks —
+for reuse across projects, as a **plain repo consuming projects clone and copy from**, not a Claude Code plugin. A plugin was tried first, but plugin installation turned out
+to be local to whichever machine/container runs it and never reached Claude Code on the web or the mobile app, so the distribution model is deliberately "clone this repo,
+copy its `.claude/skills/`/`.claude/agents/` into your project's own `.claude/`" — the same mechanism as any other project-local skill, identical on every surface. This repo is
+not itself an application, but it has a vision (`wiki/product/vision.md`, read first by the PM and designer personas).
 
-The canonical, always-up-to-date spec for the process this repo implements lives at
-`assets/docs/pilot-process.md`. Read it before changing any skill, agent, or label —
-those files must never drift from what it describes. It is genericized on purpose (no
-references to any one consuming project); when porting a change from a project that
-forked PILOT, strip project-specific details the same way.
+The canonical spec of what every workflow shares is `assets/docs/pilot-process.md`: where objects live, statuses and flags, the run, claim and resume, isolation, events, modules.
+Read it before changing a skill, an agent, a label or `scripts/pilot.py`; those files must never drift from it. It is genericized on purpose (no reference to a consuming project).
 
-At runtime, a phase skill reads up to three layers, not just its own file:
-`pilot-process.md` for the generic mechanics every phase shares (labels, claim protocol,
-pair/`--auto`), whichever `pilot-link-<topic>.md` doc(s) it's named in for coordinating
-with the specific other skills/agents it hands off to or reads from, and its own
-`SKILL.md` for its own orchestration mechanics. §3 below ("Three tiers") is the mirror
-image of this for writing new content — decide the tier, then add it to the matching
-layer instead of the file you happen to already be editing.
-
-The actual judgment work happens in an isolated `Agent` call to one of the seven personas
-(`.claude/agents/pilot-*.md`). Each of those carries only that persona's stable
-identity — never any duty's specific instructions, even for a persona with several
-duties (the architect formalizes, scopes, *and* reviews). What to actually do arrives in
-the prompt: the calling skill reads the matching `assets/docs/pilot-task-<duty>.md` and
-passes its content as part of the `Agent` call, so a persona never carries — or loads —
-instructions for a duty it isn't performing right now. §3 below ("Task docs") covers
-when new persona-facing content belongs in one of these instead of the persona file
-itself.
+A workflow is data: `assets/workflows/<id>.json` (steps, kinds, personas, task docs, checks, judges, where a failure goes, a contract of statuses). Its skill runs it as
+`assets/docs/pilot-link-runner.md` says: `pilot.py` serves one step at a time, an agent call gets only its persona, its task doc, `pilot-link-agent-contract.md` and the typed documents
+of the step, and `pilot.py run advance` decides the next step from the data. The formats of the documents the checks validate are `assets/formats.json`.
 
 ## 2. STRUCTURE
-- `.pilot/`, `.github/`, `wiki/`, `architecture/` — this repo runs PILOT on itself (`/pilot-init`, `workflow.profile`
-  `lean`, modules `dashboard`, `wiki`, `architecture`). `.pilot/` and `.github/workflows/pilot-status-on-merge.yml` are
-  verbatim copies of `assets/docs/`, `scripts/pilot.py` and `assets/github/`, PILOT-owned like in any project: never edited
-  here, synced from the published `main` by `/pilot-update`, so they lag a change until it is merged and synced. The
-  sources stay `assets/docs/`, `scripts/` and `.claude/`; `scripts/test_pilot.py` runs from an empty directory so the
-  repo's own `.pilot/state.json` never changes what it sees.
-- `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a
-  consuming project's `.claude/skills/<name>/SKILL.md` by `/pilot-init` (and kept in
-  sync by `/pilot-update`) — same path on both sides. All fifteen carry the `pilot-`
-  prefix a project-local skill needs to avoid colliding with the project's own — there's
-  no plugin namespace to rely on instead. `pilot-init`,
-  `pilot-update`, `pilot-dashboard` are this repo's own bootstrap/maintenance commands
-  (`pilot-dashboard` publishes the project's dashboard artifact from a template, below; `pilot-design` and `pilot-proto` are project commands, not phases — they write the design system and the prototypes the dashboard's "Design" and "Prototypes" tabs show; `pilot-flow` is one too — it tests a wiki user flow as user personas in a browser, on demand, claiming no ticket, with `pilot-qa` as its agent, and drafts, revises or retires a persona or a flow with a human (`--new`, `--edit`, `--deprecate`; the dashboard's Wiki tab launches both and shows a flow's last run from the `flowRuns` documents `pilot.py flow doc` builds); `pilot-wiki` is one too — it answers from, checks, corrects (`--edit`), removes (`--remove`) and bootstraps the project's wiki, see `docs/wiki-design.md`; so is `pilot-architecture` — the architecture module's skill (`architecture/`: overview, guidelines, reference, ADR; question, `--guideline`, `--adr`, `--edit`, `--remove`, `--accept`, `--verify`, `--bootstrap`, `--scaffold`, `--lint`), which replaced the one-time `pilot-init-archi` in v3, see `docs/modules-design.md`); `pilot-discovery`,
-  `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa` are the five PILOT
-  phases (`pilot-spec` covers splitting a story into dev-sized tasks and writing each
-  one's technical spec, in one continuous pass); `pilot-auto` is a dispatcher over the
-  three auto-capable phase sweeps (review, dev, spec) — not itself a phase, adds nothing
-  to `pilot-process.md`'s state
-  machine (see that skill's own file for its mechanics); `pilot-help` is a read-only
-  discovery layer over all of the above plus the seven agents below (lists the commands,
-  explains one command/flag/agent in detail, turns a described goal into the exact
-  command to run, or names which persona is responsible for a kind of judgment) — never
-  claims a ticket or invokes another skill/agent itself.
-- `.claude/agents/<name>.md` — the seven personas (`pilot-pm`, `pilot-architect`,
-  `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`) the phase skills delegate to via
-  the `Agent` tool, copied into a consuming project's `.claude/agents/` the same way.
-  Each file carries only that persona's identity (who it is, what judgment it brings) —
-  never a duty's mechanics, even for a persona with several duties. Duty instructions
-  live in `assets/docs/pilot-task-<duty>.md` instead (below), injected into the `Agent`
-  call's prompt by whichever skill owns that duty.
-- `assets/docs/pilot-process.md` — canonical process spec, copied verbatim into a
-  consuming project as `.pilot/pilot-process.md` by `/pilot-init` and re-synced by
-  `/pilot-update`. Contains only what a skill or agent needs to operate — no purely
-  illustrative material (a diagram, a worked example) belongs here.
-- `assets/docs/pilot-process-companion.md` — a purely human-facing companion to the above
-  (currently a sequence diagram), synced the same way, for a human getting oriented; no
-  skill or agent reads it. Anything added to help a human understand the process, rather
-  than something a skill/agent needs to run it, goes here instead of bloating
-  `pilot-process.md`.
-- `assets/docs/pilot-link-<topic>.md` — a cross-skill link doc: operational like
-  `pilot-process.md` itself (a skill/agent reads it to run), but scoped to the specific
-  two-or-more skills/agents it names rather than all of them — the opposite of a
-  companion, which is human-only (only `pilot-help` reads it, for examples). Copied verbatim into a consuming
-  project as `.pilot/pilot-link-<topic>.md` the same way as `pilot-process.md`. Holds
-  content that connects a subset of skills (e.g. how phase 4's reviewers and phase 3's
-  reclaim need to agree on something) — see §3 below for when content belongs here
-  instead of `pilot-process.md` or a single `SKILL.md`.
-- `assets/docs/pilot-task-<duty>.md` — one persona's instructions for one specific duty
-  (e.g. the architect scoping a story, vs. the architect reviewing a PR) — never read by
-  the persona itself via its own `Read`, but injected into the `Agent` call's prompt by
-  the one skill that owns that duty. Copied verbatim into a consuming project as
-  `.pilot/pilot-task-<duty>.md` the same way as `pilot-process.md`. This is what keeps
-  `.claude/agents/pilot-*.md` down to pure identity: a persona with several duties (the
-  architect, the PM, the tech lead) gets one task doc per duty, never all of them bundled
-  into the persona file where every invocation would load them regardless of relevance.
-- `assets/templates/*.tmpl` — doc skeletons `/pilot-init` renders with `{{PLACEHOLDER}}`
-  substitution. `pilot-intro-claude.md.tmpl` / `pilot-intro-readme.md.tmpl` and
-  `pilot-maintenance-claude.md.tmpl` are canonical marked-block contents (`PILOT:INTRO`,
-  `PILOT:MAINTENANCE`), as are `pilot-architecture-{claude,readme}.md.tmpl` and `pilot-commands-{claude,readme}.md.tmpl`
-  (`PILOT:ARCHITECTURE`, `PILOT:COMMANDS`: pointers to the `architecture` module that `/pilot-update` only replaces while a
-  project's block still holds the placeholder or an earlier pointer, never content the project wrote), embedded inside `CLAUDE.md.tmpl`/`README.md.tmpl` at init time
-  and re-synced by `/pilot-update` from those same files without touching the rest of
-  the consuming project's `CLAUDE.md`/`README.md`. **Any PILOT-specific sentence in
-  `CLAUDE.md.tmpl`/`README.md.tmpl` belongs inside a `PILOT:<name>` marker with a
-  matching canonical snippet here — never bare in the template** — that's what keeps a
-  consuming project's own prose free of content only PILOT can keep current (see
-  §3 below). `pilot-dashboard.html.tmpl` is different: the page `/pilot-dashboard`
-  renders (`{{PROJECT_NAME}}`, `{{REPO}}`, `{{PILOT_VERSION}}` — the `VERSION` file — and `{{DEPLOYED_AT}}`, the publication time, substituted only into the published copy so the recorded hash ignores it) and publishes as one private Artifact per
-  project; `/pilot-update` republishes it at the same address, so a page change ships
-  with a PILOT release and the project's data (snapshot, events) is kept. It
-  is checked by `scripts/test_dashboard.js` (renders it, loads it in headless Chromium with
-  stubbed `window.claude` capabilities; `node scripts/test_dashboard.js`, needs `playwright`):
-  change the page, change that test. **While developing the page, publish it to the demo
-  artifact "Cockpit pilot (démo)" (private, fake data from `scripts/demo_snapshot.py`; find it
-  with the `Artifact` tool's `list`), never to a real project's dashboard** — those are only
-  republished by `/pilot-update`, or when the human asks for it explicitly. The "i" page (Principes, Modes, Tickets, Connaissances, Cas particuliers, Modules, Agents, Steps) is how a user learns how PILOT works: when a phase, a module, a tab or a
-  command changes, update its texts (`HOW_PHASES`, `HOW_TABS`, the `vHow*` functions, `AGENTS`, `ROSTER`) in the same PR. Refresh the demo
-  data with `python3 scripts/demo_snapshot.py --dir DIR` and `ArtifactData` (`snapshots`
-  `Jonas-Eve__pilot`, `design` `Jonas-Eve__pilot`, `wiki` `Jonas-Eve__pilot` (`wiki.json`), `architecture` `Jonas-Eve__pilot` (`architecture.json`), plus the `events`/`protos`/`protoHtml` files it writes).
-- `scripts/lint_pilot.py` — maintainers' coherence linter, never copied into a project: doc references, orphan task/link
-  docs, persona duty lists, label vocabulary and `pilot.py` commands cited against `pilot.py`, quoted section titles that must exist in the doc they are cited from, counts written in words and the lists `pilot-help` spells out against what is installed, `argument-hint` flags, `PILOT:` markers in the templates, size of the LLM-read
-  files. Runs in CI with `test_lint_pilot.py` and `test_pilot.py` (`.github/workflows/lint-pilot.yml`); run it after any edit of the families §3's cross-reference check
-  names (`python3 scripts/lint_pilot.py`, tests: `python3 -m unittest scripts/test_lint_pilot.py`).
-- `.claude/settings.json` + `scripts/hooks/repo_hook.py` — maintainers' hooks, never copied into a project: refuse an edit of a
-  PILOT-owned copy (`.pilot/`, the synced workflow), run `lint_pilot.py` after an edit of a file it covers, handing its
-  errors back to the model, and refuse a PR creation (`create_pull_request`, `gh pr create`, or `gh api` POSTing to `repos/…/pulls`) while the diff touches what projects copy and no
-  maintainer review of that exact diff returned `VERDICT: PASS`. `docs/maintainer-review.md` is that review (coherence and
-  completeness, run by an isolated agent before the PR); it is read by no skill or agent of a project. What was measured about hooks, and why none ships to projects: `docs/hooks-findings.md`.
-- `scripts/setup-github-labels.sh` — idempotent GitHub label provisioning, run by both
-  `/pilot-init` and `/pilot-update`; also bumps the calling project's own
-  `.pilot/state.json` (`lastLabelsSyncAt`) itself when run from that project's root, if
-  the file already exists there.
+- `.pilot/`, `.github/`, `wiki/`, `architecture/` — this repo runs PILOT on itself (modules `dashboard`, `wiki`, `architecture`). `.pilot/` and `.github/workflows/pilot-status-on-merge.yml` are
+  verbatim copies of `scripts/pilot.py`, `scripts/pilot_checks.py`, `assets/`, PILOT-owned like in any project: never edited here, synced from the published `main` by `/pilot-update`, so they lag a change until it
+  is merged and synced. The sources stay `assets/`, `scripts/` and `.claude/`; `scripts/test_pilot.py` runs from an empty directory so the repo's own `.pilot/state.json` never changes what it sees.
+- `assets/workflows/*.json` — the eleven workflows, copied into a project as `.pilot/workflows/`. A workflow may `include` another's steps (the express runs the build's). `pilot.py workflow check` validates them.
+- `assets/formats.json` — the document formats the checks validate (copied as `.pilot/formats.json`).
+- `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a project's `.claude/skills/`; all fifteen carry the `pilot-` prefix a project-local skill needs. The six run workflows
+  `pilot-need`, `pilot-plan`, `pilot-build`, `pilot-accept`, `pilot-report`, `pilot-express`; the five module skills run an admin workflow and keep their other modes: `pilot-architecture` (technical frame),
+  `pilot-wiki` (functional frame), `pilot-design` (design system), `pilot-proto` (prototype), `pilot-flow` (personas and user flows); `pilot-init`, `pilot-update`, `pilot-dashboard`, `pilot-help` maintain and
+  explain the rest. `pilot-help` is read-only: it lists, explains, turns a goal into the exact command, or names the persona responsible.
+- `.claude/agents/<name>.md` — the seven personas (`pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`). Each carries only its identity; its duties are the task docs
+  the workflow data gives it (`python3 scripts/lint_pilot.py` checks that its list matches). A persona is lead (it understands the need), validator (another persona that receives the deliverable alone) or reviewer, by workflow.
+  The judge has no persona.
+- `assets/docs/pilot-process.md` — the generic spec (§1 of this file). `pilot-link-<topic>.md` — a doc read by two or more, not all, skills: `runner` (running any workflow), `agent-contract` (what an agent call
+  returns; injected whole into every agent call), `knowledge`, `wiki`, `architecture`, `dashboard`. `pilot-task-<duty>.md` — one persona's instructions for one duty, injected by the runner into the agent call; never read by the persona itself.
+- `assets/templates/*.tmpl` — doc skeletons `/pilot-init` renders. `pilot-intro-*`, `pilot-maintenance-claude`, `pilot-architecture-*`, `pilot-commands-*` are canonical marked-block contents (`PILOT:INTRO`, `PILOT:MAINTENANCE`,
+  `PILOT:ARCHITECTURE`, `PILOT:COMMANDS`) embedded in `CLAUDE.md.tmpl`/`README.md.tmpl` and re-synced by `/pilot-update` without touching the rest of the project's files. **Any PILOT-specific sentence in
+  `CLAUDE.md.tmpl`/`README.md.tmpl` belongs inside a `PILOT:<name>` marker with a matching canonical snippet — never bare in the template.** `pilot-dashboard.html.tmpl` is the page `/pilot-dashboard` renders and publishes as one
+  private Artifact per project; checked by `scripts/test_dashboard.js`. While developing the page, publish it to the demo artifact "Cockpit pilot (démo)" (fake data from `scripts/demo_snapshot.py`), never to a real project's dashboard.
+- `assets/github/` — the merge workflow (`pilot.py ticket merged` for a PR a human merges) and the PR template, copied into a project.
+- `scripts/pilot.py` + `scripts/pilot_checks.py` — PILOT's deterministic mechanics as a CLI, **the reference for them**, copied as `.pilot/pilot.py` and `.pilot/pilot_checks.py`. `pilot_checks.py` holds the code checks
+  of the workflows' `check` steps and the format validators. Commands: `workflow` (list, show, one step, check), `contract`, `pool`/`resolve`/`claim`/`set`/`flag`/`unflag`, `run` (start, show, note, advance, resume, end), `check`,
+  `judge`, `ticket` (create, close-forming, drop, merged), `derive`, `pr` (open, ci, merge), `labels` (sync, migrate), `config`, `doctor`, `module`, `snapshot`, `event`, `proto-pack`, `flow`, `wiki`, `arch`. Every command prints
+  one JSON object. Judgment never lives in it: which agent to call, what a document says. `pilot-process.md` keeps the contract; an exact condition is changed in the script and `scripts/test_pilot.py`
+  (`python3 -m unittest scripts/test_pilot.py`) first, then the contract text if it no longer matches.
+- `scripts/lint_pilot.py` — maintainers' coherence linter, never copied into a project: doc references, orphan docs, the workflow data against the files it names (task docs, personas, a skill per workflow), persona duty lists derived from the
+  workflows, label vocabulary and `pilot.py` commands cited against `pilot.py`, quoted section titles, counts in words, `argument-hint` flags, template markers, size of the LLM-read files. Runs in CI with `test_lint_pilot.py` and `test_pilot.py`
+  (`.github/workflows/lint-pilot.yml`); run it after any edit of the families §3's cross-reference check names.
+- `.claude/settings.json` + `scripts/hooks/repo_hook.py` — maintainers' hooks, never copied: refuse an edit of a PILOT-owned copy, run `lint_pilot.py` after an edit of a file it covers, and refuse a PR creation while the diff
+  touches what projects copy and no maintainer review of that exact diff returned `VERDICT: PASS` (`docs/maintainer-review.md`; why none ships to projects: `docs/hooks-findings.md`).
 
-- `scripts/pilot.py` — PILOT's deterministic ticket mechanics as a CLI, and **the
-  reference for them**: `pool` (pools, `can-resume`, exclusions, priority/blocks/age order; its `pick` already carries the `action` `resolve` would give, so a bare sweep needs no second call),
-  `resolve` (classify an explicitly-given ticket: claim, resume, reclaim, re-scope, descend
-  into an Epic, stop — and why), `claim` (assignee + status swap, re-read), `set`
-  (status/assignee/label transitions, `--close`), `flag`/`unflag` (`needs-human` with its
-  mandatory comment), `snapshot` (every open ticket as the dashboard's snapshot document, with each one's stage history and `needs-human` start read from its label events),
-  `contract` (each phase's contract — the statuses it consumes, claims into and produces, `CONTRACTS` in the script — and the check that they compose, no status without a producer or a consumer, `done`/`wont-do` apart; `set` warns, never refuses, on a transition no contract admits; `--profile P` gives a workflow profile's chain), `workflow` (`show`, `check`, `set`: the project's workflow profile, `workflow.profile` in `.pilot/state.json`, `standard` — the whole chain, what every project ran before — when absent; a profile drops phases and the statuses only they use, `check` verifies that every profile's chain composes, `show` also gives the profile's `rules` (human QA or not, the e2e task of a feature split or not, where a finished feature story goes, the default reviewers per type) that the skills, task docs and the `pilot-status-on-merge` workflow read instead of restating the chain, and `check` also verifies that those rules do not contradict themselves (the tech lead always reviews); `set` refuses a profile that is not `ready` (the skills, task docs and merge workflow do not follow it yet) or whose chain or rules do not hold together, and warns about the statuses it drops; `contract`, `set`'s transition warning and the phase gate of `pool`/`resolve`/`claim` follow the profile; the snapshot carries it, with its phases and rules, when the state declares one, and the dashboard shows only those phases; `show --ticket N` gives one ticket's route under that profile: its mode, reviewers and Spec rule; design in `docs/workflow-design.md`), `proto` (accept or reject a prototype, or check it is accepted before a Discovery starts from it), `proto-pack`
-  (check a prototype's mockup and split it into the cockpit's documents), `wiki`
-  (the project's wiki under `wiki/`, an OKF bundle: `index` (`--under`, `--depth 1` for one level), `search` (ranked, lexical, with an extract), `describe` (a folder's one sentence), `reindex`, `show` (with what an entry cites and what cites it), `status`, `lint` (size warnings never fail it), `snapshot` (the dashboard's Wiki tab document), `add`/`set`/`remove`, the only
-  writers of an entry's frontmatter and of the folder `index.md` files, and `migrate` — design in `docs/wiki-design.md`; used by `pilot-wiki` and, when the `wiki` module is enabled, by all five phases) and
-  `arch` (the architecture module's bundle under `architecture/` — `overview.md`, `guidelines/*.md`, `reference/<id>.md` (how the code is built today; `--verify` checks it, and the accepted guidelines and ADRs, against the code, a human arbitrating each divergence), `adr/NNNN-title.md`, `runbooks/<id>.md` (how to operate: read on demand, left out of `--active`) — on the same OKF engine and the same reading commands as `wiki` (`search`, `describe`, `index --depth 1`; `snapshot` (the dashboard's Architecture tab document), `index` — `--active` gives the one-row-per-entry list of what is in force that dev, spec and review prompts carry instead of the files —, `reindex`, `show`, `lint`, `add`, `set`, `remove`, plus `supersede NEW OLD` for ADRs, `next-number` and `inventory` (outlines of what a project already documents, for `--bootstrap`) (ADR numbers run across the whole bundle); `--app <name>` on `index`/`search` gives the transversal entries plus one app's, a monorepo keeping an app's own rules under `architecture/apps/<app>/`; no GitHub call); design in `docs/modules-design.md` §6) and `flow` (`doc`: the dashboard's `flowRuns` document of a run of a user flow, from the persona runs and the consolidation — hashes of the flow and of each persona that played, the worst result, the bugs; no GitHub call; refuses a run that played no step) and `doctor` (preflight each phase skill runs as its step 0, once per session: python, `gh api` reachable (never `gh auth status`: it can be wrong behind a token-swapping proxy),
-  repo access and push permission, the 32 PILOT labels, the `wiki/` and `architecture/` directories when those modules are on — `--no-wiki` lets `pilot-wiki` repair a missing one) and `module` (`list` — also the project's content `language`, English by default, which `wiki`/`arch` `lint` check entries against —, `enable`, `disable`: the optional modules of `.pilot/state.json` — `wiki`, `architecture`, `dashboard`, `design`, `proto` — with the prerequisites each declares; the snapshot document carries them so the dashboard's tabs follow). Every command prints one JSON
-  object; `claim`/`set`/`flag`/`unflag` also return the `event`
-  the phase skills push to the dashboard (`pilot-link-dashboard.md`), and `event` builds one
-  for a ticket a skill changed itself (Discovery, the tasks Spec creates). Judgment (which agent
-  to call, what a spec or review says, pair dialogue) never lives in it. Copied verbatim into
-  a consuming project as `.pilot/pilot.py` by `/pilot-init` and re-synced by `/pilot-update`;
-  `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa` run it for their step-1 ticket
-  resolution, step-2 claim and mechanical status transitions, and stop with a report if it is
-  missing or fails (no by-hand fallback). `pilot-process.md` §3-§4 keeps only the contract
-  and the agent-facing semantics (labels' meaning, what to read when resuming, the
-  "Depends on #N" format writers must follow); an exact condition (what makes a ticket
-  claimable, how the pool is ordered, how the dependency gate reads) is changed in the
-  script and `scripts/test_pilot.py` (offline tests, `python3 -m unittest
-  scripts/test_pilot.py`) first, then the contract text if it no longer matches.
-
-Within a skill file, reference this repo's own assets via a fresh clone of
-`https://github.com/Jonas-Eve/pilot` into a scratch directory (called `$PILOT_SRC` in
-the skill files) — never a fixed path, there is no installed location.
+Within a skill file, reference this repo's own assets via a fresh clone of `https://github.com/Jonas-Eve/pilot` into a scratch directory (`$PILOT_SRC`) — never a fixed path.
 
 ## 3. CHANGE DISCIPLINE
-- **Deterministic first — code over prose:** whatever can be decided by code (a script, a test, a linter, a hook) is, and the
-  prose that explained it leaves the LLM-read files; it lightens the context and removes a source of drift. A rule written in a
-  `SKILL.md` or task doc that a command could compute or check is a candidate to move: into `scripts/pilot.py` (and its tests)
-  for ticket mechanics, into `scripts/lint_pilot.py` for this repo's coherence, into this repo's own hooks (`.claude/settings.json`) for a constraint on what the model
-  does while working here (`docs/hooks-findings.md`: a hook cannot be shipped to projects cleanly). Prose keeps only judgment. The test of a new rule: could a check fail on it? Then write the check.
-- **Mechanism vs. wording:** the phase names, label taxonomy, claim protocol, and
-  skill-to-agent mapping in `assets/docs/pilot-process.md` are the actual product. Don't
-  change them casually; a mechanism change here affects every project that has copied
-  from this repo, not just one.
-- **Token discipline — LLM-read files stay essential-only:** `.claude/skills/*/SKILL.md`,
-  `.claude/agents/*.md`, `assets/docs/pilot-process.md`, every `pilot-link-*.md`, and
-  every `pilot-task-*.md` load into an agent's context on every run they take part in —
-  keep them to only what a skill or agent needs to operate correctly. No meta-commentary,
-  platform-quirk explanations, maintainer rationale, or
-  historical notes about why something is the way it is. If something is worth writing down
-  for a human but doesn't change what an agent does, it belongs in a doc no skill or agent
-  reads instead, never padded into the file an LLM actually loads — `assets/docs/pilot-process-companion.md`
-  is the existing example for `pilot-process.md` (§2), but nothing requires reusing it or any
-  other existing doc: pick whichever already-existing human-only doc actually fits the
-  information, or create a new one next to the skill/agent/doc it explains, whichever the
-  content itself calls for. Renaming or retiring one of these human-only docs is a rename
-  like any other — `/pilot-update` must actually delete the old file in an already-initialized
-  project, not just add the new one (see its own `SKILL.md`).
-- **Three tiers, not two — generic, link, or single-skill:** before adding anything
-  anywhere, decide which of three tiers it actually belongs to. Generic — genuinely needed
-  by *every* phase skill/agent (the label taxonomy, claim protocol, state-machine
-  transitions, the pair/`--auto` contract) — goes in `pilot-process.md`, and only there.
-  Link — needed by *two or more but not all* skills/agents to coordinate with each other
-  (e.g. how phase 4's submitted review and phase 3's reclaim must read the same tags) —
-  goes in its own `assets/docs/pilot-link-<topic>.md` (§2), never bloating
-  `pilot-process.md` with something most phases never read. Single-skill — everything else,
-  including how one specific phase claims, what it does mid-run, and how it wraps up, even
-  when that phase is the one you're currently changing — stays in that skill's own
-  `SKILL.md`, never promoted up a tier just because it's the thing you're focused on right
-  now. `grep` for which other files would actually need to cite it (the check below
-  already asks you to grep after editing — run it *before* deciding where new content
-  goes, not just after): zero others → single-skill; some but not all → a link doc; all
-  five phases → `pilot-process.md`. Tool names and API-call-level detail belong in the
-  owning `SKILL.md` regardless of tier, never in `pilot-process.md` or a link doc.
-- **A phase documents only its contract:** where it comes from, what it does, where it goes — the
-  statuses and artifacts it consumes and produces, never the phases around it and never the whole chain
-  (`pilot.py contract <phase>`). What links two phases is a link doc; the vocabulary and the cross-cutting flags every phase
-  shares are the only content of `pilot-process.md`; what `scripts/pilot.py` decides is stated there as a contract, not
-  restated. A paragraph that describes a neighbouring phase or the chain is the signal that it is in the wrong place.
-- **A link doc's own content must be identical across every consumer, not just topically
-  adjacent:** the test is whether every consuming duty reads the *exact same text*, not
-  whether the topic is related. A per-duty delta that only one duty ever reads stays in
-  that duty's own task doc, even sitting right next to genuinely shared content on the
-  same subject — promoting it into the link doc "for tidy organization" smuggles
-  single-skill content back into the link tier the rule above already excludes it from.
-  (Caught mid-edit once: `pilot-link-bug-tickets.md`'s classify/originate mechanic is
-  genuinely identical across phase 2/3/5, but each phase's own unclaiming delta, drafted
-  right next to it, was actually read by only one of the three — moved back to that
-  phase's own task doc.)
-- **Inject a link doc whole, never by asking a skill to pick sections per caller:** when a
-  `SKILL.md` passes a link doc's content into an `Agent` call, pass the entire file rather
-  than an instruction like "only section X, not Y" — that kind of selective-extraction
-  instruction is fragile and has already caused a real bug: `pilot-link-review-consensus.md`'s
-  orchestration-only "Reviewer set" section got passed into every reviewer's context
-  anyway, because "pass the content already read" never actually said to leave part of it
-  out. Needing both always-shared content and something only one duty reads is the
-  previous bullet's case — move the single-duty part into that duty's task doc — not a
-  reason to keep both in the link doc behind a selective read.
-- **Persona files carry only identity; duty instructions are task docs:** this tiering
-  decides where a *skill's own* content goes — a persona's content is a different split
-  again. `.claude/agents/pilot-*.md` holds only the stable trait every one of that
-  persona's duties shares (what kind of judgment it brings); it's loaded in full on
-  *every* invocation of that persona, so anything specific to one duty (how to scope,
-  how to review, how to write a spec) never belongs there, even for a persona with only
-  one duty today — put it in `assets/docs/pilot-task-<duty>.md` instead (§2), read and
-  injected into the `Agent` call's prompt by the one skill that owns that duty. Adding a
-  new duty to an existing persona (a new phase that also calls the architect, say) means
-  a new task doc, a new citation in the calling skill, and a new entry in the persona
-  file's own duties list (below) — never a new section appended to the persona file
-  itself.
-- **A task doc never assumes this invocation remembers an earlier one:** each `Agent` call
-  is its own isolated context (`assets/docs/pilot-process.md` §5) — even a persona
-  reviewing a ticket it scoped earlier isn't guaranteed to be the same run, or even the
-  same architect/PM/tech lead. A task doc phrased as "the decisions you recorded" or "what
-  you specified" assumes false continuity — beyond being inaccurate, it risks a reviewer
-  applying less rigor to work it's told is its own; write it as reading the project's own
-  recorded output instead ("the recorded decisions", "the ticket's own spec"). This is a
-  trait of the *persona*, not any one duty, so it belongs once in the identity file (see
-  the architect/PM/tech lead's own "every duty below runs..." paragraph) — never restated,
-  or risked, per task doc.
-- **Keep a persona's judgment consistent across its split files:** splitting a
-  multi-duty persona into an identity plus several task docs removes the "same file,
-  scroll up to see the other duty" safety net that used to make an accidental
-  contradiction between duties easy to spot. Nothing greppable catches a *judgment*
-  drift (the same heuristic phrased subtly differently in two task docs) the way the
-  check below catches a renamed term, so each `.claude/agents/pilot-*.md` ends with a
-  one-line list of its own task doc(s) precisely so this stays checkable by hand: when
-  editing that identity or any one of its task docs, skim the others in the list too for
-  a principle that should apply everywhere but doesn't yet, or was rephrased
-  inconsistently. Keep that list itself in sync with the previous bullet's rule.
-- **Cross-reference check:** `assets/docs/pilot-process.md`, every `assets/docs/pilot-link-*.md`,
-  `pilot-process-*.md`, and `pilot-task-*.md`, every `.claude/skills/*/SKILL.md`, every
-  `.claude/agents/pilot-*.md`, and the PILOT mentions in this file and `README.md` are
-  tightly cross-referenced. After editing any of them, `grep` the exact term(s) you
-  changed (a renamed label, a moved section heading, a link/task doc's filename) across
-  that whole family and fix what turns up, rather than re-reading every file end to end.
-- **Coherence and convention check — a term grep alone doesn't catch this:** before
-  considering a mechanism change done, do a second pass a `grep` can't: walk the actual
-  state combinations the change touches (a ticket that's assigned-but-unlabeled,
-  cleared-but-never-set, both flags at once) and confirm each one is handled somewhere,
-  not only the common case — an internal contradiction (two sections implying opposite
-  rules for the same shape) reads fine word by word and only shows up this way. Walk this
-  against the *whole* file the change lands in, not just the new content checked against
-  itself — a rule stated elsewhere, written long before this change existed, can conflict
-  with what you just added exactly as easily as two new sections can conflict with each
-  other, and it's the one direction "does my new stuff hang together" naturally skips.
-  Then re-run the "Three tiers" test above against what the change actually turned into,
-  not what it was meant to be — a paragraph can read generic and still be single-skill
-  content that drifted into `pilot-process.md` because that file was already open.
-  (This is exactly how `can-resume` replaced a thread-history check: two existing
-  sections described the same ticket shape — assigned, in-progress, no `needs-human` —
-  with opposite pool membership, caught only by tracing the state space, not by grepping
-  a term. And how `pilot-auto`'s `--next` was caught missing a stopping condition:
-  its own three conditions were checked against every ticket status shape, but not
-  against a rule stated earlier in the same file — "if a target skill's own resolution
-  decides a given ticket looks orphaned... relay that and stop" — a fourth real
-  condition the new list never mentioned because it predated `--next` and nothing
-  prompted a re-read of it.)
-- **Renaming or removing a skill/agent:** `/pilot-update` handles this by diffing a
-  project's locally-copied skills/agents against this repo's current `.claude/skills/`/
-  `.claude/agents/` and flagging anything that no longer matches anything upstream as
-  orphaned (see `.claude/skills/pilot-update/SKILL.md`) — there's no separate
-  version/rename log to maintain here, just keep this repo's own `.claude/skills/`/
-  `.claude/agents/` accurate and `/pilot-update` will reconcile a project's copy against
-  it next time it runs.
-- **PILOT never leaves unmarked content in a hybrid file:** `CLAUDE.md`/`README.md` in a
-  consuming project are otherwise project-owned, so any sentence only PILOT can keep
-  accurate (a command name, a file path under its control) must live inside a
-  `<!-- PILOT:<name>:START -->`/`END` marker with a matching canonical snippet in
-  `assets/templates/`, never as bare prose in `CLAUDE.md.tmpl`/`README.md.tmpl` — a bare
-  mention there goes stale the moment something renames and `/pilot-update` has no marker
-  telling it where to fix it. A project's own files that happen to reference a PILOT
-  command by choice (a PR template, an unrelated skill) are a different case — that's the
-  project's own doc-maintenance burden, not a gap in this rule.
+- **Deterministic first — code over prose:** whatever can be decided by code (a script, a check, a test, a linter, a hook) is, and the prose that explained it leaves the LLM-read files. A rule written in a `SKILL.md` or task doc that a
+  command could compute or check is a candidate to move: into `scripts/pilot.py`/`pilot_checks.py` (and tests) for ticket and document mechanics, into `lint_pilot.py` for this repo's coherence, into this repo's hooks for a constraint
+  on what the model does here. Prose keeps only judgment. A judge asks only what no code check can. The test of a new rule: could a check fail on it? Then write the check.
+- **Mechanism vs. wording:** the workflow data, the statuses and labels, the claim protocol and the formats are the actual product. A mechanism change affects every project that copied from this repo: don't change it casually.
+- **No duplication, token discipline:** every fact lives once. `.claude/skills/*/SKILL.md`, `.claude/agents/*.md` and every `assets/docs/pilot-*.md` load into an agent's context on every run they take part in — keep them essential-only:
+  no meta-commentary, platform-quirk explanations, maintainer rationale or history. What only a human needs goes in a doc no skill or agent reads (this file, `docs/`). `workflow show --step` serves one step; never make an agent read a whole workflow.
+- **Three tiers — generic, link, or single-skill:** generic — needed by every workflow (where objects live, statuses, claim, isolation) — goes in `pilot-process.md` only. Link — needed by two or more but not all skills/agents — goes in its own
+  `pilot-link-<topic>.md`. Single-skill — everything else — stays in that skill's `SKILL.md`. Tool names and API-call detail belong in the owning `SKILL.md` regardless of tier. `grep` which other files would need to cite new content *before* deciding where it goes.
+- **A workflow documents only its contract:** where it comes from, what it does, where it goes — the statuses and artifacts it consumes and produces (`pilot.py contract <workflow>`), never the workflows around it. What links two workflows is a link doc or a
+  status. A link doc's content is identical for every consumer; a per-duty delta stays in that duty's task doc. Inject a link doc whole into an `Agent` call, never "only section X".
+- **Persona files carry identity only; duties are task docs:** `.claude/agents/pilot-*.md` holds the stable trait every duty of the persona shares and ends with the list of its task docs (derived from the workflow data and checked by the linter).
+  A new duty is a task doc, a `task` on a workflow step, and nothing in the persona file but that list. A task doc never assumes this invocation remembers an earlier one: write "the recorded decisions", never "the decisions you recorded" —
+  that is a trait of the persona and lives once in the identity file. When editing a persona or one of its task docs, skim the others for a principle that should apply everywhere.
+- **Cross-reference check:** `assets/docs/pilot-process.md`, every `pilot-link-*.md` and `pilot-task-*.md`, every `SKILL.md`, every agent file, `assets/workflows/*.json`, `assets/formats.json` and the PILOT mentions in this file and `README.md` are tightly
+  cross-referenced. After editing any, run `python3 scripts/lint_pilot.py` and `grep` the exact term you changed across the family.
+- **Coherence check beyond the grep:** before calling a mechanism change done, walk the state combinations it touches (a ticket assigned but unlabeled, a run waiting while its issue is flagged, both flags at once) and confirm each is handled,
+  against the *whole* file the change lands in, not only the new content. Then re-run the three-tiers test on what the change turned into.
+- **Renaming or removing a skill, agent or doc:** `/pilot-update` diffs a project's copies against this repo and deletes what no longer exists upstream — keep `.claude/` and `assets/` accurate and it reconciles.
+- **PILOT never leaves unmarked content in a hybrid file:** a sentence only PILOT can keep accurate (a command name, a path under its control) lives inside a `<!-- PILOT:<name>:START -->`/`END` marker with a canonical snippet in `assets/templates/`.
 
 ## 4. GIT WORKFLOW
 - **Version Every Change Projects Would Copy (`VERSION`, SemVer):** `VERSION` holds PILOT's

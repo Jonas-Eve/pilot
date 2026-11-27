@@ -1,15 +1,14 @@
-Ticket work (functional or purely technical) goes through **PILOT**, a lightweight agent
-process — `discovery` → `spec` → `dev` → `review` — each its
-own isolated, low-token agent context instead of one accumulating one, plus a fifth phase, human QA (skipped by the lean workflow profile), for every `type:feature` story once every task (including its
-automated end-to-end test) has merged. Its skills
-(`.claude/skills/pilot-*`) and agent personas (`.claude/agents/pilot-*.md`) are copied
-into this repo from the `pilot` distribution repo (github.com/Jonas-Eve/pilot) rather
-than written here from scratch: the phase skills are invoked as `/pilot-discovery`,
-`/pilot-spec`, `/pilot-dev`, `/pilot-review`, `/pilot-qa` — driven one
-phase at a time, there's no single command that runs the whole pipeline end to end.
-`.pilot/pilot-process.md` in this repo is a verbatim copy of that repo's canonical spec —
-the state machine, labels, and claim protocol — kept in sync by `/pilot-update`, never
-hand-edited here. Read it before creating or moving a ticket through any phase.
+Work (functional or purely technical) goes through **PILOT**, a lightweight agent process: each piece of
+work is a **workflow**, a data-defined sequence of steps (`python3 .pilot/pilot.py workflow list`, then
+`workflow show <id>`), run by a skill in isolated, low-token agent contexts instead of one accumulating one.
+The run skills are `/pilot-need` (a request becomes wiki criteria and a story), `/pilot-plan` (a story
+becomes ADRs and buildable tickets), `/pilot-build` (a ticket becomes a merged PR), `/pilot-accept` (the Recette
+on the deployed main), `/pilot-report` (an abnormal behavior is qualified and routed) and `/pilot-express`
+(a simplified path for accounts allowed it). Each is driven on its own; no single command runs them all.
+Its skills (`.claude/skills/pilot-*`) and agent personas (`.claude/agents/pilot-*.md`) are copied into this
+repo from the `pilot` distribution repo (github.com/Jonas-Eve/pilot), not written here. `.pilot/pilot-process.md`
+and `.pilot/pilot-link-runner.md` are verbatim copies of its canonical spec (vocabulary, labels, how a workflow
+runs), kept in sync by `/pilot-update`, never hand-edited here. Read them before creating or moving a ticket.
 
 When the project's `wiki` module is enabled (`.pilot/state.json`), `wiki/` is the source of truth for what the
 product does and what is promised: read it (`/pilot-wiki <question>`, or `python3 .pilot/pilot.py wiki index --depth 1` then `wiki search`)

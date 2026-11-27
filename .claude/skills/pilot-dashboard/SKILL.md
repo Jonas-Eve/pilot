@@ -1,14 +1,14 @@
 ---
 name: pilot-dashboard
-description: "Publishes or updates the project's PILOT dashboard: one private Claude Artifact with its own data — tickets by phase, each role's queue, the workflow of the tickets with the time spent in each stage, the Design and Prototypes tabs (untouched by --refresh) and, when those modules are on, read-only Wiki and Architecture tabs. Renders the project's name and repo into the template, publishes it, records dashboardUrl in .pilot/state.json and seeds the ticket snapshot; run again to republish at the same address with the data kept (/pilot-update runs it with --refresh); --refresh re-reads tickets, wiki and architecture and prunes obsolete events. Run only when asked: it publishes a page. Needs the Artifact tool."
+description: "Publishes or updates the project's PILOT dashboard: one private Claude Artifact with its own data — tickets by status, each role's queue, the workflow runs of the tickets with the time spent in each stage, the Design and Prototypes tabs (untouched by --refresh) and, when those modules are on, read-only Wiki and Architecture tabs. Renders the project's name and repo into the template, publishes it, records dashboardUrl in .pilot/state.json and seeds the ticket snapshot; run again to republish at the same address with the data kept (/pilot-update runs it with --refresh); --refresh re-reads tickets, wiki and architecture and prunes obsolete events. Run only when asked: it publishes a page. Needs the Artifact tool."
 argument-hint: "[--refresh]"
 disable-model-invocation: true
 ---
 
 # PILOT dashboard — `pilot-dashboard`
 
-Not one of the five phases. One private Artifact per project; `.pilot/state.json` holds its
-address. The phase skills push live events to it (`.pilot/pilot-link-dashboard.md`).
+One private Artifact per project; `.pilot/state.json` holds its
+address. The workflow runs push live events to it (`.pilot/pilot-link-dashboard.md`).
 
 ## Source
 

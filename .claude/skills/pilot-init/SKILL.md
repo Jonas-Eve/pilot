@@ -1,168 +1,97 @@
 ---
 name: pilot-init
-description: "One-time bootstrap of a project adopting PILOT: asks for the project name and a short functional vision, copies the skills, agents and canonical docs from github.com/Jonas-Eve/pilot, renders CLAUDE.md and README.md from templates, creates the wiki Vision entry when the wiki module is on, adds a default pull request template if none exists, provisions the GitHub labels, and enables the optional modules asked for (wiki, architecture, dashboard, design, proto) with the content language. Refuses to run twice. Use to start using PILOT in a project that has not run it."
+description: "One-time bootstrap of a project adopting PILOT: asks for the project name, a short functional vision and the project's own commands, copies the skills, agents, workflows and canonical docs from github.com/Jonas-Eve/pilot, renders CLAUDE.md and README.md from templates, creates the wiki Vision entry when the wiki module is on, adds a default pull request template if none exists, provisions the GitHub labels, and enables the optional modules asked for (wiki, architecture, dashboard, design, proto) with the content language. Refuses to run twice. Use to start using PILOT in a project that has not run it."
 argument-hint: "[project name] [functional vision] [--modules wiki,architecture,dashboard,design,proto | --no-modules] [--language en|fr|…]"
 disable-model-invocation: true
 ---
 
 # PILOT bootstrap — `pilot-init`
 
-This is not one of the five PILOT phases — it's the one-time setup that makes the rest
-of PILOT usable in a project. For bootstrapping into a brand-new project where this
-skill isn't available yet, see `README.md`'s "Installing in a project" section.
+The one-time setup that makes the rest of PILOT usable in a project. Where this skill is not
+available yet, see `README.md`'s "Installing in a project".
 
-## Get a fresh copy of the source repo
+## Source
 
-Every step below that copies or reads PILOT's own content does so from a fresh clone of
-`https://github.com/Jonas-Eve/pilot`, not a fixed installed location (PILOT has no
-plugin/installer). Clone it once at the start into a scratch directory (e.g. `mktemp -d`,
-or this session's own scratch directory if it has one) — call that path `$PILOT_SRC` —
-and reuse the same clone for every step; don't re-clone per step.
+Clone `https://github.com/Jonas-Eve/pilot` once into a scratch directory (`mktemp -d`, or this
+session's scratch directory) — call it `$PILOT_SRC` — and use that clone for every step.
 
 ## State marker
 
-This skill's idempotency is tracked in `.pilot/state.json` at the project root:
+`.pilot/state.json` at the project root:
 
 ```json
 {
   "pilotInitialized": true,
   "pilotInitializedAt": "<ISO8601>",
-  "pilotVersion": "<MAJOR.MINOR.PATCH, from $PILOT_SRC/VERSION>",
+  "pilotVersion": "<$PILOT_SRC/VERSION>",
   "projectName": "<name>",
+  "repo": "<owner>/<repo>",
   "language": "en",
   "modules": {"wiki": <bool>, "architecture": <bool>, "dashboard": <bool>, "design": <bool>, "proto": <bool>},
-  "lastProcessDocSyncAt": "<ISO8601>",
-  "lastLabelsSyncAt": "<ISO8601>",
-  "lastIntroSyncAt": "<ISO8601>",
-  "lastSkillsSyncAt": "<ISO8601>"
+  "commands": {},
+  "lastLabelsSyncAt": "<ISO8601>"
 }
 ```
 
-`/pilot-dashboard` later adds `dashboardUrl`, `dashboardHash` and `dashboardSyncedAt` (the
-project's dashboard artifact); `pilot-init` never writes them.
-
-`lastIntroSyncAt` covers every marked block (`PILOT:INTRO`, `PILOT:MAINTENANCE`, and any
-later one) — the name predates `PILOT:MAINTENANCE`, but the field wasn't split since both
-are always diffed and stamped together. `lastSkillsSyncAt` is when
-`.claude/skills/`/`.claude/agents/` were last copied in from `$PILOT_SRC` —
-see `.claude/skills/pilot-update/SKILL.md`.
+`commands`, `threshold`, `language`, `projectName` and `dashboardUrl` are written with
+`python3 .pilot/pilot.py config set <key> <value>`; `/pilot-dashboard` adds `dashboardUrl`,
+`dashboardHash` and `dashboardSyncedAt`.
 
 ## Steps
 
-1. **Check for a prior run.** Read `.pilot/state.json`. If it exists and
-   `pilotInitialized` is `true`, **stop here** and report, verbatim in substance:
-   > PILOT is already initialized for this project ("<projectName>", on
-   > <pilotInitializedAt>). Nothing to do — `pilot-init` only runs once. To pick up
-   > PILOT's own file updates, use `/pilot-update`. To change the vision,
-   > edit the `Vision` entry of the wiki.
-   Do not write, overwrite, or re-run anything else in that case.
+1. **Prior run.** If `.pilot/state.json` exists with `pilotInitialized: true`, stop and report:
+   PILOT is already initialized ("<projectName>", <pilotInitializedAt>); `/pilot-update` picks up
+   PILOT's own changes; the vision is the wiki's `Vision` entry. Write nothing.
 
-2. **Gather inputs.** Take the project name and functional vision from the arguments if
-   given; otherwise ask the human. The functional vision should be a short paragraph
-   (2-5 sentences) — enough to seed the one-line summary atop `CLAUDE.md`/`README.md` and, with
-   the `wiki` module on, the wiki's `Vision` entry (step 9b), not a full spec.
-   Also decide the optional **modules** (`.pilot/pilot-process.md` §8): `wiki` (the project's functional wiki), `architecture` (its apps, technical guidelines and decisions),
-   `dashboard` (the team page), `design` and `proto` (the design system and prototypes, which need `dashboard`).
-   `--modules <list>` or `--no-modules` if given, otherwise ask the human which to enable (recommending `wiki` and
-   `dashboard` for a project with a product to describe); a module whose prerequisite is missing brings it along.
-   Every module can be turned on later, by its own skill. Also the **language** of the wiki and architecture text (`--language <code>`, e.g. `fr`; English by default, written to `language`);
-   the framework itself stays English.
+2. **Inputs.** Project name and functional vision (2-5 sentences) from the arguments, else ask.
+   **Modules** (`.pilot/pilot-process.md` §7): `wiki`, `architecture`, `dashboard`, `design` and `proto`
+   (the last two need `dashboard`); `--modules`/`--no-modules`, else ask (recommend `wiki` and `dashboard`
+   for a project with a product to describe); a module whose prerequisite is missing brings it along.
+   **Language** of wiki and architecture text (`--language`, English by default).
+   **The project's commands** the code checks read: `test`, `rules`, `e2e`, `build`, `a11y`, `render`,
+   `version` — ask once for those it has, leave the others unset. Optionally the read-size `threshold`
+   above which a story is split.
 
-3. **Check for pre-existing root docs.** If `CLAUDE.md` or `README.md`
-   already exist at the project root (retrofitting PILOT
-   onto existing work, not a brand-new empty repo), do **not** silently overwrite them.
-   Show the human a diff/summary of what the generated version would contain and ask
-   whether to overwrite, or skip that file and let them merge the PILOT-relevant sections
-   in by hand. Never guess silently either way.
+3. **Existing root docs.** If `CLAUDE.md` or `README.md` already exists, never overwrite silently: show what
+   would change and ask whether to overwrite or skip that file.
 
-4. **Copy the skills and agents.** Copy every directory under `$PILOT_SRC/.claude/skills/` to
-   `.claude/skills/` at the project root, and every file under `$PILOT_SRC/.claude/agents/` to
-   `.claude/agents/`, verbatim. All of it — including `pilot-init` and
-   `pilot-update` themselves — is PILOT-owned from here on: never hand-edit it in the
-   project; `/pilot-update` re-copies all of it from a fresh `$PILOT_SRC` clone.
+4. **Skills and agents.** Copy every directory of `$PILOT_SRC/.claude/skills/` to `.claude/skills/` and every
+   file of `$PILOT_SRC/.claude/agents/` to `.claude/agents/`, verbatim. PILOT-owned from here on, including
+   `pilot-init` and `pilot-update`: never hand-edited; `/pilot-update` re-copies them.
 
-5. **Render templates.** For each of
-   `$PILOT_SRC/assets/templates/CLAUDE.md.tmpl`,
-   and
-   `$PILOT_SRC/assets/templates/README.md.tmpl`, substitute
-   `{{PROJECT_NAME}}` and `{{FUNCTIONAL_VISION}}` with the gathered values,
-   `{{PILOT_INTRO_CLAUDE}}` / `{{PILOT_INTRO_README}}` with the verbatim contents of
-   `$PILOT_SRC/assets/templates/pilot-intro-claude.md.tmpl` /
-   `pilot-intro-readme.md.tmpl`, `{{PILOT_MAINTENANCE_CLAUDE}}` with the verbatim
-   contents of `$PILOT_SRC/assets/templates/pilot-maintenance-claude.md.tmpl`, and
-   `{{PILOT_ARCHITECTURE_CLAUDE}}`/`{{PILOT_ARCHITECTURE_README}}`/`{{PILOT_COMMANDS_CLAUDE}}`/`{{PILOT_COMMANDS_README}}` with the verbatim
-   contents of `pilot-architecture-claude.md.tmpl`/`pilot-architecture-readme.md.tmpl`/`pilot-commands-claude.md.tmpl`/`pilot-commands-readme.md.tmpl` (each
-   inside its own `<!-- PILOT:*:START -->`/`END` markers — keep those markers in the
-   output; `/pilot-update` looks for them later). Write the result to the
-   project root (`CLAUDE.md`, `README.md`), respecting
-   step 3's per-file decision.
+5. **Templates.** Render `$PILOT_SRC/assets/templates/CLAUDE.md.tmpl` and `README.md.tmpl`: `{{PROJECT_NAME}}`,
+   `{{FUNCTIONAL_VISION}}`, and each `{{PILOT_<NAME>_<CLAUDE|README>}}` placeholder with the verbatim content of
+   the matching `pilot-<name>-{claude,readme}.md.tmpl` (INTRO, MAINTENANCE, ARCHITECTURE, COMMANDS), keeping their
+   `<!-- PILOT:*:START -->`/`END` markers (`/pilot-update` looks for them). Write to the project root,
+   respecting step 3.
 
-6. **Copy the process docs.** Copy `$PILOT_SRC/assets/docs/pilot-process.md` to
-   `.pilot/pilot-process.md`; every `$PILOT_SRC/assets/docs/pilot-process-*.md` companion
-   (currently just `pilot-process-companion.md`) to the matching `.pilot/` path; every
-   `$PILOT_SRC/assets/docs/pilot-link-*.md` to the matching `.pilot/` path; and every
-   `$PILOT_SRC/assets/docs/pilot-task-*.md` to the matching `.pilot/` path — all at the
-   project root, creating `.pilot/` if needed, kept separate from the project's own
-   `docs/`. `pilot-process.md` is the generic operational
-   spec every phase skill reads; each `pilot-process-*.md` companion is purely human-facing
-   (a visual reference and a quickstart, currently) — no phase needs it, only `pilot-help` reads it for examples; each `pilot-link-*.md` is
-   the opposite of a companion — operational like `pilot-process.md` itself, but scoped to
-   the specific two-or-more skills/agents it names, read only by those, not by every phase;
-   each `pilot-task-*.md` is what a phase skill reads and passes into an `Agent` call's
-   prompt for one specific persona duty — the `.claude/agents/pilot-*.md` files carry only
-   identity now, never a duty's mechanics. Copy all four kinds regardless of how many exist
-   right now — all are PILOT-owned from here on, never hand-edit any of them;
-   `/pilot-update` overwrites them from a fresh `$PILOT_SRC`. Also copy
-   `$PILOT_SRC/scripts/pilot.py` to `.pilot/pilot.py` and `chmod +x` it —
-   PILOT-owned the same way; the `pilot-spec`, `pilot-dev`, `pilot-review` and `pilot-qa`
-   skills run it for ticket selection, claiming and status transitions.
+6. **PILOT files.** Into `.pilot/` (create it), verbatim, PILOT-owned, `chmod +x` the scripts:
+   `$PILOT_SRC/scripts/pilot.py` and `pilot_checks.py`; `$PILOT_SRC/assets/formats.json`;
+   `$PILOT_SRC/assets/workflows/*.json` to `.pilot/workflows/`; every `$PILOT_SRC/assets/docs/pilot-*.md`.
+   Then `$PILOT_SRC/assets/github/workflows/pilot-status-on-merge.yml` to `.github/workflows/` (it calls
+   `pilot.py ticket merged`; without it merged PRs never close their tickets). If a file of that name exists
+   and differs, show the diff and ask first.
 
-7. **Copy the status-cascade workflow.** Copy
-   `$PILOT_SRC/assets/github/workflows/pilot-status-on-merge.yml` to
-   `.github/workflows/pilot-status-on-merge.yml` at the project root, creating
-   `.github/workflows/` if needed. `.pilot/pilot-process.md` §3 "`status:done`" depends on
-   this workflow — without it, merged PRs and closed issues never cascade to `status:done`.
-   It's PILOT-owned like the process doc: never hand-edit it; `/pilot-update` overwrites it
-   from a fresh `$PILOT_SRC`. If a workflow file of that name already exists and differs,
-   treat it like step 3 — show the human what would change and ask before overwriting.
+7. **PR template.** If none of `.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE.md`,
+   `PULL_REQUEST_TEMPLATE.md`, `docs/PULL_REQUEST_TEMPLATE.md` exists, copy
+   `$PILOT_SRC/assets/github/pull_request_template.md` to `.github/pull_request_template.md`; if one exists,
+   show what would be added and ask. A one-time scaffold: the project's own afterwards, `/pilot-update` never
+   touches it.
 
-8. **Copy the PR template.** If none of `.github/pull_request_template.md`,
-   `.github/PULL_REQUEST_TEMPLATE.md`, root `PULL_REQUEST_TEMPLATE.md`, or
-   `docs/PULL_REQUEST_TEMPLATE.md` already exist in the project, copy
-   `$PILOT_SRC/assets/github/pull_request_template.md` to
-   `.github/pull_request_template.md`, creating `.github/` if needed — this is what
-   `pilot-dev`'s "PILOT ticket" section (`.pilot/pilot-task-implement.md`,
-   `.claude/skills/pilot-dev/SKILL.md`) fills in when opening a PR. If one of those paths
-   already exists, treat it like step 3 — show the human what would be added and ask
-   before overwriting, or leave it alone if they'd rather merge the PILOT ticket section
-   in by hand. Unlike the process doc and workflow above, this file is a one-time
-   scaffold, not PILOT-owned: once copied, it's the project's own to customize freely, and
-   `/pilot-update` never touches it.
+8. **State and labels.** Write `.pilot/state.json` (schema above; set the commands and threshold with
+   `config set`), then `python3 .pilot/pilot.py labels sync` (creates the labels, stamps `lastLabelsSyncAt`).
+   If `gh` is unavailable, give the human the command and go on.
 
-9. **Provision GitHub labels.** Determine the target repo (`gh repo view --json
-   nameWithOwner --jq .nameWithOwner`) and run
-   `$PILOT_SRC/scripts/setup-github-labels.sh <owner>/<repo>`. If `gh` isn't
-   authenticated or the repo can't be resolved, tell the human and give them the exact
-   command to run themselves later — don't block the rest of this skill on it.
+9. **Wiki** (module on). If there is no `wiki/`, `python3 .pilot/pilot.py wiki reindex`, then
+   `python3 .pilot/pilot.py wiki add product/vision.md --type Vision --title Vision --description "<one sentence>"
+   --body "<the vision>"` (in the wiki's language). Project-owned afterwards; for existing work, suggest
+   `/pilot-wiki --bootstrap`.
 
-9b. **Create the wiki** (only when the wiki module is on). If the project has no `wiki/` yet, run
-    `python3 .pilot/pilot.py wiki reindex`: it creates `wiki/` with its root `index.md`, then create the vision from
-    step 2's text: `python3 .pilot/pilot.py wiki add product/vision.md --type Vision --title Vision
-    --description "<one sentence>" --body "<the vision>"` (in the wiki's language). From here it is
-    project-owned: `/pilot-update` never touches it. When the project already has closed tickets or code to
-    document, tell the human to run `/pilot-wiki --bootstrap` to fill it.
+10. **Architecture** (module on). `python3 .pilot/pilot.py arch reindex`; project-owned afterwards. Suggest
+    `/pilot-architecture --scaffold` (new apps) or `--bootstrap` (existing ones).
 
-9c. **Create the architecture** (only when the architecture module is on). Run
-    `python3 .pilot/pilot.py arch reindex`: it creates `architecture/` with its root `index.md`. From here it is
-    project-owned: `/pilot-update` never touches it. Tell the human to run `/pilot-architecture --scaffold` to create
-    the apps, or `--bootstrap` when they already exist.
+11. **Tell the human, editing nothing of their CI:** exclude the docs-only paths (`wiki/`, `architecture/`)
+    from the project's CI (`paths-ignore`), and never run the e2e tests in CI (a script runs them locally).
 
-10. **Write the state marker.** Create `.pilot/state.json` per the schema above, with
-    `pilotInitialized: true`, the current timestamp, the project name, `pilotVersion`, `modules`, and
-    `lastSkillsSyncAt`/`lastIntroSyncAt`/`lastProcessDocSyncAt`/`lastLabelsSyncAt` set to
-    now (or left null for whichever of labels was skipped in step 9).
-
-11. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result. Summarize what
-    was created/updated/skipped (the wiki skeleton included, or the module left off), and suggest
-    `/pilot-architecture --scaffold` (new apps) or `--bootstrap` (apps that already exist) when the `architecture` module is on, and
-    offer `/pilot-dashboard` (a private team page: tickets by phase, each role's queue, the workflow with time per stage) when the `dashboard` module is on — run it only if the human accepts, since it publishes a page.
+12. **Report.** Run `python3 .pilot/pilot.py doctor` and include its result; what was created or skipped; offer
+    `/pilot-dashboard` when the `dashboard` module is on (publishes a page: only if accepted).

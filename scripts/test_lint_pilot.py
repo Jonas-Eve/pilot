@@ -40,7 +40,7 @@ class LintTests(unittest.TestCase):
         self.assertEqual(lint.Linter(REPO).run() and [f for f in lint.Linter(REPO).run() if f[0] == "error"], [])
 
     def test_missing_doc_reference(self):
-        self.edit(".claude/skills/pilot-dev/SKILL.md", lambda t: t + "\nSee pilot-task-nope.md\n")
+        self.edit(".claude/skills/pilot-build/SKILL.md", lambda t: t + "\nSee pilot-task-nope.md\n")
         self.assertTrue(self.errors("doc-ref"))
 
     def test_orphan_doc(self):
@@ -52,7 +52,7 @@ class LintTests(unittest.TestCase):
         self.assertTrue(self.errors("label"))
 
     def test_unknown_pilot_command(self):
-        self.edit(".claude/skills/pilot-dev/SKILL.md", lambda t: t + "\nRun `python3 .pilot/pilot.py nope --x`.\n")
+        self.edit(".claude/skills/pilot-build/SKILL.md", lambda t: t + "\nRun `python3 .pilot/pilot.py nope --x`.\n")
         self.assertTrue(self.errors("command"))
 
     def test_a_count_of_personas_that_is_no_longer_true(self):
@@ -64,25 +64,25 @@ class LintTests(unittest.TestCase):
         self.assertFalse(self.errors("named-list"))
 
     def test_the_help_lists_every_installed_skill_and_only_those(self):
-        self.edit(".claude/skills/pilot-help/SKILL.md", lambda t: t.replace("`pilot-auto`, `pilot-help`.", "`pilot-help`, `pilot-ghost`.", 1))
+        self.edit(".claude/skills/pilot-help/SKILL.md", lambda t: t.replace("`pilot-dashboard`, `pilot-help`.", "`pilot-dashboard`, `pilot-ghost`.", 1))
         messages = " ".join(f[3] for f in self.errors("named-list"))
         self.assertIn("pilot-ghost", messages)
-        self.assertIn("pilot-auto", messages)
+        self.assertIn("pilot-help", messages)
 
     def test_the_help_count_in_words_matches_its_lists(self):
-        self.edit(".claude/skills/pilot-help/SKILL.md", lambda t: t.replace("the fifteen", "the fourteen", 1))
+        self.edit(".claude/skills/pilot-help/SKILL.md", lambda t: t.replace("the seven personas", "the six personas", 1))
         self.assertTrue(self.errors("named-list"))
 
     def test_a_quoted_section_that_does_not_exist(self):
-        self.edit(".claude/skills/pilot-dev/SKILL.md", lambda t: t + '\nSee `.pilot/pilot-process.md` §4 "A heading nobody wrote".\n')
+        self.edit(".claude/skills/pilot-build/SKILL.md", lambda t: t + '\nSee `.pilot/pilot-process.md` §4 "A heading nobody wrote".\n')
         self.assertTrue(self.errors("section-ref"))
 
     def test_a_quoted_section_that_exists_passes(self):
-        self.edit(".claude/skills/pilot-dev/SKILL.md", lambda t: t + '\nSee `.pilot/pilot-process.md` §4 "Claim Protocol".\n')
+        self.edit(".claude/skills/pilot-build/SKILL.md", lambda t: t + '\nSee `.pilot/pilot-process.md` §4 "Claim, resume, pool".\n')
         self.assertFalse(self.errors("section-ref"))
 
     def test_a_flag_in_the_hint_that_exists_nowhere(self):
-        self.edit(".claude/skills/pilot-dev/SKILL.md", lambda t: t.replace("argument-hint: \"", "argument-hint: \"[--nowhere-flag] ", 1))
+        self.edit(".claude/skills/pilot-build/SKILL.md", lambda t: t.replace("argument-hint: \"", "argument-hint: \"[--nowhere-flag] ", 1))
         self.assertTrue(self.errors("argument-hint"))
 
     def test_agent_duty_missing(self):
@@ -90,7 +90,7 @@ class LintTests(unittest.TestCase):
         self.assertTrue(self.errors("agent-duties"))
 
     def test_skill_name_mismatch(self):
-        self.edit(".claude/skills/pilot-dev/SKILL.md", lambda t: t.replace("name: pilot-dev", "name: pilot-devx", 1))
+        self.edit(".claude/skills/pilot-build/SKILL.md", lambda t: t.replace("name: pilot-build", "name: pilot-builder", 1))
         self.assertTrue(self.errors("frontmatter"))
 
     def test_unbalanced_marker(self):

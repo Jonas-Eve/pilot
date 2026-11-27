@@ -13,7 +13,7 @@ workflow: its contract (statuses it consumes, claims, produces) is `pilot.py con
 | Document: wiki entry, guideline, ADR, design-system entry, persona, user flow | a file under `wiki/`, `architecture/` | its frontmatter, stable statuses only (`proposed`, `ready`/`accepted`, `provisional`, `superseded`); in-flight ones (`rework`, implemented, recetted, in gap) are derived from tickets, runs and records (`pilot.py wiki status`) | the docs PR its workflow ends with, opened and merged by the script |
 | Ticket: epic, story, task | a GitHub issue | a `status:` label | `pilot.py` only |
 | Run | the ticket it works, else a `run` issue the script creates and closes | one JSON comment (`<!-- pilot:run -->`) | `pilot.py run` only |
-| Prototype | the dashboard's `protos` documents (one HTML) | the closing comment of its run (accepted or rejected) | `pilot.py proto` |
+| Prototype | the dashboard's `protos` documents (one HTML) | the closing comment of its run (accepted or rejected) | `pilot.py proto-pack` |
 | Recette record | the closing comment of a Recette run, never edited | derived marks (`recetted`, `gap`) | `pilot.py` reads it |
 
 Nobody needs GitHub's UI: `pilot.py` is the only reader and writer of tickets and runs, behind one tracker adapter (the

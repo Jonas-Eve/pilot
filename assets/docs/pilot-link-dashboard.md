@@ -1,18 +1,14 @@
 # PILOT link — pushing live events to the project's dashboard
 
-Read by `pilot-discovery`, `pilot-spec`, `pilot-dev`, `pilot-review`, `pilot-qa`, `pilot-proto`, and `pilot-dashboard` (which
-publishes the page that reads these documents). Best-effort only: GitHub labels stay the
-source of truth, and a push that fails or is skipped never blocks, delays or changes a phase.
+Read by the skills that run a workflow (`pilot-need|plan|build|accept|report|express|architecture|wiki|design|proto|flow`) and by `pilot-dashboard`.
+Best-effort only: GitHub and the run records stay the source of truth; a push that fails or is skipped never blocks or changes a run.
 
-**When.** `.pilot/state.json` has `dashboardUrl`, does not turn the `dashboard` module off (`modules.dashboard`
-set to `false`), and the tool that writes to the dashboard's database is available. Otherwise skip everything below, silently. Decide once per session.
+**When.** `.pilot/state.json` has `dashboardUrl`, does not turn the `dashboard` module off (`modules.dashboard` set to `false`), and the dashboard's database tool is available. Else skip everything below, silently. Once.
 
 **What to push** (to the dashboard at `dashboardUrl`):
-- Every `event` returned by `.pilot/pilot.py claim|set|flag|unflag|proto`, and every entry of the
-  `events` list `.pilot/pilot.py event` returns for several tickets at once (write those in one
-  `ArtifactData` `batch`): a new document in the `events` collection, id `<epoch
-  milliseconds>-<issue number>`, body = the event object as returned. Always a new document,
-  never an update.
+- Every `event` returned by `.pilot/pilot.py claim|set|flag|unflag`, and by `run start|advance|resume|end` (`kind: "run"`), and every entry of the `events`
+  list of `event` (several tickets: one `ArtifactData` `batch`): a new document in the `events` collection, id `<epoch milliseconds>-<issue
+  number>`, body = the event as returned, unchanged. Always a new document.
+- At the end of a run, one snapshot (`.pilot/pilot.py snapshot`), pushed as `pilot-dashboard` says.
 
-Never read the dashboard back, never retry a failed push, and mention a failure only in the
-phase's final report.
+Never read the dashboard back or retry; mention a failure only in the final report.

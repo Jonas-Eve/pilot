@@ -1,140 +1,51 @@
 ---
 name: pilot-help
-description: "Read-only help over the installed PILOT skills and agents; never claims a ticket or invokes another skill. No argument lists every command; a command name gives its modes, flags and examples; an agent name gives that persona's identity and duties; a flag (--multi, --resume, …) says which commands accept it; free text describing a goal returns the exact command to run, or the persona responsible for a kind of judgment. Everything is re-derived from the current skill and agent files, so it cannot drift. Use to find out what exists, what a command or flag does, or which command fits a goal."
+description: "Read-only help over the installed PILOT skills and agents; never claims a ticket or invokes another skill. No argument lists every command; a command name gives its modes, flags and examples; an agent name gives that persona's identity and duties; a flag (--resume, --rework, …) says which commands accept it; free text describing a goal returns the exact command to run, or the persona responsible for a kind of judgment. Everything is re-derived from the current skill and agent files, so it cannot drift. Use to find out what exists, what a command or flag does, or which command fits a goal."
 argument-hint: "[<command name, with or without pilot-/leading slash>] | [agent] <persona name, with or without pilot-/leading slash> | [--<flag name, dashes optional>] | <free text describing what you're trying to do> — omit for the full command list"
 ---
 
 # PILOT — Help
 
-Purely informational: reads other PILOT skills' and agents' own files and explains them,
-but never invokes the `Skill` or `Agent` tool against any of them, never touches a GitHub
-issue/PR, and never claims or advances a ticket. If what's actually wanted is running a
-phase, say which command to run and stop there — let the human (or the target skill
-itself) take it from there.
+Purely informational: reads PILOT's installed files and explains them. Never invokes the `Skill` or `Agent` tool, never touches a GitHub issue/PR, never claims or advances a ticket. If what is wanted is running something, name the command and stop.
 
-Every answer is derived live from this project's own already-installed files, never from
-a memorized description of what a command "usually" does — those files are the single
-source of truth and can change under `/pilot-update`:
+Every answer is derived live from this project's installed files, never from memory:
 
-- `.claude/skills/pilot-*/SKILL.md` (every installed one, including this skill's own) —
-  each one's frontmatter (`description`, `argument-hint`) for the summary/flag list, its
-  body for anything more detailed (resume/reclaim mechanics, examples).
-- `.claude/agents/pilot-*.md` (every installed persona) — its frontmatter/body for
-  identity and judgment, and its own trailing task-doc list for which duties it serves.
-- `.pilot/pilot-process.md` — the generic mechanics shared by every phase (pair vs
-  `--auto`, the claim protocol, `--resume`, the `status:`/label state machine) that a
-  single `SKILL.md` assumes rather than restates.
-- `.pilot/pilot-link-*.md` — mechanics shared by *some* commands, not all (e.g.
-  `pilot-link-multi-consensus.md` for Review's `--multi`, read by `pilot-review`
-  only).
-- `.pilot/pilot-process-companion.md` — a human-facing quickstart with plain example
-  invocations of every command; reuse or adapt its examples in detail/recommend mode
-  instead of inventing new ones from scratch where one already fits.
+- `.claude/skills/pilot-*/SKILL.md` (including this one): frontmatter (`description`, `argument-hint`) for the summary and flags, body for detail.
+- `.claude/agents/pilot-*.md`: identity, and the trailing task-doc list for the persona's duties.
+- `.pilot/pilot-process.md`: the vocabulary and cross-cutting flags shared by every workflow; `.pilot/pilot-link-*.md`: mechanics shared by some (`pilot-link-runner.md`: how a workflow runs).
+- `python3 .pilot/pilot.py workflow list` / `workflow show <id>`: a workflow's steps, actors, gates and contract.
 
-If `.claude/skills/pilot-*/` isn't present yet (PILOT not installed in this project),
-say so and point at `/pilot-init` instead of guessing at what would be there.
+If `.claude/skills/pilot-*/` is absent, PILOT is not installed: point at `/pilot-init`.
 
 ## Determining the mode
 
-**No argument → list mode.** Read every `.claude/skills/pilot-*/SKILL.md`'s frontmatter
-and report them grouped into the three fixed categories below (this grouping is
-structural — the five-phase order comes from `.pilot/pilot-process.md`'s state machine —
-not something to re-derive per run):
+**No argument → list mode.** Read every installed skill's frontmatter and report them in these categories, one line each (name, one-sentence summary in plain words, `/pilot-help <name>` for more); skip any not installed, and mention a `pilot-*` skill outside this list as project-local:
 
-1. Bootstrap/maintenance: `pilot-init`, `pilot-update`, `pilot-dashboard`,
-   `pilot-design`, `pilot-proto`, `pilot-wiki`, `pilot-architecture`, `pilot-flow`.
-2. The five phases, in phase order: `pilot-discovery`, `pilot-spec`,
-   `pilot-dev`, `pilot-review`, `pilot-qa`.
-3. Dispatch/utility: `pilot-auto`, `pilot-help`.
+1. Run workflows: `pilot-need`, `pilot-plan`, `pilot-build`, `pilot-accept`, `pilot-report`, `pilot-express`.
+2. Frames and design (modules): `pilot-architecture`, `pilot-wiki`, `pilot-design`, `pilot-proto`, `pilot-flow`.
+3. Bootstrap and maintenance: `pilot-init`, `pilot-update`, `pilot-dashboard`, `pilot-help`.
 
-For each command actually present, one line: its name, a plain-language one-sentence
-summary distilled from its `description` (not the full frontmatter dumped verbatim), and
-a pointer to run `/pilot-help <name>` for the rest. Skip any of the fifteen that isn't
-actually installed in this project rather than describing it from memory; mention any
-`pilot-*` skill present that isn't one of the fifteen as project-local, not PILOT's. Then
-the optional modules: run `python3 .pilot/pilot.py module list` and give each module's name, whether it is on, the
-command that turns it on (`use`) and its `bootstrap` when it has one. Close
-with one line naming the seven personas behind these commands (`pilot-pm`,
-`pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`) and pointing at
-`/pilot-help agent <name>` for one's identity — they're not commands themselves, so they
-don't get their own list entry above.
+Then the optional modules: run `python3 .pilot/pilot.py module list` and give each module's name, whether it is on, its `use` command and its `bootstrap` when it has one. Close with one line naming the seven personas (`pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`) and `/pilot-help agent <name>`; they are not commands.
 
-**A command name → detail mode.** Normalize the argument (strip a leading `/`, and add
-back a `pilot-` prefix if missing, e.g. `dev` and `pilot-dev` and `/pilot-dev` all mean
-the same file) and match it against the installed `.claude/skills/pilot-*/` directories.
-No match → say so and suggest bare `/pilot-help` for the full list, rather than guessing
-which one was meant. On a match, read that skill's whole `SKILL.md` and answer with:
-   - What it does and when to use it (phase number and name, if it's one of the five).
-   - Pair vs `--auto`, if it has both — and what `--auto` requires (no live human, e.g. a
-     scheduled Routine) sourced from `.pilot/pilot-process.md`, not restated per command.
-   - Every flag/argument form it accepts, each with a one-line explanation — pull a
-     shared one (`--multi`, `--resume`) from the doc that actually owns it (above) rather
-     than re-explaining it differently per command.
-   - Resume/reclaim behavior specific to that command, if any.
-   - Two or three example invocations, adapted from
-     `.pilot/pilot-process-companion.md`'s quickstart if it already has that command's
-     examples, otherwise built from the command's own `argument-hint`.
+**A command name → detail mode.** Normalize (strip a leading `/`, add a missing `pilot-`) and match an installed skill directory. No match → say so and suggest bare `/pilot-help`. On a match read its whole `SKILL.md` and answer with:
+- what it does and when to use it, and which workflow it runs; for its steps, actors and gates, give `python3 .pilot/pilot.py workflow show <id>` rather than restating them;
+- every flag and argument form, one line each; a shared flag (`--resume`) is explained from the doc that owns it;
+- resume behavior specific to it, if any;
+- two or three example invocations built from its `argument-hint`.
 
-**An agent/persona name → agent mode.** Normalize the same way (strip a leading `/`, add
-back a `pilot-` prefix if missing) and match against the seven installed
-`.claude/agents/pilot-*.md` personas (`pilot-pm`, `pilot-architect`, `pilot-techlead`,
-`pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`). Two of those names — `dev`, `qa` — also match a
-command; on a bare match like that, command detail mode above takes precedence (a
-command is the thing actually run) — an explicit leading `agent` token (`agent dev`,
-`agent pilot-qa`) means the persona instead. The other four (`pm`, `architect`,
-`techlead`, `e2e`) never collide, so the bare name alone is enough — but the leading
-`agent` token is always accepted too, on any of the seven, not just the two that need it,
-so a human unsure which apply can always use it. No match on either →
-say so and suggest bare `/pilot-help` for the full list. On a match, read that persona's
-whole file and answer with:
-   - Its stable identity: the judgment it brings (architectural soundness, product
-     coverage, code quality, ...) — never a duty's mechanics, which live in its task docs
-     instead, per this repo's own persona/task-doc split (`CLAUDE.md` §3).
-   - Its duties, one line each: for every task doc in its own trailing list, name the
-     duty, the phase it belongs to, and which skill actually reads/injects that
-     `pilot-task-<duty>.md` — grepped across `.claude/skills/pilot-*/SKILL.md`, never
-     guessed from the persona's name alone (e.g. the architect's task docs span phases 1,
-     2, and 5, each a genuinely different duty, not one repeated three times).
-   - A pointer to `/pilot-help <skill>` for how a specific duty actually runs (claim
-     protocol, pair/`--auto`, flags) — that's the owning command's job to explain, not
-     this persona file's.
+**An agent name → agent mode.** Normalize the same way and match the installed `.claude/agents/pilot-*.md`. `dev` and `qa` also name commands: a bare match means the command; a leading `agent` token (`agent dev`) means the persona, and is accepted on any persona. On a match read the file and answer with:
+- its stable identity: the judgment it brings;
+- its duties, one line each: for every task doc in its trailing list, the duty and which workflow step injects it (grep `.pilot/workflows/*.json` and the skills, never guess), and whether the persona is lead, validator or reviewer there;
+- a pointer to `/pilot-help <command>` for how a duty runs.
+The judge is a script-driven step with no persona.
 
-**A flag → flag mode.** Normalize (dashes optional, so `multi`, `-multi`, `--multi` all
-mean the same lookup) and search every installed `.claude/skills/pilot-*/SKILL.md` for
-which ones actually accept it, plus whichever `.pilot/pilot-link-*.md` or
-`.pilot/pilot-process.md` section documents its shared mechanics. Answer with: which
-commands accept it, what it does on each (calling out any real difference between
-commands, not just restating the same sentence per command), and any documented
-incompatibility with another flag on the same command (e.g. `pilot-auto`'s `--again` and
-`--next` never combine — `.claude/skills/pilot-auto/SKILL.md`) rather than silently
-picking one. A flag that matches nothing installed → say it isn't a recognized PILOT
-flag rather than guessing at what it might mean.
+**A flag → flag mode.** Normalize (dashes optional) and search every installed `SKILL.md` for it, plus the `.pilot/pilot-link-*.md` or `pilot-process.md` section that documents it. Answer with the commands that accept it, what it does on each (calling out real differences), and any documented incompatibility with another flag. No match → not a recognized PILOT flag.
 
-**Anything else → recommend mode.** A free-text description of a goal, a situation, or a
-question phrased as prose rather than an exact command/agent/flag name. Two shapes of
-ask land here, and the answer must match which one it actually is rather than defaulting
-to the first:
-   - "What do I run for X" (a goal or situation to accomplish) → read the installed
-     commands' descriptions/argument-hints (and `.pilot/pilot-process.md`'s state
-     machine, when knowing which `status:` a ticket is likely in matters) to work out
-     which command(s) accomplish it, then answer with the exact command line to run —
-     real flags, placeholder issue numbers clearly marked as placeholders — and a short
-     "why" tying it back to that command's actual documented behavior, not an invented
-     one.
-   - "Who/what judges X" (asking which persona is responsible for some kind of decision,
-     not how to run anything — e.g. "who checks security", "which persona validates
-     acceptance criteria") → read `.claude/agents/pilot-*.md` the same way and answer by
-     naming the persona(s), pointing at `/pilot-help agent <name>` for the full identity,
-     rather than forcing a command-line answer nobody asked for.
-   Genuinely ambiguous between two materially different commands, personas, or flag
-   combinations (not just phrasing) → ask which one is meant instead of picking
-   arbitrarily; a request that's simply underspecified in a way any single answer already
-   covers (e.g. no issue number given, when the target command's own bare/no-argument
-   behavior already handles that) doesn't need a question.
+**Anything else → recommend mode.** A goal, situation or question in prose. Match the ask:
+- "What do I run for X" → read the commands' descriptions and argument-hints and answer with the exact command line (real flags, placeholder issue numbers marked as such) and a short why drawn from that command's documented behavior.
+- "Who judges X" → read the agents' files and name the persona(s), pointing at `/pilot-help agent <name>`.
+Genuinely ambiguous between materially different commands → ask which; an answer that any single command already covers needs no question.
 
 ## Report
 
-State which mode was used only if it's not obvious from the answer's shape. Never invoke
-`Skill` against the command being explained or recommended, and never invoke `Agent`
-against the persona being explained or named — the answer is the command line (and why)
-or the persona's identity, not the act of running either.
+Mention the mode only if not obvious from the answer's shape.

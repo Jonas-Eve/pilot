@@ -1345,7 +1345,7 @@ class ProcessReferencesTests(unittest.TestCase):
         """A description sits in the context of every session of a consuming project, invoked or not: the mechanics
         belong in the body, which is loaded only when the skill runs. A skill with `disable-model-invocation: true` is
         launched by its command only and its description is not carried, so only the others count towards the total;
-        `pilot-auto` runs review, dev and spec through the Skill tool, so those three must stay model-invocable."""
+        the six workflows of the Run category are the ones an agent may start on its own: they must stay model-invocable."""
         sizes, carried = {}, {}
         for f in (self.ROOT / ".claude/skills").glob("*/SKILL.md"):
             text = f.read_text()
@@ -1355,12 +1355,12 @@ class ProcessReferencesTests(unittest.TestCase):
                 carried[f.parent.name] = sizes[f.parent.name]
         self.assertEqual({k: v for k, v in sizes.items() if v > 1500}, {})
         self.assertLess(sum(carried.values()), 8_000)
-        for name in ("pilot-review", "pilot-dev", "pilot-spec"):
+        for name in ("pilot-need", "pilot-plan", "pilot-build", "pilot-accept", "pilot-report", "pilot-express"):
             self.assertIn(name, carried)
 
     def test_the_generic_file_stays_small(self):
         size = (self.ROOT / "assets/docs/pilot-process.md").stat().st_size
-        self.assertLess(size, 28_000, "pilot-process.md is loaded by every phase; move what only some read into a link doc or a skill")
+        self.assertLess(size, 10_000, "pilot-process.md is loaded by every workflow run; move what only some read into a link doc or a skill")
 
 
 class SkillStepsTests(unittest.TestCase):

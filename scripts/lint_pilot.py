@@ -186,8 +186,8 @@ class Linter:
         helper = self.root / ".claude/skills/pilot-help/SKILL.md"
         if helper.exists():
             text = helper.read_text()
-            start = text.find("three fixed categories")
-            end = text.find("For each command actually present", start)
+            start = text.find("in these categories")
+            end = text.find("Then the optional modules", start)
             if start >= 0 < end:
                 listed = set(re.findall(r"`(pilot-[a-z-]+)`", text[start:end]))
                 if listed != skill_names:

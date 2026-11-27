@@ -1,16 +1,11 @@
-4. **PILOT's file family is tightly cross-referenced** — `.pilot/pilot-process.md`, every
-   `.pilot/pilot-link-*.md`, `.pilot/pilot-process-*.md`, and `.pilot/pilot-task-*.md`, every
-   `.claude/skills/pilot-*/SKILL.md`, every `.claude/agents/pilot-*.md`, the
-   `PILOT:INTRO` blocks in this file and `README.md`, and the rest of the PILOT mentions
-   in both. All of it is PILOT-owned, copied in from
-   [github.com/Jonas-Eve/pilot](https://github.com/Jonas-Eve/pilot): never hand-edit any
-   of it, run `/pilot-update` instead. A renamed label, moved section heading, or
-   changed mechanism upstream can leave stale references in the rest of this
-   file/`README.md` outside the marked blocks (e.g. a command name in prose) — after
-   running `/pilot-update`, check cheaply: `grep` the exact term(s) that changed across
-   both files and fix what turns up.
-5. **A synced mechanism change can also leave a gap a `grep` won't find** — this file's
-   or `README.md`'s own prose about PILOT (a workflow description, a walkthrough) can go
-   stale in substance even when no single term was renamed, if what it describes no
-   longer matches the freshly-synced canonical behavior. After `/pilot-update`, skim that
-   prose against what actually changed, not just the renamed-term grep above.
+4. **PILOT's file family is PILOT-owned** — `.pilot/pilot.py`, `.pilot/pilot_checks.py`, `.pilot/formats.json`,
+   `.pilot/workflows/`, the `.pilot/pilot-*.md` docs, every `.claude/skills/pilot-*/SKILL.md`, every
+   `.claude/agents/pilot-*.md`, and the `PILOT:` marked blocks in this file and `README.md`. All of it is copied
+   in from [github.com/Jonas-Eve/pilot](https://github.com/Jonas-Eve/pilot): never hand-edit any of it, run
+   `/pilot-update` instead. A renamed label, moved section or changed workflow upstream can leave stale
+   references in this file's or `README.md`'s own prose outside the marked blocks: after `/pilot-update`,
+   `grep` the terms that changed and skim that prose against what changed.
+5. **The project's own commands live in `.pilot/state.json`** (`commands`), set with
+   `python3 .pilot/pilot.py config set commands.<key> "<command>"` (`test`, `rules`, `e2e`, `build`, `a11y`,
+   `render`, `version`): the code checks of a workflow read their results. Exclude docs-only paths (`wiki/`,
+   `architecture/`) from the project's CI; end-to-end tests never run in CI.
