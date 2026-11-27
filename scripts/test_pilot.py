@@ -129,7 +129,12 @@ class FakeGh:
         number = max(self.store, default=0) + 1
         self.store[number] = issue(number, labels, body=body, assignees=assignees)
         self.store[number]["title"] = title
+        self.store[number]["id"] = 1000 + number
         return copy.deepcopy(self.store[number])
+
+    def add_sub_issue(self, parent, child_id):
+        child = next(n for n, i in self.store.items() if i.get("id") == child_id)
+        self.subs.setdefault(parent, []).append(child)
 
 
 def machine(issues, **kw):
@@ -1779,6 +1784,26 @@ class RunTests(unittest.TestCase):
 
 
 class TicketTests(unittest.TestCase):
+    def test_a_ticket_is_created_at_a_status_its_level_has_and_linked_under_its_parent(self):
+        m, gh = machine([issue(1, ["level:epic", "status:forming"])])
+        out = m.ticket_create("story", "feature", "Filter", "Entries: search-filter", "forming", parent=1, priority="P1", labels=["express"])
+        self.assertEqual(set(out["labels"]), {"level:story", "type:feature", "status:forming", "priority:P1", "express"})
+        self.assertEqual(gh.subs[1], [out["issue"]])
+        self.assertEqual(out["event"]["action"], "created")
+        for level, status in (("task", "forming"), ("epic", "ready")):
+            with self.assertRaises(pilot.Refused):
+                m.ticket_create(level, "tech", "x", "", status)
+
+    def test_a_merged_pr_moves_its_ticket_and_derives_the_parent(self):
+        m, gh = machine([ticket(1, status="planned"), ticket(2, status="reviewing", level="task"), ticket(3, status="merged", level="task"),
+                         ticket(4, status="ready")], subs={1: [2, 3]})
+        gh.store[2]["parent_issue_url"] = "https://api.github.com/repos/o/r/issues/1"
+        out = m.ticket_merged(2)
+        self.assertEqual((out["status"], out["parent"]["status"]), ("status:merged", "status:merged"))
+        self.assertEqual(m.ticket_merged(2)["status"], "status:merged")  # idempotent
+        with self.assertRaises(pilot.Refused):
+            m.ticket_merged(4)
+
     def test_the_two_human_closings(self):
         m, gh = machine([ticket(1, status="forming"), ticket(2, status="to-plan"), ticket(3, status="ready")])
         self.assertEqual(m.ticket_close_forming(1)["status"], "status:to-plan")
@@ -1824,6 +1849,19 @@ class PullRequestTests(unittest.TestCase):
             self.machine([{"name": "b", "status": "queued", "conclusion": None}]).pr_merge(7)
         self.assertEqual(caught.exception.payload["reason"], "ci-not-green")
         self.assertEqual(self.machine([]).pr_open("br", "t", "b")["pr"], 7)
+
+
+class ConfigTests(unittest.TestCase):
+    def test_a_dotted_key_is_written_without_touching_the_rest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, ".pilot", "state.json")
+            pilot.config_set("language", "fr", path)
+            pilot.config_set("commands.test", "npm test", path)
+            self.assertEqual(pilot.config_value("commands.test", path), "npm test")
+            self.assertEqual(pilot.config_value("language", path), "fr")
+            for key in ("nope", "commands.deploy"):
+                with self.assertRaises(pilot.Refused):
+                    pilot.config_set(key, "x", path)
 
 
 class LabelsTests(unittest.TestCase):

@@ -1,89 +1,17 @@
 ---
 name: pilot-proto
-description: "Builds a clickable prototype of a feature with a human, to decide whether to build it, before any Discovery (not one of the five phases). The PM frames the brief, the designer leads a live discussion that builds the mockup (shown in the dashboard's Prototypes tab), the PM checks it against the brief. Creates a type:poc ticket (status:poc-draft, then poc-review). <n> --accept validates it, after which /pilot-discovery --from-proto <n> may start from it; <n> --reject [reason] closes it; --from-artifact <url> imports a self-contained Claude artifact; --resume <n>; --with architect. Pair only. Needs the dashboard module."
-argument-hint: "<feature idea in free text> [--human] [--with architect] | --from-artifact <artifact url> [note] | --resume <issue number> [--human] | <issue number> --accept | <issue number> --reject [reason]"
+description: "Builds a clickable prototype of a feature with a human, to decide whether to build it, before any need: runs the `proto` workflow (the designer builds the mockup shown in the dashboard's Prototypes tab, validator, checks, judge, an acceptance gate). If the design system lacks something the prototype needs, the run waits in pause. Its decision, accepted or rejected, is the closing comment of its run. Works no ticket. --resume continues a paused run."
+argument-hint: "<feature idea in free text> | --from-artifact <artifact url> [note] | --resume <run issue number> | <run issue number> --reject [reason]"
 disable-model-invocation: true
 ---
 
 # PILOT proto — `pilot-proto`
 
-Read `.pilot/pilot-process.md` first (labels `type:poc` and `status:poc-*`, the roster). Here the PM
-frames, the designer leads, the PM validates and the architect is summonable; the human approves.
-`.pilot/pilot-task-advise.md` is passed into a summoned persona's call. Always pair or `--human`: it needs a human
-live (except `--accept` and `--reject`, which are one mechanical step). Read `.pilot/pilot-link-existing-analysis.md` too (passed in full into every persona's call below): the PM analyzes the existing (wiki, prototypes) before framing (step 3's first call, held in the conversation and shown to the human), the PM validator and the designer start from it; with `--human` the human states the brief's decisions and the layout choices, the agents write them up and challenge them, never adding one.
+Read `.pilot/pilot-process.md` and `.pilot/pilot-link-runner.md` first: the runner file says how any workflow runs. This skill runs the **`proto`** workflow and adds only what is specific to it.
 
-## Steps
-
--1. **The module.** `python3 .pilot/pilot.py module list`: with the `proto` module off, say so and propose turning
-   it on (`python3 .pilot/pilot.py module enable proto --with-requires`, which turns the `dashboard` module on
-   too); on a yes go on, on a no stop.
-0. **Preflight**, once per session: `python3 .pilot/pilot.py doctor` — skip it if it already reported
-   `ok: true`. `ok: false` or a failure → report and stop.
-1. **Input.**
-   - `<n> --accept`: `python3 .pilot/pilot.py proto <n> accept`. Then, in the dashboard (step 8), `update`
-     `protos/p<n>` with `decision: "accepted"` and `decidedAt` (now, UTC ISO 8601). Say it can now start a
-     Discovery (`/pilot-discovery --from-proto <n>`). Stop.
-   - `<n> --reject [reason]`: with no reason given, ask the human for one, in one question. `python3
-     .pilot/pilot.py proto <n> reject --reason "<reason>"`; then `update` `protos/p<n>` with
-     `decision: "rejected"`, `reason` and `decidedAt`. Stop.
-   - `--resume <n>`: `python3 .pilot/pilot.py resolve proto <n> --resume`, then `claim proto <n> --mode
-     <the returned action>` (`resume-orphaned` or `resume-cleared`). Read the ticket's body (the brief) and
-     the mockup of `protos/p<n>` (step 5's parts, joined), then go to step 4 with that state.
-   - `--from-artifact <url> [note]`: imports a Claude artifact as the mockup. Needs the `Artifact` tool, else
-     stop. `Artifact read` the url without its `?…` query (a share link's `?sk=…`): only the human's own plain single-page artifact comes back as HTML (its header
-     says they can edit it). One made from an Artifact type (a Design canvas, a deck) or with several files
-     returns no page: stop and say so — the human can ask Claude to rebuild it as one self-contained HTML file. Keep that page as the mockup in a temporary file; the note, if any, is the idea
-     (otherwise ask what the prototype should teach). Go on.
-   - Anything else is the feature idea, without its `--with` (ask if none given); go on. If it reads as a technical need or a bug,
-     point at `/pilot-spec --tech`/`--bug` and stop.
-2. **Preconditions.** `.pilot/state.json` has `dashboardUrl`, else stop and point at `/pilot-dashboard`; the
-   tool that writes to the dashboard's database (`ArtifactData`, `ToolSearch` loads it if deferred) is
-   available, else stop. Repo = `owner/repo` from `git config --get remote.origin.url`. Read the design system
-   if there is one (`ArtifactData` `get` on `design/<owner>__<repo>`; none is fine, the designer then chooses
-   plainly and says so).
-3. **Frame, alone with the human, before any ticket exists.** First an analysis turn: `pilot-pm` with `.pilot/pilot-task-analyze-existing.md` and the idea. Then call `Agent` for `pilot-pm` with
-   `.pilot/pilot-task-frame-proto.md`, the idea, the design system and the framing conversation so far,
-   (and, with `--from-artifact`, the imported mockup: the brief states what it shows and what it must teach)
-   round by round: show the human its brief and questions as a natural conversation (a provisional default
-   as the recommended option when one helps), feed the replies back. Stop when the PM says the brief is
-   ready and the human confirmed it, or when the idea is out of scope (report, create nothing).
-4. **Build.** With `--from-artifact` the mockup already exists: skip the first designer call, create the ticket
-   as below, run step 5 (if `proto-pack` refuses the mockup, report its `problems` and stop — the human fixes
-   the artifact, or starts again from an idea) and go on; the designer takes part only if the human asks for
-   changes. Otherwise call `Agent` for `pilot-designer` with `.pilot/pilot-task-build-proto.md`, the validated brief,
-   the design system, the current mockup (if any), the conversation so far and the human's words — nothing
-   else from this conversation. Show the human its assumptions and questions; write the returned HTML to a
-   temporary file. After the **first** mockup: create the ticket (`mcp__github__issue_write`) — title from the
-   brief, body = the validated brief, `type:poc` + `level:story` + `status:poc-draft`, assigned to this
-   session — then run step 5 and tell the human to open the dashboard's Prototypes tab
-   (`<dashboardUrl>#proto/<n>`; it opens there, or under Prototypes › #<n> if the link opens the home page).
-   Each later round the designer revises, step 5 stores it again and the ticket body keeps the current brief.
-   Any persona from `--with`, or summoned or dismissed by the human, takes part the same way.
-5. **Store the mockup** (whenever it changed): `python3 .pilot/pilot.py proto-pack <n> --html <file> --out <dir>
-   --brief "<the brief, short>"`. It refuses a mockup that is empty, over 1 MB or not self-contained — give
-   the designer its `problems` and ask for a fix. Otherwise `get` `protos/p<n>`: if it exists, remember its
-   `parts`. Then one `ArtifactData` `batch`: `protos/p<n>` (`update` with `proto-<n>.json` when it exists, else
-   `set`), every `protoHtml/<n>-<k>` from the files `proto-pack` wrote (`set`, `if_version` when it exists), and
-   a `delete` for each old part beyond the new `parts`.
-6. **Validate.** When the human says the work is done, call `Agent` for `pilot-pm` with
-   `.pilot/pilot-task-check-proto.md`, the recorded brief and the mockup only — not the discussion. An
-   objection brings the PM into the debate with the designer and the human, then back on the revised mockup
-   alone (`.pilot/pilot-link-roster.md` "Roster").
-7. **Finalize** once the human approves: `python3 .pilot/pilot.py set <n> --status poc-review --unassign`.
-   Say how to decide: accept (`/pilot-proto <n> --accept`) or reject (`/pilot-proto <n> --reject`), also from
-   the dashboard.
-8. **Dashboard** (best-effort, `.pilot/pilot-link-dashboard.md`): push the `event` that `pilot.py
-   claim|set|proto` return. Skipped silently when `dashboardUrl` is absent.
-9. Report the ticket number, its state and where to see it.
-
-## `status:poc-*` — a prototype's own lifecycle, outside the pipeline
-- `status:poc-draft` — being built with a human; assigned while a session works on it
-  (resumable like any other claim: `can-resume`, `/pilot-proto --resume <n>`).
-- `status:poc-review` — published, unassigned, waiting for a human: accept it
-  (`/pilot-proto <n> --accept`) or reject it (`--reject`).
-- `status:poc-validated` — accepted. Only now may `/pilot-discovery --from-proto <n>` start from
-  it; the prototype ticket is closed, label kept, once that Discovery's stories are approved.
-- `status:poc-rejected` — rejected; the reason is a comment on the ticket, which is closed.
-
-These are the only labels `/pilot-proto` changes; `pilot.py proto <n> accept|reject|from-proto`
-applies the transitions and refuses any other.
+- **Module.** `python3 .pilot/pilot.py module list`: with `proto` off, say so and propose `python3 .pilot/pilot.py module enable proto --with-requires`; on a yes go on, on a no stop.
+- **Idea.** The `idee` step takes the idea from the argument, else asks for it. A technical need or a bug is not a prototype: point at `/pilot-need`. `--from-artifact <url> [note]` imports a Claude artifact as the mockup: `Artifact read` the url without its `?…` query; only the human's own single-page artifact comes back as HTML, anything else (several files, a type) → say so and stop. Keep the page in a temporary file; the note is the idea.
+- **Run.** `python3 .pilot/pilot.py run start proto`; `--resume <run issue>` is `run resume <issue>`. The build step returns the mockup as one self-contained HTML file: write it to a temporary file and pack it for the cockpit with `python3 .pilot/pilot.py proto-pack <run issue> --html FILE --out DIR` at every revision. A refusal's `problems` go back to the designer (to the human for an imported artifact). Push the documents it writes as `.pilot/pilot-link-dashboard.md` says, and give the human the dashboard's Prototypes tab to open.
+- **Wait.** At `attente-du-design-system` the run stops when the design system lacks something the gate decided to integrate: say what is missing and that `/pilot-design` produces it, then `/pilot-proto --resume <run issue>` once it is merged.
+- **Decision.** The gate's outcome ends the run: `python3 .pilot/pilot.py run end <run issue> --result accepted` or `--result rejected` (a rejection takes a reason, asked in one question when absent; it is the run's closing comment). `<run issue> --reject [reason]` is that same close, for a prototype left at its gate. The `need` workflow reads the decision.
+- **Report.** The run issue, its state, where to see the prototype, what is unverified.

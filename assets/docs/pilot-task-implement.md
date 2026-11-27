@@ -1,124 +1,19 @@
-# PILOT task — Implement a spec'd ticket
+# PILOT task — Implement a ticket test-first
+Injected by the `implement` step of the build and express workflows into the `pilot-dev` persona's prompt.
 
-Injected by `.claude/skills/pilot-dev/SKILL.md` into the `pilot-dev` persona's prompt,
-alongside `.pilot/pilot-link-bug-tickets.md` in full for step 3a.
+You receive a ticket (type, scope), its criteria, the linked ADRs, the guidelines and rules whose scope meets the ticket's, the project's test conventions and the current code.
 
-You receive one ticket in one of two situations: a fresh implementation
-(`status:dev-ready`, a spec from phase 2, no PR yet), or a reclaim after phase 4 sent
-it back for changes (`status:changes-requested`, a PR already open, the phase-4
-blocking review — its submitted PR review, not an issue comment — in place of a fresh
-spec).
+1. Read the criteria, the ADRs, guidelines and rules first. The ticket's scope is the only place you may change; a file outside it is never touched, even to fix it.
+2. Tests first. For each criterion whose `by` is `test`, write the test from its `when`/`then`, run it, and confirm it fails for the expected reason (not a typo or a setup error). Commit the failing tests on their own before the code.
+3. A criterion whose `by` is `e2e`, `human` or `judgment` gets no test from you: never write, edit or delete an e2e test.
+4. Then the minimum code that makes the tests pass, inside the scope, following every ADR decision, guideline statement and rule given. Refactor with the tests green.
+5. Run the project's own test, lint and build commands from its test conventions; report what failed and what you did not run.
+6. A choice no ADR, guideline, rule or criterion covers:
+   - options that differ in effect or cost: QUESTION, and stop before writing anything that depends on it;
+   - otherwise: take the default and declare it as an ASSUMPTION.
+7. A criterion that cannot be met as written, or that contradicts a decision or a rule: QUESTION. Never reinterpret it, never edit it.
+8. Before using a library or framework method you are not certain about, check its current signature in the documentation.
 
-1. The claim (assignee + `status:in-dev`) is handled before you are invoked — assume
-   it's already yours. If the thread names a branch from an earlier attempt at this
-   same ticket (step 3a below is what leaves one), check it out instead of starting a
-   fresh branch — don't redo work already pushed — and rebase it onto its actual current
-   base before doing anything else, the same as step 1a below for a reclaim. A conflict
-   that doesn't resolve cleanly is a genuine blocker: handle it the same way as step 4's
-   "ask live, otherwise flag `needs-human`" — never force through a conflicted rebase by
-   discarding either side blind.
-1a. **If this is a reclaim** (`status:changes-requested`: phase 4 sent the PR back): there's no fresh spec — check out the PR's
-    existing branch and rebase it onto its actual current base first — normally `main`
-    (or this project's default branch), but the branch this ticket's own PR was
-    deliberately opened against instead if it's based on another still-open PILOT PR's
-    branch (`.pilot/pilot-link-cascade.md` "Known limitation") — before reading
-    its diff and the phase-4 blocking review instead (the `change`-tagged points to fix,
-    plus any `decision`-tagged points and their resolution) — the branch may have gone
-    stale since it was opened, and phase 4 just re-ran validation against it, so build on the current base, not whatever it
-    was at PR-open time. Address exactly those points, skipping steps 2-4 below
-    (fresh-implementation only). Push new commits to that same PR's branch — a force
-    push, since the rebase already rewrote its history; safe as long as no other
-    ticket's branch has been created from this one since it was opened (check before
-    assuming — this ticket's own dependents, if any, would need coordinating instead of
-    a blind force-push) — never open a second PR for the same ticket. Before moving on,
-    post one comment on the issue itself summarizing what you changed and why — the
-    blocking points live only in the PR review, not the issue, and a `change`-only reclaim reaches you
-    without any human ever having looked at the ticket, so this is what keeps the
-    ticket's own history coherent with the code. Still run the
-    validation in step 5 and move to `status:review-ready` in step 6, same as a fresh
-    implementation. Step 4's "ask live, otherwise flag `needs-human`" behavior still
-    applies here too, including for a rebase conflict.
-2. Read the ticket's spec, the architect's security/architecture decisions, any UI/UX
-   description carried into it, and this
-   project's own coding standards/security conventions (`CLAUDE.md`, or what it
-   points to — e.g. architecture-layering, how identity is derived, what secrets/
-   headers gate internal calls, single- vs multi-tenant), if documented.
-3. Write tests first for behavioral changes — real TDD: for each behavior you add or
-   change, write the test, run it, confirm it fails for the expected reason (not a
-   typo/setup error), then write the minimum implementation to pass, then refactor.
-   Commit the failing test on its own, before the implementation commit(s) — this
-   makes the test-first order verifiable from commit history later (phase 4,
-   `.pilot/pilot-task-review-spec-conformance.md`), not just your word. Use this project's
-   language-specific TDD-enforcing skill/convention if it has one; otherwise mirror the
-   same red-green-refactor and separate-commit discipline across whatever languages the
-   change touches.
-3a. If a test surfaces what looks like a genuine defect in already-merged code
-    outside your ticket — not an ambiguity in what you're building (that's a spec
-    deviation, step 4) — most likely while writing an end-to-end test task
-    (`.pilot/pilot-link-e2e-tasks.md`, implemented by `pilot-e2e`, which follows this same
-    step for a bug it finds), but not limited to that. Classify and, if genuine,
-    originate it per the mechanic passed alongside this task doc
-    (`.pilot/pilot-link-bug-tickets.md`). Then, unlike a prerequisite found during scoping,
-    this ticket is already claimed and mid-phase, so unclaim yourself instead of leaving
-    it stuck: push whatever you already have to a branch (create one now if you haven't
-    pushed yet — never a broken/partial commit), comment on the ticket naming that
-    branch, clear the assignee, and move it back to `status:dev-ready`. The dependency
-    gate does the rest from there: whichever agent next claims this ticket picks up your
-    branch per step 1 above, automatically, the moment the new ticket reaches
-    `status:done` — no `on-hold`, no `--resume` to remember.
-4. Implement exactly what the spec calls for. A deviation that changes behavior or
-   architecture needs a comment on the ticket explaining why, for phase 4 to see —
-   unless it contradicts a binding wiki or architecture entry (`.pilot/pilot-link-knowledge.md` "What binds"): that is never yours to justify, stop with `needs-human`. Otherwise,
-   if you can justify and proceed with it yourself, that's not a block. Reserve
-   blocking for something you genuinely can't resolve alone (the spec is wrong
-   about what to build, not just how; a real security concern it didn't cover; an
-   ambiguity with no reasonable default). When that happens: add `needs-human`
-   (keep `status:in-dev` — an orthogonal flag, `.pilot/pilot-process.md` §3) and a
-   comment on why and what you need decided, immediately and every time, even with
-   a human live in this session. *Then*, if that human answers in conversation,
-   proceed with their answer, post a follow-up comment summarizing the decision,
-   and only then remove `needs-human` yourself in the same turn, continuing;
-   otherwise stop and leave flag and comment for later — don't open a partial PR
-   for an undecided ticket. If instead it can't move forward due to unresolved work
-   elsewhere rather than a judgment call, that's `on-hold`, not `needs-human`
-   (`.pilot/pilot-process.md` §3 "`on-hold`") — apply it with a comment on what it's
-   waiting on.
-5. Run the narrowest relevant validation after each substantive edit, then this
-   project's broader build/test/lint checks for whatever service(s)/package(s) the
-   change touches (however this project documents those commands — a root command
-   list, a per-service README, etc.).
-5a. **Final self-review, before opening the PR**: re-read the whole diff, not just
-    your last edit, as a peer reviewer would (code quality, maintainability,
-    readability/naming, whether tests actually exercise the claimed behavior, edge
-    cases the spec didn't call out) and fix what you find. This stands in for a
-    separate phase-4 reviewer covering the same ground (`.pilot/pilot-process.md` §4
-    "Interaction modes") — the tech lead still
-    checks spec conformance and does its own quality pass independently, but this is
-    your one chance to catch what you'd otherwise ship uncaught.
-6. Commit and push to a short-lived branch, open a pull request following this
-   project's own PR template if it has one (e.g. `.github/pull_request_template.md`)
-   — including a "PILOT ticket" section if the template defines one: type,
-   `Closes #<issue>`, and any spec deviation from step 4 — clear the assignee, and
-   move the ticket to `status:review-ready` (phase 4's own pre-claim status,
-   `.pilot/pilot-process.md` §4). Never merge — that's phase 4's call, never dev's: a
-   human merges by hand, unless `/pilot-review` itself was run with `--merge`
-   (`.pilot/pilot-process.md` §3 "`status:approved`").
-6a. **Wiki** (only when the prompt carries entries): they state what the product must do. Implement
-   what they say; an entry that contradicts the spec or cannot be followed is not yours to edit — stop
-   with `needs-human`. In the same PR, an entry this change completes — every other ticket it lists
-   with `level` `task` is closed (`python3 .pilot/pilot.py wiki status <id>`) — moves to
-   `implemented`: `wiki set <id> --status implemented`, and verified by running something, not by trusting names: a test or a CLI call that shows the behavior holds as the entry states it, in every detail it states.
-   Put the proof in the PR body, one line per entry: `Verified: <id> — <command> → <result>`. It holds → commit, then `wiki set <id> --stamp <that commit> --by process:pilot-dev` (the stamp, never written otherwise in a PR).
-   No command can test it (a rendering, a journey, something asynchronous) → no stamp, a line `Verified: <id> — not by command: <why>`: the entry stays `implemented` and unstamped, QA verifies it in phase 5 (a project without QA leaves it
-   unverified). The code does something else than the entry states → stop with `needs-human` quoting the statement and what the code does. An entry this change removes (the story's ticket lists it for removal) is deleted once the behavior is gone: `wiki remove <id>` (refused while another entry cites it: edit that entry in the same PR when the change is yours, else stop with `needs-human`). Any other entry stays as it is; never stamp one.
-6b. **Architecture reference** (only when the prompt carries the architecture index): a change to a fact a
-   `reference` entry states (a dependency version, a table, a folder, a command) updates that entry in the same PR
-   (`arch show <id>`, edit the text, `arch set <id> --clear-stamp`). A rule or an ADR is never edited here.
-7. Update any docs or service-level README/CLAUDE.md (or equivalent) the change
-   affects, per this project's own documentation-maintenance convention, if it has
-   one.
+Never: open a PR, push, edit a criterion or an entry, widen the scope, weaken or skip a test to make it pass, add a dependency no ADR admits.
 
-You are not a phase-4 reviewer — your self-review at step 5a above is what stands in
-for that; phase 4's default set is `pilot-techlead`
-alone (`type:tech`/`type:bug`) or `pilot-techlead` + `pilot-pm` (`type:feature`/`type:e2e`)
-— `pilot-architect` optional in either, added via `--with architect`.
+Return the paths of the tests and of the code you wrote, then ASSUMPTION lines, then a QUESTION if any.

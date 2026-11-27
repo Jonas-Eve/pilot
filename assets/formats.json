@@ -60,13 +60,21 @@
       "discarded": "text",
       "reason": "text"
      }
+    },
+    "Outside": {
+     "required": false,
+     "id": "O\\d+",
+     "fields": {
+      "text": "text"
+     }
     }
    }
   },
   "frame": {
    "where": "wiki/<domain>/<id>.md (functional) or architecture/guidelines/<id>.md (technical)",
    "frontmatter": {
-    "pilot.scope": "list:scope"
+    "pilot.scope": "list:scope",
+    "replaces": "list:text?"
    },
    "sections": {
     "Source": {
@@ -100,7 +108,8 @@
    "where": "architecture/adr/NNNN-<title>.md",
    "frontmatter": {
     "pilot.scope": "list:scope",
-    "pilot.status": "enum:proposed,provisional,accepted,superseded"
+    "pilot.status": "enum:proposed,provisional,accepted,superseded",
+    "replaces": "list:text?"
    },
    "sections": {
     "Decisions": {
@@ -110,6 +119,22 @@
       "decision": "text",
       "covers": "list:xref",
       "reason": "text"
+     }
+    },
+    "Why": {
+     "required": false,
+     "id": "W\\d+",
+     "fields": {
+      "text": "text"
+     }
+    },
+    "Criteria": {
+     "required": false,
+     "id": "C\\d+",
+     "fields": {
+      "then": "text",
+      "by": "enum:test,e2e,human,judgment",
+      "source": "ref:Why"
      }
     }
    }
@@ -184,13 +209,15 @@
       "text": "text"
      }
     }
-   }
+   },
+   "frontmatter": {}
   },
   "user-flow": {
    "where": "wiki/flows/<id>.md, type UserFlow",
    "frontmatter": {
     "pilot.scope": "list:scope",
-    "pilot.personas": "list:text"
+    "pilot.personas": "list:text",
+    "pilot.status": "enum:specified,implemented?"
    },
    "sections": {
     "Steps": {
@@ -377,7 +404,8 @@
        ],
        "properties": {
         "id": {
-         "type": "string"
+         "type": "string",
+         "pattern": "K\\d+"
         },
         "source": {
          "type": "string",
@@ -458,6 +486,33 @@
      },
      "persona_hash": {
       "type": "string"
+     },
+     "verdict": {
+      "enum": [
+       "ok",
+       "ko"
+      ]
+     },
+     "decisions": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "assumption",
+        "decision"
+       ],
+       "properties": {
+        "assumption": {
+         "type": "string"
+        },
+        "decision": {
+         "enum": [
+          "accepted",
+          "rejected"
+         ]
+        }
+       }
+      }
      }
     }
    }

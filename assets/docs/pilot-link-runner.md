@@ -40,3 +40,9 @@ An alternative (`alt_of`) is chosen by the run's `executant`; the other is skipp
 ## Finish
 
 `pilot.py run end`, a `derive` of the parent ticket where a task or story changed (`pilot.py derive <parent>`), then one snapshot push to the cockpit. Report the outcome, what is unverified, and what only a human can do.
+
+## Project commands
+
+A check that reads the project's results (tests, rules, e2e, build, accessibility, a prototype's render, the deployed version) takes them from the commands of `.pilot/state.json`
+(`pilot.py config get commands.test`; keys `test`, `rules`, `e2e`, `build`, `a11y`, `render`, `version`). Run the command, write the JSON its check lists. A command the project has not
+declared: ask the human once, then `pilot.py config set commands.<key> "<command>"`. A check never guesses a result it could not obtain: it fails with the missing command named.

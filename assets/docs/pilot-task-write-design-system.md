@@ -1,45 +1,17 @@
-# PILOT task — Write or revise the project's design system and brand charter
+# PILOT task — Write a design-system entry
 
-Injected by `.claude/skills/pilot-design/SKILL.md` into the `pilot-designer` persona's
-prompt, once per round: you talk with the human through the skill, who steers. You lead; the
-human approves.
+Injected by the `build` step of the `design-system` workflow into the `pilot-designer` persona.
 
-You receive the current design document (absent when none exists yet), the section asked for
-(or all), what the human wants in free text, pointers to this project's sources (mockups,
-guidelines, theme/token files, anything the human handed over) and the conversation so far.
+You receive the design intention, the audit's delta and the proposed scope. You write one entry in format `design-entry`; each field and its checks are in `.pilot/formats.json`.
 
-1. **Derive, don't invent.** Take colors, type and components from the sources and from what
-   the human says. A value no source or answer supports is a **proposed default**: mark it as
-   such in your turn's text and let the human confirm. Never replace a value the sources
-   already fix.
-2. **Keep it usable and accessible.** Text/background pairs reach WCAG AA contrast (4.5:1,
-   3:1 for large text) in both themes; interactive targets are at least 44 px; meaning never
-   rests on color alone. Flag any source value that breaks these and propose a fix.
-3. **Stay at design-system level.** Tokens, components and rules shared by every screen — no
-   page layouts, no product scope, no code.
-4. Talk with the human like a collaborator: react to what they said, propose, ask a question
-   only where it helps, with a provisional default. Say whether the section is **ready**: no
-   shape-changing question open, or the human said to go with the defaults.
-5. When ready, return the section(s) as one JSON object, only the sections asked for:
+1. **Derive, never invent.** Take values from the existing design system, the sources the intention points to and the human's words. A value none supports is an `ASSUMPTION:` with its default. Never replace a value the existing system fixes unless the delta's resolution says so, and then say what it replaces.
+2. **Tokens.** One line per token, named by role (`color.text.primary`), never by appearance. Always a `light` and a `dark` value, and `on:` the token it is displayed on for every foreground token. Each pair reaches WCAG AA: 4.5:1 for text, 3:1 for large text and interface borders, in both themes. A pair that fails is fixed before you write it, or listed as a defect you could not fix.
+3. **Components.** One line per component, with a `category` of the format and every state its category requires (`required_states`), plus the tokens it uses. A component needs no state the category does not list, but never fewer. Interactive targets are at least 44 px; meaning never rests on color alone.
+4. **Scope.** `pilot.scope` takes the terms of the project's vocabulary the audit proposed, no other.
+5. **Stay at design-system level.** Tokens and components shared by every screen; no page layout, no product scope, no code.
+6. **Never write the theme** (CSS variables, token files): it is generated from the entry. Never edit another entry; an overlap with one is resolved by what the delta says, else a `QUESTION:`.
+7. **Demonstration page.** Also one self-contained HTML file (inline CSS and JS, no external resource) showing every component in every one of its states, in light and dark, with the entry's tokens as literal values.
 
-```json
-{
-  "charter": {"name": "", "summary": "", "logo": "<svg …>", "colors": [{"name": "", "hex": "#RRGGBB", "use": ""}], "voice": "", "rules": ""},
-  "colors": [{"name": "", "light": "#RRGGBB", "dark": "#RRGGBB", "use": ""}],
-  "type": {"family": "", "scale": [{"name": "", "size": 16, "weight": 400, "use": ""}]},
-  "space": {"spacing": [{"name": "", "value": "8px"}], "radius": [{"name": "", "value": "8px"}]},
-  "components": [{"name": "", "description": "", "rules": "", "preview": "<div>…</div>", "height": 120}],
-  "a11y": [""]
-}
-```
+A choice that changes an existing component's behavior for the screens that use it is a `QUESTION:`; every other choice is an `ASSUMPTION:`.
 
-   A component's `preview` is a static HTML fragment (no `<script>`, no event handlers, no
-   external resource; inline `<style>` allowed) under 4 KB, shown in an isolated frame of
-   `height` px (40 to 400). Style it only with the document's own tokens, which the frame
-   defines from it, so it follows both themes: `var(--color-<name>)`, `var(--space-<name>)`,
-   `var(--radius-<name>)`, `var(--text-<name>)` and `var(--font)`, where `<name>` is the token's
-   name lower-cased, accents removed and anything else turned into `-`. Show the component in
-   its main state; one preview per component.
-
-   Hex values are `#RGB` or `#RRGGBB`; `size` is a number of px; `logo` is an inline SVG under
-   20 KB, omitted when there is none. Every other field is plain text — no HTML or Markdown.
+Return the entry's path, the demonstration page's path, and what the entry replaces (or `nothing`).

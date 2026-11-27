@@ -133,7 +133,8 @@ def validate_markdown(fmt_id, doc, ctx):
     for key, kind in fmt.get("frontmatter", {}).items():
         value = front_value(doc["front"], key)
         if value is None or value in ("", "[]"):
-            problems.append(problem("missing-frontmatter", key=key))
+            if not kind.endswith("?"):
+                problems.append(problem("missing-frontmatter", key=key))
             continue
         code = check_type(kind, value.strip("[]"), doc, ctx)
         if code:
@@ -437,6 +438,7 @@ def plan_check(ctx):
     ids = [t["id"] for t in tickets]
     problems += [problem("duplicate-ticket-id", id=i) for i in sorted({i for i in ids if ids.count(i) > 1})]
     crit = criteria_of(ctx, csv(ctx, "entries"))
+    crit.update(criteria_of(ctx, csv(ctx, "adrs")))  # a technical need has no entry: its criteria live in its ADR
     placed = {}
     for t in tickets:
         for c in t["criteria"]:
@@ -453,7 +455,8 @@ def plan_check(ctx):
             decisions[f"{aid}#{d['id']}"] = [x.strip() for x in d["fields"].get("covers", "").split(",")]
     problems += [problem("unknown-decision", ticket=t["id"], id=d) for t in tickets for d in t.get("decisions", []) if d not in decisions]
     covered = {c for covers in decisions.values() for c in covers}
-    problems += [problem("criterion-without-decision", id=c) for c in sorted(set(crit) - covered)]
+    own = set(criteria_of(ctx, csv(ctx, "adrs")))  # an ADR's own criteria are covered by it
+    problems += [problem("criterion-without-decision", id=c) for c in sorted(set(crit) - covered - own)]
     deps = {t["id"]: t.get("depends", []) for t in tickets}
     problems += [problem("unknown-dependency", ticket=t, depends=d) for t, ds in deps.items() for d in ds if d not in deps]
     if has_cycle(deps):
@@ -524,7 +527,7 @@ def _results_problems(ctx, rules):
 
 @check("build.check")
 def build_check(ctx):
-    """--arg results=<json: tests_ok, rules_ok, hypotheses_declared, diff_paths, scope_globs, criteria, test_refs>"""
+    """--arg results=<json: tests_ok, rules_ok, hypotheses_declared, diff_paths, scope_globs, criteria (the ids whose `by` is test), test_refs>"""
     res = jsonarg(ctx, "results")
     problems = _results_problems(ctx, (("tests_ok", "tests-failing"), ("rules_ok", "rules-failing"), ("hypotheses_declared", "hypotheses-undeclared")))
     from fnmatch import fnmatch
@@ -537,7 +540,7 @@ def build_check(ctx):
 
 @check("build.check-2")
 def e2e_check(ctx):
-    """--arg results=<json: e2e_ok, criteria_e2e [ids], e2e_refs {id: [tests]}>"""
+    """--arg results=<json: e2e_ok, criteria_e2e (the ids whose `by` is e2e), e2e_refs {id: [tests]}>"""
     res = jsonarg(ctx, "results")
     problems = _results_problems(ctx, (("e2e_ok", "e2e-failing"),))
     return problems + [problem("criterion-without-e2e", id=c) for c in res.get("criteria_e2e", []) if not res.get("e2e_refs", {}).get(c)]

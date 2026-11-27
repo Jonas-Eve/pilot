@@ -316,6 +316,43 @@ LANG_WORDS = {
 }
 
 
+CONFIG_KEYS = ("projectName", "language", "dashboardUrl", "commands", "scopes", "threshold")  # what `config` may write
+COMMAND_KEYS = ("test", "rules", "e2e", "build", "a11y", "render", "version")  # the project's own commands the checks read results from
+
+
+def config_value(key, path=STATE_PATH):
+    """A dotted key of `.pilot/state.json` (`commands.test`), or None."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            node = json.load(handle)
+    except (OSError, ValueError):
+        return None
+    for part in key.split("."):
+        node = node.get(part) if isinstance(node, dict) else None
+    return node
+
+
+def config_set(key, value, path=STATE_PATH):
+    """Write one dotted key of `.pilot/state.json`, leaving everything else alone. `commands.<name>` takes a shell command."""
+    head, _, tail = key.partition(".")
+    if head not in CONFIG_KEYS or (head == "commands" and tail not in COMMAND_KEYS):
+        raise Refused({"ok": False, "reason": "unknown-key", "allowed": list(CONFIG_KEYS), "commands": list(COMMAND_KEYS)})
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        data = {}
+    if tail:
+        data.setdefault(head, {})[tail] = value
+    else:
+        data[head] = value
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+    return {"ok": True, "key": key, "value": value}
+
+
 def read_language(path=STATE_PATH):
     """The language of the project's wiki and architecture text, from `.pilot/state.json` (`language`, an ISO code such as
     "fr"); English when the file or the field is absent."""
@@ -501,6 +538,9 @@ class GhClient:
 
     def merge_pull(self, number, method):
         return json.loads(self._run(f"repos/{self.repo}/pulls/{number}/merge", method="PUT", body={"merge_method": method}))
+
+    def add_sub_issue(self, parent, child_id):
+        self._run(f"repos/{self.repo}/issues/{parent}/sub_issues", method="POST", body={"sub_issue_id": child_id})
 
     def upsert_label(self, name, color, description, exists):
         body = {"color": color, "description": description[:100]}
@@ -1209,6 +1249,35 @@ class Machine:
         return {"ok": True, "run": number, "result": result, "event": self._run_event(number, record, "end")}
 
     # ---- tickets: the two human closings, and the statuses derived from the children --------------------------
+    def ticket_create(self, level, kind, title, body, status, parent=None, priority=None, labels=()):
+        """Create an epic, story or task as a GitHub issue (a story points to its entries in its body; nothing is copied), under `parent`
+        as a native sub-issue. The status must exist for the level."""
+        if level not in LEVELS or kind not in ("feature", "tech"):
+            raise Refused({"ok": False, "reason": "bad-level-or-type", "levels": list(LEVELS), "types": ["feature", "tech"]})
+        if status not in LEVEL_STATUSES[level]:
+            raise Refused({"ok": False, "reason": "status-not-for-level", "level": level, "allowed": list(LEVEL_STATUSES[level])})
+        names = [f"level:{level}", f"type:{kind}", f"status:{status}", *labels] + ([f"priority:{priority}"] if priority else [])
+        made = self.gh.create_issue(title, body, names, [])
+        if parent:
+            self.gh.add_sub_issue(parent, made["id"])
+        issue = normalize(made)
+        return {"ok": True, "issue": issue["number"], "labels": sorted(issue["labels"]), "event": self._event(issue, "created")}
+
+    def ticket_merged(self, number):
+        """A ticket whose PR merged: `merged` (a ticket still `building` or `reviewing`), then its parent derived. Idempotent, so the merge
+        workflow of GitHub and the build run may both call it."""
+        raw = self.gh.get_issue(number)
+        if raw is None:
+            raise Refused({"ok": False, "reason": "not-found", "issue": number})
+        issue = normalize(raw)
+        status = status_of(issue["labels"])
+        if status not in ("status:building", "status:reviewing", "status:merged"):
+            raise Refused({"ok": False, "reason": "wrong-status", "issue": number, "status": status})
+        out = self.set(number, "merged", None, (), ()) if status != "status:merged" else {"ok": True, "issue": number, "status": status}
+        if issue.get("parent"):
+            out["parent"] = self.derive(issue["parent"])
+        return out
+
     def ticket_close_forming(self, number, drop=False):
         raw = self.gh.get_issue(number)
         if raw is None:
@@ -2492,9 +2561,20 @@ def build_parser():
     w.add_argument("issue", type=int)
     w.add_argument("--result", help="e.g. accepted, rejected, ok, ko")
     w.add_argument("--record", help="a JSON file kept in the run's last comment (a Recette's record)")
-    p = sub.add_parser("ticket", help="the two human closings of a ticket")
-    p.add_argument("action", choices=["close-forming", "drop"])
-    p.add_argument("issue", type=int)
+    p = sub.add_parser("ticket", help="create a ticket, or the two human closings of one")
+    ts = p.add_subparsers(dest="ticket_cmd", required=True)
+    w = ts.add_parser("create", parents=[common])
+    w.add_argument("--level", required=True, choices=list(LEVELS))
+    w.add_argument("--type", required=True, choices=["feature", "tech"], dest="kind")
+    w.add_argument("--title", required=True)
+    w.add_argument("--body", default="")
+    w.add_argument("--status", required=True)
+    w.add_argument("--parent", type=int)
+    w.add_argument("--priority", choices=["P0", "P1", "P2"])
+    w.add_argument("--label", action="append", default=[], help="express, fix, gap")
+    for name in ("close-forming", "drop", "merged"):
+        w = ts.add_parser(name, parents=[common])
+        w.add_argument("issue", type=int)
     p = sub.add_parser("pr", help="open a PR, read its CI verdict, merge it once the CI is green")
     ps = p.add_subparsers(dest="pr_cmd", required=True)
     w = ps.add_parser("open", parents=[common])
@@ -2507,6 +2587,10 @@ def build_parser():
     w = ps.add_parser("merge", parents=[common])
     w.add_argument("number", type=int)
     w.add_argument("--method", choices=["squash", "rebase", "merge"], default="squash")
+    p = sub.add_parser("config", help="read or write one key of .pilot/state.json (commands.test, language, …)")
+    p.add_argument("action", choices=["get", "set"])
+    p.add_argument("key")
+    p.add_argument("value", nargs="?")
     p = sub.add_parser("derive", help="a split story's status from its tasks, an epic's from its stories")
     p.add_argument("issue", type=int)
     p = sub.add_parser("labels", help="create or update every PILOT label")
@@ -2743,7 +2827,7 @@ def run_runs(args, gh):
 def needs_github(args):
     if args.cmd == "check":
         return args.id in pilot_checks.NEEDS_GH
-    if args.cmd in ("module", "contract", "flow", "workflow", "judge"):
+    if args.cmd in ("module", "contract", "flow", "workflow", "judge", "config"):
         return False
     if args.cmd == "arch":
         return False
@@ -2822,6 +2906,12 @@ def run_module(args):
 
 
 def run(args, gh):
+    if args.cmd == "config":
+        if args.action == "get":
+            return {"ok": True, "key": args.key, "value": config_value(args.key)}
+        if args.value is None:
+            raise Refused({"ok": False, "reason": "value-required"})
+        return config_set(args.key, args.value)
     if args.cmd == "module":
         return run_module(args)
     if args.cmd == "contract":
@@ -2850,7 +2940,11 @@ def run(args, gh):
         assign = "me" if args.assign_me else "none" if args.unassign else None
         return machine.set(args.issue, args.status, assign, args.add, args.remove, args.close, args.pr)
     if args.cmd == "ticket":
-        return machine.ticket_close_forming(args.issue, drop=args.action == "drop")
+        if args.ticket_cmd == "create":
+            return machine.ticket_create(args.level, args.kind, args.title, args.body, args.status, args.parent, args.priority, args.label)
+        if args.ticket_cmd == "merged":
+            return machine.ticket_merged(args.issue)
+        return machine.ticket_close_forming(args.issue, drop=args.ticket_cmd == "drop")
     if args.cmd == "derive":
         return machine.derive(args.issue)
     if args.cmd == "pr":

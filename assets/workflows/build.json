@@ -401,6 +401,12 @@
      "TEXTE",
      "Un test rouge est classé par l'agent : défaut de code (retour à l'implémenteur, et toute la chaîne se rejoue) ou défaut du test (il le corrige)"
     ]
+   ],
+   "on_reject": [
+    {
+     "label": "code",
+     "to": "implement"
+    }
    ]
   },
   {

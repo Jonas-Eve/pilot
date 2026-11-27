@@ -15,7 +15,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SIZE_WARN = {"skill": 26000, "agent": 5000, "doc": 30000}  # bytes: past it, a file loaded on every run deserves a look
-LABEL_RE = re.compile(r"`((?:status|type|level|priority|workflow):[a-z0-9-]+)`")
+LABEL_RE = re.compile(r"`((?:status|type|level|priority|run):[a-z0-9-]+)`")
 DOC_RE = re.compile(r"pilot-(?:task|link)-[a-z0-9-]+\.md")
 NUMBER_WORDS = {w: i for i, w in enumerate(
     "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen "
@@ -81,6 +81,10 @@ class Linter:
         existing = {p.name for p in docs}
         consumers = skills + agents + docs
         cited = {}
+        for wf in load_pilot(self.root).load_workflows().values():
+            for step in wf["steps"]:
+                if step.get("task"):
+                    cited.setdefault(f"pilot-task-{step['task']}.md", set()).add(f"workflows/{wf['id']}.json")
         for p in consumers:
             for name in set(DOC_RE.findall(p.read_text())):
                 if name == p.name:
@@ -92,7 +96,7 @@ class Linter:
             if p.name.startswith(("pilot-task-", "pilot-link-")) and p.name not in cited:
                 self.add("error", "orphan-doc", p, "no skill, agent or doc cites it")
 
-    def check_agents(self, agents, docs):
+    def check_agents(self, agents, docs):  # the identity files: what a duties paragraph may and may not hold
         existing = {p.name for p in docs}
         for p in agents:
             body = p.read_text()
@@ -111,9 +115,45 @@ class Linter:
             for name in set(re.findall(r"pilot-task-[a-z0-9-]+\.md", body[:at])):
                 self.add("warning", "agent-duties", p, f"{name} is cited outside the duties paragraph (a persona carries identity only)")
 
+    def check_workflows(self, skills, agents, docs):
+        """The workflow data against the files it names: its own problems, the task docs, the personas and their duty lists, a skill per workflow."""
+        mod = load_pilot(self.root)
+        wfs = mod.load_workflows()
+        for prob in mod.workflow_problems(wfs):
+            self.add("error", "workflow", "assets/workflows", json.dumps(prob, ensure_ascii=False))
+        existing, names = {p.name for p in docs}, {p.stem for p in agents}
+        duties = {}
+        for wid, wf in wfs.items():
+            for step in wf["steps"]:
+                if step.get("task") and f"pilot-task-{step['task']}.md" not in existing:
+                    self.add("error", "workflow", f"assets/workflows/{wid}.json", f"step {step['id']} names task {step['task']}, which has no doc")
+                for agent in step.get("agents", []):
+                    if f"pilot-{agent['persona']}" not in names:
+                        self.add("error", "workflow", f"assets/workflows/{wid}.json", f"step {step['id']} names persona {agent['persona']}, which has no file")
+                    elif step.get("task"):
+                        duties.setdefault(agent["persona"], set()).add(f"pilot-task-{step['task']}.md")
+        for p in agents:
+            persona = p.stem[len("pilot-"):]
+            listed = set(re.findall(r"pilot-task-[a-z0-9-]+\.md", p.read_text()[p.read_text().rfind("Your duties"):]))
+            if listed != duties.get(persona, set()):
+                self.add("error", "agent-duties", p, f"lists {sorted(listed - duties.get(persona, set())) or 'nothing extra'} not given to it by a workflow and misses "
+                         f"{sorted(duties.get(persona, set()) - listed) or 'nothing'}")
+        runners = {"need", "plan", "build", "accept", "report", "express"}
+        module = {"functional-frame": "pilot-wiki", "technical-frame": "pilot-architecture", "design-system": "pilot-design",
+                  "proto": "pilot-proto", "personas-flows": "pilot-flow"}
+        have = {p.parent.name for p in skills}
+        for wid in wfs:
+            skill = f"pilot-{wid}" if wid in runners else module.get(wid)
+            if skill not in have:
+                self.add("error", "workflow", f"assets/workflows/{wid}.json", f"no skill runs it ({skill})")
+        try:
+            json.loads((self.root / "assets/formats.json").read_text())
+        except (OSError, ValueError) as err:
+            self.add("error", "formats", "assets/formats.json", str(err))
+
     def check_labels(self, files):
         mod = load_pilot(self.root)
-        known = set(mod.REQUIRED_LABELS) | set(getattr(mod, "POC_OPEN", ()))
+        known = set(mod.required_labels())
         for p in files:
             for lab in sorted(set(LABEL_RE.findall(p.read_text()))):
                 if lab not in known:
@@ -222,10 +262,11 @@ class Linter:
 
     def run(self):
         skills, agents, docs = self.files()
-        llm_read = skills + agents + [p for p in docs if "companion" not in p.name]
+        llm_read = skills + agents + docs
         self.check_frontmatter(skills, agents)
         self.check_doc_refs(skills, agents, docs)
         self.check_agents(agents, docs)
+        self.check_workflows(skills, agents, docs)
         self.check_labels(llm_read)
         self.check_commands(llm_read)
         mentions = llm_read + [p for p in (self.root / "CLAUDE.md", self.root / "README.md") if p.exists()]
