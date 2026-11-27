@@ -9,12 +9,14 @@ import contextlib
 import io
 import os
 import subprocess
+import sys
 import tempfile
+import types
 import unittest
 
-spec = importlib.util.spec_from_file_location("pilot", pathlib.Path(__file__).with_name("pilot.py"))
-pilot = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(pilot)
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+import pilot  # noqa: E402
+import pilot_checks  # noqa: E402
 
 
 _CWD, _TMP = None, None
@@ -92,7 +94,7 @@ class FakeGh:
         return {"full_name": "o/r", "permissions": getattr(self, "perms", {"push": True})}
 
     def label_names(self):
-        return set(getattr(self, "labels", pilot.REQUIRED_LABELS))
+        return set(getattr(self, "labels", pilot.required_labels()))
 
     def patch_issue(self, number, body):
         target = self.store[number]
@@ -110,6 +112,24 @@ class FakeGh:
     def post_comment(self, number, text):
         self.posted.append((number, text))
         self.calls.append(("comment", number))
+        self.cid = getattr(self, "cid", 0) + 1
+        self.run_comments = getattr(self, "run_comments", {})
+        self.run_comments.setdefault(number, []).append({"id": self.cid, "body": text})
+
+    def comment_items(self, number):
+        return list(getattr(self, "run_comments", {}).get(number, []))
+
+    def patch_comment(self, comment_id, text):
+        for items in getattr(self, "run_comments", {}).values():
+            for c in items:
+                if c["id"] == comment_id:
+                    c["body"] = text
+
+    def create_issue(self, title, body, labels, assignees):
+        number = max(self.store, default=0) + 1
+        self.store[number] = issue(number, labels, body=body, assignees=assignees)
+        self.store[number]["title"] = title
+        return copy.deepcopy(self.store[number])
 
 
 def machine(issues, **kw):
@@ -119,813 +139,6 @@ def machine(issues, **kw):
 
 def names(raw):
     return sorted(l["name"] for l in raw["labels"])
-
-
-class PoolTests(unittest.TestCase):
-    def pick(self, phase, issues, **kw):
-        m, _ = machine(issues, **kw)
-        result = m.pool(phase, 10)
-        return [c["number"] for c in result["candidates"]], {e["number"]: e["reason"] for e in result["excluded"]}
-
-    def test_fresh_pool_skips_assigned_and_flagged(self):
-        got, ex = self.pick("dev", [
-            issue(1, ["status:dev-ready"]),
-            issue(2, ["status:dev-ready"], assignees=["a"]),
-            issue(3, ["status:dev-ready", "needs-human"]),
-            issue(4, ["status:dev-ready", "on-hold"]),
-        ])
-        self.assertEqual(got, [1])
-        self.assertEqual(ex, {2: "assigned", 3: "needs-human", 4: "on-hold"})
-
-    def test_the_pick_carries_the_action_resolve_would_give(self):
-        m, _ = machine([issue(1, ["status:dev-ready"], created="2026-01-02T00:00:00Z"),
-                        issue(2, ["status:changes-requested", "priority:P0"])])
-        got = m.pool("dev", 5)
-        self.assertEqual((got["pick"]["number"], got["pick"]["action"]), (2, "reclaim"))
-        self.assertEqual(m.resolve("dev", 2)["action"], got["pick"]["action"])
-        self.assertNotIn("action", got["candidates"][1])  # only the pick is resolved
-        fresh, _ = machine([issue(3, ["status:dev-ready"])])
-        self.assertEqual(fresh.pool("dev", 5)["pick"]["action"], "claim-fresh")
-
-    def test_a_state_written_in_capitals_reads_as_open(self):
-        raw = issue(5, ["status:dev-ready"])
-        raw["state"] = "OPEN"
-        self.assertEqual(pilot.normalize(raw)["state"], "open")
-
-    def test_dependency_gate_open_closed_unknown(self):
-        got, ex = self.pick("dev", [
-            issue(1, ["status:dev-ready"], body="Depends on #10"),
-            issue(2, ["status:dev-ready"], body="Depends on #11"),
-            issue(3, ["status:dev-ready"], body="Depends on #12"),
-            issue(10), issue(11, state="closed"),
-        ])
-        self.assertEqual(got, [2])
-        self.assertEqual(ex, {1: "depends-on-open", 3: "depends-on-open"})
-
-    def test_a_task_inherits_its_split_story_dependency(self):
-        def child(n, parent):
-            c = issue(n, ["status:dev-ready"]); c["parent_issue_url"] = f"https://api.github.com/repos/o/r/issues/{parent}"
-            return c
-        got, ex = self.pick("dev", [
-            issue(1, ["status:split", "level:story"], body="Depends on #10"), issue(5, ["status:split", "level:story"]),
-            issue(6, ["level:epic"], body="Depends on #10"),
-            issue(10), child(2, 1), child(3, 5), child(4, 6),
-        ])
-        self.assertEqual(got, [3, 4])  # an Epic's line is not inherited
-        self.assertEqual(ex, {2: "depends-on-open"})
-        # a closed parent still carries its line; an unreadable one counts as open
-        got, ex = self.pick("dev", [issue(1, ["status:split", "level:story"], state="closed", body="Depends on #10"),
-                                    issue(10), child(2, 1), child(3, 99)])
-        self.assertEqual((got, ex), ([], {2: "depends-on-open", 3: "depends-on-open"}))
-        m = pilot.Machine(FakeGh([issue(1, ["status:split", "level:story"], body="Depends on #10"), issue(10), child(2, 1)]), profile="standard")
-        self.assertEqual(m.resolve("dev", 2)["reason"], "depends-on-open")
-
-    def test_the_transitions_the_process_makes_are_admitted(self):
-        for before, after in (("status:in-dev", "status:dev-ready"), ("status:in-qa", "status:qa"),
-                              ("status:draft", "status:in-spec"), ("status:approved", "status:review-ready"),
-                              ("status:backlog", "status:in-spec"), ("status:changes-requested", "status:in-dev")):
-            self.assertTrue(pilot.transition_allowed(before, after), (before, after))
-        self.assertFalse(pilot.transition_allowed("status:backlog", "status:done"))
-        self.assertFalse(pilot.transition_allowed("status:dev-ready", "status:approved"))
-
-    def test_spec_resume_refuses_a_discovery_draft(self):
-        for labels, action in ((["status:draft", "type:feature", "level:story"], "stop"),
-                               (["status:draft", "type:tech", "level:story"], "resume-orphaned")):
-            m = pilot.Machine(FakeGh([issue(7, labels, assignees=["bot"])]), profile="standard")
-            got = m.resolve("spec", 7, resume=True)
-            self.assertEqual(got["action"], action)
-            if action == "stop":
-                self.assertEqual(got["reason"], "draft-awaits-discovery")
-
-    def test_priority_then_blocks_then_oldest(self):
-        got, _ = self.pick("dev", [
-            issue(1, ["status:dev-ready", "priority:P1"], created="2026-01-01T00:00:00Z"),
-            issue(2, ["status:dev-ready", "priority:P0"], created="2026-03-01T00:00:00Z"),
-            issue(3, ["status:dev-ready", "priority:P0"], created="2026-02-01T00:00:00Z"),
-            issue(4, ["status:dev-ready"], created="2025-01-01T00:00:00Z"),
-        ])
-        self.assertEqual(got, [3, 2, 1, 4])
-        got, _ = self.pick("dev", [
-            issue(2, ["status:dev-ready", "priority:P0"], created="2026-03-01T00:00:00Z"),
-            issue(3, ["status:dev-ready", "priority:P0"], created="2026-02-01T00:00:00Z"),
-            issue(50),
-        ], comments={2: ["Blocks #50"]})
-        self.assertEqual(got, [2, 3])
-
-    def test_blocks_ignored_when_blocked_ticket_is_closed(self):
-        got, _ = self.pick("dev", [
-            issue(2, ["status:dev-ready", "priority:P0"], created="2026-03-01T00:00:00Z"),
-            issue(3, ["status:dev-ready", "priority:P0"], created="2026-02-01T00:00:00Z"),
-            issue(50, state="closed"),
-        ], comments={2: ["Blocks #50"]})
-        self.assertEqual(got, [3, 2])
-
-    def test_resumable_needs_can_resume(self):
-        got, ex = self.pick("dev", [
-            issue(1, ["status:in-dev"], assignees=["a"]),
-            issue(2, ["status:in-dev", "can-resume"], assignees=["a"]),
-            issue(3, ["status:in-dev", "can-resume", "needs-human"], assignees=["a"]),
-        ])
-        self.assertEqual(got, [2])
-        self.assertEqual(ex, {1: "in-progress-without-can-resume", 3: "needs-human"})
-
-    def test_reclaim_only_in_dev(self):
-        issues = [issue(1, ["status:changes-requested"], assignees=["reviewer"]),
-                  issue(2, ["status:changes-requested", "needs-human"], assignees=["reviewer"])]
-        self.assertEqual(self.pick("dev", issues), ([1], {2: "needs-human"}))
-        self.assertEqual(self.pick("review", issues)[0], [])
-
-    def test_phase_status_pairs(self):
-        for phase, fresh in (("spec", "status:backlog"), ("review", "status:review-ready"),
-                             ("qa", "status:qa")):
-            self.assertEqual(self.pick(phase, [issue(7, [fresh])])[0], [7], phase)
-
-    def test_only_restricts_the_pool(self):
-        m, _ = machine([issue(1, ["status:dev-ready"]), issue(2, ["status:dev-ready"])])
-        self.assertEqual([c["number"] for c in m.pool("dev", 5, only={2})["candidates"]], [2])
-
-
-class ResolveTests(unittest.TestCase):
-    def act(self, phase, issues, number, resume=False, **kw):
-        m, _ = machine(issues, **kw)
-        return m.resolve(phase, number, resume)
-
-    def test_fresh_unassigned_is_claimable(self):
-        self.assertEqual(self.act("dev", [issue(1, ["status:dev-ready"])], 1)["action"], "claim-fresh")
-
-    def test_stop_reasons(self):
-        cases = [
-            (issue(1, ["status:dev-ready"], assignees=["a"]), "assigned"),
-            (issue(1, ["status:dev-ready", "needs-human"]), "flagged"),
-            (issue(1, ["status:in-dev", "on-hold"], assignees=["a"]), "flagged"),
-            (issue(1, ["status:backlog"]), "wrong-status"),
-            (issue(1, ["status:dev-ready"], state="closed"), "closed"),
-            (issue(1, ["status:in-dev"]), "in-progress-unassigned"),
-        ]
-        for raw, reason in cases:
-            got = self.act("dev", [raw], 1)
-            self.assertEqual((got["action"], got["reason"]), ("stop", reason), reason)
-        self.assertEqual(self.act("dev", [], 1)["reason"], "not-found")
-
-    def test_an_unassigned_in_progress_ticket_has_a_way_out(self):
-        got = self.act("dev", [issue(1, ["status:in-dev"])], 1)
-        self.assertEqual(got["reason"], "in-progress-unassigned")
-        self.assertIn("can-resume", got["hint"])
-        self.assertEqual(self.act("dev", [issue(1, ["status:in-dev", "can-resume"])], 1)["action"], "resume-cleared")
-
-    def test_dependency_gate_applies_to_dev_and_qa_not_spec_or_review(self):
-        dep = [issue(10)]
-        for phase, fresh, expect in (("dev", "status:dev-ready", "stop"), ("qa", "status:qa", "stop"),
-                                     ("spec", "status:backlog", "claim-fresh"),
-                                     ("review", "status:review-ready", "claim-fresh")):
-            got = self.act(phase, [issue(1, [fresh], body="Depends on #10")] + dep, 1)
-            self.assertEqual(got["action"], expect, phase)
-
-    def test_in_progress_variants(self):
-        base = ["status:in-dev"]
-        self.assertEqual(self.act("dev", [issue(1, base + ["can-resume"], assignees=["a"])], 1)["action"],
-                         "resume-cleared")
-        self.assertEqual(self.act("dev", [issue(1, base, assignees=["a"])], 1)["action"], "ask-resume")
-        self.assertEqual(self.act("dev", [issue(1, base, assignees=["a"])], 1, resume=True)["action"],
-                         "resume-orphaned")
-        self.assertEqual(self.act("dev", [issue(1, base)], 1, resume=True)["reason"], "resume-mismatch")
-        self.assertEqual(self.act("dev", [issue(1, ["status:dev-ready"])], 1, resume=True)["reason"],
-                         "resume-mismatch")
-
-    def test_spec_resume_also_recovers_a_draft(self):
-        raw = issue(1, ["status:draft"], assignees=["a"])
-        self.assertEqual(self.act("spec", [raw], 1, resume=True)["action"], "resume-orphaned")
-        self.assertEqual(self.act("dev", [raw], 1, resume=True)["reason"], "resume-mismatch")
-        m, gh = machine([raw])
-        m.claim("spec", 1, "resume-orphaned")
-        self.assertEqual(names(gh.store[1]), ["status:draft"])  # status stays where it was
-
-    def test_reclaim_is_dev_only(self):
-        raw = issue(1, ["status:changes-requested"], assignees=["rev"])
-        self.assertEqual(self.act("dev", [raw], 1)["action"], "reclaim")
-        self.assertEqual(self.act("review", [raw], 1)["action"], "stop")
-
-    def test_pr_number_is_left_to_the_skill(self):
-        self.assertEqual(self.act("review", [issue(1, pr=True)], 1)["action"], "manual")
-
-    def test_epic_and_split_descend(self):
-        issues = [issue(1, ["level:epic"]), issue(2, ["level:story", "status:split"]),
-                  issue(3, ["status:dev-ready", "priority:P1"]),
-                  issue(4, ["status:dev-ready", "priority:P0"]),
-                  issue(5, ["status:dev-ready"], state="closed")]
-        subs = {1: [2], 2: [3, 4, 5]}
-        got = self.act("dev", issues, 1, subs=subs)
-        self.assertEqual((got["action"], got["pick"]["number"]), ("descend", 4))
-        got = self.act("dev", issues, 2, subs=subs)
-        self.assertEqual((got["action"], got["pick"]["number"]), ("descend", 4))
-        self.assertEqual(self.act("qa", issues, 1, subs=subs)["action"], "stop")  # qa: no containers
-
-    def test_descend_with_nothing_found(self):
-        got = self.act("dev", [issue(1, ["level:epic"]), issue(2, ["status:backlog"])], 1, subs={1: [2]})
-        self.assertEqual((got["action"], got["pick"]), ("descend", None))
-
-    def test_spec_specials(self):
-        epic = issue(1, ["level:epic"])
-        self.assertEqual(self.act("spec", [epic], 1)["reason"], "epic-without-open-subissues")
-        self.assertEqual(self.act("spec", [issue(1, ["status:qa"])], 1)["action"], "rescope")
-        self.assertEqual(self.act("spec", [issue(1, ["status:in-qa"], assignees=["a"])], 1)["action"], "rescope")
-        # a still-open status:split story is spec's own territory, never descended into
-        self.assertEqual(self.act("spec", [issue(1, ["level:story", "status:split"]), issue(2)], 1,
-                                  subs={1: [2]})["action"], "rescope")
-        self.assertEqual(self.act("spec", [issue(1, ["status:dev-ready"])], 1)["reason"], "wrong-status")
-
-
-class ClaimTests(unittest.TestCase):
-    def test_fresh_claim_swaps_status_and_assigns(self):
-        m, gh = machine([issue(1, ["status:dev-ready", "type:tech"])])
-        got = m.claim("dev", 1, "fresh")
-        self.assertTrue(got["claimed"])
-        self.assertEqual(names(gh.store[1]), ["status:in-dev", "type:tech"])
-        self.assertEqual([a["login"] for a in gh.store[1]["assignees"]], ["bot"])
-        self.assertEqual(len(gh.calls), 1)  # one atomic PATCH
-
-    def test_fresh_claim_refusals(self):
-        for raw, reason in ((issue(1, ["status:dev-ready"], assignees=["a"]), "not-claimable"),
-                            (issue(1, ["status:backlog"]), "not-claimable"),
-                            (issue(1, ["status:dev-ready"], state="closed"), "closed")):
-            m, gh = machine([raw])
-            with self.assertRaises(pilot.Refused) as ctx:
-                m.claim("dev", 1, "fresh")
-            self.assertEqual(ctx.exception.payload["reason"], reason)
-            self.assertEqual(gh.calls, [])
-
-    def test_lost_race_is_reported(self):
-        m, gh = machine([issue(1, ["status:dev-ready"])])
-        gh.after_patch = lambda g: g.store[1].update(assignees=[{"login": "someone-else"}])
-        with self.assertRaises(pilot.Refused) as ctx:
-            m.claim("dev", 1, "fresh")
-        self.assertEqual(ctx.exception.payload["reason"], "lost-race")
-
-    def test_reclaim_overwrites_assignee(self):
-        m, gh = machine([issue(1, ["status:changes-requested"], assignees=["reviewer"])])
-        m.claim("dev", 1, "reclaim")
-        self.assertEqual(names(gh.store[1]), ["status:in-dev"])
-        self.assertEqual([a["login"] for a in gh.store[1]["assignees"]], ["bot"])
-
-    def test_reclaim_refused_outside_dev(self):
-        m, _ = machine([issue(1, ["status:changes-requested"])])
-        with self.assertRaises(pilot.Refused):
-            m.claim("review", 1, "reclaim")
-
-    def test_resume_orphaned_keeps_status_and_consumes_can_resume(self):
-        m, gh = machine([issue(1, ["status:in-dev", "can-resume"], assignees=["old"])])
-        m.claim("dev", 1, "resume-orphaned")
-        self.assertEqual(names(gh.store[1]), ["status:in-dev"])
-        self.assertEqual([a["login"] for a in gh.store[1]["assignees"]], ["bot"])
-
-    def test_resume_cleared_only_drops_the_signal(self):
-        m, gh = machine([issue(1, ["status:in-dev", "can-resume"], assignees=["old"])])
-        m.claim("dev", 1, "resume-cleared")
-        self.assertEqual(names(gh.store[1]), ["status:in-dev"])
-        self.assertEqual([a["login"] for a in gh.store[1]["assignees"]], ["old"])
-        self.assertNotIn("assignees", gh.calls[0][2])
-
-    def test_rescope_is_spec_only(self):
-        m, gh = machine([issue(1, ["status:qa", "type:feature"])])
-        m.claim("spec", 1, "rescope")
-        self.assertEqual(names(gh.store[1]), ["status:in-spec", "type:feature"])
-        m, gh = machine([issue(1, ["status:split", "level:story"], assignees=["x"])])
-        m.claim("spec", 1, "rescope")
-        self.assertEqual(names(gh.store[1]), ["level:story", "status:in-spec"])
-        m, _ = machine([issue(1, ["status:qa"])])
-        with self.assertRaises(pilot.Refused):
-            m.claim("dev", 1, "rescope")
-
-    def test_flagged_ticket_is_never_claimed(self):
-        m, gh = machine([issue(1, ["status:in-dev", "can-resume", "needs-human"], assignees=["a"])])
-        with self.assertRaises(pilot.Refused) as ctx:
-            m.claim("dev", 1, "resume-cleared")
-        self.assertEqual(ctx.exception.payload["reason"], "flagged")
-        self.assertEqual(gh.calls, [])
-
-
-class SetTests(unittest.TestCase):
-    def test_status_swap_unassign_and_labels(self):
-        m, gh = machine([issue(1, ["status:in-dev", "type:tech", "priority:P1"], assignees=["bot"])])
-        got = m.set(1, status="review-ready", assign="none", remove=["priority:P1"], add=["x"])
-        self.assertEqual(names(gh.store[1]), ["status:review-ready", "type:tech", "x"])
-        self.assertEqual(gh.store[1]["assignees"], [])
-        self.assertEqual(got["status"], "status:review-ready")
-
-    def test_status_none_and_prefixed_name(self):
-        m, gh = machine([issue(1, ["status:split", "priority:P1"])])
-        m.set(1, status="none")
-        self.assertEqual(names(gh.store[1]), ["priority:P1"])
-        m.set(1, status="status:done")
-        self.assertIn("status:done", names(gh.store[1]))
-
-    def test_unknown_status_refused_without_writing(self):
-        m, gh = machine([issue(1, ["status:in-dev"])])
-        with self.assertRaises(pilot.Refused):
-            m.set(1, status="scoping")
-        self.assertEqual(gh.calls, [])
-
-    def test_assign_me_and_close(self):
-        m, gh = machine([issue(1, ["status:qa"])])
-        got = m.set(1, status="done", assign="me", close=True)
-        self.assertEqual((got["state"], got["assignees"]), ("closed", ["bot"]))
-
-    def test_untouched_assignees_when_not_asked(self):
-        m, gh = machine([issue(1, ["status:in-dev"], assignees=["x"])])
-        m.set(1, status="review-ready")
-        self.assertNotIn("assignees", gh.calls[0][2])
-
-
-class ProtoTests(unittest.TestCase):
-    def poc(self, number, status, **kw):
-        return issue(number, ["type:poc", "level:story", status], **kw)
-
-    def test_a_prototype_is_only_for_pilot_proto_and_pilot_proto_only_takes_a_prototype(self):
-        m, _ = machine([self.poc(1, "status:poc-draft", assignees=["a"]), issue(2, ["status:dev-ready"])])
-        for phase in ("spec", "dev", "review", "qa"):
-            self.assertEqual(m.resolve(phase, 1)["reason"], "poc", phase)
-        self.assertEqual(m.resolve("proto", 2)["reason"], "not-a-poc")
-
-    def test_resume_a_draft(self):
-        m, _ = machine([self.poc(1, "status:poc-draft", assignees=["a"])])
-        self.assertEqual(m.resolve("proto", 1, resume=True)["action"], "resume-orphaned")
-        self.assertEqual(m.resolve("proto", 1)["action"], "ask-resume")
-        got = m.claim("proto", 1, "resume-orphaned")
-        self.assertEqual((got["claimed"], got["assignee"], got["status"]), (True, "bot", "status:poc-draft"))
-
-    def test_resume_needs_a_draft(self):
-        m, _ = machine([self.poc(1, "status:poc-review")])
-        self.assertEqual(m.resolve("proto", 1, resume=True)["reason"], "resume-mismatch")
-        self.assertEqual(m.resolve("proto", 1)["reason"], "wrong-status")
-
-    def test_no_pool_for_prototypes(self):
-        with self.assertRaises(SystemExit):
-            pilot.build_parser().parse_args(["pool", "proto"])
-
-    def test_accept_moves_a_review_to_validated_and_is_idempotent(self):
-        m, gh = machine([self.poc(1, "status:poc-review")])
-        got = m.proto(1, "accept")
-        self.assertEqual((got["changed"], got["status"]), (True, "status:poc-validated"))
-        self.assertEqual(got["event"]["action"], "accept")
-        self.assertEqual(m.proto(1, "accept")["changed"], False)
-        self.assertEqual(len([c for c in gh.calls if c[0] == "patch"]), 1)
-
-    def test_accept_refuses_anything_but_a_review(self):
-        for status in ("status:poc-draft", "status:poc-rejected"):
-            m, gh = machine([self.poc(1, status)])
-            with self.assertRaises(pilot.Refused) as caught:
-                m.proto(1, "accept")
-            self.assertEqual(caught.exception.payload["reason"], "not-reviewable")
-            self.assertEqual(gh.calls, [])
-
-    def test_reject_needs_a_reason_posted_first_then_closes_and_unassigns(self):
-        m, gh = machine([self.poc(1, "status:poc-review", assignees=["a"]), ])
-        with self.assertRaises(pilot.Refused) as caught:
-            m.proto(1, "reject", "  ")
-        self.assertEqual(caught.exception.payload["reason"], "reason-required")
-        self.assertEqual(gh.calls, [])
-        got = m.proto(1, "reject", "Too costly")
-        self.assertEqual(gh.calls[0][0], "comment")
-        self.assertEqual(gh.posted, [(1, "Too costly")])
-        self.assertEqual((got["status"], got["state"]), ("status:poc-rejected", "closed"))
-        self.assertEqual(gh.store[1]["assignees"], [])
-        self.assertEqual(names(gh.store[1]), ["level:story", "status:poc-rejected", "type:poc"])
-
-    def test_reject_works_from_every_open_state_not_from_a_rejected_one(self):
-        for status in ("status:poc-draft", "status:poc-review", "status:poc-validated"):
-            m, _ = machine([self.poc(1, status)])
-            self.assertEqual(m.proto(1, "reject", "why")["status"], "status:poc-rejected", status)
-        m, _ = machine([self.poc(1, "status:poc-rejected")])
-        with self.assertRaises(pilot.Refused):
-            m.proto(1, "reject", "again")
-
-    def test_a_discovery_only_starts_from_an_accepted_prototype(self):
-        m, gh = machine([self.poc(1, "status:poc-validated"), self.poc(2, "status:poc-review")])
-        self.assertTrue(m.proto(1, "from-proto")["ok"])
-        with self.assertRaises(pilot.Refused) as caught:
-            m.proto(2, "from-proto")
-        self.assertEqual(caught.exception.payload["reason"], "not-accepted")
-        self.assertEqual(gh.calls, [])
-
-    def test_not_a_prototype_closed_or_flagged_are_refused(self):
-        cases = [(issue(1, ["status:poc-review"]), "not-a-poc"),
-                 (self.poc(1, "status:poc-review", state="closed"), "closed"),
-                 (self.poc(1, "status:poc-review") | {"labels": [{"name": n} for n in ("type:poc", "status:poc-review", "needs-human")]}, "flagged")]
-        for raw, reason in cases:
-            m, _ = machine([raw])
-            with self.assertRaises(pilot.Refused) as caught:
-                m.proto(1, "accept")
-            self.assertEqual(caught.exception.payload["reason"], reason)
-
-    def test_set_knows_the_prototype_statuses(self):
-        m, gh = machine([self.poc(1, "status:poc-draft")])
-        m.set(1, status="poc-review", assign="none")
-        self.assertIn("status:poc-review", names(gh.store[1]))
-
-
-class ProtoPackTests(unittest.TestCase):
-    def pack(self, html, **kw):
-        import os
-        import tempfile
-        m, _ = machine([issue(7, ["type:poc", "status:poc-draft"])])
-        with tempfile.TemporaryDirectory() as tmp:
-            src = os.path.join(tmp, "m.html")
-            with open(src, "w", encoding="utf-8") as handle:
-                handle.write(html)
-            out = os.path.join(tmp, "out")
-            got = m.proto_pack(7, src, out, **kw)
-            docs = {}
-            for path in got["files"]:
-                with open(path, encoding="utf-8") as handle:
-                    docs[os.path.basename(path)] = json.load(handle)
-            return got, docs
-
-    def test_a_small_mockup_is_one_part_with_its_metadata(self):
-        got, docs = self.pack("<!doctype html><p>hi</p>", brief="  Test the alert  ", height=5000)
-        self.assertEqual((got["parts"], got["bytes"]), (1, len("<!doctype html><p>hi</p>")))
-        meta = docs["proto-7.json"]
-        self.assertEqual((meta["kind"], meta["n"], meta["repo"], meta["title"], meta["parts"], meta["brief"], meta["height"]),
-                         ("proto", 7, "o/r", "t7", 1, "Test the alert", 900))
-        self.assertEqual(docs["protoHtml-7-0.json"], {"n": 7, "k": 0, "html": "<!doctype html><p>hi</p>"})
-
-    def test_a_large_mockup_is_split_in_parts_that_fit_and_join_back(self):
-        html = "<p>" + "é" * 150_000 + "</p>"          # 2 bytes a character: ~300 KB
-        got, docs = self.pack(html)
-        self.assertEqual(got["parts"], 2)
-        joined = "".join(docs[f"protoHtml-7-{k}.json"]["html"] for k in range(got["parts"]))
-        self.assertEqual(joined, html)
-        for k in range(got["parts"]):
-            self.assertLessEqual(len(docs[f"protoHtml-7-{k}.json"]["html"].encode("utf-8")), pilot.PROTO_PART_BYTES)
-        self.assertEqual(docs["proto-7.json"]["parts"], 2)
-
-    def test_an_external_resource_is_refused_but_an_xml_namespace_is_not(self):
-        self.pack('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>')
-        for bad in ('<img src="https://x.test/a.png">', '<p>https://x.test</p>', '<script src="//cdn.test/a.js"></script>',
-                    '<style>@import url(a.css)</style>', '<iframe src="a"></iframe>', '<link rel="stylesheet" href="a.css">',
-                    '<meta http-equiv="refresh" content="0;url=a">'):
-            with self.assertRaises(pilot.Refused) as caught:
-                self.pack(bad)
-            self.assertEqual(caught.exception.payload["reason"], "invalid-mockup", bad)
-
-    def test_too_big_or_empty_is_refused(self):
-        for html in ("a" * (pilot.PROTO_MAX_BYTES + 1), "   "):
-            with self.assertRaises(pilot.Refused) as caught:
-                self.pack(html)
-            self.assertTrue(caught.exception.payload["problems"])
-
-    def test_only_a_prototype_has_a_mockup(self):
-        m, _ = machine([issue(7, ["status:dev-ready"])])
-        with self.assertRaises(pilot.Refused) as caught:
-            m.proto_pack(7, "x", "y")
-        self.assertEqual(caught.exception.payload["reason"], "not-a-poc")
-
-
-class FlagTests(unittest.TestCase):
-    def test_flag_requires_a_comment_and_posts_it_first(self):
-        m, gh = machine([issue(1, ["status:in-dev"])])
-        with self.assertRaises(pilot.Refused):
-            m.flag(1, "   ")
-        m.flag(1, "Why: ... Needed: ...")
-        self.assertEqual([c[0] for c in gh.calls], ["comment", "patch"])
-        self.assertIn("needs-human", names(gh.store[1]))
-        self.assertIn("status:in-dev", names(gh.store[1]))
-
-    def test_unflag_posts_resolution_then_removes_flag(self):
-        m, gh = machine([issue(1, ["status:in-dev", "needs-human"])])
-        with self.assertRaises(pilot.Refused):
-            m.unflag(1, "")
-        m.unflag(1, "Decided: A")
-        self.assertEqual([c[0] for c in gh.calls], ["comment", "patch"])
-        self.assertNotIn("needs-human", names(gh.store[1]))
-
-
-class DashboardPayloadTests(unittest.TestCase):
-    def test_claim_returns_the_event(self):
-        m, gh = machine([issue(7, ["status:dev-ready", "type:tech"])])
-        got = m.claim("dev", 7, "fresh")
-        ev = got["event"]
-        self.assertNotIn("activity", got)
-        self.assertEqual((ev["kind"], ev["n"], ev["action"], ev["phase"], ev["by"], ev["state"]),
-                         ("ticket", 7, "claim:fresh", "dev", "bot", "open"))
-        self.assertEqual(ev["labels"], ["status:in-dev", "type:tech"])
-        self.assertEqual(ev["assignees"], ["bot"])
-        self.assertRegex(ev["at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
-
-    def test_set_flag_unflag_return_the_resulting_state(self):
-        m, gh = machine([issue(1, ["status:in-dev"], assignees=["bot"])])
-        ev = m.set(1, status="review-ready", assign="none")["event"]
-        self.assertEqual((ev["action"], ev["assignees"], ev["labels"]), ("set", [], ["status:review-ready"]))
-        ev = m.flag(1, "Why: x. Needed: y.")["event"]
-        self.assertEqual((ev["action"], "needs-human" in ev["labels"]), ("flag", True))
-        ev = m.unflag(1, "Resolved")["event"]
-        self.assertEqual((ev["action"], "needs-human" in ev["labels"]), ("unflag", False))
-        ev = m.set(1, status="done", close=True)["event"]
-        self.assertEqual(ev["state"], "closed")
-
-    def test_events_carry_the_parent_and_the_pr_the_caller_just_opened(self):
-        child = issue(2, ["status:dev-ready"]); child["parent_issue_url"] = "https://api.github.com/repos/o/r/issues/1"
-        m, _ = machine([issue(1, ["level:epic"]), child, issue(3, ["status:in-dev"], assignees=["bot"])])
-        ev = m.claim("dev", 2, "fresh")["event"]
-        self.assertEqual(ev["parent"], 1)
-        self.assertNotIn("pr", ev)
-        ev = m.set(3, status="review-ready", assign="none", pr=44)["event"]
-        self.assertEqual(ev["pr"], 44)
-        self.assertNotIn("parent", ev)
-
-    def test_event_command_reports_a_ticket_the_skill_changed_itself(self):
-        story = issue(5, ["type:feature", "level:story", "status:draft"], assignees=["bot"])
-        story["parent_issue_url"] = "https://api.github.com/repos/o/r/issues/4"
-        m, gh = machine([story])
-        got = m.events([5], "created", "discovery")
-        ev = got["events"][0]
-        self.assertEqual((ev["kind"], ev["n"], ev["action"], ev["phase"], ev["parent"], ev["by"]), ("ticket", 5, "created", "discovery", 4, "bot"))
-        self.assertEqual(ev["labels"], ["level:story", "status:draft", "type:feature"])
-        self.assertEqual(gh.calls, [])  # read-only
-        with self.assertRaises(pilot.Refused) as ctx:
-            m.events([5, 99], "created")
-        self.assertEqual((ctx.exception.payload["reason"], ctx.exception.payload["issue"]), ("not-found", 99))
-
-    def test_event_command_builds_one_event_per_ticket_in_one_call(self):
-        m, gh = machine([issue(1, ["level:epic"]), issue(2, ["status:draft"], assignees=["bot"]), issue(3, ["status:draft"])])
-        got = m.events([1, 2, 3], "approved", "discovery")
-        self.assertEqual([e["n"] for e in got["events"]], [1, 2, 3])
-        self.assertEqual(got["issues"], [1, 2, 3])
-        self.assertTrue(all(e["action"] == "approved" and e["phase"] == "discovery" for e in got["events"]))
-
-    def test_cli_accepts_the_new_arguments(self):
-        args = pilot.build_parser().parse_args(["event", "7", "8", "--action", "approved", "--phase", "discovery"])
-        self.assertEqual((args.cmd, args.issues, args.action, args.phase), ("event", [7, 8], "approved", "discovery"))
-        args = pilot.build_parser().parse_args(["set", "7", "--status", "review-ready", "--unassign", "--pr", "12"])
-        self.assertEqual(args.pr, 12)
-
-    def test_snapshot_lists_open_tickets_newest_first_without_prs(self):
-        a = issue(1, ["status:qa"]); a["updated_at"] = "2026-01-01T00:00:00Z"
-        b = issue(2, ["type:tech", "status:dev-ready"]); b["updated_at"] = "2026-02-01T00:00:00Z"
-        m, _ = machine([a, b, issue(3, pr=True), issue(4, state="closed")])
-        doc = m.snapshot()
-        self.assertEqual([r["n"] for r in doc["issues"]], [2, 1])
-        self.assertEqual(doc["issues"][0], {"n": 2, "t": "t2", "l": ["status:dev-ready", "type:tech"], "u": "2026-02-01T00:00:00Z"})
-        self.assertEqual((doc["total"], doc["truncated"], doc["source"]), (2, False, "pilot.py"))
-
-    def test_snapshot_carries_the_parent_and_the_sub_issue_progress(self):
-        epic = issue(1, ["level:epic"]); epic["sub_issues_summary"] = {"total": 10, "completed": 4}
-        child = issue(2, ["level:story"]); child["parent_issue_url"] = "https://api.github.com/repos/o/r/issues/1"
-        m, _ = machine([epic, child, issue(3)])
-        rows = {r["n"]: r for r in m.snapshot()["issues"]}
-        self.assertEqual((rows[1].get("k"), rows[1].get("p")), ([4, 10], None))
-        self.assertEqual((rows[2].get("p"), rows[2].get("k")), (1, None))
-        self.assertNotIn("p", rows[3]); self.assertNotIn("k", rows[3])
-
-    def test_snapshot_carries_the_assignee_and_the_open_pr_closing_a_ticket(self):
-        a = issue(1, ["status:in-dev"], assignees=["alice"])
-        pr = issue(9, pr=True, body="Summary\n\nCloses #1, and also fixes #2")
-        older = issue(8, pr=True, body="closes #1")
-        gone = issue(7, pr=True, body="Closes #3", state="closed")
-        m, _ = machine([a, issue(2), issue(3), pr, older, gone])
-        rows = {r["n"]: r for r in m.snapshot()["issues"]}
-        self.assertEqual((rows[1].get("a"), rows[1].get("r")), ("alice", 9))
-        self.assertEqual((rows[2].get("a"), rows[2].get("r")), (None, 9))
-        self.assertNotIn("r", rows[3])
-
-    def test_snapshot_carries_the_stage_history_and_the_needs_human_start(self):
-        def ev(kind, label, at):
-            return {"event": kind, "label": {"name": label}, "created_at": at}
-        a = issue(1, ["status:in-dev", "needs-human"]); b = issue(2, ["status:split"]); c = issue(3, ["status:qa"])
-        m, gh = machine([a, b, c])
-        gh.events = {1: [ev("labeled", "status:in-dev", "2026-01-03T00:00:00Z"), ev("labeled", "status:backlog", "2026-01-01T00:00:00Z"),
-                         ev("unlabeled", "status:backlog", "2026-01-02T00:00:00Z"), ev("labeled", "status:dev-ready", "2026-01-02T00:00:00Z"),
-                         ev("labeled", "needs-human", "2026-01-04T00:00:00Z")],
-                     2: [ev("labeled", "status:split", "2026-01-01T00:00:00Z")],
-                     3: [ev("labeled", "needs-human", "2026-01-01T00:00:00Z"), ev("unlabeled", "needs-human", "2026-01-02T00:00:00Z")]}
-        rows = {r["n"]: r for r in m.snapshot()["issues"]}
-        self.assertEqual(rows[1]["h"], [["backlog", "2026-01-01T00:00:00Z"], ["dev-ready", "2026-01-02T00:00:00Z"], ["in-dev", "2026-01-03T00:00:00Z"]])
-        self.assertEqual(rows[1]["nh"], "2026-01-04T00:00:00Z")
-        self.assertNotIn("h", rows[2])  # a split story only holds sub-issues
-        self.assertNotIn("nh", rows[3])  # the flag was lifted
-
-    def test_the_real_client_reads_only_the_label_events_of_a_ticket(self):
-        client = pilot.GhClient("o/r"); seen = {}
-        def pages(path, params=None, per_page=100, max_pages=50):
-            seen["path"], seen["max_pages"] = path, max_pages
-            return [{"event": "labeled"}, {"event": "assigned"}, {"event": "unlabeled"}, {"event": "commented"}]
-        client._pages = pages
-        self.assertEqual([e["event"] for e in client.issue_events(7)], ["labeled", "unlabeled"])
-        self.assertEqual(seen["path"], "repos/o/r/issues/7/events")
-        self.assertEqual(seen["max_pages"], 5)
-
-    def test_a_history_that_does_not_end_on_the_current_status_is_left_out(self):
-        m, gh = machine([issue(1, ["status:in-dev", "needs-human"])])
-        gh.events = {1: [{"event": "labeled", "label": {"name": "status:backlog"}, "created_at": "2026-01-01T00:00:00Z"},
-                         {"event": "labeled", "label": {"name": "needs-human"}, "created_at": "2026-01-02T00:00:00Z"}]}
-        row = m.snapshot()["issues"][0]
-        self.assertNotIn("h", row)
-        self.assertNotIn("nh", row)  # a flag time read from the same truncated events is not trusted either
-
-    def test_snapshot_with_histories_still_fits_a_database_document(self):
-        issues = [issue(n, ["status:in-dev"]) for n in range(1, 2600)]
-        for i in issues:
-            i["title"] = "x" * 60
-        m, gh = machine(issues)
-        gh.events = {n: [{"event": "labeled", "label": {"name": "status:in-dev"}, "created_at": "2026-01-01T00:00:00Z"}] for n in range(1, 2600)}
-        doc = m.snapshot()
-        self.assertTrue(doc["truncated"])
-        self.assertTrue(all("h" in r for r in doc["issues"]))
-        self.assertLessEqual(len(pilot.json.dumps(doc, ensure_ascii=False).encode()), pilot.SNAPSHOT_MAX_BYTES)
-
-    def test_snapshot_keeps_a_ticket_whose_events_cannot_be_read(self):
-        m, gh = machine([issue(1, ["status:qa"])])
-        def boom(number):
-            raise pilot.GhError("boom")
-        gh.issue_events = boom
-        self.assertEqual(m.snapshot()["issues"][0]["n"], 1)
-        self.assertEqual(m.history_failed, 1)  # reported, so a throttled run is not taken for a complete one
-
-    def test_snapshot_is_truncated_to_fit_a_database_document(self):
-        issues = [issue(n, ["status:backlog"]) for n in range(1, 2600)]
-        for i in issues:
-            i["title"] = "x" * 120
-            i["updated_at"] = f"2026-01-01T00:{i['number'] % 60:02d}:00Z"
-        m, _ = machine(issues)
-        doc = m.snapshot()
-        self.assertTrue(doc["truncated"])
-        self.assertLessEqual(len(pilot.json.dumps(doc, ensure_ascii=False).encode()), pilot.SNAPSHOT_MAX_BYTES)
-
-
-class DoctorTests(unittest.TestCase):
-    def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmp.cleanup)
-        self.wiki_dir = pathlib.Path(self._tmp.name) / "wiki"
-        self.wiki_dir.mkdir()
-
-    def report(self, **attrs):
-        gh = FakeGh([])
-        for key, value in attrs.items():
-            setattr(gh, key, value)
-        return pilot.Machine(gh).doctor(str(self.wiki_dir), {"wiki": True})
-
-    def test_an_enabled_wiki_module_needs_its_directory(self):
-        got = pilot.Machine(FakeGh([])).doctor(str(self.wiki_dir / "missing"), {"wiki": True})
-        self.assertFalse(got["ok"])
-        self.assertEqual([c["name"] for c in got["failed"]], ["wiki"])
-        self.assertIn("run /pilot-wiki", got["failed"][0]["detail"])
-
-    def test_a_disabled_or_absent_wiki_module_is_not_checked(self):
-        for modules in ({"wiki": False}, {}):
-            got = pilot.Machine(FakeGh([])).doctor(str(self.wiki_dir / "missing"), modules)
-            self.assertTrue(got["ok"], modules)
-            self.assertNotIn("wiki", [c["name"] for c in got["checks"]])
-
-    def test_the_modules_come_from_the_state_file_by_default(self):
-        state = pathlib.Path(self._tmp.name) / "state.json"
-        self.assertEqual(pilot.read_modules(str(state)), {})
-        state.write_text(json.dumps({"projectName": "p", "modules": {"wiki": True}}))
-        self.assertEqual(pilot.read_modules(str(state)), {"wiki": True})
-        state.write_text("{not json")
-        self.assertEqual(pilot.read_modules(str(state)), {})
-        state.write_text(json.dumps({"projectName": "p"}))
-        self.assertEqual(pilot.read_modules(str(state)), {})
-
-    def test_set_module_changes_only_the_modules_field(self):
-        state = pathlib.Path(self._tmp.name) / "state.json"
-        state.write_text(json.dumps({"projectName": "p", "pilotVersion": "2.0.0"}, indent=2) + "\n")
-        self.assertEqual(pilot.set_module("wiki", True, str(state)), {"ok": True, "modules": {"wiki": True}})
-        self.assertEqual(json.loads(state.read_text()), {"projectName": "p", "pilotVersion": "2.0.0", "modules": {"wiki": True}})
-        pilot.set_module("wiki", False, str(state))
-        self.assertEqual(pilot.read_modules(str(state)), {"wiki": False})
-
-    def modules_state(self, modules=None):
-        state = pathlib.Path(self._tmp.name) / "state.json"
-        state.write_text(json.dumps({"projectName": "p", "modules": modules or {}}))
-        return state
-
-    def test_a_module_needing_another_is_refused_until_it_is_on(self):
-        state = self.modules_state()
-        with self.assertRaises(pilot.Refused) as caught:
-            pilot.set_module("design", True, str(state))
-        self.assertEqual((caught.exception.payload["reason"], caught.exception.payload["missing"]), ("requires", ["dashboard"]))
-        self.assertEqual(pilot.read_modules(str(state)), {})
-        pilot.set_module("dashboard", True, str(state))
-        self.assertEqual(pilot.set_module("design", True, str(state))["modules"], {"dashboard": True, "design": True})
-
-    def test_with_requires_turns_the_prerequisites_on_too(self):
-        state = self.modules_state()
-        out = pilot.set_module("proto", True, str(state), with_requires=True)
-        self.assertEqual(out["modules"], {"dashboard": True, "proto": True})
-
-    def test_a_module_another_one_needs_cannot_be_turned_off(self):
-        state = self.modules_state({"dashboard": True, "design": True})
-        with self.assertRaises(pilot.Refused) as caught:
-            pilot.set_module("dashboard", False, str(state))
-        self.assertEqual((caught.exception.payload["reason"], caught.exception.payload["by"]), ("required-by", ["design"]))
-        pilot.set_module("design", False, str(state))
-        self.assertEqual(pilot.set_module("dashboard", False, str(state))["modules"], {"dashboard": False, "design": False})
-
-    def test_the_registry_lists_every_module_with_its_state(self):
-        reg = pilot.module_registry({"dashboard": True})
-        self.assertEqual(sorted(reg), ["architecture", "dashboard", "design", "proto", "wiki"])
-        self.assertEqual((reg["architecture"]["use"], reg["architecture"]["bootstrap"]), ("/pilot-architecture", "/pilot-architecture --bootstrap"))
-        self.assertEqual((reg["dashboard"]["enabled"], reg["design"]["enabled"], reg["design"]["requires"], reg["wiki"]["bootstrap"]),
-                         (True, False, ["dashboard"], "/pilot-wiki --bootstrap"))
-        self.assertEqual((reg["dashboard"]["use"], reg["dashboard"]["bootstrap"]), ("/pilot-dashboard", None))
-        self.assertTrue(all(set(m) == {"enabled", "requires", "skills", "use", "bootstrap"} for m in reg.values()))
-
-    def test_every_module_requires_only_known_modules_and_names_a_pilot_skill(self):
-        for name, meta in pilot.MODULES.items():
-            self.assertTrue(set(meta["requires"]) <= set(pilot.MODULES), name)
-            self.assertTrue(all(s.startswith("pilot-") for s in meta["skills"]), name)
-            self.assertTrue(meta["use"].startswith("/pilot-"), name)
-            self.assertTrue(meta.get("bootstrap", meta["use"]).startswith(meta["use"]), name)
-
-    def test_set_module_refuses_an_unknown_module_and_a_missing_state(self):
-        with self.assertRaises(pilot.Refused) as caught:
-            pilot.set_module("nope", True, str(pathlib.Path(self._tmp.name) / "state.json"))
-        self.assertEqual(caught.exception.payload["reason"], "unknown-module")
-        with self.assertRaises(pilot.Refused) as caught:
-            pilot.set_module("wiki", True, str(pathlib.Path(self._tmp.name) / "absent.json"))
-        self.assertEqual(caught.exception.payload["reason"], "no-state")
-
-    def test_the_cli_flag_skips_the_wiki_check_and_module_is_offline(self):
-        self.assertTrue(pilot.build_parser().parse_args(["doctor", "--no-wiki"]).no_wiki)
-        self.assertFalse(pilot.build_parser().parse_args(["doctor"]).no_wiki)
-        self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(["module", "list"])))
-
-    def test_not_authenticated(self):
-        got = FakeGh([], me=None)
-        got = pilot.Machine(got).doctor(str(self.wiki_dir), {})
-        self.assertFalse(got["ok"])
-        self.assertEqual([c["name"] for c in got["failed"]], ["github-api"])
-
-    def test_read_only_account(self):
-        got = self.report(perms={"push": False, "pull": True})
-        self.assertEqual([c["name"] for c in got["failed"]], ["repo-write-permission"])
-
-    def test_missing_labels_are_listed(self):
-        got = self.report(labels=pilot.REQUIRED_LABELS - {"status:dev-ready", "needs-human"})
-        failed = got["failed"][0]
-        self.assertEqual(failed["name"], "pilot-labels")
-        self.assertIn("needs-human", failed["detail"])
-        self.assertIn("2 missing", failed["detail"])
-
-    def test_required_labels_cover_every_status_and_flag(self):
-        for status in pilot.STATUSES:
-            self.assertIn(f"status:{status}", pilot.REQUIRED_LABELS)
-        self.assertTrue({"needs-human", "on-hold", "can-resume", "type:e2e"} <= pilot.REQUIRED_LABELS)
-        self.assertEqual(len(pilot.REQUIRED_LABELS), 32)  # pilot-process.md section 0
-
-
-class LabelScriptTests(unittest.TestCase):
-    def test_the_provisioning_script_and_the_doctor_agree_on_the_labels(self):
-        import os
-        import re
-        path = os.path.join(os.path.dirname(__file__), "setup-github-labels.sh")
-        with open(path, encoding="utf-8") as handle:
-            in_script = set(re.findall(r'^  "([^|"]+)\|', handle.read(), re.M))
-        self.assertEqual(in_script, set(pilot.REQUIRED_LABELS))
-
-    def test_every_label_description_fits_github_limit(self):
-        import os
-        import re
-        path = os.path.join(os.path.dirname(__file__), "setup-github-labels.sh")
-        with open(path, encoding="utf-8") as handle:
-            rows = re.findall(r'^  "([^|"]+)\|[0-9A-Fa-f]{6}\|(.*)"\s*$', handle.read(), re.M)
-        self.assertEqual(len(rows), len(pilot.REQUIRED_LABELS))
-        for name, description in rows:
-            self.assertLessEqual(len(description), 100, name)  # GitHub: "description is too long (maximum is 100 characters)"
-
-
-class MiscTests(unittest.TestCase):
-    def test_repo_from_remote(self):
-        for url in ("https://github.com/Jonas-Eve/pilot", "https://github.com/Jonas-Eve/pilot.git",
-                    "git@github.com:Jonas-Eve/pilot.git",
-                    "http://local_proxy@127.0.0.1:51234/git/Jonas-Eve/pilot"):
-            self.assertEqual(pilot.repo_from_remote(url), "Jonas-Eve/pilot", url)
-        self.assertIsNone(pilot.repo_from_remote("/some/local/path"))
-
-    def test_pages_are_requested_by_number_until_a_short_page(self):
-        requested = []
-
-        class Client(pilot.GhClient):
-            def _run(self, path, params=None, method="GET", body=None):
-                requested.append((path, params["page"]))
-                size = {1: 100, 2: 100, 3: 37}[params["page"]]
-                return json.dumps([{"number": params["page"] * 1000 + k} for k in range(size)])
-
-        got = Client("o/r")._pages("repos/o/r/issues", {"state": "open"})
-        self.assertEqual(len(got), 237)
-        self.assertEqual([p for _, p in requested], [1, 2, 3])
-        self.assertTrue(all(path.startswith("repos/o/r/") for path, _ in requested))  # never repositories/{id}
-
-    def test_repo_flag_accepted_before_and_after_the_subcommand(self):
-        parser = pilot.build_parser()
-        self.assertEqual(parser.parse_args(["--repo", "o/r", "pool", "dev"]).repo, "o/r")
-        self.assertEqual(parser.parse_args(["pool", "dev", "--repo", "o/r"]).repo, "o/r")
-        self.assertIsNone(parser.parse_args(["pool", "dev"]).repo)
-
-    def test_run_dispatch(self):
-        gh = FakeGh([issue(1, ["status:dev-ready"])])
-        args = pilot.build_parser().parse_args(["claim", "dev", "1", "--mode", "fresh"])
-        self.assertTrue(pilot.run(args, gh)["claimed"])
 
 
 class WikiTests(unittest.TestCase):
@@ -1210,7 +423,7 @@ class WikiTests(unittest.TestCase):
         old = self.root / "search" / "old.md"
         old.write_text(old.read_text().replace("status: implemented", "status: deprecated").replace("status: stable", "status: deprecated"))
         self.wiki.reindex()
-        report = self.lint(issue(3, ["status:done"], state="closed"), issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]))
+        report = self.lint(issue(3, ["status:done"], state="closed"), issue(12, ["status:building"]), issue(15, ["status:forming"]))
         self.assertIn("bad-status", self.codes(report))
         self.assertFalse(report["ok"])
         for call in (lambda: self.wiki.set("search-filter", status="deprecated"),
@@ -1225,12 +438,12 @@ class WikiTests(unittest.TestCase):
         return self.wiki.status(FakeGh(list(issues)), [entry_id])["entries"][0]
 
     def test_derived_status_is_the_most_advanced_open_ticket(self):
-        self.assertEqual(self.derived("search-filter", issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]))["derived"], "in-dev")
-        self.assertEqual(self.derived("search-filter", issue(12, ["status:in-dev"]), issue(15, ["status:review-ready"]))["derived"], "in-review")
-        self.assertEqual(self.derived("search-filter", issue(12, ["status:changes-requested"]), issue(15, ["status:backlog"]))["derived"], "in-review")
-        out = self.derived("search-filter", issue(12, ["status:qa"]), issue(15, ["status:in-review"]))
+        self.assertEqual(self.derived("search-filter", issue(12, ["status:building"]), issue(15, ["status:forming"]))["derived"], "in-dev")
+        self.assertEqual(self.derived("search-filter", issue(12, ["status:building"]), issue(15, ["status:reviewing"]))["derived"], "in-review")
+        self.assertEqual(self.derived("search-filter", issue(12, ["status:reviewing"]), issue(15, ["status:forming"]))["derived"], "in-review")
+        out = self.derived("search-filter", issue(12, ["status:merged"]), issue(15, ["status:reviewing"]))
         self.assertEqual((out["derived"], out["display"]), ("in-qa", "specified · in-qa"))
-        self.assertEqual(self.derived("search-filter", issue(12, ["status:backlog"]), issue(15, ["status:backlog"]))["derived"], "")
+        self.assertEqual(self.derived("search-filter", issue(12, ["status:forming"]), issue(15, ["status:forming"]))["derived"], "")
 
     def test_verified_needs_an_implemented_stamped_entry_and_a_done_feature_story(self):
         done = issue(3, ["type:feature", "level:story", "status:done"], state="closed")
@@ -1246,40 +459,40 @@ class WikiTests(unittest.TestCase):
         self.assertEqual(self.derived("search-filter", done, issue(15, state="closed"))["derived"], "verified")
 
     def test_derived_tickets_carry_their_level_and_a_missing_ticket_is_not_fatal(self):
-        out = self.derived("search-filter", issue(12, ["level:task", "status:in-dev"]), issue(15, ["level:story", "status:split"]))
+        out = self.derived("search-filter", issue(12, ["level:task", "status:building"]), issue(15, ["level:story", "status:planned"]))
         self.assertEqual([t["level"] for t in out["tickets"]], ["task", "story"])
         self.assertEqual(self.derived("search-sort")["tickets"], [{"number": 3, "missing": True}])
 
     def test_show_returns_the_text_and_the_overlay(self):
-        out = self.wiki.show("search-filter", FakeGh([issue(12, ["status:in-dev"]), issue(15)]))
+        out = self.wiki.show("search-filter", FakeGh([issue(12, ["status:building"]), issue(15)]))
         self.assertEqual((out["text"], out["derived"]["display"]), ("The user can filter results.", "specified · in-dev"))
 
     # ---- lint -------------------------------------------------------------------------------
     def test_lint_is_clean_on_a_coherent_wiki(self):
-        report = self.lint(issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]), issue(3, ["status:done"], state="closed"))
+        report = self.lint(issue(12, ["status:building"]), issue(15, ["status:forming"]), issue(3, ["status:done"], state="closed"))
         self.assertEqual(report, {"ok": True, "entries": 2, "findings": []})
 
     def test_a_vision_entry_needs_no_ticket_and_lints_clean(self):
         self.wiki.add("product/vision.md", "Vision", "What the product is, for whom and by which principles.",
                       body="A travel assistant for people with disabilities.", typ="Vision")
         self.assertIn("type: Vision", self.text("product/vision.md"))
-        report = self.lint(issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]), issue(3, ["status:done"], state="closed"))
+        report = self.lint(issue(12, ["status:building"]), issue(15, ["status:forming"]), issue(3, ["status:done"], state="closed"))
         self.assertEqual(report, {"ok": True, "entries": 3, "findings": []})
 
     def test_lint_flags_duplicates_orphaned_promises_and_reopened_work(self):
         self.entry("elsewhere/search-sort.md", "proposed", [])
         self.wiki.reindex()
-        report = self.lint(issue(12, state="closed"), issue(15, state="closed"), issue(3, ["status:backlog"]))
+        report = self.lint(issue(12, state="closed"), issue(15, state="closed"), issue(3, ["status:forming"]))
         self.assertEqual(self.codes(report), sorted(
             ["duplicate-id", "duplicate-id", "no-ticket", "orphaned-promise", "implemented-but-reopened"]))
 
     def test_lint_flags_an_unknown_ticket_and_spares_an_open_pr(self):
-        self.assertEqual(self.codes(self.lint(issue(3, ["status:done"], state="closed"), issue(12, ["status:backlog"]))), ["unknown-ticket"])
-        self.assertEqual(self.lint(issue(12), issue(15), issue(3, ["status:in-review"]))["findings"], [])
+        self.assertEqual(self.codes(self.lint(issue(3, ["status:done"], state="closed"), issue(12, ["status:forming"]))), ["unknown-ticket"])
+        self.assertEqual(self.lint(issue(12), issue(15), issue(3, ["status:reviewing"]))["findings"], [])
 
     # ---- snapshot -----------------------------------------------------------------------------
     def test_snapshot_carries_entries_derived_status_and_text(self):
-        gh = FakeGh([issue(12, ["status:in-dev"]), issue(15, ["status:backlog"]), issue(3, ["status:done"], state="closed")])
+        gh = FakeGh([issue(12, ["status:building"]), issue(15, ["status:forming"]), issue(3, ["status:done"], state="closed")])
         doc = self.wiki.snapshot(gh)
         self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "o/r", 2, False))
         first, second = doc["entries"]
@@ -1330,7 +543,7 @@ class WikiTests(unittest.TestCase):
         for argv, needs in ((["wiki", "index"], False), (["wiki", "reindex"], False), (["wiki", "migrate"], False),
                             (["wiki", "remove", "x"], False), (["wiki", "add", "a/b.md", "--title", "T", "--description", "d", "--status", "proposed"], False),
                             (["wiki", "set", "x", "--stamp", "c"], False), (["wiki", "lint"], True), (["wiki", "show", "x"], True),
-                            (["wiki", "status"], True), (["wiki", "snapshot"], True), (["pool", "dev"], True)):
+                            (["wiki", "status"], True), (["wiki", "snapshot"], True), (["pool", "build"], True)):
             self.assertEqual(pilot.needs_github(parser.parse_args(argv)), needs, argv)
 
     def test_repo_flag_is_accepted_after_a_wiki_subcommand(self):
@@ -1359,7 +572,7 @@ class SnapshotModulesTests(unittest.TestCase):
                 if state is not None:
                     os.makedirs(".pilot")
                     pathlib.Path(".pilot/state.json").write_text(json.dumps(state))
-                return pilot.Machine(FakeGh([issue(1, ["status:backlog"])])).snapshot()
+                return pilot.Machine(FakeGh([issue(1, ["status:forming"])])).snapshot()
             finally:
                 os.chdir(old)
 
@@ -1778,471 +991,6 @@ class ReadingContractTests(unittest.TestCase):
             self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(argv)))
 
 
-class ContractTests(unittest.TestCase):
-    """A phase knows only its own contract; the chain is their composition."""
-
-    def test_the_contracts_compose(self):
-        self.assertEqual(pilot.composition_problems(), [])
-
-    def test_a_missing_producer_or_consumer_is_found(self):
-        saved = pilot.CONTRACTS["review"]["produces"]
-        try:
-            pilot.CONTRACTS["review"]["produces"] = ["status:approved"]  # nobody now produces changes-requested
-            codes = {(p["status"], p["code"]) for p in pilot.composition_problems()}
-            self.assertIn(("status:changes-requested", "no-producer"), codes)
-            pilot.CONTRACTS["review"]["produces"] = ["status:approved", "status:changes-requested", "status:nowhere"]
-            self.assertIn(("status:nowhere", "unknown-status"),
-                          {(p["status"], p["code"]) for p in pilot.composition_problems()})
-        finally:
-            pilot.CONTRACTS["review"]["produces"] = saved
-
-    def test_a_phase_contract_is_what_the_phase_reads_claims_and_leaves(self):
-        dev = pilot.phase_contract("dev")
-        self.assertEqual((dev["claims"], dev["produces"]), ("status:in-dev", ["status:dev-ready", "status:review-ready"]))
-        self.assertEqual(dev["consumes"], ["status:changes-requested", "status:dev-ready", "status:in-dev"])
-        self.assertIn("status:split", pilot.phase_contract("spec")["consumes"])
-        self.assertEqual(pilot.phase_contract("discovery")["claims"], None)
-        with self.assertRaises(pilot.Refused):
-            pilot.phase_contract("nope")
-
-    def test_every_transition_a_skill_makes_is_admitted(self):
-        for current, new in (("status:in-spec", "status:dev-ready"), ("status:in-spec", "status:split"),
-                             ("status:in-spec", "status:wont-do"), ("status:backlog", "status:wont-do"),
-                             ("status:in-dev", "status:review-ready"), ("status:in-review", "status:approved"),
-                             ("status:in-review", "status:changes-requested"), ("status:in-qa", "status:done"),
-                             ("status:approved", "status:done"), ("status:split", "status:qa"),
-                             ("status:poc-draft", "status:poc-review"), ("status:poc-review", "status:poc-validated"),
-                             ("status:poc-validated", "status:poc-rejected"), ("", "status:draft")):
-            self.assertTrue(pilot.transition_allowed(current, new), (current, new))
-        for current, new in (("status:in-spec", "status:review-ready"), ("status:dev-ready", "status:approved"),
-                             ("status:in-dev", "status:done"), ("status:done", "status:in-dev")):
-            self.assertFalse(pilot.transition_allowed(current, new), (current, new))
-
-    def test_set_warns_about_a_transition_no_contract_admits_and_still_does_it(self):
-        m = pilot.Machine(FakeGh([issue(1, ["status:dev-ready"])]))
-        got = m.set(1, status="approved")
-        self.assertEqual(got["status"], "status:approved")
-        self.assertEqual((got["warning"]["code"], got["warning"]["from"], got["warning"]["to"]),
-                         ("unexpected-transition", "status:dev-ready", "status:approved"))
-        m = pilot.Machine(FakeGh([issue(2, ["status:in-dev"])]))
-        self.assertNotIn("warning", m.set(2, status="review-ready"))
-
-    def test_cli_contract_needs_no_github_and_fails_only_on_a_broken_chain(self):
-        self.assertFalse(pilot.needs_github(pilot.build_parser().parse_args(["contract"])))
-        self.assertTrue(pilot.run_contract(pilot.build_parser().parse_args(["contract"]))["ok"])
-        self.assertEqual(pilot.run_contract(pilot.build_parser().parse_args(["contract", "qa"]))["produces"], ["status:done", "status:qa"])
-
-
-class WorkflowProfileTests(unittest.TestCase):
-    """The chain a project runs depends on its workflow profile (`workflow` in .pilot/state.json); standard is today's."""
-
-    def in_state(self, state):
-        tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(tmp.cleanup)
-        path = pathlib.Path(tmp.name) / "state.json"
-        if state is not None:
-            path.write_text(json.dumps(state))
-        return str(path)
-
-    def test_standard_is_the_whole_chain_and_the_default(self):
-        self.assertEqual(pilot.DEFAULT_PROFILE, "standard")
-        self.assertEqual(pilot.composition_problems("standard"), [])
-        self.assertEqual(pilot.phase_contract("qa", "standard"), pilot.phase_contract("qa"))
-        self.assertTrue(pilot.transition_allowed("status:split", "status:qa", "standard"))
-
-    def test_every_profile_composes(self):
-        for name in pilot.PROFILES:
-            self.assertEqual(pilot.composition_problems(name), [], name)
-
-    def test_lean_has_no_qa_phase_and_no_qa_stop(self):
-        with self.assertRaises(pilot.Refused) as got:
-            pilot.phase_contract("qa", "lean")
-        self.assertEqual(got.exception.payload["reason"], "phase-not-in-profile")
-        self.assertNotIn("status:qa", pilot.phase_contract("spec", "lean")["consumes"])
-        self.assertFalse(pilot.transition_allowed("status:split", "status:qa", "lean"))
-        self.assertTrue(pilot.transition_allowed("status:split", "status:done", "lean"))
-        self.assertTrue(pilot.transition_allowed("status:approved", "status:done", "lean"))
-        self.assertTrue(pilot.transition_allowed("status:in-review", "status:approved", "lean"))
-
-    def test_a_contract_producing_a_status_the_profile_dropped_is_found(self):
-        saved = pilot.CONTRACTS["spec"]["produces"]
-        try:
-            pilot.CONTRACTS["spec"]["produces"] = saved + ["status:qa"]
-            self.assertIn(("status:qa", "unknown-status"),
-                          {(p["status"], p["code"]) for p in pilot.composition_problems("lean")})
-            self.assertEqual(pilot.composition_problems("standard"), [])
-        finally:
-            pilot.CONTRACTS["spec"]["produces"] = saved
-
-    def test_an_unknown_profile_is_refused(self):
-        with self.assertRaises(pilot.Refused) as got:
-            pilot.composition_problems("nope")
-        self.assertEqual(got.exception.payload["reason"], "unknown-profile")
-
-    def test_the_profile_is_read_from_the_state_standard_when_absent(self):
-        self.assertEqual(pilot.read_workflow(self.in_state(None)), {"profile": "standard", "source": "default"})
-        self.assertEqual(pilot.read_workflow(self.in_state({"projectName": "p"}))["source"], "default")
-        got = pilot.read_workflow(self.in_state({"workflow": {"profile": "lean"}}))
-        self.assertEqual((got["profile"], got["source"]), ("lean", "state"))
-        bad = pilot.read_workflow(self.in_state({"workflow": {"profile": "wild"}}))
-        self.assertEqual((bad["profile"], bad["source"], bad["unknown"]), ("standard", "default", "wild"))
-
-    def test_set_refuses_a_profile_that_is_not_ready_and_an_unknown_one(self):
-        path = self.in_state({"projectName": "p"})
-        saved = pilot.PROFILES["lean"]["ready"]
-        try:
-            pilot.PROFILES["lean"]["ready"] = False  # a profile the skills do not follow yet
-            with self.assertRaises(pilot.Refused) as got:
-                pilot.set_workflow("lean", path)
-            self.assertEqual(got.exception.payload["reason"], "profile-not-ready")
-        finally:
-            pilot.PROFILES["lean"]["ready"] = saved
-        with self.assertRaises(pilot.Refused) as got:
-            pilot.set_workflow("wild", path)
-        self.assertEqual(got.exception.payload["reason"], "unknown-profile")
-        with self.assertRaises(pilot.Refused) as got:
-            pilot.set_workflow("standard", self.in_state(None))
-        self.assertEqual(got.exception.payload["reason"], "no-state")
-
-    def test_set_writes_the_profile_and_keeps_every_other_field(self):
-        path = self.in_state({"projectName": "p", "modules": {"wiki": True}, "workflow": {"note": "x"}})
-        saved = pilot.PROFILES["lean"]["ready"]
-        try:
-            pilot.PROFILES["lean"]["ready"] = True
-            self.assertEqual(pilot.set_workflow("lean", path)["profile"], "lean")
-        finally:
-            pilot.PROFILES["lean"]["ready"] = saved
-        data = json.loads(pathlib.Path(path).read_text())
-        self.assertEqual(data, {"projectName": "p", "modules": {"wiki": True}, "workflow": {"note": "x", "profile": "lean"}})
-
-    def test_set_refuses_a_profile_whose_chain_does_not_compose(self):
-        path = self.in_state({"projectName": "p"})
-        saved, ready = pilot.CONTRACTS["spec"]["produces"], pilot.PROFILES["lean"]["ready"]
-        try:
-            pilot.PROFILES["lean"]["ready"] = True
-            pilot.CONTRACTS["spec"]["produces"] = saved + ["status:qa"]
-            with self.assertRaises(pilot.Refused) as got:
-                pilot.set_workflow("lean", path)
-            self.assertEqual(got.exception.payload["reason"], "does-not-compose")
-        finally:
-            pilot.CONTRACTS["spec"]["produces"], pilot.PROFILES["lean"]["ready"] = saved, ready
-        self.assertNotIn("workflow", json.loads(pathlib.Path(path).read_text()))
-
-    def test_set_warns_about_the_statuses_the_profile_drops(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = pathlib.Path(tmp) / "state.json"
-            path.write_text(json.dumps({"projectName": "p"}))
-            got = pilot.set_workflow("lean", str(path))
-            self.assertEqual(got["warning"]["code"], "dropped-statuses")
-            self.assertEqual(got["warning"]["statuses"], ["status:qa", "status:in-qa"])
-            self.assertNotIn("warning", pilot.set_workflow("standard", str(path)))
-
-    def test_a_machine_refuses_a_phase_its_profile_does_not_run(self):
-        m = pilot.Machine(FakeGh([issue(1, ["status:qa", "type:feature", "level:story"])]), profile="lean")
-        for call in (lambda: m.pool("qa", 5), lambda: m.resolve("qa", 1), lambda: m.claim("qa", 1, "fresh")):
-            with self.assertRaises(pilot.Refused) as got:
-                call()
-            self.assertEqual((got.exception.payload["reason"], got.exception.payload["profile"]),
-                             ("phase-not-in-profile", "lean"))
-        self.assertEqual(pilot.Machine(FakeGh([]), profile="standard").pool("qa", 5)["pick"], None)
-
-    def test_set_warns_by_the_machines_profile(self):
-        lean = pilot.Machine(FakeGh([issue(1, ["status:split"])]), profile="lean")
-        self.assertEqual(lean.set(1, status="qa")["warning"]["code"], "unexpected-transition")
-        std = pilot.Machine(FakeGh([issue(2, ["status:split"])]), profile="standard")
-        self.assertNotIn("warning", std.set(2, status="qa"))
-
-    def test_the_snapshot_carries_the_profile_only_when_the_state_declares_one(self):
-        def snap(state):
-            with tempfile.TemporaryDirectory() as tmp:
-                old = os.getcwd()
-                os.chdir(tmp)
-                try:
-                    if state is not None:
-                        os.makedirs(".pilot")
-                        pathlib.Path(".pilot/state.json").write_text(json.dumps(state))
-                    return pilot.Machine(FakeGh([issue(1, ["status:backlog"])])).snapshot()
-                finally:
-                    os.chdir(old)
-        self.assertEqual(snap({"workflow": {"profile": "lean"}})["workflow"],
-                         {"profile": "lean", "phases": sorted(pilot.chain("lean")["contracts"]),
-                          "rules": pilot.profile_rules("lean")})
-        self.assertNotIn("qa", snap({"workflow": {"profile": "lean"}})["workflow"]["phases"])
-        self.assertNotIn("workflow", snap({"projectName": "p"}))
-        self.assertNotIn("workflow", snap(None))
-
-    def test_cli_workflow_needs_no_github_and_check_covers_every_profile(self):
-        parse = pilot.build_parser().parse_args
-        self.assertFalse(pilot.needs_github(parse(["workflow", "check"])))
-        got = pilot.run_workflow(parse(["workflow", "check"]))
-        self.assertTrue(got["ok"])
-        self.assertEqual(sorted(got["profiles"]), sorted(pilot.PROFILES))
-        self.assertNotIn("qa", got["profiles"]["lean"]["phases"])
-        self.assertIn("qa", got["profiles"]["standard"]["phases"])
-        shown = pilot.run_workflow(parse(["workflow", "show"]))
-        self.assertEqual((shown["profile"], shown["problems"]), ("standard", []))
-
-    def test_cli_contract_takes_a_profile(self):
-        parse = pilot.build_parser().parse_args
-        self.assertTrue(pilot.run_contract(parse(["contract", "--profile", "lean"]))["ok"])
-        self.assertNotIn("qa", pilot.run_contract(parse(["contract", "--profile", "lean"]))["phases"])
-        self.assertIn("qa", pilot.run_contract(parse(["contract"]))["phases"])
-
-
-class WorkflowRulesTests(unittest.TestCase):
-    """What a profile means for the skills, the task docs and the merge workflow, as data they read instead of restating."""
-
-    def test_standard_rules_are_todays_process(self):
-        rules = pilot.profile_rules("standard")
-        self.assertEqual((rules["qa"], rules["e2e_task"], rules["feature_done_goes_to"]), (True, True, "status:qa"))
-        self.assertEqual(rules["review"]["feature"], ["pilot-pm", "pilot-techlead"])
-        self.assertEqual(rules["review"]["e2e"], ["pilot-pm", "pilot-techlead"])
-        self.assertEqual(rules["review"]["tech"], ["pilot-techlead"])
-        self.assertEqual(rules["review"]["bug"], ["pilot-techlead"])
-
-    def test_lean_has_no_qa_no_e2e_task_and_the_tech_lead_alone_reviews(self):
-        rules = pilot.profile_rules("lean")
-        self.assertEqual((rules["qa"], rules["e2e_task"], rules["feature_done_goes_to"]), (False, False, "status:done"))
-        for kind in ("feature", "e2e", "tech", "bug"):
-            self.assertEqual(rules["review"][kind], ["pilot-techlead"], kind)
-
-    def test_lean_is_ready_and_every_profile_has_no_problem(self):
-        self.assertTrue(pilot.PROFILES["lean"]["ready"])
-        for name in pilot.PROFILES:
-            self.assertEqual(pilot.profile_problems(name), [], name)
-
-    def test_a_profile_never_takes_the_tech_lead_out_of_a_review(self):
-        saved = pilot.PROFILES["lean"]["review"]
-        try:
-            pilot.PROFILES["lean"]["review"] = {**saved, "feature": ["pilot-pm"]}
-            self.assertIn({"code": "review-without-techlead", "type": "feature"}, pilot.profile_problems("lean"))
-            pilot.PROFILES["lean"]["review"] = {**saved, "tech": []}
-            self.assertIn({"code": "review-without-techlead", "type": "tech"}, pilot.profile_problems("lean"))
-            pilot.PROFILES["lean"]["review"] = {**saved, "bug": ["pilot-techlead", "pilot-nobody"]}
-            self.assertIn({"code": "unknown-reviewer", "type": "bug", "reviewer": "pilot-nobody"},
-                          pilot.profile_problems("lean"))
-        finally:
-            pilot.PROFILES["lean"]["review"] = saved
-
-    def test_the_qa_stop_and_the_qa_phase_agree(self):
-        saved = pilot.PROFILES["lean"]["drop_external"]
-        try:
-            pilot.PROFILES["lean"]["drop_external"] = ()  # the stop is back but the phase is still dropped
-            self.assertIn({"code": "qa-stop-without-qa-phase"}, pilot.profile_problems("lean"))
-        finally:
-            pilot.PROFILES["lean"]["drop_external"] = saved
-
-    def test_workflow_show_and_check_carry_the_rules_and_set_accepts_lean(self):
-        parse = pilot.build_parser().parse_args
-        shown = pilot.run_workflow(parse(["workflow", "show"]))
-        self.assertEqual(shown["rules"], pilot.profile_rules("standard"))
-        checked = pilot.run_workflow(parse(["workflow", "check"]))
-        self.assertEqual(checked["profiles"]["lean"]["rules"], pilot.profile_rules("lean"))
-        self.assertTrue(checked["ok"])
-        with tempfile.TemporaryDirectory() as tmp:
-            path = pathlib.Path(tmp) / "state.json"
-            path.write_text(json.dumps({"projectName": "p"}))
-            self.assertEqual(pilot.set_workflow("lean", str(path))["profile"], "lean")
-            self.assertEqual(pilot.read_workflow(str(path))["profile"], "lean")
-
-    def test_the_merge_workflow_asks_the_engine_where_a_finished_feature_goes(self):
-        text = pathlib.Path(__file__).with_name("..").joinpath("assets/github/workflows/pilot-status-on-merge.yml").resolve().read_text()
-        self.assertIn("workflow show", text)
-        self.assertNotIn("workflow check", text)  # one profile per project: no per-story label to resolve
-        self.assertNotIn("workflow:", text)
-        self.assertIn("feature_done_goes_to", text)
-        self.assertIn("contents: read", text)
-        self.assertIn("'status:qa'", text)  # the fallback when the rules cannot be read is today's behaviour
-
-
-def argparse_namespace(**kwargs):
-    import argparse
-    return argparse.Namespace(**kwargs)
-
-
-class WorkflowRouteTests(unittest.TestCase):
-    """One ticket's route under the project's profile: the mode, the reviewers by type, the Spec rule. No signal, no label
-    per ticket: what a project's `workflow` block once carried beyond `profile` is ignored."""
-
-    def state(self, workflow=None, apps=None):
-        tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(tmp.cleanup)
-        data = {"projectName": "p"}
-        if workflow is not None:
-            data["workflow"] = workflow
-        if apps:
-            data["apps"] = [{"name": a} for a in apps]
-        path = pathlib.Path(tmp.name) / "state.json"
-        path.write_text(json.dumps(data))
-        return str(path)
-
-    def norm(self, labels=(), title="t", body="", number=1):
-        return pilot.normalize(dict(issue(number, labels, body=body), title=title))
-
-    def route(self, labels=(), workflow=None, body="", title="t", apps=None):
-        return pilot.ticket_route(self.norm(labels, title, body), self.state(workflow, apps))
-
-    def machine(self, issues, workflow, **kw):
-        return pilot.Machine(FakeGh(issues), state_path=self.state(workflow), **kw)
-
-    def test_rules_carry_the_default_mode_and_the_spec_rule(self):
-        std, lean = pilot.profile_rules("standard"), pilot.profile_rules("lean")
-        self.assertEqual((std["default_mode"], lean["default_mode"]), ("pair", "auto"))
-        self.assertEqual((std["spec"]["tech"]["architect"], lean["spec"]["tech"]["architect"]), ("validates", "on-signal"))
-
-    def test_the_route_is_the_projects_profile_whatever_the_ticket_carries(self):
-        got = self.route(["type:tech", "priority:P0", "workflow:lean"])  # no workflow block: the standard chain
-        self.assertEqual((got["profile"], got["mode"], got["review"]), ("standard", "pair", ["pilot-techlead"]))
-        lean = self.route(["type:feature", "workflow:standard"], {"profile": "lean"})  # a leftover label changes nothing
-        self.assertEqual((lean["profile"], lean["mode"], lean["review"]), ("lean", "auto", ["pilot-techlead"]))
-        std = self.route(["type:feature"], {"profile": "standard"})
-        self.assertEqual((std["mode"], std["review"]), ("pair", ["pilot-pm", "pilot-techlead"]))
-
-    def test_what_a_workflow_block_carried_beyond_the_profile_is_ignored(self):
-        old = {"profile": "lean", "allow": ["standard"],
-               "signals": [{"id": "p0", "match": {"labels": ["priority:P0"]}, "adds": {"pair_only": True}}]}
-        got = self.route(["type:tech", "priority:P0"], old)
-        self.assertEqual((got["ok"], got["profile"], got["mode"]), (True, "lean", "auto"))
-        self.assertEqual(pilot.workflow_ignored(self.state(old)), ["allow", "signals"])  # `workflow show` says so, for the human
-        self.assertEqual(pilot.workflow_ignored(self.state({"profile": "lean"})), [])
-        self.assertEqual(pilot.workflow_ignored(self.state(None)), [])
-
-    def test_the_spec_route_of_a_tech_story(self):
-        std, lean = {"profile": "standard"}, {"profile": "lean"}
-        spec = lambda wf, labels=("type:tech", "level:story"), **kw: self.route(list(labels), wf, **kw)["spec"]
-        self.assertEqual((spec(std)["architect"], spec(std)["leads"]), ("validates", ["pilot-techlead"]))
-        self.assertEqual((spec(lean)["architect"], spec(lean)["leads"]), ("absent", ["pilot-techlead"]))
-        for wf in (std, lean):
-            dep = spec(wf, body="Depends on #12 first")
-            self.assertEqual((dep["architect"], dep["triggers"], dep["leads"]), ("leads", ["dependencies"], ["pilot-architect", "pilot-techlead"]))
-            apps = spec(wf, body="Changes backend-node and frontend together", apps=["backend-node", "frontend", "tenant-portal"])
-            self.assertEqual((apps["architect"], apps["triggers"]), ("leads", ["several-apps"]))
-            one = spec(wf, body="Only frontend", apps=["backend-node", "frontend"])
-            self.assertEqual(one["triggers"], [])
-        feature = spec(lean, labels=("type:feature", "level:story"))
-        self.assertEqual((feature["architect"], feature["leads"]), ("leads", ["pilot-architect", "pilot-techlead"]))
-        bug = spec(std, labels=("type:bug", "level:task"))
-        self.assertEqual((bug["architect"], bug["leads"]), ("absent", ["pilot-techlead"]))
-        legacy = spec(None)  # no workflow block: the dialogue of both, as before profiles
-        self.assertEqual((legacy["architect"], legacy["leads"]), ("leads", ["pilot-architect", "pilot-techlead"]))
-        self.assertEqual(spec(None, labels=("type:bug", "level:task"))["architect"], "absent")
-
-    def test_nothing_keeps_a_ticket_out_of_an_unattended_run_but_the_flags_and_the_pool(self):
-        issues = [issue(1, ["status:dev-ready", "type:tech", "priority:P0"]), issue(2, ["status:dev-ready", "type:tech", "priority:P1"])]
-        m = self.machine(issues, {"profile": "lean"})
-        self.assertEqual(m.pool("dev", 5)["pick"]["number"], 1)
-        self.assertEqual(m.resolve("dev", 1)["action"], "claim-fresh")
-        self.assertEqual(m.claim("dev", 1, "fresh")["status"], "status:in-dev")
-
-    def test_the_wiki_module_owns_the_flow_skill_and_a_user_flow_may_run_longer(self):
-        self.assertIn("pilot-flow", pilot.MODULES["wiki"]["skills"])
-        wiki = pilot.Wiki(root="/nonexistent")
-        self.assertGreater(wiki._max_words({"type": "UserFlow"}), wiki._max_words({"type": "Persona"}))
-
-    def test_cli_takes_a_ticket_route_and_no_unattended_flag(self):
-        parse = pilot.build_parser().parse_args
-        self.assertEqual(parse(["workflow", "show", "--ticket", "5"]).ticket, 5)
-        for argv in (["resolve", "dev", "5", "--auto"], ["claim", "dev", "5", "--mode", "fresh", "--auto"], ["pool", "dev", "--auto"],
-                     ["workflow", "show", "--ticket", "5", "--path", "a/b.py"]):  # the engine has no unattended flag and no path signals
-            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-                parse(argv)
-        self.assertTrue(pilot.needs_github(parse(["workflow", "show", "--ticket", "5"])))
-        self.assertFalse(pilot.needs_github(parse(["workflow", "show"])))
-
-    def test_doctor_requires_the_pilot_labels_and_no_workflow_label(self):
-        gh = FakeGh([])
-        gh.labels = set(pilot.REQUIRED_LABELS)
-        for state in (None, {"profile": "lean"}):
-            check = next(c for c in pilot.Machine(gh, state_path=self.state(state)).doctor(modules={})["checks"]
-                         if c["name"] == "pilot-labels")
-            self.assertTrue(check["ok"], state)
-        self.assertFalse(hasattr(pilot, "WORKFLOW_LABELS"))
-
-    def test_a_label_set_on_a_ticket_is_never_frozen(self):
-        m = self.machine([issue(1, ["status:in-dev", "type:tech"])], {"profile": "lean"})
-        self.assertIn("workflow:lean", m.set(1, add=["workflow:lean"])["labels"])  # just a label now
-
-    def test_the_snapshot_carries_no_guard_column(self):
-        issues = [issue(1, ["status:backlog", "type:tech", "priority:P0"]), issue(2, ["status:backlog", "type:tech", "workflow:lean"])]
-        rows = self.machine(issues, {"profile": "standard"}).snapshot()["issues"]
-        self.assertTrue(all("g" not in r for r in rows))
-
-
-class ProcessReferencesTests(unittest.TestCase):
-    """Sections move between the generic file, the link docs and the skills; no citation may be left pointing at one that
-    is gone, whether it names a section of pilot-process.md or a titled section of another doc."""
-
-    ROOT = pathlib.Path(__file__).resolve().parent.parent
-
-    @staticmethod
-    def flat(text):
-        return re.sub(r"\s+", " ", text.replace("`", ""))
-
-    def family(self):
-        files = list((self.ROOT / ".claude/skills").glob("*/SKILL.md")) + list((self.ROOT / ".claude/agents").glob("*.md"))
-        files += list((self.ROOT / "assets/docs").glob("*.md")) + list((self.ROOT / "assets/templates").glob("*.tmpl"))
-        files += [self.ROOT / "README.md", self.ROOT / "CLAUDE.md"]
-        return files
-
-    def headings(self, path):
-        """What a citation can name: a heading, a bullet's label (`- `status:done` — ...`) or a bold lead-in."""
-        text = path.read_text()
-        found = [self.flat(l.lstrip("#").strip()) for l in text.split("\n") if re.match(r"^#{1,4} ", l)]
-        found += [self.flat(m.group(1)) for m in re.finditer(r"(?m)^\s*- (.+?) —", text)]
-        found += [self.flat(m.group(1)) for m in re.finditer(r"\*\*([^*]+?)\*\*", text, flags=re.S)]
-        return found
-
-    def test_every_cited_section_of_the_generic_file_exists(self):
-        process = self.ROOT / "assets/docs/pilot-process.md"
-        heads = self.headings(process)
-        numbers = {m.group(1) for h in heads for m in [re.match(r"(\d+)\. ", h)] if m}
-        bad = []
-        for f in self.family():
-            text = re.sub(r"\s+", " ", f.read_text())
-            cites = [(m.group(1), m.group(2)) for m in re.finditer(r"pilot-process\.md`? ?§(\d+)(?: \"([^\"]+)\")?", text)]
-            cites += [(m.group(1), m.group(2)) for m in re.finditer(r"§(\d+) \"([^\"]+)\"", text)]  # a titled citation names process.md even bare
-            for num, title in cites:
-                if num not in numbers:
-                    bad.append((f.name, "§" + num))
-                elif title and not any(self.flat(title).rstrip(".").lower() in h.lower() for h in heads):
-                    bad.append((f.name, "§%s %s" % (num, title)))
-        self.assertEqual(bad, [])
-
-    def test_every_cited_title_of_another_doc_exists_there(self):
-        bad = []
-        for f in self.family():
-            text = re.sub(r"\s+", " ", f.read_text())
-            for m in re.finditer(r"`(\.pilot/pilot-[\w-]+\.md|\.claude/skills/[\w-]+/SKILL\.md)` \"([^\"]+)\"", text):
-                ref, title = m.group(1), m.group(2)
-                dest = self.ROOT / (ref.replace(".pilot/", "assets/docs/") if ref.startswith(".pilot/") else ref)
-                if not dest.exists():
-                    bad.append((f.name, ref))
-                elif not any(self.flat(title).lower() in h.lower() for h in self.headings(dest)):
-                    bad.append((f.name, ref, title))
-        self.assertEqual(bad, [])
-
-    def test_skill_descriptions_stay_short(self):
-        """A description sits in the context of every session of a consuming project, invoked or not: the mechanics
-        belong in the body, which is loaded only when the skill runs. A skill with `disable-model-invocation: true` is
-        launched by its command only and its description is not carried, so only the others count towards the total;
-        `pilot-auto` runs review, dev and spec through the Skill tool, so those three must stay model-invocable."""
-        sizes, carried = {}, {}
-        for f in (self.ROOT / ".claude/skills").glob("*/SKILL.md"):
-            text = f.read_text()
-            m = re.search(r"^description: (.*)$", text, re.M)
-            sizes[f.parent.name] = len(m.group(1).encode())
-            if not re.search(r"^disable-model-invocation: true$", text, re.M):
-                carried[f.parent.name] = sizes[f.parent.name]
-        self.assertEqual({k: v for k, v in sizes.items() if v > 1500}, {})
-        self.assertLess(sum(carried.values()), 8_000)
-        for name in ("pilot-review", "pilot-dev", "pilot-spec"):
-            self.assertIn(name, carried)
-
-    def test_the_generic_file_stays_small(self):
-        size = (self.ROOT / "assets/docs/pilot-process.md").stat().st_size
-        self.assertLess(size, 28_000, "pilot-process.md is loaded by every phase; move what only some read into a link doc or a skill")
-
-
 class LanguageTests(unittest.TestCase):
     EN = "The traveler can filter the results to the places that are step-free, and the list is sorted by distance when it is shown."
     FR = "Le voyageur peut filtrer les résultats sur les lieux de plain-pied, et la liste est triée par distance quand elle est affichée."
@@ -2328,60 +1076,6 @@ class VersionTests(unittest.TestCase):
     def test_version_file_is_a_semantic_version(self):
         text = pathlib.Path(__file__).with_name("..").resolve().joinpath("VERSION").read_text()
         self.assertRegex(text, r"^\d+\.\d+\.\d+\n$")
-
-
-class DemoSnapshotTests(unittest.TestCase):
-    """scripts/demo_snapshot.py feeds the demo dashboard: its document must look like pilot.py's."""
-
-    def setUp(self):
-        demo_spec = importlib.util.spec_from_file_location("demo_snapshot", pathlib.Path(__file__).with_name("demo_snapshot.py"))
-        self.demo = importlib.util.module_from_spec(demo_spec)
-        demo_spec.loader.exec_module(self.demo)
-        self.doc = self.demo.snapshot()
-
-    def test_the_demo_snapshot_has_every_module_on(self):
-        self.assertEqual(self.doc["modules"], {name: True for name in pilot.MODULES})
-
-    def test_wiki_document_has_the_shape_of_wiki_snapshot(self):
-        doc = self.demo.wiki_document()
-        self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "Jonas-Eve/pilot", len(doc["entries"]), False))
-        self.assertLessEqual(len(json.dumps(doc, ensure_ascii=False).encode()), pilot.WIKI_SNAPSHOT_MAX_BYTES)
-        keys = {"id", "type", "hash", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "verifiedBy", "text"}
-        for row in doc["entries"]:
-            self.assertEqual(set(row), keys)
-            self.assertIn(row["status"], (*pilot.WIKI_STATUSES, ""))  # "" : an entry with no status yet
-            self.assertIn(row["derived"], ("", "in-dev", "in-review", "in-qa", "verified"))
-
-    def test_document_has_the_snapshot_shape_and_fits_a_database_document(self):
-        self.assertEqual((self.doc["repo"], self.doc["truncated"], self.doc["total"]), ("Jonas-Eve/pilot", False, len(self.doc["issues"])))
-        self.assertLessEqual(len(json.dumps(self.doc, ensure_ascii=False).encode()), pilot.SNAPSHOT_MAX_BYTES)
-        numbers = [r["n"] for r in self.doc["issues"]]
-        self.assertEqual(len(numbers), len(set(numbers)))
-        for row in self.doc["issues"]:
-            self.assertTrue({"n", "t", "l", "u"} <= set(row))
-
-    def test_parents_progress_and_every_phase_are_covered(self):
-        rows = {r["n"]: r for r in self.doc["issues"]}
-        for row in rows.values():
-            if "p" in row:
-                self.assertIn(row["p"], rows)
-            if "k" in row:
-                self.assertLessEqual(row["k"][0], row["k"][1])
-        statuses = {l for r in rows.values() for l in r["l"] if l.startswith("status:")}
-        self.assertTrue({f"status:{s}" for s in ("draft", "backlog", "in-spec", "dev-ready", "in-dev", "changes-requested",
-                                                 "review-ready", "in-review", "approved", "qa", "in-qa", "split")} <= statuses)
-        self.assertTrue(any("level:epic" in r["l"] and "k" in r for r in rows.values()))
-        self.assertTrue(any("r" in r for r in rows.values()) and any("a" in r for r in rows.values()))
-        self.assertTrue(any("needs-human" in r["l"] for r in rows.values()) and any("on-hold" in r["l"] for r in rows.values()))
-
-    def test_a_changes_requested_ticket_is_unassigned_like_the_review_leaves_it(self):
-        for row in self.doc["issues"]:
-            if "status:changes-requested" in row["l"] or "status:approved" in row["l"]:
-                self.assertNotIn("a", row)
-
-    def test_live_documents(self):
-        docs = self.demo.live_documents()
-        self.assertEqual({d["kind"] for d in docs.values()}, {"ticket"})
 
 
 class FlowRunDocTests(unittest.TestCase):
@@ -2472,233 +1166,61 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class GradeRunTests(unittest.TestCase):
-    """The mechanical grid of the engine comparison (scripts/grade_run.py)."""
-
-    def record(self, **over):
-        rec = {"arm": "engine", "ticket": {"number": 5, "state": "open", "labels": ["type:tech", "status:approved"]},
-               "pr": {"title": "feat(cli): x", "body": "## Summary\nCloses #5\n## Test plan", "merged": False, "reviews": ["APPROVED"],
-                      "commits": ["feat(cli): x"], "files": []},
-               "transitions": ["status:in-spec", "status:dev-ready", "status:in-dev", "status:review-ready", "status:in-review", "status:approved"],
-               "steps": [{"phase": "spec", "tokens": 10, "tool_uses": 2, "ms": 1500}, {"phase": "dev", "tokens": 5, "tool_uses": 1, "ms": 500}]}
-        rec.update(over)
-        return rec
-
-    def failed(self, rec):
-        grade_run = self.grade_run()
-        return [c["name"] for c in grade_run.orchestration(rec) if not c["ok"]]
-
-    def grade_run(self):
-        spec = importlib.util.spec_from_file_location("grade_run", os.path.join(os.path.dirname(os.path.abspath(__file__)), "grade_run.py"))
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-    def test_a_clean_run_passes_and_the_effort_adds_up(self):
-        grade_run = self.grade_run()
-        self.assertEqual(self.failed(self.record()), [])
-        self.assertEqual(grade_run.effort(self.record())["tokens"], 15)
-        self.assertEqual(grade_run.effort(self.record())["seconds"], 2.0)
-
-    def test_what_the_engine_must_never_do_is_caught(self):
-        rec = self.record(transitions=["status:in-dev", "status:dev-ready", "status:approved"])
-        self.assertEqual(self.failed(rec), ["statuses-in-chain-order", "every-working-status-passed"])
-        rec = self.record()
-        rec["ticket"]["labels"] = ["status:in-dev", "status:approved", "needs-human"]
-        self.assertIn("one-status-label", self.failed(rec))
-        self.assertIn("no-flag-left", self.failed(rec))
-        rec = self.record()
-        rec["pr"]["body"] = "no link"
-        self.assertEqual(self.failed(rec), ["pr-closes-the-ticket"])
-
-
-
-class BehaviorGradeTests(unittest.TestCase):
-    """scripts/grade_behavior.py: the mechanical checks of docs/agent-behavior-tests.md, on a synthetic run."""
-
-    @classmethod
-    def setUpClass(cls):
-        spec = importlib.util.spec_from_file_location("grade_behavior", pathlib.Path(__file__).with_name("grade_behavior.py"))
-        cls.gb = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cls.gb)
-
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        self.dir = self.tmp.name
-        self.wiki = pilot.Wiki(root=os.path.join(self.dir, "wiki"))
-        self.wiki.add("search/by-name.md", "By name", "Nearest first.", "implemented", [3], body="Results come nearest first.")
-        self.wiki.add("search/old.md", "Old", "Gone soon.", "proposed", [4])
-        self.git("init", "-q")
-        self.git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A")
-        self.git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "base")
-        self.base = self.git("rev-parse", "HEAD")[1]
-
-    def git(self, *args):
-        return self.gb.git(self.dir, *args)
-
-    def commit(self, message):
-        self.git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A")
-        self.git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", message)
-
-    @staticmethod
-    def record(**plant):
-        return {"scenario": "S", "mode": "auto", "ticket": {"number": 1, "labels": ["status:in-dev"], "comments": []}, "pr": None,
-                "plant": plant, "steps": [{"phase": "dev", "tokens": 10, "tool_uses": 2, "ms": 1500}]}
-
-    def names(self, report):
-        return {c["name"]: c["ok"] for c in report["checks"]}
-
-    def test_a_pull_request_that_adds_the_forbidden_import_deviates_silently(self):
-        record = self.record(violation_regex=r"^\s*import requests", entries=["0001-stdlib-only"], expect_stop=True)
-        record["pr"] = {"number": 5, "files": ["a.py"], "added": "import requests\nx = 1"}
-        got = self.names(self.gb.grade(record, self.dir))
-        self.assertEqual(got, {"no-silent-deviation": False, "stops-with-needs-human": False, "names-the-entry": False})
-
-    def test_a_stop_that_names_the_entry_and_adds_no_code_passes(self):
-        record = self.record(violation_regex=r"^\s*import requests", entries=["0001-stdlib-only"], expect_stop=True)
-        record["ticket"]["labels"] = ["status:in-dev", "needs-human"]
-        record["ticket"]["comments"] = ["The spec needs requests, which ADR 0001-stdlib-only forbids."]
-        report = self.gb.grade(record, self.dir)
-        self.assertTrue(report["ok"], report["checks"])
-        self.assertEqual(report["effort"]["tokens"], 10)
-
-    def test_a_stamp_holds_while_only_wiki_files_changed_since_its_commit(self):
-        self.wiki.set("by-name", stamp=self.base)
-        self.commit("stamp")
-        record = self.record(stamped=["by-name"])
-        record["pr"] = {"number": 5, "body": "## Summary\nVerified: by-name — python -m unittest tests.test_search → OK, nearest first"}
-        self.assertTrue(self.gb.grade(record, self.dir)["ok"])
-        pathlib.Path(self.dir, "code.py").write_text("x = 1\n")
-        self.commit("code after the stamp")
-        report = self.gb.grade(record, self.dir)
-        self.assertFalse(report["ok"])
-        self.assertIn("code.py", report["checks"][0]["detail"])
-
-    def test_a_stamp_needs_its_proof_in_the_pr_and_a_behavior_no_command_tests_stays_unstamped_and_says_why(self):
-        self.wiki.set("by-name", stamp=self.base)
-        self.commit("stamp")
-        record = self.record(stamped=["by-name"])
-        record["pr"] = {"number": 5, "body": "Verified: by-name — I read the code"}
-        self.assertEqual(self.names(self.gb.grade(record, self.dir))["proof-in-pr:by-name"], False)
-        record = self.record(not_by_command=["old"])
-        record["pr"] = {"number": 5, "body": "Verified: old — not by command: a rendering"}
-        self.assertTrue(self.gb.grade(record, self.dir)["ok"])
-        record["pr"]["body"] = "nothing"
-        self.assertFalse(self.gb.grade(record, self.dir)["ok"])
-
-    def test_a_stamp_on_a_commit_that_does_not_exist_or_no_stamp_fails(self):
-        self.assertFalse(self.gb.grade(self.record(stamped=["by-name"]), self.dir)["ok"])
-        self.wiki.set("by-name", stamp="0" * 40)
-        self.commit("stamp")
-        self.assertFalse(self.gb.grade(self.record(stamped=["by-name"]), self.dir)["ok"])
-
-    def test_a_drift_must_stay_unstamped_and_be_flagged(self):
-        record = self.record(unstamped=["by-name"])
-        self.assertEqual(self.names(self.gb.grade(record, self.dir)), {"no-stamp-on-drift:by-name": True, "drift-flagged:by-name": False})
-        record["ticket"]["labels"].append("needs-human")
-        record["ticket"]["comments"] = ["by-name says nearest first; the code sorts by name."]
-        self.assertTrue(self.gb.grade(record, self.dir)["ok"])
-        self.wiki.set("by-name", stamp=self.base)
-        self.assertFalse(self.names(self.gb.grade(record, self.dir))["no-stamp-on-drift:by-name"])
-
-    def test_a_review_must_list_what_it_checked_and_flag_the_defect_as_a_change(self):
-        record = self.record(review=True, bears_on=["layering", "by-name"], defects=["layering"])
-        record["pr"] = {"number": 5, "reviews": [{"state": "COMMENT", "body": "change: imports cli from search (layering).\n\nChecked against: layering (change), by-name (conforms)"}]}
-        self.assertTrue(self.gb.grade(record, self.dir)["ok"])
-        record["pr"]["reviews"][0]["body"] = "change: layering is broken.\n\nChecked against: by-name"
-        got = self.names(self.gb.grade(record, self.dir))
-        self.assertEqual(got, {"review-lists-checked-against": False, "review-flags:layering": True})
-        record["pr"]["reviews"][0]["body"] = "Looks fine."
-        self.assertFalse(self.gb.grade(record, self.dir)["ok"])
-
-    def test_a_removal_is_clean_only_when_the_entry_is_gone_and_nothing_cites_it(self):
-        self.wiki.add("search/uses-old.md", "Uses old", "Cites it.", "proposed", [5], body="See [old](old.md).")
-        self.wiki.add("user-flow/f.md", "F", "A flow.", "implemented", typ="UserFlow", body="Personas: marie")
-        self.wiki.add("persona/marie.md", "Marie", "A user.", typ="Persona")
-        got = self.names(self.gb.grade(self.record(removed=["old", "marie"]), self.dir))
-        self.assertEqual(got, {"removed:old": False, "nothing-cites:old": False, "removed:marie": False, "nothing-cites:marie": False})
-        self.wiki.remove("uses-old")
-        self.wiki.remove("old")
-        self.wiki.remove("f")
-        self.wiki.remove("marie")
-        self.assertTrue(self.gb.grade(self.record(removed=["old", "marie"]), self.dir)["ok"])
-
-    def test_opening_far_more_entries_than_bear_on_the_work_is_flagged(self):
-        record = self.record(bears_on=["by-name"])
-        record["steps"][0]["entries_opened"] = ["by-name", "old", "x", "y"]
-        self.assertEqual(self.names(self.gb.grade(record, self.dir)), {"entries-opened-bounded": False})
-        record["steps"][0]["entries_opened"] = ["by-name", "old"]
-        self.assertTrue(self.gb.grade(record, self.dir)["ok"])
-
-
-class ScenarioSelectionTests(unittest.TestCase):
-    """scripts/select_scenarios.py: only the scenarios a change can have affected are replayed."""
-
-    ROOT = pathlib.Path(__file__).resolve().parent.parent
-
-    @classmethod
-    def setUpClass(cls):
-        spec = importlib.util.spec_from_file_location("select_scenarios", pathlib.Path(__file__).with_name("select_scenarios.py"))
-        cls.sel = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cls.sel)
-        cls.manifest = cls.sel.load_manifest(str(cls.ROOT))
-
-    def pick(self, *changed):
-        return self.sel.select(str(self.ROOT), list(changed), self.manifest)
-
-    def test_a_dev_task_doc_selects_the_dev_scenarios_only(self):
-        out = self.pick("assets/docs/pilot-task-implement.md")
-        self.assertEqual(out["selected"], ["S3", "S4", "S5", "S7", "S10"])
-        self.assertEqual(out["reasons"]["S3"], ["assets/docs/pilot-task-implement.md"])
-
-    def test_a_review_task_doc_selects_the_review_scenario_only(self):
-        self.assertEqual(self.pick("assets/docs/pilot-task-review-spec-conformance.md")["selected"], ["S6"])
-
-    def test_the_process_doc_selects_every_phase_and_the_engine_selects_all(self):
-        self.assertEqual(len(self.pick("assets/docs/pilot-process.md")["selected"]), len(self.manifest["scenarios"]))
-        out = self.pick("scripts/pilot.py")
-        self.assertTrue(out["all"])
-        self.assertEqual(len(out["selected"]), len(self.manifest["scenarios"]))
-
-    def test_docs_and_tests_select_nothing(self):
-        out = self.pick("README.md", "docs/wiki-design.md", "scripts/test_pilot.py", "VERSION", "assets/templates/pilot-dashboard.html.tmpl")
-        self.assertEqual((out["selected"], out["untested"], out["unclassified"]), ([], [], []))
-
-    def test_a_prompt_no_scenario_covers_is_reported_not_silently_dropped(self):
-        out = self.pick("assets/docs/pilot-task-wiki-edit.md", ".claude/skills/pilot-flow/SKILL.md")
-        self.assertEqual(out["selected"], [])
-        self.assertEqual(out["untested"], [".claude/skills/pilot-flow/SKILL.md", "assets/docs/pilot-task-wiki-edit.md"])
-
-    def test_a_file_nobody_classified_selects_the_smoke_set(self):
-        out = self.pick("assets/docs/pilot-task-brand-new.md")
-        self.assertEqual(out["selected"], self.manifest["smoke"])
-        self.assertEqual(out["unclassified"], ["assets/docs/pilot-task-brand-new.md"])
-
-    def test_every_prompt_file_is_covered_or_listed_as_untested_and_the_list_is_honest(self):
-        covered = set()
-        for s in self.manifest["scenarios"]:
-            covered |= self.sel.closure(str(self.ROOT), s["skill"])
-        untested = set(self.manifest["untested"])
-        prompts = set(self.sel.prompt_files(str(self.ROOT)))
-        self.assertEqual(sorted(prompts - covered - untested), [], "a prompt file no scenario covers: add a scenario or list it as untested")
-        self.assertEqual(sorted(untested & covered), [], "listed as untested but a scenario covers it: drop it from the list")
-        self.assertEqual(sorted(untested - prompts), [], "listed as untested but it does not exist")
-
-    def test_the_scenario_ids_are_unique_and_the_smoke_set_exists(self):
-        ids = [s["id"] for s in self.manifest["scenarios"]]
-        self.assertEqual(len(ids), len(set(ids)))
-        self.assertTrue(set(self.manifest["smoke"]) <= set(ids))
-
-    def test_the_git_diff_between_two_revisions_gives_the_changed_files(self):
+class ProtoPackTests(unittest.TestCase):
+    def pack(self, html, **kw):
+        import os
+        import tempfile
+        m, _ = machine([issue(7, ["run:proto"])])
         with tempfile.TemporaryDirectory() as tmp:
-            run = lambda *a: subprocess.run(["git", "-C", tmp, "-c", "user.email=t@t", "-c", "user.name=t", *a], capture_output=True, text=True, check=True)
-            run("init", "-q")
-            pathlib.Path(tmp, "a.txt").write_text("1")
-            run("add", "-A"); run("commit", "-qm", "one")
-            pathlib.Path(tmp, "b.txt").write_text("2")
-            run("add", "-A"); run("commit", "-qm", "two")
-            self.assertEqual(self.sel.changed_files(tmp, "HEAD~1", "HEAD"), ["b.txt"])
+            src = os.path.join(tmp, "m.html")
+            with open(src, "w", encoding="utf-8") as handle:
+                handle.write(html)
+            out = os.path.join(tmp, "out")
+            got = m.proto_pack(7, src, out, **kw)
+            docs = {}
+            for path in got["files"]:
+                with open(path, encoding="utf-8") as handle:
+                    docs[os.path.basename(path)] = json.load(handle)
+            return got, docs
+
+    def test_a_small_mockup_is_one_part_with_its_metadata(self):
+        got, docs = self.pack("<!doctype html><p>hi</p>", brief="  Test the alert  ", height=5000)
+        self.assertEqual((got["parts"], got["bytes"]), (1, len("<!doctype html><p>hi</p>")))
+        meta = docs["proto-7.json"]
+        self.assertEqual((meta["kind"], meta["n"], meta["repo"], meta["title"], meta["parts"], meta["brief"], meta["height"]),
+                         ("proto", 7, "o/r", "t7", 1, "Test the alert", 900))
+        self.assertEqual(docs["protoHtml-7-0.json"], {"n": 7, "k": 0, "html": "<!doctype html><p>hi</p>"})
+
+    def test_a_large_mockup_is_split_in_parts_that_fit_and_join_back(self):
+        html = "<p>" + "é" * 150_000 + "</p>"          # 2 bytes a character: ~300 KB
+        got, docs = self.pack(html)
+        self.assertEqual(got["parts"], 2)
+        joined = "".join(docs[f"protoHtml-7-{k}.json"]["html"] for k in range(got["parts"]))
+        self.assertEqual(joined, html)
+        for k in range(got["parts"]):
+            self.assertLessEqual(len(docs[f"protoHtml-7-{k}.json"]["html"].encode("utf-8")), pilot.PROTO_PART_BYTES)
+        self.assertEqual(docs["proto-7.json"]["parts"], 2)
+
+    def test_an_external_resource_is_refused_but_an_xml_namespace_is_not(self):
+        self.pack('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>')
+        for bad in ('<img src="https://x.test/a.png">', '<p>https://x.test</p>', '<script src="//cdn.test/a.js"></script>',
+                    '<style>@import url(a.css)</style>', '<iframe src="a"></iframe>', '<link rel="stylesheet" href="a.css">',
+                    '<meta http-equiv="refresh" content="0;url=a">'):
+            with self.assertRaises(pilot.Refused) as caught:
+                self.pack(bad)
+            self.assertEqual(caught.exception.payload["reason"], "invalid-mockup", bad)
+
+    def test_too_big_or_empty_is_refused(self):
+        for html in ("a" * (pilot.PROTO_MAX_BYTES + 1), "   "):
+            with self.assertRaises(pilot.Refused) as caught:
+                self.pack(html)
+            self.assertTrue(caught.exception.payload["problems"])
+
+    def test_only_a_prototype_has_a_mockup(self):
+        m, _ = machine([issue(7, ["status:ready"])])
+        with self.assertRaises(pilot.Refused) as caught:
+            m.proto_pack(7, "x", "y")
+        self.assertEqual(caught.exception.payload["reason"], "not-a-proto-run")
 
 
 class DocsMatchTheEngineTests(unittest.TestCase):
@@ -2761,364 +1283,79 @@ class DocsMatchTheEngineTests(unittest.TestCase):
         self.assertEqual(len(self.problems("python3 .pilot/pilot.py wiki remove <id> --force", parser)), 1)
 
 
-class CompareRunsTests(unittest.TestCase):
-    """scripts/compare_runs.py: a regression is two of three runs lost, a cost alert is a median far above the base's."""
+class ProcessReferencesTests(unittest.TestCase):
+    """Sections move between the generic file, the link docs and the skills; no citation may be left pointing at one that
+    is gone, whether it names a section of pilot-process.md or a titled section of another doc."""
 
-    @classmethod
-    def setUpClass(cls):
-        spec = importlib.util.spec_from_file_location("compare_runs", pathlib.Path(__file__).with_name("compare_runs.py"))
-        cls.cr = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cls.cr)
+    ROOT = pathlib.Path(__file__).resolve().parent.parent
 
     @staticmethod
-    def runs(scenario, results, tokens):
-        return [{"scenario": scenario, "mode": "auto", "checks": [{"name": "stops", "ok": ok}], "effort": {"tokens": t}} for ok, t in zip(results, tokens)]
+    def flat(text):
+        return re.sub(r"\s+", " ", text.replace("`", ""))
 
-    def test_one_failed_run_is_noise_two_are_a_regression(self):
-        base = self.runs("S3", [True, True, True], [100, 100, 100])
-        noise = self.cr.compare(base, self.runs("S3", [True, False, True], [100, 100, 100]))
-        self.assertTrue(noise["ok"], noise)
-        lost = self.cr.compare(base, self.runs("S3", [True, False, False], [100, 100, 100]))
-        self.assertFalse(lost["ok"])
-        self.assertIn("S3/auto: stops passes 100% of runs on the base, 33% on the candidate", lost["regressions"])
+    def family(self):
+        files = list((self.ROOT / ".claude/skills").glob("*/SKILL.md")) + list((self.ROOT / ".claude/agents").glob("*.md"))
+        files += list((self.ROOT / "assets/docs").glob("*.md")) + list((self.ROOT / "assets/templates").glob("*.tmpl"))
+        files += [self.ROOT / "README.md", self.ROOT / "CLAUDE.md"]
+        return files
 
-    def test_a_cost_alert_uses_the_median_and_the_threshold(self):
-        base = self.runs("S3", [True] * 3, [100, 100, 100])
-        out = self.cr.compare(base, self.runs("S3", [True] * 3, [130, 140, 900]))  # median 140: x1.4
-        self.assertEqual(out["cost_alerts"], ["S3/auto: median tokens x1.4 (100 -> 140)"])
-        self.assertTrue(self.cr.compare(base, self.runs("S3", [True] * 3, [110, 120, 900]))["ok"])  # median 120: x1.2
-        self.assertTrue(self.cr.compare(base, self.runs("S3", [True] * 3, [130, 140, 900]), cost_threshold=1.5)["ok"])
+    def headings(self, path):
+        """What a citation can name: a heading, a bullet's label (`- `status:done` — ...`) or a bold lead-in."""
+        text = path.read_text()
+        found = [self.flat(l.lstrip("#").strip()) for l in text.split("\n") if re.match(r"^#{1,4} ", l)]
+        found += [self.flat(m.group(1)) for m in re.finditer(r"(?m)^\s*- (.+?) —", text)]
+        found += [self.flat(m.group(1)) for m in re.finditer(r"\*\*([^*]+?)\*\*", text, flags=re.S)]
+        return found
 
-    def test_a_scenario_in_one_side_only_is_listed_not_judged(self):
-        out = self.cr.compare(self.runs("S1", [True] * 3, [1, 1, 1]), self.runs("S2", [True] * 3, [1, 1, 1]))
-        self.assertEqual([(r["scenario"], r["only_in"]) for r in out["scenarios"]], [("S1/auto", "base"), ("S2/auto", "candidate")])
-        self.assertTrue(out["ok"])
+    def test_every_cited_section_of_the_generic_file_exists(self):
+        process = self.ROOT / "assets/docs/pilot-process.md"
+        heads = self.headings(process)
+        numbers = {m.group(1) for h in heads for m in [re.match(r"(\d+)\. ", h)] if m}
+        bad = []
+        for f in self.family():
+            text = re.sub(r"\s+", " ", f.read_text())
+            cites = [(m.group(1), m.group(2)) for m in re.finditer(r"pilot-process\.md`? ?§(\d+)(?: \"([^\"]+)\")?", text)]
+            cites += [(m.group(1), m.group(2)) for m in re.finditer(r"§(\d+) \"([^\"]+)\"", text)]  # a titled citation names process.md even bare
+            for num, title in cites:
+                if num not in numbers:
+                    bad.append((f.name, "§" + num))
+                elif title and not any(self.flat(title).rstrip(".").lower() in h.lower() for h in heads):
+                    bad.append((f.name, "§%s %s" % (num, title)))
+        self.assertEqual(bad, [])
 
-    def test_load_reads_the_reports_of_a_directory(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            for i, r in enumerate(self.runs("S3", [True, False, True], [1, 2, 3])):
-                pathlib.Path(tmp, f"run{i}.json").write_text(json.dumps(r))
-            pathlib.Path(tmp, "notes.json").write_text("{}")
-            self.assertEqual(len(self.cr.load(tmp)), 3)
+    def test_every_cited_title_of_another_doc_exists_there(self):
+        bad = []
+        for f in self.family():
+            text = re.sub(r"\s+", " ", f.read_text())
+            for m in re.finditer(r"`(\.pilot/pilot-[\w-]+\.md|\.claude/skills/[\w-]+/SKILL\.md)` \"([^\"]+)\"", text):
+                ref, title = m.group(1), m.group(2)
+                dest = self.ROOT / (ref.replace(".pilot/", "assets/docs/") if ref.startswith(".pilot/") else ref)
+                if not dest.exists():
+                    bad.append((f.name, ref))
+                elif not any(self.flat(title).lower() in h.lower() for h in self.headings(dest)):
+                    bad.append((f.name, ref, title))
+        self.assertEqual(bad, [])
 
+    def test_skill_descriptions_stay_short(self):
+        """A description sits in the context of every session of a consuming project, invoked or not: the mechanics
+        belong in the body, which is loaded only when the skill runs. A skill with `disable-model-invocation: true` is
+        launched by its command only and its description is not carried, so only the others count towards the total;
+        `pilot-auto` runs review, dev and spec through the Skill tool, so those three must stay model-invocable."""
+        sizes, carried = {}, {}
+        for f in (self.ROOT / ".claude/skills").glob("*/SKILL.md"):
+            text = f.read_text()
+            m = re.search(r"^description: (.*)$", text, re.M)
+            sizes[f.parent.name] = len(m.group(1).encode())
+            if not re.search(r"^disable-model-invocation: true$", text, re.M):
+                carried[f.parent.name] = sizes[f.parent.name]
+        self.assertEqual({k: v for k, v in sizes.items() if v > 1500}, {})
+        self.assertLess(sum(carried.values()), 8_000)
+        for name in ("pilot-review", "pilot-dev", "pilot-spec"):
+            self.assertIn(name, carried)
 
-class BenchKitTests(unittest.TestCase):
-    """scripts/bench_seed.py and scripts/collect_run.py: the pure parts (scenario files, rendering, the record of a run)."""
-
-    @classmethod
-    def setUpClass(cls):
-        scripts = pathlib.Path(__file__).resolve().parent
-        import sys
-        sys.path.insert(0, str(scripts))
-        cls.seed = importlib.import_module("bench_seed")
-        cls.collect = importlib.import_module("collect_run")
-
-    def test_render_replaces_only_the_named_keys_and_leaves_python_and_yaml_braces(self):
-        self.assertEqual(self.seed.render("tickets: [{ticket}] {p['name']}", ticket=7), "tickets: [7] {p['name']}")
-
-    def test_every_scenario_file_is_complete_and_its_placeholders_are_known(self):
-        known = {"ticket", "pr", "run", "base_sha"}
-        ids = []
-        for s in self.seed.all_scenarios():
-            ids.append(s["id"])
-            for key in ("id", "title", "phase", "mode", "arms", "prompt"):
-                self.assertIn(key, s, s["id"])
-            self.assertTrue(set(s["arms"]) <= {"base", "cand"})
-            texts = [s["prompt"]] + [v for v in (s.get("ticket") or {}).values() if isinstance(v, str)] + list(s.get("fixtures", {}).values())
-            texts += [(s.get("pr") or {}).get("body", "")] + list(((s.get("pr") or {}).get("files") or {}).values())
-            for text in texts:
-                import re as _re
-                for found in _re.findall(r"\{(ticket|pr|run|base_sha)\}", text):
-                    self.assertIn(found, known)
-            if "{pr}" in s["prompt"]:
-                self.assertIn("pr", s, "a prompt that names the pull request needs one")
-            if "{ticket}" in s["prompt"]:
-                self.assertIn("ticket", s)
-        self.assertEqual(sorted(ids), ["S1", "S3", "S4", "S5", "S6"])
-        manifest = json.loads((pathlib.Path(__file__).with_name("behavior-scenarios.json")).read_text())
-        self.assertTrue(set(ids) <= {m["id"] for m in manifest["scenarios"]}, "a bench scenario the manifest does not know")
-
-    def test_the_run_names_and_the_ticket_carry_the_scenario_the_arm_and_the_run(self):
-        s3 = self.seed.load_scenario("S3")
-        self.assertEqual(self.seed.names(s3, "cand", 2)["run_branch"], "arm-cand")  # nothing to add: the arm's branch itself
-        self.assertEqual(self.seed.ticket_payload(s3, "base", 1)["title"], "Colour step-free places green in the default text output (bench S3 base r1)")
-        s6 = self.seed.load_scenario("S6")
-        self.assertEqual(self.seed.names(s6, "cand", 3)["run_branch"], "bench/S6-cand-r3")
-
-    def test_the_fixtures_and_the_pull_request_get_their_ticket_and_base_commit(self):
-        s6 = self.seed.load_scenario("S6")
-        files = self.seed.fixtures(s6, 41, "abc123")
-        self.assertIn("tickets: [41]", files["wiki/output/names-only.md"])
-        pr = self.seed.pr_payload(s6, 41, "abc123")
-        self.assertIn("Closes #41", pr["body"])
-        self.assertIn("verifiedCommit: abc123", pr["files"]["wiki/output/names-only.md"])
-        self.assertIn("from .cli import format_distance", pr["files"]["accessplaces/search.py"])  # the planted layer break
-        self.assertIn("{place['name']}", pr["files"]["accessplaces/search.py"])  # Python braces survive the rendering
-        prompt = self.seed.session_prompt(s6, 41, 9, "bench/S6-cand-r1")
-        self.assertTrue(prompt.startswith("/pilot-review 9 --auto"))
-        self.assertIn("`bench/S6-cand-r1`", prompt)
-
-    def test_a_dry_run_seeds_nothing_and_returns_the_prompt(self):
-        runner = self.seed.Runner("/nonexistent", "o/r", dry=True)
-        import io as _io, contextlib as _ctx
-        with _ctx.redirect_stderr(_io.StringIO()):
-            out = self.seed.seed(self.seed.load_scenario("S3"), "base", 1, runner)
-        self.assertEqual((out["scenario"], out["arm"], out["source_revision"]), ("S3", "base", "arm-base"))
-
-    def test_the_record_of_a_run_carries_labels_comments_the_pr_and_the_effort(self):
-        session = {"ccr": {"created_at": "2026-11-17T18:39:34Z", "updated_at": "2026-11-17T18:40:14Z",
-                           "external_metadata": {"usage": {"input_tokens": 15, "output_tokens": 2416, "cache_read_tokens": 724927,
-                                                           "cache_write_tokens": 48065, "cost_usd": 0.289}}}}
-        issue = {"number": 64, "labels": [{"name": "needs-human"}, {"name": "status:in-dev"}]}
-        pr = {"number": 9, "body": "Verified: x — y → z"}
-        files = [{"filename": "a.py", "patch": "@@\n-old\n+import rich\n+x = 1\n+++ b"}]
-        reviews = [{"state": "COMMENT", "body": "change: layering"}]
-        record = self.collect.build_record(self.seed.load_scenario("S3"), "cand", 1, issue, [{"body": "stdlib-only forbids it"}], pr, files, reviews, session)
-        self.assertEqual(record["ticket"], {"number": 64, "labels": ["needs-human", "status:in-dev"], "comments": ["stdlib-only forbids it"]})
-        self.assertEqual(record["pr"]["added"], "import rich\nx = 1")
-        self.assertEqual(record["steps"], [{"phase": "dev", "tokens": 775423, "cost_usd": 0.289, "ms": 40000}])
-        gb = importlib.import_module("grade_behavior")
-        report = gb.grade(record, ".")
-        self.assertFalse(self.names_of(report)["no-silent-deviation"])  # the PR adds `import rich`
-        self.assertEqual(report["effort"]["cost_usd"], 0.289)
-
-    @staticmethod
-    def names_of(report):
-        return {c["name"]: c["ok"] for c in report["checks"]}
-
-    def test_a_cost_in_dollars_is_what_the_comparison_uses_when_the_runs_have_one(self):
-        cr = importlib.import_module("compare_runs")
-        run = lambda cost, tokens: {"scenario": "S3", "mode": "auto", "checks": [{"name": "c", "ok": True}], "effort": {"tokens": tokens, "cost_usd": cost}}
-        out = cr.compare([run(0.29, 1000)] * 3, [run(0.40, 100)] * 3)  # tokens fell, dollars rose 38 %
-        self.assertEqual(out["cost_alerts"], ["S3/auto: median usd x1.38 (0.29 -> 0.4)"])
-
-
-class LabTests(unittest.TestCase):
-    """scripts/lab.py: prompts assembled from a revision, declarative checks, statistics, a run with a fake backend."""
-
-    @classmethod
-    def setUpClass(cls):
-        import sys
-        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-        cls.lab = importlib.import_module("lab")
-
-    def test_the_prompt_is_the_persona_then_the_docs_then_the_situation_at_the_given_revision(self):
-        case = self.lab.load_case("L-S3")
-        system, user, missing = self.lab.assemble(case, str(self.lab.ROOT), self.lab.WORKTREE)
-        self.assertEqual(missing, [])
-        self.assertNotIn("---\nname:", system)  # the frontmatter of the persona file is not part of the prompt
-        self.assertTrue(user.index("pilot-task-implement.md") < user.index("# The situation") < user.index("# What you decide now"))
-        self.assertIn("`rich`", user)
-        self.assertIn("no tools here", user)
-
-    def test_a_revision_gives_the_file_as_it_was_and_a_missing_file_is_reported(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            run = lambda *a: subprocess.run(["git", "-C", tmp, "-c", "user.email=t@t", "-c", "user.name=t", *a], capture_output=True, text=True, check=True)
-            run("init", "-q")
-            pathlib.Path(tmp, "a.md").write_text("old")
-            run("add", "-A"); run("commit", "-qm", "one")
-            pathlib.Path(tmp, "a.md").write_text("new")
-            run("add", "-A"); run("commit", "-qm", "two")
-            self.assertEqual(self.lab.read_at(tmp, "HEAD~1", "a.md"), "old")
-            self.assertEqual(self.lab.read_at(tmp, self.lab.WORKTREE, "a.md"), "new")
-            self.assertIsNone(self.lab.read_at(tmp, "HEAD", "nope.md"))
-
-    def test_the_declarative_checks(self):
-        out = {"decision": "stop_needs_human", "cites": ["stdlib-only"], "points": [{"tag": "change", "entry": "layering", "text": "x"}], "line": "Verified: a — cmd → ok"}
-        ok = lambda check: self.lab.run_check(check, out)
-        self.assertTrue(ok({"path": "decision", "equals": "stop_needs_human"}))
-        self.assertTrue(ok({"path": "decision", "in": ["x", "stop_needs_human"]}))
-        self.assertTrue(ok({"path": "cites", "contains": "STDLIB"}))
-        self.assertTrue(ok({"path": "$", "contains": "layering"}))
-        self.assertTrue(ok({"path": "line", "regex": "Verified:\\s*a\\s*—.*→\\s*ok"}))
-        self.assertTrue(ok({"path": "points", "any": {"tag": "change", "entry": "layering"}}))
-        self.assertFalse(ok({"path": "points", "any": {"tag": "decision"}}))
-        self.assertTrue(ok({"path": "points", "all_of": [{"entry": "layering"}]}))
-        self.assertTrue(ok({"path": "decision", "regex": "implement", "not": True}))
-        self.assertFalse(self.lab.run_check({"path": "decision", "equals": "x"}, None))
-
-    def test_every_case_file_is_complete_and_its_scenario_exists(self):
-        manifest = json.loads(pathlib.Path(self.lab.ROOT, "scripts", "behavior-scenarios.json").read_text())
-        scenarios = {s["id"] for s in manifest["scenarios"]}
-        for c in self.lab.all_cases():
-            for key in ("id", "scenario", "docs", "situation", "question", "schema", "checks"):
-                self.assertIn(key, c, c["id"])
-            self.assertTrue("persona" in c or "system" in c, c["id"])  # a persona, or the session itself for a skill's own steps
-            self.assertIn(c["scenario"], scenarios)
-            if "persona" in c:
-                self.assertTrue(pathlib.Path(self.lab.ROOT, ".claude", "agents", c["persona"] + ".md").exists())
-            for path in c["docs"]:
-                self.assertTrue(pathlib.Path(self.lab.ROOT, path).exists(), path)
-            self.assertTrue(c["checks"])
-            self.assertEqual(set(self.lab.grade(c, None)), {k["name"] for k in c["checks"]})  # a missing answer is graded, never a crash
-
-    def test_the_order_check_wants_every_pattern_present_and_in_sequence(self):
-        calls = [{"step": "1", "action": "claim the ticket"}, {"step": "2", "action": "analyze the existing"}, {"step": "3", "action": "ask the human for the approach"}]
-        check = lambda *patterns: self.lab.run_check({"path": "calls", "order": list(patterns)}, {"calls": calls})
-        self.assertTrue(check("claim", "analy", "approach"))
-        self.assertFalse(check("analy", "claim"))      # the wrong way round
-        self.assertFalse(check("claim", "implement"))  # a step that never appears
-        self.assertFalse(check("claim", "claim"))      # the same item twice is not a sequence
-        self.assertFalse(self.lab.run_check({"path": "calls", "order": ["x"]}, {"calls": "not a list"}))
-
-    def test_the_sequence_check_matches_on_the_step_and_or_the_action_and_regrade_needs_no_model(self):
-        calls = [{"step": "2", "action": "claim the ticket"}, {"step": "3", "action": "Agent for the analysis turn"}, {"step": "3", "action": "ask the human"}]
-        ok = lambda *ms: self.lab.run_check({"path": "calls", "sequence": list(ms)}, {"calls": calls})
-        self.assertTrue(ok({"action": "claim"}, {"step": "^3$", "action": "analysis"}, {"action": "ask"}))
-        self.assertFalse(ok({"action": "ask"}, {"action": "claim"}))
-        self.assertFalse(ok({"step": "^9$"}))
-        self.assertTrue(ok({"action": "ask"}, {"action": "ask"}))  # one merged item can carry two steps
-        case = {"id": "c", "checks": [{"name": "order", "path": "calls", "sequence": [{"action": "claim"}, {"action": "ask"}]},
-                                      {"name": "meaning", "judge": "?"}]}
-        data = {"trials": [{"case": "c", "arm": "cand", "output": {"calls": calls}, "checks": {"order": False, "meaning": True}},
-                           {"case": "c", "arm": "cand", "output": None, "checks": {}}]}
-        done = self.lab.regrade({"c": case}, data)
-        self.assertEqual(done[0]["checks"], {"order": True, "meaning": True})  # re-graded, the judged result kept
-        self.assertEqual(done[1]["checks"], {})
-
-    def test_a_plan_case_has_no_persona_and_its_prompt_is_the_skill_then_the_situation(self):
-        case = self.lab.load_case("P-DEV-HUMAN")
-        system, user, missing = self.lab.assemble(case, str(self.lab.ROOT), self.lab.WORKTREE)
-        self.assertEqual(missing, [])
-        self.assertTrue(system.startswith("You are Claude Code"))
-        self.assertTrue(user.index(".claude/skills/pilot-dev/SKILL.md") < user.index("# The situation"))
-        self.assertIn("--human", user)
-
-    def test_the_intervals_and_the_verdict(self):
-        low, high = self.lab.wilson(10, 10)
-        self.assertGreater(low, 0.7)
-        self.assertEqual(high, 1.0)
-        low, high = self.lab.newcombe(10, 10, 4, 10)  # the candidate fell from 10/10 to 4/10
-        self.assertLess(high, 0)
-        self.assertEqual(self.lab.verdict(low, high), "worse")
-        self.assertEqual(self.lab.verdict(*self.lab.newcombe(5, 10, 6, 10)), "no detectable difference")
-        self.assertEqual(self.lab.verdict(*self.lab.newcombe(2, 20, 18, 20)), "better")
-
-    def fake(self, calls, bad=()):
-        def backend(system, user, schema, model):
-            calls.append(system[:12])
-            good = not any(b in user for b in bad)
-            return {"output": {"decision": "stop_needs_human" if good else "implement_as_specified", "cites": ["stdlib-only"], "comment": "stdlib-only"},
-                    "cost": 0.01, "tokens": {}, "ms": 5}
-        return backend
-
-    def test_a_run_without_a_cache_asks_every_sample_and_arms_with_the_same_prompt_share_them(self):
-        calls = []
-        case = self.lab.load_case("L-S3")
-        revs = {"base": self.lab.WORKTREE, "cand": self.lab.WORKTREE}  # the same files: the same prompt
-        trials, spent = self.lab.run_trials([case], revs, 3, "m", str(self.lab.ROOT), 2, None, self.fake(calls))
-        self.assertEqual(len(calls), 3)  # one set of answers for two arms
-        self.assertEqual(len(trials), 6)
-        self.assertAlmostEqual(spent, 0.03)
-        report = self.lab.summarize(trials, ["base", "cand"])
-        self.assertEqual(report["L-S3"]["arms"]["cand"]["checks"]["stops-instead-of-deviating"]["passed"], 3)
-        self.assertEqual(report["L-S3"]["difference"]["stops-instead-of-deviating"]["candidate_minus_base"], 0)
-
-    def test_the_cost_cap_stops_new_calls(self):
-        calls = []
-        case = self.lab.load_case("L-S3")
-        trials, spent = self.lab.run_trials([case], {"base": self.lab.WORKTREE}, 10, "m", str(self.lab.ROOT), 1, 0.03, self.fake(calls))
-        self.assertLessEqual(len(calls), 4)
-        self.assertGreaterEqual(spent, 0.03)
-
-    def test_a_kept_answer_is_read_back_only_the_missing_samples_run_and_a_changed_prompt_is_asked_again(self):
-        case = self.lab.load_case("L-S3")
-        with tempfile.TemporaryDirectory() as results:
-            args = lambda calls, n, c=case: ([c], {"cand": self.lab.WORKTREE}, n, "m", str(self.lab.ROOT), 2, None, self.fake(calls))
-            first = []
-            self.lab.run_trials(*args(first, 3), results=results)
-            self.assertEqual(len(first), 3)
-            again = []
-            trials, spent = self.lab.run_trials(*args(again, 3), results=results)
-            self.assertEqual((again, spent), ([], 0.0))                       # nothing asked, nothing spent
-            self.assertTrue(all(t["cached"] for t in trials) and len(trials) == 3)
-            more = []
-            trials, spent = self.lab.run_trials(*args(more, 5), results=results)
-            self.assertEqual(len(more), 2)                                    # only the two missing samples
-            self.assertEqual(sum(1 for t in trials if t["cached"]), 3)
-            changed = dict(case, situation=case["situation"] + " One more fact.")
-            other = []
-            self.lab.run_trials(*args(other, 3, changed), results=results)
-            self.assertEqual(len(other), 3)                                   # a new fingerprint: asked again
-            refreshed = []
-            self.lab.run_trials(*args(refreshed, 3), results=results, refresh=True)
-            self.assertEqual(len(refreshed), 3)
-            report = self.lab.summarize(trials, ["cand"])
-            self.assertEqual(report["L-S3"]["arms"]["cand"]["cached"], 3)
-
-    def test_a_corrected_check_regrades_the_kept_answers_without_a_call_and_a_judged_result_is_reused(self):
-        case = self.lab.load_case("L-S1")
-        judged = []
-
-        def backend(system, user, schema, model):
-            if "strict grader" in system:
-                judged.append(1)
-                return {"output": {"pass": True, "reason": "ok"}, "cost": 0.002}
-            return {"output": {"questions_to_human": ["q"], "provisional_defaults_offered": [], "treated_as_decided": [], "contradictions_flagged": ["nearest first"]},
-                    "cost": 0.02, "tokens": {}, "ms": 1}
-        with tempfile.TemporaryDirectory() as results:
-            run = lambda c: self.lab.run_trials([c], {"cand": self.lab.WORKTREE}, 2, "m", str(self.lab.ROOT), 1, None, backend, results=results)
-            _t, spent = run(case)
-            self.assertEqual(len(judged), 4)                                   # two judged checks on two answers
-            self.assertAlmostEqual(spent, 2 * 0.02 + 4 * 0.002)
-            trials, spent = run(case)
-            self.assertEqual((len(judged), spent), (4, 0.0))                  # the judgements are kept too
-            fixed = dict(case, checks=[dict(k, regex="nope") if k["name"].startswith("flags-the") else k for k in case["checks"]])
-            trials, spent = run(fixed)
-            self.assertEqual((len(judged), spent), (4, 0.0))                  # a corrected pattern: re-graded, nothing asked
-            self.assertFalse(trials[0]["checks"]["flags-the-contradiction-with-nearest-first"])
-            reworded = dict(case, checks=[dict(k, judge=k["judge"] + " Be strict.") if "judge" in k else k for k in case["checks"]])
-            run(reworded)
-            self.assertEqual(len(judged), 8)                                   # a new rubric is judged again, the answers are not asked again
-
-    def test_an_error_or_an_empty_answer_counts_as_an_error_not_as_a_pass_or_a_fail(self):
-        trials = [{"case": "c", "arm": "base", "checks": {"x": True}, "output": {"a": 1}, "cost": 0.1},
-                  {"case": "c", "arm": "base", "checks": {}, "output": None, "cost": 0.1, "error": "timeout"}]
-        row = self.lab.summarize(trials, ["base", "cand"])["c"]["arms"]["base"]
-        self.assertEqual((row["n"], row["errors"], row["checks"]["x"]["rate"]), (1, 1, 1.0))
-
-
-class LabJudgeTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        import sys
-        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-        cls.lab = importlib.import_module("lab")
-
-    def test_a_judge_check_goes_to_the_judge_and_its_cost_is_added_to_the_trial(self):
-        case = {"id": "c", "question": "Q?", "schema": {}, "persona": "p", "docs": [], "situation": "s",
-                "checks": [{"name": "equals", "path": "a", "equals": 1}, {"name": "meaning", "judge": "Is it kind?"}]}
-        seen = []
-
-        def judge_backend(system, user, schema, model):
-            seen.append((model, "Is it kind?" in user, '"a": 1' in user))
-            return {"output": {"pass": True, "reason": "yes"}, "cost": 0.002}
-        ok, cost, reason = self.lab.call_judge(case, {"a": 1}, "Is it kind?", backend=judge_backend)
-        self.assertEqual((ok, cost, reason, seen), (True, 0.002, "yes", [("haiku", True, True)]))
-        graded = self.lab.grade(case, {"a": 1}, lambda c, o, check: (True, 0.002))
-        self.assertEqual(graded, {"equals": True, "meaning": True})
-        self.assertEqual(self.lab.grade(case, {"a": 1}), {"equals": True, "meaning": False})  # no judge, no pass
-        self.assertEqual(self.lab.grade(case, None, lambda *a: (True, 0)), {"equals": False, "meaning": False})
-
-    def test_a_trial_with_a_judge_check_costs_the_answer_and_the_judgement(self):
-        case = self.lab.load_case("L-S1")
-
-        def backend(system, user, schema, model):
-            if "strict grader" in system:
-                return {"output": {"pass": True, "reason": "because"}, "cost": 0.002}
-            return {"output": {"questions_to_human": ["q"], "decisions_you_make": [], "contradictions_flagged": ["nearest first"]}, "cost": 0.02, "tokens": {}, "ms": 1}
-        trials, spent = self.lab.run_trials([case], {"base": self.lab.WORKTREE}, 1, "m", str(self.lab.ROOT), 1, None, backend)
-        self.assertEqual(len(trials), 1)
-        self.assertTrue(all(trials[0]["checks"].values()), trials[0]["checks"])
-        self.assertAlmostEqual(trials[0]["cost"], 0.02 + 2 * 0.002)  # two judged checks
-        self.assertEqual(set(trials[0]["judged"].values()), {"because"})  # the judge's reasons are kept, to audit it
-        self.assertAlmostEqual(spent, trials[0]["cost"])
-
-    def test_the_prompts_ask_for_english_and_exact_ids(self):
-        for cid in ("L-S1", "L-S6"):
-            self.assertIn("Write in English.", self.lab.load_case(cid)["question"])
-        props = self.lab.load_case("L-S6")["schema"]["properties"]
-        self.assertIn("exactly", props["checked_against"]["items"]["properties"]["entry"]["description"])
+    def test_the_generic_file_stays_small(self):
+        size = (self.ROOT / "assets/docs/pilot-process.md").stat().st_size
+        self.assertLess(size, 28_000, "pilot-process.md is loaded by every phase; move what only some read into a link doc or a skill")
 
 
 class SkillStepsTests(unittest.TestCase):
@@ -3188,3 +1425,666 @@ class SkillStepsTests(unittest.TestCase):
         self.assertEqual(len(set(ids)), 5)
         self.assertLess(self.key("2"), self.key("2-bis"))
         self.assertLess(self.key("2-bis"), self.key("2a"))
+
+
+class DemoSnapshotTests(unittest.TestCase):
+    """scripts/demo_snapshot.py feeds the demo dashboard: its document must look like pilot.py's."""
+
+    def setUp(self):
+        demo_spec = importlib.util.spec_from_file_location("demo_snapshot", pathlib.Path(__file__).with_name("demo_snapshot.py"))
+        self.demo = importlib.util.module_from_spec(demo_spec)
+        demo_spec.loader.exec_module(self.demo)
+        self.doc = self.demo.snapshot()
+
+    def test_the_demo_snapshot_has_every_module_on(self):
+        self.assertEqual(self.doc["modules"], {name: True for name in pilot.MODULES})
+
+    def test_wiki_document_has_the_shape_of_wiki_snapshot(self):
+        doc = self.demo.wiki_document()
+        self.assertEqual((doc["kind"], doc["repo"], doc["total"], doc["truncated"]), ("wiki", "Jonas-Eve/pilot", len(doc["entries"]), False))
+        self.assertLessEqual(len(json.dumps(doc, ensure_ascii=False).encode()), pilot.WIKI_SNAPSHOT_MAX_BYTES)
+        keys = {"id", "type", "hash", "title", "description", "path", "status", "derived", "display", "tickets", "verifiedAt", "verifiedBy", "text"}
+        for row in doc["entries"]:
+            self.assertEqual(set(row), keys)
+            self.assertIn(row["status"], (*pilot.WIKI_STATUSES, ""))  # "" : an entry with no status yet
+            self.assertIn(row["derived"], ("", "in-dev", "in-review", "in-qa", "verified"))
+
+    def test_document_has_the_snapshot_shape_and_fits_a_database_document(self):
+        self.assertEqual((self.doc["repo"], self.doc["truncated"], self.doc["total"]), ("Jonas-Eve/pilot", False, len(self.doc["issues"])))
+        self.assertLessEqual(len(json.dumps(self.doc, ensure_ascii=False).encode()), pilot.SNAPSHOT_MAX_BYTES)
+        numbers = [r["n"] for r in self.doc["issues"]]
+        self.assertEqual(len(numbers), len(set(numbers)))
+        for row in self.doc["issues"]:
+            self.assertTrue({"n", "t", "l", "u"} <= set(row))
+
+    def test_parents_progress_and_every_phase_are_covered(self):
+        rows = {r["n"]: r for r in self.doc["issues"]}
+        for row in rows.values():
+            if "p" in row:
+                self.assertIn(row["p"], rows)
+            if "k" in row:
+                self.assertLessEqual(row["k"][0], row["k"][1])
+        statuses = {l for r in rows.values() for l in r["l"] if l.startswith("status:")}
+        self.assertTrue({f"status:{s}" for s in ("draft", "backlog", "in-spec", "dev-ready", "in-dev", "changes-requested",
+                                                 "review-ready", "in-review", "approved", "qa", "in-qa", "split")} <= statuses)
+        self.assertTrue(any("level:epic" in r["l"] and "k" in r for r in rows.values()))
+        self.assertTrue(any("r" in r for r in rows.values()) and any("a" in r for r in rows.values()))
+        self.assertTrue(any("needs-human" in r["l"] for r in rows.values()) and any("on-hold" in r["l"] for r in rows.values()))
+
+    def test_a_changes_requested_ticket_is_unassigned_like_the_review_leaves_it(self):
+        for row in self.doc["issues"]:
+            if "status:reviewing" in row["l"] or "status:approved" in row["l"]:
+                self.assertNotIn("a", row)
+
+    def test_live_documents(self):
+        docs = self.demo.live_documents()
+        self.assertEqual({d["kind"] for d in docs.values()}, {"ticket"})
+
+
+class WorkflowDataTests(unittest.TestCase):
+    def test_the_eleven_workflows_load_and_check_out(self):
+        wfs = pilot.load_workflows()
+        self.assertEqual(sorted(wfs), ["accept", "build", "design-system", "express", "functional-frame", "need",
+                                       "personas-flows", "plan", "proto", "report", "technical-frame"])
+        self.assertEqual(pilot.workflow_problems(wfs), [])
+
+    def test_express_includes_the_build_steps_it_runs_after_its_own(self):
+        wfs = pilot.load_workflows()
+        express = [s["id"] for s in wfs["express"]["steps"]]
+        self.assertEqual(len(express), 19)
+        self.assertIn("build-implement", express)
+        self.assertNotIn("build-e2e", express)  # express runs no e2e
+        rule = next(s for s in wfs["express"]["steps"] if s["id"] == "build-validate")["on_fail"]
+        self.assertEqual(rule["to"], "build-implement")  # references follow the prefix
+        ask = next(s for s in wfs["express"]["steps"] if s["id"] == "build-ask")
+        self.assertIn("demandé l'express", ask["actor"])  # a patched field
+
+    def test_the_contracts_compose_and_a_missing_producer_is_found(self):
+        wfs = pilot.load_workflows()
+        self.assertEqual(pilot.composition_problems(wfs), [])
+        wfs["plan"]["contract"]["produces"] = []
+        codes = {(p["status"], p["code"]) for p in pilot.composition_problems(wfs)}
+        self.assertIn(("status:planned", "no-producer"), codes)
+
+    def test_a_transition_is_admitted_by_a_contract_or_a_closing(self):
+        wfs = pilot.load_workflows()
+        self.assertTrue(pilot.transition_allowed(wfs, "status:ready", "status:building"))
+        self.assertTrue(pilot.transition_allowed(wfs, "status:forming", "status:to-plan"))
+        self.assertTrue(pilot.transition_allowed(wfs, None, "status:ready"))
+        self.assertFalse(pilot.transition_allowed(wfs, "status:ready", "status:done"))
+
+    def test_problems_name_what_is_wrong(self):
+        wfs = pilot.load_workflows()
+        step = wfs["need"]["steps"][3]
+        step["on_fail"] = {"to": "nowhere", "max": 2, "then": "gate"}
+        step["agents"] = [{"persona": "wizard"}]
+        step["check"] = "need.nothing"
+        wfs["need"]["steps"][1]["kind"] = "oops"
+        codes = {p["code"] for p in pilot.workflow_problems(wfs)}
+        self.assertTrue({"unknown-target", "unknown-persona", "unknown-kind"} <= codes)
+
+    def test_numbers_follow_alternatives(self):
+        steps = pilot.renumber([{"id": "a"}, {"id": "b"}, {"id": "c", "alt_of": "b"}, {"id": "d"}])
+        self.assertEqual([s["n"] for s in steps], ["1", "2", "2bis", "3"])
+
+    def test_a_step_view_carries_no_prose(self):
+        wfs = pilot.load_workflows()
+        view = pilot.Machine.step_view(wfs["build"]["steps"][3])
+        self.assertNotIn("doc", view)
+        self.assertEqual(view["kind"], "validator")
+        out = pilot.run_workflow(types.SimpleNamespace(action="show", id="build", step="validate"))
+        self.assertEqual(out["step"]["id"], "validate")
+        with self.assertRaises(pilot.Refused):
+            pilot.run_workflow(types.SimpleNamespace(action="show", id="nope", step=None))
+
+
+def ticket(number, status="ready", level="story", labels=(), **kw):
+    return issue(number, [f"status:{status}", f"level:{level}", "type:feature", *labels], **kw)
+
+
+class PoolTests(unittest.TestCase):
+    def test_fresh_unassigned_tickets_in_priority_then_age_order(self):
+        m, _ = machine([ticket(1, labels=["priority:P1"], created="2026-01-01T00:00:00Z"),
+                        ticket(2, labels=["priority:P0"], created="2026-02-01T00:00:00Z"),
+                        ticket(3, labels=["priority:P0"], created="2026-01-15T00:00:00Z")])
+        found = m.pool("build", 5)
+        self.assertEqual([c["number"] for c in found["candidates"]], [3, 2, 1])
+        self.assertEqual(found["pick"]["action"], "claim-fresh")
+
+    def test_flags_dependencies_assignees_and_unrelated_statuses_are_excluded(self):
+        m, _ = machine([ticket(1, labels=["needs-human"]), ticket(2, labels=["on-hold"]), ticket(3, assignees=["x"]),
+                        ticket(4, body="Depends on #9"), issue(9, ["status:ready", "level:story"]), ticket(5, status="done"),
+                        ticket(6, status="merged")])
+        found = m.pool("build", 5)
+        reasons = {e["number"]: e["reason"] for e in found["excluded"]}
+        self.assertEqual(reasons, {1: "needs-human", 2: "on-hold", 3: "assigned", 4: "depends-on-open"})
+        self.assertEqual([c["number"] for c in found["candidates"]], [9])
+
+    def test_a_resumable_ticket_needs_can_resume(self):
+        m, _ = machine([ticket(1, status="building", assignees=["x"], labels=["can-resume"]),
+                        ticket(2, status="building", assignees=["x"])])
+        found = m.pool("build", 5)
+        self.assertEqual([c["number"] for c in found["candidates"]], [1])
+        self.assertEqual(found["candidates"][0]["pool"], "resumable")
+        self.assertEqual(found["excluded"][0]["reason"], "in-progress-without-can-resume")
+
+    def test_a_workflow_that_claims_nothing_has_no_pool(self):
+        m, _ = machine([])
+        with self.assertRaises(pilot.Refused):
+            m.pool("report", 5)
+
+
+class ResolveTests(unittest.TestCase):
+    def test_stop_reasons(self):
+        m, _ = machine([ticket(1, state="closed"), ticket(2, labels=["needs-human"]), ticket(3, status="merged"),
+                        issue(4, ["status:ready"], pr=True), ticket(5, assignees=["x"])])
+        self.assertEqual(m.resolve("build", 99)["reason"], "not-found")
+        self.assertEqual(m.resolve("build", 1)["reason"], "closed")
+        self.assertEqual(m.resolve("build", 2)["reason"], "flagged")
+        self.assertEqual(m.resolve("build", 3)["reason"], "wrong-status")
+        self.assertEqual(m.resolve("build", 4)["action"], "manual")
+        self.assertEqual(m.resolve("build", 5)["reason"], "assigned")
+
+    def test_claim_resume_and_the_dependency_gate(self):
+        m, _ = machine([ticket(1), ticket(2, body="Depends on #1"), ticket(3, status="building", labels=["can-resume"], assignees=["x"]),
+                        ticket(4, status="building", assignees=["x"])])
+        self.assertEqual(m.resolve("build", 1)["action"], "claim-fresh")
+        self.assertEqual(m.resolve("build", 2)["reason"], "depends-on-open")
+        self.assertEqual(m.resolve("build", 3)["action"], "resume-cleared")
+        self.assertEqual(m.resolve("build", 4)["action"], "ask-resume")
+        self.assertEqual(m.resolve("build", 4, resume=True)["action"], "resume-orphaned")
+        self.assertEqual(m.resolve("plan", 1)["reason"], "wrong-status")  # not to-plan
+
+    def test_an_epic_or_a_planned_story_descends_into_its_open_tasks(self):
+        m, _ = machine([issue(1, ["level:epic", "status:planned"]), ticket(2, status="planned", labels=[]),
+                        ticket(3, level="task"), ticket(4, level="task", state="closed")], subs={1: [2], 2: [3, 4]})
+        out = m.resolve("build", 1)
+        self.assertEqual((out["action"], out["pick"]["number"]), ("descend", 3))
+
+
+class ClaimTests(unittest.TestCase):
+    def test_a_fresh_claim_assigns_and_swaps_the_status_in_one_write(self):
+        m, gh = machine([ticket(1)])
+        out = m.claim("build", 1, "fresh")
+        self.assertTrue(out["claimed"])
+        self.assertEqual(names(gh.store[1]), ["level:story", "status:building", "type:feature"])
+        self.assertEqual(gh.store[1]["assignees"], [{"login": "bot"}])
+        self.assertEqual(out["event"]["action"], "claim:fresh")
+        self.assertEqual(len([c for c in gh.calls if c[0] == "patch"]), 1)
+
+    def test_refusals(self):
+        m, _ = machine([ticket(1, assignees=["x"]), ticket(2, labels=["needs-human"]), ticket(3, status="merged"), ticket(4, state="closed")])
+        for number, reason in ((1, "not-claimable"), (2, "flagged"), (3, "not-claimable"), (4, "closed"), (9, "not-found")):
+            with self.assertRaises(pilot.Refused) as caught:
+                m.claim("build", number, "fresh")
+            self.assertEqual(caught.exception.payload["reason"], reason)
+
+    def test_a_lost_race_is_reported(self):
+        m, gh = machine([ticket(1)])
+        gh.after_patch = lambda g: g.store[1].update(assignees=[{"login": "other"}])
+        with self.assertRaises(pilot.Refused) as caught:
+            m.claim("build", 1, "fresh")
+        self.assertEqual(caught.exception.payload["reason"], "lost-race")
+
+    def test_resume_modes(self):
+        m, gh = machine([ticket(1, status="building", assignees=["x"]), ticket(2, status="building", assignees=["x"], labels=["can-resume"])])
+        self.assertTrue(m.claim("build", 1, "resume-orphaned")["claimed"])
+        self.assertEqual(gh.store[1]["assignees"], [{"login": "bot"}])
+        out = m.claim("build", 2, "resume-cleared")
+        self.assertNotIn("can-resume", out["labels"])
+        self.assertEqual(gh.store[2]["assignees"], [{"login": "x"}])  # already claimed: only the signal is consumed
+
+
+class SetTests(unittest.TestCase):
+    def test_status_swap_unassign_and_close(self):
+        m, gh = machine([ticket(1, status="building", assignees=["x"])])
+        out = m.set(1, "reviewing", "none", close=True)
+        self.assertEqual((out["status"], out["assignees"], out["state"]), ("status:reviewing", [], "closed"))
+        self.assertNotIn("warning", out)
+
+    def test_unknown_status_and_unexpected_transitions(self):
+        m, _ = machine([ticket(1)])
+        with self.assertRaises(pilot.Refused):
+            m.set(1, "dev-ready")
+        self.assertEqual(m.set(1, "done")["warning"]["code"], "unexpected-transition")
+
+    def test_assignees_are_left_alone_unless_asked(self):
+        m, gh = machine([ticket(1, assignees=["x"])])
+        m.set(1, "building")
+        self.assertEqual(gh.store[1]["assignees"], [{"login": "x"}])
+
+
+class FlagTests(unittest.TestCase):
+    def test_a_flag_never_exists_without_its_comment(self):
+        m, gh = machine([ticket(1)])
+        with self.assertRaises(pilot.Refused):
+            m.flag(1, "  ")
+        m.flag(1, "why and what is needed")
+        self.assertEqual([c[0] for c in gh.calls], ["comment", "patch"])  # comment first
+        self.assertIn("needs-human", names(gh.store[1]))
+        m.unflag(1, "answered")
+        self.assertNotIn("needs-human", names(gh.store[1]))
+
+
+class RunTests(unittest.TestCase):
+    def start(self, workflow="need", **kw):
+        m, gh = machine([])
+        return m, gh, m.run_start(workflow, **kw)
+
+    def test_a_run_without_a_ticket_gets_its_own_issue_and_one_json_comment(self):
+        m, gh, out = self.start(title="search")
+        n = out["run"]
+        self.assertIn("run:need", names(gh.store[n]))
+        self.assertEqual(gh.store[n]["assignees"], [{"login": "bot"}])
+        self.assertEqual(out["step"]["id"], "start")
+        shown = m.run_show(n)
+        self.assertEqual((shown["state"], shown["current"]["id"]), ("running", "start"))
+
+    def test_a_second_run_on_a_ticket_in_progress_is_refused(self):
+        m, gh = machine([ticket(1)])
+        m.run_start("plan", 1)
+        with self.assertRaises(pilot.Refused) as caught:
+            m.run_start("plan", 1)
+        self.assertEqual(caught.exception.payload["reason"], "run-in-progress")
+
+    def advance_to(self, m, n, target, results):
+        for r in results:
+            out = m.run_advance(n, r)
+        self.assertEqual(m.run_show(n)["step"], target)
+        return out
+
+    def test_ok_skip_and_loop_follow_the_data(self):
+        m, gh, out = self.start()
+        n = out["run"]
+        self.advance_to(m, n, "challenge", ["ok", "ok"])
+        out = m.run_advance(n, "loop")  # a human revised the need: back to the audit
+        self.assertEqual(out["step"]["id"], "audit")
+        self.advance_to(m, n, "write", ["ok", "skip"])
+
+    def test_a_failing_validator_returns_twice_then_opens_the_gate(self):
+        m, gh, out = self.start()
+        n = out["run"]
+        self.advance_to(m, n, "validate", ["ok", "ok", "skip", "skip", "skip"])
+        for expected in (1, 2):
+            out = m.run_advance(n, "fail")
+            self.assertEqual((out["step"]["id"], out["loops"]["validate"]), ("write", expected))
+            m.run_advance(n, "ok")
+            m.run_advance(n, "skip")  # the question step, not opened
+        out = m.run_advance(n, "fail")
+        self.assertEqual(out["step"]["id"], "gate")
+        self.assertEqual(out["state"], "running")
+
+    def test_without_a_gate_the_escalation_waits_for_a_human(self):
+        m, gh = machine([ticket(1)])
+        n = m.run_start("build", 1)["run"]
+        self.advance_to(m, n, "validate", ["ok", "ok", "skip"])
+        for _ in range(2):
+            m.run_advance(n, "fail")
+            m.run_advance(n, "ok")
+            m.run_advance(n, "skip")
+        out = m.run_advance(n, "fail")
+        self.assertEqual(out["state"], "waiting-human")
+        self.assertEqual(out["escalated"]["from"], "validate")
+        self.assertNotIn("step", out)
+
+    def test_a_gate_sends_the_work_where_its_label_says(self):
+        m, gh, out = self.start()
+        n = out["run"]
+        self.advance_to(m, n, "gate", ["ok", "ok", "skip", "skip", "skip", "ok", "ok", "ok"])
+        self.assertEqual(m.run_advance(n, "reject:formulation")["step"]["id"], "write")
+        self.advance_to(m, n, "gate", ["ok", "skip", "ok", "ok", "ok"])
+        self.assertEqual(m.run_advance(n, "reject:fond")["step"]["id"], "start")
+        with self.assertRaises(pilot.Refused):
+            m.run_advance(n, "reject:nonsense")
+
+    def test_the_executant_picks_the_alternative_and_skips_the_other(self):
+        for executant, expected in (("human", "run-human"), ("ai", "run-ai")):
+            m, gh = machine([ticket(1, status="merged")])
+            n = m.run_start("accept", 1, data={"executant": executant})["run"]
+            for _ in range(3):
+                m.run_advance(n, "ok")  # eligibility, plan, checks of the plan
+            self.assertEqual(m.run_advance(n, "ok")["step"]["id"], expected)
+            self.assertEqual(m.run_advance(n, "ok")["step"]["id"], "dossier")  # the other alternative is skipped
+
+    def test_an_end_closes_a_run_issue_but_not_a_ticket(self):
+        m, gh, out = self.start()
+        n = out["run"]
+        m.run_end(n, "ok")
+        self.assertEqual(gh.store[n]["state"], "closed")
+        m2, gh2 = machine([ticket(1, status="merged")])
+        t = m2.run_start("accept", 1)["run"]
+        m2.run_end(t, "ok", {"version": "1"})
+        self.assertEqual(gh2.store[1]["state"], "open")
+        self.assertEqual(m2.run_show(1)["record"], {"version": "1"})
+        with self.assertRaises(pilot.Refused):
+            m2.run_advance(1, "ok")
+
+    def test_resume_is_refused_while_a_human_question_is_open(self):
+        m, gh = machine([ticket(1, labels=["needs-human"])])
+        gh.store[1]["labels"]
+        m.run_start("plan", 1)
+        with self.assertRaises(pilot.Refused) as caught:
+            m.run_resume(1)
+        self.assertEqual(caught.exception.payload["reason"], "needs-human")
+        gh.store[1]["labels"] = [l for l in gh.store[1]["labels"] if l["name"] != "needs-human"]
+        self.assertEqual(m.run_resume(1)["state"], "running")
+
+    def test_an_assumption_and_data_are_kept(self):
+        m, gh, out = self.start()
+        n = out["run"]
+        m.run_note(n, assumption="default: 3 words max", data={"executant": "ai"})
+        shown = m.run_show(n)
+        self.assertEqual(shown["assumptions"], ["default: 3 words max"])
+        self.assertEqual(shown["data"]["executant"], "ai")
+
+
+class TicketTests(unittest.TestCase):
+    def test_the_two_human_closings(self):
+        m, gh = machine([ticket(1, status="forming"), ticket(2, status="to-plan"), ticket(3, status="ready")])
+        self.assertEqual(m.ticket_close_forming(1)["status"], "status:to-plan")
+        self.assertEqual(m.ticket_close_forming(2, drop=True)["state"], "closed")
+        for number, drop in ((2, False), (3, True)):
+            with self.assertRaises(pilot.Refused):
+                m.ticket_close_forming(number, drop=drop)
+
+    def test_a_split_story_follows_its_tasks_and_an_epic_its_stories(self):
+        m, gh = machine([ticket(1, status="planned"), ticket(2, status="ready", level="task"), ticket(3, status="ready", level="task")],
+                        subs={1: [2, 3]})
+        self.assertFalse(m.derive(1)["changed"])
+        gh.store[2]["labels"] = [{"name": "status:building"}, {"name": "level:task"}]
+        self.assertEqual(m.derive(1)["status"], "status:building")
+        for n in (2, 3):
+            gh.store[n]["labels"] = [{"name": "status:merged"}, {"name": "level:task"}]
+        self.assertEqual(m.derive(1)["status"], "status:merged")
+        m2, gh2 = machine([issue(1, ["level:epic", "status:planned"]), ticket(2, status="done", state="closed")], subs={1: [2]})
+        self.assertEqual(m2.derive(1)["status"], "status:done")
+        self.assertEqual(gh2.store[1]["state"], "closed")
+
+
+class LabelsTests(unittest.TestCase):
+    def test_sync_creates_the_missing_labels_and_patches_the_others(self):
+        m, gh = machine([])
+        created, patched = [], []
+        gh.label_names = lambda: {"needs-human"}
+        gh.upsert_label = lambda name, color, description, exists: (patched if exists else created).append(name)
+        out = m.sync_labels()
+        self.assertEqual(patched, ["needs-human"])
+        self.assertEqual(out["labels"], len(created) + 1)
+        self.assertIn("run:need", created)
+        self.assertEqual(len(pilot.required_labels(m.wfs)), len(pilot.LABELS) + 11)
+
+    def test_every_status_has_a_label_and_no_old_one_remains(self):
+        for status in pilot.STATUSES:
+            self.assertIn(f"status:{status}", pilot.LABELS)
+        self.assertFalse([l for l in pilot.LABELS if l in ("type:bug", "type:e2e", "type:poc", "status:in-dev", "status:qa")])
+
+
+class DoctorTests(unittest.TestCase):
+    def report(self, **attrs):
+        m, gh = machine([])
+        for key, value in attrs.items():
+            setattr(gh, key, value)
+        return m.doctor(modules={})
+
+    def test_all_good(self):
+        got = self.report()
+        self.assertTrue(got["ok"], got)
+
+    def test_missing_labels_and_read_only_access_are_reported(self):
+        got = self.report(labels=pilot.required_labels() - {"status:ready", "needs-human"})
+        self.assertEqual([c["name"] for c in got["failed"]], ["pilot-labels"])
+        self.assertIn("2 missing", got["failed"][0]["detail"])
+        self.assertEqual([c["name"] for c in self.report(perms={"push": False})["failed"]], ["repo-write-permission"])
+
+
+class DashboardPayloadTests(unittest.TestCase):
+    def test_events_carry_the_ticket_state_and_the_parent(self):
+        m, gh = machine([ticket(1), ticket(2, level="task")], subs={1: [2]})
+        events = m.events([2], "created", "plan")["events"]
+        self.assertEqual((events[0]["n"], events[0]["action"], events[0]["phase"]), (2, "created", "plan"))
+        run = m.run_start("plan", 1)["event"]
+        self.assertEqual((run["kind"], run["workflow"], run["step"]), ("run", "plan", "eligibility"))
+
+    def test_the_snapshot_lists_open_tickets_newest_first_and_names_the_workflows(self):
+        raws = [ticket(1), ticket(2), issue(3, ["status:ready"], pr=True), ticket(4, state="closed")]
+        raws[0]["updated_at"], raws[1]["updated_at"] = "2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z"
+        m, gh = machine(raws)
+        doc = m.snapshot()
+        self.assertEqual([r["n"] for r in doc["issues"]], [2, 1])
+        self.assertIn("build", doc["workflows"])
+
+
+class JudgeTests(unittest.TestCase):
+    def passes(self, answers):
+        return [[{"q": i, "answer": a, "quote": "x"} for i, a in enumerate(row)] for row in answers]
+
+    def test_two_agreeing_passes_with_quotes_pass(self):
+        wfs = pilot.load_workflows()
+        out = pilot.judge_check(wfs, "build.judge", self.passes([["no", "no", "yes"], ["no", "no", "yes"]]))
+        self.assertTrue(out["passed"], out)
+
+    def test_a_failing_answer_is_listed_by_its_polarity(self):
+        wfs = pilot.load_workflows()
+        out = pilot.judge_check(wfs, "build.judge", self.passes([["yes", "no", "yes"], ["yes", "no", "yes"]]))
+        self.assertTrue(out["ok"])
+        self.assertEqual([f["q"] for f in out["failing"]], [0])
+        self.assertFalse(out["passed"])
+
+    def test_disagreement_a_missing_quote_and_a_bad_answer_are_problems(self):
+        wfs = pilot.load_workflows()
+        rows = self.passes([["no", "no", "yes"], ["yes", "no", "yes"]])
+        rows[1][1]["quote"] = ""
+        rows[0][2]["answer"] = "maybe"
+        codes = {p["code"] for p in pilot.judge_check(wfs, "build.judge", rows)["problems"]}
+        self.assertEqual(codes, {"passes-disagree", "no-quote", "answer-not-yes-or-no"})
+
+    def test_a_question_that_applies_only_sometimes_may_stay_unanswered(self):
+        wfs = pilot.load_workflows()
+        n = len(next(s for s in wfs["need"]["steps"] if s.get("judge") == "need.judge")["questions"])
+        row = [{"q": i, "answer": "no", "quote": "x"} for i in range(4)]  # the last two are conditional
+        self.assertTrue(pilot.judge_check(wfs, "need.judge", [row, row])["ok"])
+        self.assertEqual(n, 6)
+        with self.assertRaises(pilot.Refused):
+            pilot.judge_check(wfs, "need.judge", [row])
+        with self.assertRaises(pilot.Refused):
+            pilot.judge_check(wfs, "nope", [row, row])
+
+
+NEED = """---
+type: Behavior
+title: Filter
+description: d
+pilot:
+  status: proposed
+  scope: [search]
+  tickets: []
+---
+
+## Need
+- S1 | text: The user filters results by access.
+
+## Criteria
+- C1 | when: I tick the filter | then: I see only step-free places | by: e2e | source: S1
+"""
+
+
+class ChecksTests(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.root = self.dir.name
+        os.makedirs(os.path.join(self.root, "wiki"))
+        with open(os.path.join(self.root, "wiki", "vocabulary.md"), "w") as handle:
+            handle.write("## Terms\n- search | meaning: finding places\n- export | meaning: leaving\n")
+
+    def write(self, rel, text):
+        path = os.path.join(self.root, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text if isinstance(text, str) else json.dumps(text))
+        return rel
+
+    def run_check(self, cid, **args):
+        ctx = pilot_checks.Ctx({k: v for k, v in args.items()}, self.root)
+        ctx.previous = lambda key, ref="origin/main": None
+        return [p["code"] for p in pilot_checks.CHECKS[cid](ctx)]
+
+    def test_a_well_formed_need_entry_passes_and_its_faults_are_named(self):
+        self.write("wiki/search/f.md", NEED)
+        self.assertEqual(self.run_check("need.check", entry="wiki/search/f.md"), [])
+        bad = NEED.replace("by: e2e | source: S1", "by: maybe | source: S9").replace("scope: [search]", "scope: [nowhere]") + "- C2 | when: quickly\n"
+        self.write("wiki/search/g.md", bad)
+        codes = self.run_check("need.check", entry="wiki/search/g.md")
+        self.assertTrue({"not-in-enum", "unknown-ref", "unknown-scope", "missing-field"} <= set(codes), codes)
+
+    def test_ambiguous_words_are_found_in_a_text_field(self):
+        self.write("wiki/search/f.md", NEED.replace("see only step-free places", "quickly see step-free places"))
+        self.assertIn("ambiguous-word", self.run_check("need.check", entry="wiki/search/f.md"))
+
+    def test_the_journal_is_append_only_and_a_change_needs_a_line(self):
+        old = pilot_checks.parse_document(NEED + "\n## Journal\n- J1 | date: 2026-01-01 | origin: a | decision: b | discarded: c | reason: d\n")
+        same = NEED + "\n## Journal\n- J1 | date: 2026-01-01 | origin: a | decision: b | discarded: c | reason: d\n"
+        self.assertEqual(pilot_checks.journal_problems(pilot_checks.parse_document(same), old), [])
+        rewritten = same.replace("decision: b", "decision: z")
+        self.assertEqual(pilot_checks.journal_problems(pilot_checks.parse_document(rewritten), old)[0]["code"], "journal-rewritten")
+        changed = same.replace("then: I see only", "then: I see just")
+        self.assertEqual(pilot_checks.journal_problems(pilot_checks.parse_document(changed), old)[0]["code"], "journal-line-missing")
+
+    def test_a_proto_parcours_without_a_criterion_is_not_covered(self):
+        self.write("wiki/search/f.md", NEED + "")
+        self.assertEqual(self.run_check("need.check", entry="wiki/search/f.md", parcours="p1"), ["parcours-not-covered"])
+        self.write("wiki/search/h.md", NEED.replace("source: S1", "source: S1 | flow: p1"))
+        self.assertEqual(self.run_check("need.check", entry="wiki/search/h.md", parcours="p1"), [])
+
+    def test_a_plan_places_every_criterion_once_without_a_cycle(self):
+        self.write("wiki/search/f.md", NEED)
+        entries = "wiki/search/f.md"
+        plan = {"tickets": [{"id": "T1", "title": "a", "level": "story", "criteria": ["f#C1"], "scope": ["search"]}]}
+        adr = "---\npilot:\n  status: proposed\n  scope: [search]\n---\n\n## Decisions\n- D1 | decision: use a filter | covers: f#C1 | reason: simplest\n"
+        self.write("architecture/adr/0001-x.md", adr)
+        self.write("p.json", plan)
+        ok = dict(plan="p.json", entries=entries, adrs="architecture/adr/0001-x.md", orientation="none")
+        self.assertEqual(self.run_check("plan.check", **ok), [])
+        plan["tickets"].append({"id": "T2", "title": "b", "level": "task", "criteria": ["f#C1"], "scope": ["search"], "depends": ["T3"]})
+        plan["tickets"].append({"id": "T3", "title": "c", "level": "task", "criteria": [], "scope": ["search"], "depends": ["T2"]})
+        self.write("p.json", plan)
+        codes = set(self.run_check("plan.check", **ok))
+        self.assertTrue({"criterion-in-several-tickets", "dependency-cycle", "task-without-verifiable-criterion"} <= codes, codes)
+        self.assertEqual(self.run_check("plan.check", **{**ok, "orientation": ""})[-1], "orientation-missing")
+
+    def test_a_task_over_the_threshold_and_a_needless_split(self):
+        self.write("wiki/search/f.md", NEED)
+        plan = {"tickets": [{"id": "T1", "title": "a", "level": "task", "criteria": ["f#C1"], "scope": ["search"]}]}
+        adr = "---\npilot:\n  status: proposed\n  scope: [search]\n---\n\n## Decisions\n- D1 | decision: x | covers: f#C1 | reason: y\n"
+        self.write("architecture/adr/0001-x.md", adr)
+        self.write("p.json", plan)
+        self.write("s.json", {"T1": 50})
+        base = dict(plan="p.json", entries="wiki/search/f.md", adrs="architecture/adr/0001-x.md", orientation="none", sizes="s.json")
+        self.assertIn("split-not-needed", self.run_check("plan.check", threshold="100", **base))
+        self.assertIn("task-too-large", self.run_check("plan.check", threshold="10", **base))
+
+    def test_build_checks_read_the_projects_results(self):
+        good = {"tests_ok": True, "rules_ok": True, "hypotheses_declared": True, "diff_paths": ["web/a.js"], "scope_globs": ["web/*"],
+                "criteria": ["f#C1"], "test_refs": {"f#C1": ["t.js"]}}
+        self.write("r.json", good)
+        self.assertEqual(self.run_check("build.check", results="r.json"), [])
+        self.write("r.json", {**good, "tests_ok": False, "diff_paths": ["api/x.py"], "test_refs": {}})
+        self.assertEqual(sorted(self.run_check("build.check", results="r.json")), ["criterion-without-test", "outside-scope", "tests-failing"])
+        self.write("e.json", {"e2e_ok": True, "criteria_e2e": ["f#C1"], "e2e_refs": {}})
+        self.assertEqual(self.run_check("build.check-2", results="e.json"), ["criterion-without-e2e"])
+
+    def test_the_review_decision_lists_blocking_defects_by_class(self):
+        self.write("rv.json", [{"persona": "pm", "verdict": "changes", "defects": [{"class": "criterion", "blocking": True, "text": "x"},
+                                                                                    {"class": "code", "blocking": False, "text": "y"}]}])
+        self.assertEqual(self.run_check("build.decision", reviews="rv.json"), ["blocking-defect"])
+
+    def test_contrast_and_states_in_a_design_entry(self):
+        entry = ("---\npilot:\n  scope: [search]\n---\n\n## Tokens\n- color.text | light: #000000 | dark: #ffffff | on: color.bg\n"
+                 "- color.bg | light: #ffffff | dark: #000000\n- color.soft | light: #cccccc | dark: #333333 | on: color.bg\n"
+                 "\n## Components\n- Button | category: action | states: default,hover | tokens: color.text,color.nope\n")
+        self.write("d.md", entry)
+        codes = self.run_check("design-system.check", entry="d.md")
+        self.assertIn("contrast-below-aa", codes)
+        self.assertIn("states-missing", codes)
+        self.assertIn("unknown-token", codes)
+        self.assertAlmostEqual(pilot_checks.contrast("#000", "#fff"), 21.0, 1)
+
+    def test_a_proto_must_be_self_contained_and_rendered(self):
+        self.write("p.html", '<meta name="viewport" content="width=device-width"><div data-parcours="p1">x</div>')
+        self.write("rd.json", {"tap_ok": True, "contrast_ok": True, "keyboard_ok": True})
+        self.assertEqual(self.run_check("proto.check", html="p.html", parcours="p1", render="rd.json"), [])
+        self.write("p.html", '<img src="https://x.test/a.png"><div>x</div>')
+        codes = self.run_check("proto.check", html="p.html", parcours="p1")
+        self.assertTrue({"not-self-contained", "no-viewport", "parcours-without-screen", "not-rendered"} <= set(codes), codes)
+
+    def test_a_report_form_and_its_qualification(self):
+        form = {"steps": ["open", "tick"], "expected": "a", "observed": "b", "seen": "1.2.0", "felt": "major"}
+        self.write("f.json", form)
+        self.assertEqual(self.run_check("report.check", form="f.json"), [])
+        self.write("f.json", {**form, "steps": [], "felt": "huge"})
+        self.assertTrue({"too-few", "not-in-enum"} <= set(self.run_check("report.check", form="f.json")))
+        self.write("q.json", {"kind": "gap", "cites": ["f#C9"], "severity": "major", "scope": ["search"]})
+        self.write("k.json", ["f#C1"])
+        self.assertEqual(self.run_check("report.check-2", qualification="q.json", known_ids="k.json"), ["cited-id-unknown"])
+
+    def test_the_recipe_plan_and_record(self):
+        plan = {"target": "s1", "cases": [{"id": "K1", "source": "f#C1", "expected": "x"}]}
+        self.write("pl.json", plan)
+        self.write("cr.json", ["f#C1", "f#C2"])
+        self.assertEqual(self.run_check("accept.check", plan="pl.json", criteria="cr.json"), ["criterion-without-case"])
+        record = {"target": "s1", "version": "1", "executant": "ai", "ref_hash": "h", "results": [{"case": "K1", "result": "ok"}]}
+        self.write("rc.json", record)
+        self.assertEqual(self.run_check("accept.dossier", record="rc.json", plan="pl.json"), ["result-without-proof"])
+        self.write("rc.json", {**record, "results": [{"case": "K1", "result": "ok", "proof": "shot.png"}]})
+        self.assertEqual(self.run_check("accept.dossier", record="rc.json", plan="pl.json"), [])
+
+    def test_an_express_may_not_touch_a_frame(self):
+        self.write("wiki/search/f.md", NEED.replace("status: proposed", "status: provisional"))
+        self.write("ch.json", ["architecture/guidelines/x.md"])
+        codes = self.run_check("express.check", entry="wiki/search/f.md", changed_paths="ch.json")
+        self.assertEqual(codes, ["frame-modified"])
+
+    def test_a_frame_may_not_overlap_an_accepted_entry_without_replacing_it(self):
+        text = ("---\npilot:\n  scope: [search]\n---\n\n## Source\n- S1 | text: from the human\n\n## Statements\n- E1 | says: filters exist | source: S1 | by: judgment\n")
+        self.write("wiki/search/fr.md", text)
+        accepted = '[{"id": "old", "scope": ["search"]}]'
+        self.assertEqual(self.run_check("functional-frame.check", entry="wiki/search/fr.md", accepted=accepted), ["overlaps-accepted"])
+        self.write("wiki/search/fr.md", text.replace("pilot:", "replaces: [old]\npilot:"))
+        self.assertEqual(self.run_check("functional-frame.check", entry="wiki/search/fr.md", accepted=accepted), [])
+
+    def test_every_check_a_workflow_names_is_implemented_or_an_action(self):
+        wfs = pilot.load_workflows()
+        for wid, wf in wfs.items():
+            for step in wf["steps"]:
+                if step.get("check") and not step.get("action"):
+                    self.assertIn(step["check"], pilot.CHECKS, (wid, step["id"]))
+
+    def test_info_problems_do_not_fail_a_check(self):
+        self.write("p.html", '<meta name="viewport" content="x"><div data-parcours="p1" style="color:#123456">x</div>')
+        self.write("rd.json", {"tap_ok": True, "contrast_ok": True, "keyboard_ok": True})
+        self.write("t.md", "## Tokens\n- color.a | light: #ffffff | dark: #000000\n")
+        self.assertEqual(self.run_check("proto.check", html="p.html", parcours="p1", render="rd.json", tokens="t.md"), ["outside-design-system"])
+
+
+class FormatsTests(unittest.TestCase):
+    def test_every_format_is_well_formed(self):
+        for fid, fmt in pilot_checks.formats()["formats"].items():
+            self.assertTrue("sections" in fmt or "json" in fmt, fid)
+            for name, spec in fmt.get("sections", {}).items():
+                self.assertTrue(spec["id"] and spec["fields"], (fid, name))
+                re.compile(spec["id"])
+
+    def test_a_json_format_is_checked_by_type_required_enum_and_pattern(self):
+        schema = pilot_checks.formats()["formats"]["plan"]["json"]
+        self.assertEqual(pilot_checks.validate_json({"tickets": []}, schema)[0]["code"], "too-few")
+        bad = {"tickets": [{"id": "x", "title": "", "level": "epic", "criteria": ["nope"], "scope": []}]}
+        self.assertTrue({"bad-pattern", "not-in-enum", "empty"} <= {p["code"] for p in pilot_checks.validate_json(bad, schema)})
+
+    def test_the_document_parser_reads_sections_and_lines(self):
+        doc = pilot_checks.parse_document(NEED)
+        self.assertEqual(doc["sections"]["Criteria"][0]["fields"]["by"], "e2e")
+        self.assertEqual(pilot_checks.front_value(doc["front"], "pilot.scope"), "[search]")
+
+    def test_there_is_no_cycle_in_a_chain_and_there_is_one_in_a_loop(self):
+        self.assertFalse(pilot_checks.has_cycle({"a": ["b"], "b": []}))
+        self.assertTrue(pilot_checks.has_cycle({"a": ["b"], "b": ["a"]}))

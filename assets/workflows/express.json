@@ -389,6 +389,7 @@
    "title": "Ticket et verrou",
    "actor": "Script",
    "check": "express.lock",
+   "action": true,
    "in": [
     [
      "VALIDATION",

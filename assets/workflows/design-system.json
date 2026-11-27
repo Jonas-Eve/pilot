@@ -276,6 +276,7 @@
    "title": "Génération du thème",
    "actor": "Script",
    "check": "design-system.theme",
+   "action": true,
    "in": [
     [
      "DESIGN",
@@ -465,6 +466,7 @@
    "title": "Ouverture de la PR et CI",
    "actor": "Script",
    "check": "design-system.pr-ci",
+   "action": true,
    "in": [
     [
      "CODE",

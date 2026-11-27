@@ -474,6 +474,7 @@
    "title": "Ouverture de la PR et CI",
    "actor": "Script",
    "check": "build.pr-ci",
+   "action": true,
    "in": [
     [
      "CODE",

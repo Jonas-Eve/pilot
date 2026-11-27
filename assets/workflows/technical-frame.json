@@ -416,6 +416,7 @@
    "title": "Ouverture de la PR et CI",
    "actor": "Script",
    "check": "technical-frame.pr-ci",
+   "action": true,
    "in": [
     [
      "CODE",

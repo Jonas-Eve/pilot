@@ -43,6 +43,9 @@ import subprocess
 import sys
 import unicodedata
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pilot_checks  # noqa: E402  (the code checks and the formats, shipped next to this file)
+
 # The model (assets/docs/pilot-process.md §2): levels, statuses per level, flags, and what no workflow does by itself.
 LEVELS = ("epic", "story", "task")
 STATUSES = ("forming", "to-plan", "planning", "planned", "ready", "building", "reviewing", "merged", "done", "wont-do")
@@ -150,7 +153,7 @@ def workflow_problems(wfs):
                 bad("check-without-id", step)
             if step["kind"] == "judge" and not step.get("questions"):
                 bad("judge-without-questions", step)
-            if step.get("check") and step["check"] not in CHECKS:
+            if step.get("check") and not step.get("action") and step["check"] not in CHECKS:
                 bad("unimplemented-check", step, check=step["check"])
         if not any(s["kind"] == "end" for s in wf["steps"]):
             bad("no-end-step")
@@ -209,6 +212,9 @@ def required_labels(wfs=None):
     return set(LABELS) | {f"run:{w}" for w in (wfs if wfs is not None else load_workflows())}
 
 
+CHECKS = pilot_checks.CHECKS  # check id -> function(Ctx) -> problems: one per `check` step of the workflows
+
+
 # name -> (color, description): the one list of PILOT labels (`pilot.py labels sync` creates them)
 LABELS = {
     "type:feature": ("1D76DB", "PILOT: a ticket that changes what the product does; validated by the PM, run by human F"),
@@ -244,13 +250,7 @@ DEPENDS_RE = re.compile(r"Depends on #(\d+)")
 BLOCKS_RE = re.compile(r"Blocks #(\d+)")
 PROTO_MAX_BYTES = 1_000_000   # one mockup, all parts together
 PROTO_PART_BYTES = 200_000     # a database document is capped at 256 KiB
-PROTO_FORBIDDEN = (
-    (re.compile(r"https?://", re.I), "an external URL (the mockup must be self-contained)"),
-    (re.compile(r"""(?:src|href|action|poster)\s*=\s*["']?\s*//""", re.I), "a protocol-relative URL"),
-    (re.compile(r"@import", re.I), "@import"),
-    (re.compile(r"<\s*(?:iframe|object|embed|link|base)\b", re.I), "an iframe, object, embed, link or base element"),
-    (re.compile(r"<\s*meta[^>]+http-equiv\s*=\s*[\"']?refresh", re.I), "a meta refresh"),
-)
+PROTO_FORBIDDEN = pilot_checks.PROTO_FORBIDDEN
 REMOTE_RE = re.compile(r"(?:github\.com[:/]|/git/)([\w.-]+)/([\w.-]+?)(?:\.git)?/?$")
 STATE_PATH = os.path.join(".pilot", "state.json")
 WIKI_DIR = "wiki"
@@ -306,6 +306,14 @@ def state_apps(path=STATE_PATH):
         return []
     apps = data.get("apps") if isinstance(data, dict) else None
     return [a["name"] for a in apps if isinstance(a, dict) and isinstance(a.get("name"), str)] if isinstance(apps, list) else []
+
+
+DEFAULT_LANGUAGE = "en"
+# a few of the commonest function words per language: enough to tell which of the two a paragraph is written in
+LANG_WORDS = {
+    "en": frozenset("the of and to in is are for with that this on be as by it from at or an not can when each".split()),
+    "fr": frozenset("le la les des du de et en est un une pour avec que qui dans sur par au aux ce cette ne pas ou chaque quand".split()),
+}
 
 
 def read_language(path=STATE_PATH):
@@ -568,9 +576,6 @@ class Refused(Exception):
     def __init__(self, payload):
         super().__init__(payload.get("reason", "refused"))
         self.payload = payload
-
-
-CHECKS = {}  # check id -> function(input dict) -> list of problems; one per `check` step of the workflows
 
 
 class Machine:
@@ -2460,7 +2465,8 @@ def build_parser():
     p.add_argument("action", choices=["sync"])
     p = sub.add_parser("check", help="run one code check of a workflow step")
     p.add_argument("id")
-    p.add_argument("--input", help="the JSON file the check reads")
+    p.add_argument("--arg", action="append", default=[], metavar="KEY=VALUE", help="what the check reads (paths, JSON files, ids)")
+    p.add_argument("--run", type=int, help="the run whose data the check may read")
     p = sub.add_parser("judge", help="validate a judge's answers: every question answered twice, with a quote, passes agreeing")
     p.add_argument("id")
     p.add_argument("--input", required=True, help="the JSON file of the two passes")
@@ -2650,16 +2656,20 @@ def judge_check(wfs, jid, passes):
     return {"ok": not problems, "judge": jid, "problems": problems, "failing": failing, "passed": not problems and not failing}
 
 
-def run_check(args, wfs):
+def run_check(args, gh):
+    """`check <id> --arg key=value … [--run N]`: the problems the check finds (those flagged `info` do not fail it)."""
     fn = CHECKS.get(args.id)
     if fn is None:
         raise Refused({"ok": False, "reason": "unimplemented-check", "check": args.id, "implemented": sorted(CHECKS)})
-    data = {}
-    if args.input:
-        with open(args.input, encoding="utf-8") as handle:
-            data = json.load(handle)
-    problems = fn(data)
-    return {"ok": not problems, "check": args.id, "problems": problems}
+    given = dict(a.split("=", 1) for a in args.arg)
+    machine = Machine(gh) if gh else None
+    run = machine.run_show(args.run)["data"] if machine and args.run else {}
+    try:
+        problems = fn(pilot_checks.Ctx(given, ".", run, machine))
+    except KeyError as err:
+        raise Refused({"ok": False, "reason": "missing-arg", "arg": str(err).strip("'\"")})
+    failing = [p for p in problems if not p.get("info")]
+    return {"ok": not failing, "check": args.id, "problems": problems}
 
 
 def run_runs(args, gh):
@@ -2683,7 +2693,9 @@ def run_runs(args, gh):
 
 
 def needs_github(args):
-    if args.cmd in ("module", "contract", "flow", "workflow", "check", "judge"):
+    if args.cmd == "check":
+        return args.id in pilot_checks.NEEDS_GH
+    if args.cmd in ("module", "contract", "flow", "workflow", "judge"):
         return False
     if args.cmd == "arch":
         return False
@@ -2774,7 +2786,7 @@ def run(args, gh):
         with open(args.input, encoding="utf-8") as handle:
             return judge_check(load_workflows(), args.id, json.load(handle))
     if args.cmd == "check":
-        return run_check(args, None)
+        return run_check(args, gh)
     if args.cmd == "run":
         return run_runs(args, gh)
     if args.cmd in ("wiki", "arch"):

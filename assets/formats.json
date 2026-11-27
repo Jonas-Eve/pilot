@@ -1,0 +1,466 @@
+{
+ "version": 1,
+ "doc": "The formats PILOT's checks validate. A markdown format is frontmatter keys plus sections of lines `- <ID> | key: value | key: value`; a field type ending with `?` is optional; field types: text (non-empty), date (YYYY-MM-DD), enum:a,b, ref:<Section> (an id of that section of the same document), xref (<entry>#<ID> of another document), scope (a term of the vocabulary), list:<type> (comma separated). A json format is checked against `json` (type, required, enum, items, pattern).",
+ "ambiguous": [
+  "rapidement",
+  "facilement",
+  "intuitif",
+  "simple",
+  "souvent",
+  "bientôt",
+  "environ",
+  "etc",
+  "peut-être",
+  "probablement",
+  "quickly",
+  "easily",
+  "intuitive",
+  "simple",
+  "often",
+  "soon",
+  "about",
+  "maybe",
+  "probably",
+  "etc."
+ ],
+ "formats": {
+  "need-entry": {
+   "where": "wiki/<domain>/<id>.md, type Behavior",
+   "frontmatter": {
+    "pilot.scope": "list:scope",
+    "pilot.status": "enum:proposed,specified,implemented,provisional"
+   },
+   "sections": {
+    "Need": {
+     "required": true,
+     "id": "S\\d+",
+     "fields": {
+      "text": "text"
+     }
+    },
+    "Criteria": {
+     "required": true,
+     "id": "C\\d+",
+     "fields": {
+      "when": "text",
+      "then": "text",
+      "by": "enum:e2e,test,human,judgment",
+      "source": "ref:Need",
+      "flow": "text?"
+     }
+    },
+    "Journal": {
+     "required": false,
+     "id": "J\\d+",
+     "append_only": true,
+     "fields": {
+      "date": "date",
+      "origin": "text",
+      "decision": "text",
+      "discarded": "text",
+      "reason": "text"
+     }
+    }
+   }
+  },
+  "frame": {
+   "where": "wiki/<domain>/<id>.md (functional) or architecture/guidelines/<id>.md (technical)",
+   "frontmatter": {
+    "pilot.scope": "list:scope"
+   },
+   "sections": {
+    "Source": {
+     "required": true,
+     "id": "S\\d+",
+     "fields": {
+      "text": "text"
+     }
+    },
+    "Statements": {
+     "required": true,
+     "id": "E\\d+",
+     "fields": {
+      "says": "text",
+      "source": "ref:Source",
+      "by": "enum:rule,judgment"
+     }
+    },
+    "Examples": {
+     "required": false,
+     "id": "X\\d+",
+     "fields": {
+      "kind": "enum:pass,fail",
+      "of": "ref:Statements",
+      "case": "text"
+     }
+    }
+   }
+  },
+  "adr-local": {
+   "where": "architecture/adr/NNNN-<title>.md",
+   "frontmatter": {
+    "pilot.scope": "list:scope",
+    "pilot.status": "enum:proposed,provisional,accepted,superseded"
+   },
+   "sections": {
+    "Decisions": {
+     "required": true,
+     "id": "D\\d+",
+     "fields": {
+      "decision": "text",
+      "covers": "list:xref",
+      "reason": "text"
+     }
+    }
+   }
+  },
+  "design-entry": {
+   "where": "the design system document",
+   "frontmatter": {
+    "pilot.scope": "list:scope"
+   },
+   "sections": {
+    "Tokens": {
+     "required": true,
+     "id": "[a-z]+(\\.[a-z0-9]+)+",
+     "fields": {
+      "light": "text",
+      "dark": "text",
+      "on": "text?"
+     }
+    },
+    "Components": {
+     "required": false,
+     "id": "[A-Z][A-Za-z0-9]+",
+     "fields": {
+      "category": "enum:action,input,navigation,feedback,container,data",
+      "states": "list:text",
+      "tokens": "list:text"
+     }
+    }
+   },
+   "required_states": {
+    "action": [
+     "default",
+     "hover",
+     "focus",
+     "active",
+     "disabled"
+    ],
+    "input": [
+     "default",
+     "focus",
+     "filled",
+     "error",
+     "disabled"
+    ],
+    "navigation": [
+     "default",
+     "hover",
+     "focus",
+     "current"
+    ],
+    "feedback": [
+     "default"
+    ],
+    "container": [
+     "default"
+    ],
+    "data": [
+     "default",
+     "empty",
+     "loading",
+     "error"
+    ]
+   }
+  },
+  "persona": {
+   "where": "wiki/personas/<id>.md, type Persona",
+   "sections": {
+    "Usage": {
+     "required": true,
+     "id": "U\\d+",
+     "fields": {
+      "text": "text"
+     }
+    }
+   }
+  },
+  "user-flow": {
+   "where": "wiki/flows/<id>.md, type UserFlow",
+   "frontmatter": {
+    "pilot.scope": "list:scope",
+    "pilot.personas": "list:text"
+   },
+   "sections": {
+    "Steps": {
+     "required": true,
+     "id": "P\\d+",
+     "fields": {
+      "step": "text",
+      "result": "text",
+      "source": "xref|to-create"
+     }
+    },
+    "Candidates": {
+     "required": false,
+     "id": "K\\d+",
+     "fields": {
+      "from": "ref:Steps",
+      "request": "text",
+      "state": "enum:candidate,launched,dropped"
+     }
+    },
+    "Journal": {
+     "required": false,
+     "id": "J\\d+",
+     "append_only": true,
+     "fields": {
+      "date": "date",
+      "origin": "text",
+      "decision": "text",
+      "discarded": "text",
+      "reason": "text"
+     }
+    }
+   }
+  },
+  "vocabulary": {
+   "where": "wiki/vocabulary.md (functional) and architecture/scopes.md (technical)",
+   "sections": {
+    "Terms": {
+     "required": true,
+     "id": "[a-z][a-z0-9-]*",
+     "fields": {
+      "meaning": "text"
+     }
+    }
+   }
+  },
+  "plan": {
+   "where": "the plan workflow's proposal, one JSON file",
+   "json": {
+    "type": "object",
+    "required": [
+     "tickets"
+    ],
+    "properties": {
+     "tickets": {
+      "type": "array",
+      "min": 1,
+      "items": {
+       "type": "object",
+       "required": [
+        "id",
+        "title",
+        "level",
+        "criteria",
+        "scope"
+       ],
+       "properties": {
+        "id": {
+         "type": "string",
+         "pattern": "T\\d+"
+        },
+        "title": {
+         "type": "string"
+        },
+        "level": {
+         "enum": [
+          "story",
+          "task"
+         ]
+        },
+        "criteria": {
+         "type": "array",
+         "items": {
+          "type": "string",
+          "pattern": "[a-z0-9-]+#C\\d+"
+         }
+        },
+        "decisions": {
+         "type": "array",
+         "items": {
+          "type": "string",
+          "pattern": "[a-z0-9-]+#D\\d+"
+         }
+        },
+        "depends": {
+         "type": "array",
+         "items": {
+          "type": "string",
+          "pattern": "T\\d+"
+         }
+        },
+        "scope": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        "reads": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "report-form": {
+   "where": "a report's form, one JSON file",
+   "json": {
+    "type": "object",
+    "required": [
+     "steps",
+     "expected",
+     "observed",
+     "seen"
+    ],
+    "properties": {
+     "steps": {
+      "type": "array",
+      "min": 1,
+      "items": {
+       "type": "string"
+      }
+     },
+     "expected": {
+      "type": "string"
+     },
+     "observed": {
+      "type": "string"
+     },
+     "seen": {
+      "type": "string"
+     },
+     "screenshot": {
+      "type": "string"
+     },
+     "felt": {
+      "enum": [
+       "blocking",
+       "major",
+       "minor"
+      ]
+     }
+    }
+   }
+  },
+  "recipe-plan": {
+   "where": "the accept workflow's test plan, one JSON file",
+   "json": {
+    "type": "object",
+    "required": [
+     "target",
+     "cases"
+    ],
+    "properties": {
+     "target": {
+      "type": "string"
+     },
+     "persona": {
+      "type": "string"
+     },
+     "cases": {
+      "type": "array",
+      "min": 1,
+      "items": {
+       "type": "object",
+       "required": [
+        "id",
+        "source",
+        "expected"
+       ],
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "source": {
+         "type": "string",
+         "pattern": "[a-z0-9-]+#(C|P)\\d+"
+        },
+        "expected": {
+         "type": "string"
+        },
+        "how": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "recipe-record": {
+   "where": "the accept workflow's record, the closing comment of its run",
+   "json": {
+    "type": "object",
+    "required": [
+     "target",
+     "version",
+     "executant",
+     "results",
+     "ref_hash"
+    ],
+    "properties": {
+     "target": {
+      "type": "string"
+     },
+     "version": {
+      "type": "string"
+     },
+     "persona": {
+      "type": "string"
+     },
+     "executant": {
+      "enum": [
+       "human",
+       "ai"
+      ]
+     },
+     "validated_by": {
+      "type": "string"
+     },
+     "results": {
+      "type": "array",
+      "min": 1,
+      "items": {
+       "type": "object",
+       "required": [
+        "case",
+        "result"
+       ],
+       "properties": {
+        "case": {
+         "type": "string"
+        },
+        "result": {
+         "enum": [
+          "ok",
+          "ko"
+         ]
+        },
+        "proof": {
+         "type": "string"
+        },
+        "comment": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "ref_hash": {
+      "type": "string"
+     },
+     "persona_hash": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ }
+}
