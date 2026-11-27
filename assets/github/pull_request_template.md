@@ -9,8 +9,8 @@
 
 Closes #
 
-- Type: `type:feature` / `type:tech` / `type:bug` / `type:e2e`
-- Spec deviations from phase 2 (if any): none / see ticket comment
+- Type: `type:feature` / `type:tech`
+- Deviations from the plan (if any): none / see ticket comment
 
 ## Test plan
 
@@ -18,6 +18,5 @@ Closes #
 
 ## Review
 
-<!-- Left for phase 4 (`/pilot-review`) to fill in on PILOT tickets — a
-     submitted GitHub review, not this section. Human reviewers use their own
-     GitHub review as usual. -->
+<!-- On PILOT tickets the build workflow reviews the local diff before this PR:
+     leave this section out. Human reviewers use their own GitHub review. -->

@@ -1,33 +1,38 @@
 #!/usr/bin/env python3
-"""PILOT's deterministic ticket mechanics (assets/docs/pilot-process.md §3-§4), as a CLI.
+"""PILOT's deterministic mechanics (assets/docs/pilot-process.md), as a CLI.
 
-  pilot.py pool    <spec|dev|review|qa> [--limit N]
-  pilot.py resolve <phase> <issue> [--resume]
-  pilot.py claim   <phase> <issue> --mode fresh|reclaim|resume-orphaned|resume-cleared|rescope
+  pilot.py workflow list|show [ID] [--step S]|check   # the workflows as data, one step at a time; check validates them all
+  pilot.py contract [WORKFLOW]                         # statuses a workflow consumes / claims / produces; bare: all, and whether they compose
+  pilot.py pool    <workflow> [--limit N]              # tickets a workflow may take
+  pilot.py resolve <workflow> <issue> [--resume]
+  pilot.py claim   <workflow> <issue> --mode fresh|resume-orphaned|resume-cleared
+  pilot.py run     start|show|note|advance|resume|end   # a run: its state is one JSON comment on its issue; `advance` decides the next step by data
+  pilot.py check   <id> [--arg K=V] [--run N]           # one code check of a workflow step
+  pilot.py judge   <id> --input FILE                    # validates a judge's answers
   pilot.py set     <issue> [--status S] [--assign-me|--unassign] [--add L]... [--remove L]... [--close] [--pr N]
-  pilot.py event   <issue>... --action NAME [--phase P]  # those tickets' current state as dashboard events, no write
-  pilot.py flag    <issue> --comment TEXT      # needs-human + the mandatory why/what's-needed comment
-  pilot.py unflag  <issue> --comment TEXT      # resolution comment, then needs-human removed
-  pilot.py doctor  [--verbose] [--no-wiki]      # preflight: can the commands above work here? (+ wiki/, when that module is on)
-  pilot.py contract [PHASE] [--profile P]      # a phase's contract (statuses it consumes / claims / produces); bare: all, and whether they compose
-  pilot.py module  list|enable|disable [NAME] [--with-requires]  # the optional modules of .pilot/state.json
-  pilot.py workflow show|check|set [PROFILE]   # the project's workflow profile: the chain it runs, and the check that every profile composes
-  pilot.py snapshot [--out FILE]               # every open ticket as the dashboard's snapshot document, with each ticket's stage history (`h`) and `needs-human` start (`nh`), one label-events call per ticket; with `--out` the summary also gives `history_failed`
-  pilot.py wiki    index [--under D] [--depth 1]|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the project's wiki (wiki/, an OKF bundle)
-  pilot.py flow    doc --in FILE [--out FILE]   # the dashboard's `flowRuns` document of a run of a user flow (no GitHub)
-  pilot.py arch    index [--active] [--app A] [--under D] [--depth 1]|search|describe|next-number|inventory|reindex|show|lint|snapshot|add|set|remove|supersede  # the architecture bundle (architecture/: overview, guidelines, ADR; no GitHub)
+  pilot.py flag|unflag <issue> --comment TEXT           # needs-human and its mandatory comment
+  pilot.py ticket  create|close-forming|drop|merged     # ticket creation, the two human closings, the merge workflow's call
+  pilot.py derive  <issue>                              # a split story's status from its tasks, an epic's from its stories
+  pilot.py pr      open|ci|merge                        # a PR, its CI verdict, the merge once green
+  pilot.py labels  sync|migrate [--apply]               # create the labels; move a v5 project's tickets to v6 (dry run by default)
+  pilot.py config  get|set KEY [VALUE]                  # one key of .pilot/state.json
+  pilot.py event   <issue>... --action NAME             # those tickets' current state as dashboard events, no write
+  pilot.py snapshot [--out FILE]                        # every open ticket as the dashboard's snapshot document
+  pilot.py doctor  [--verbose] [--no-wiki]              # preflight: can the commands above work here?
+  pilot.py module  list|enable|disable [NAME] [--with-requires]
+  pilot.py proto-pack | flow doc                        # prototype bundle; a user flow run's document
+  pilot.py wiki    index|search|describe|reindex|show|status|lint|snapshot|add|set|remove|migrate  # the wiki (wiki/, an OKF bundle)
+  pilot.py arch    index|search|describe|next-number|inventory|reindex|show|lint|snapshot|add|set|remove|supersede  # architecture/
 
 Every command takes `--repo owner/repo` (default: the git remote of the current directory) and
 prints one JSON object on stdout. Exit codes: 0 done / answered, 1 refused by a precondition
 (JSON says why), 2 GitHub or usage failure.
 
-claim/set/flag/unflag also return an `event`, and `event` builds it for
-tickets the skill changed itself (Discovery, one call for all of them): the ready-made payloads the skills forward to the
-project's dashboard (pilot-link-dashboard.md). An event carries the ticket's parent, and the open
-PR (`set --pr N`) when the caller just opened one.
+claim/set/flag/unflag and `run` commands also return an `event`, the ready-made payload the skills forward to the
+project's dashboard (pilot-link-dashboard.md).
 
-Judgment never lives here: which agent to call, what a story/spec/review says, and pair
-dialogue stay with the skills. Requires the `gh` CLI and Python 3.
+Judgment never lives here: which agent to call and what a document says stay with the skills.
+Requires the `gh` CLI and Python 3.
 """
 import argparse
 import concurrent.futures

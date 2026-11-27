@@ -1053,7 +1053,7 @@ class VersionBumpTests(unittest.TestCase):
     skipped where that ref or git is not available."""
 
     ROOT = pathlib.Path(__file__).resolve().parent.parent
-    SHIPPED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/setup-github-labels.sh")
+    SHIPPED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/pilot_checks.py")
 
     def git(self, *args):
         out = subprocess.run(["git", *args], cwd=self.ROOT, capture_output=True, text=True)
