@@ -10,7 +10,7 @@ workflow: its contract (statuses it consumes, claims, produces) is `pilot.py con
 
 | Object | Lives in | Its status lives in | It moves by |
 |---|---|---|---|
-| Document: wiki entry, guideline, ADR, design-system entry, persona, user flow | a file under `wiki/`, `architecture/` | its frontmatter, stable statuses only (`proposed`, `ready`/`accepted`, `provisional`, `superseded`); in-flight ones (`rework`, implemented, recetted, in gap) are derived from tickets, runs and records (`pilot.py wiki status`) | the docs PR its workflow ends with, opened and merged by the script |
+| Document: wiki entry, guideline, ADR, design-system entry, persona, user flow | a file under `wiki/`, `architecture/` | its frontmatter, stable statuses only (wiki: `proposed`, `specified`, `implemented`, `provisional`; architecture: `proposed`, `accepted`, `superseded`); in-flight ones (`rework`, recetted, in gap) are derived from tickets, runs and records (`pilot.py wiki status`) | the docs PR its workflow ends with, opened and merged by the script |
 | Ticket: epic, story, task | a GitHub issue | a `status:` label | `pilot.py` only |
 | Run | the ticket it works, else a `run` issue the script creates and closes | one JSON comment (`<!-- pilot:run -->`) | `pilot.py run` only |
 | Prototype | the dashboard's `protos` documents (one HTML) | the closing comment of its run (accepted or rejected) | `pilot.py proto-pack` |
@@ -27,11 +27,11 @@ Nobody needs GitHub's UI: `pilot.py` is the only reader and writer of tickets an
 
 | Level | Statuses, in order |
 |---|---|
-| epic | `forming` → `to-plan` → `planning` → `planned` → `done` |
-| story | `forming` → `to-plan` → `planning` → `ready` (unsplit) or `planned` (split) → `building` → `reviewing` → `merged` → `done` |
+| epic | `forming` → `to-plan` → `planning` → `planned` → `done` (or `wont-do`) |
+| story | `forming` → `to-plan` → `planning` → `ready` (unsplit) or `planned` (split) → `building` → `reviewing` → `merged` → `done` (or `wont-do`) |
 | task | `ready` → `building` → `reviewing` → `merged` → `done` |
 
-  `forming`: still takes entries until a human closes it. `merged`: awaits the Recette (a split story is `merged` when all its tasks are). `done`: the Recette passed, or `wont-do` for a ticket never built.
+  `forming`: still takes entries until a human closes it. `merged`: awaits the Recette (a split story is `merged` when all its tasks are). `done`: the Recette passed. `wont-do`: a human dropped an epic or story from `forming` or `to-plan`; a task has none.
 - Flags, beside the status: `needs-human` (a blocking question, always with a comment saying why and what is needed; a human removes it), `on-hold` (paused for something larger), `can-resume` (a human's signal that an interrupted run is safe to continue), `express`, `fix` (a correction ticket made by a Recette), `gap` (depends on a ticket whose Recette is in gap).
 - `priority:P0|P1|P2` orders the pool; never on an epic.
 - A ticket carrying `needs-human` or `on-hold`, or with an open "Depends on #N" (one per line, one number), is in no pool; the gate is `pilot.py`'s, never an agent's.
