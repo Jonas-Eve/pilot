@@ -31,6 +31,7 @@ dialogue stay with the skills. Requires the `gh` CLI and Python 3.
 """
 import argparse
 import concurrent.futures
+import copy
 import datetime
 import hashlib
 import json
@@ -42,166 +43,200 @@ import subprocess
 import sys
 import unicodedata
 
-# phase -> statuses and which §4 rules apply to an explicitly-given ticket
-PHASES = {
-    "spec": {"fresh": "status:backlog", "inprog": "status:in-spec", "reclaim": None,
-             "gate": False, "containers": {"epic"},
-             "resumable": {"status:in-spec", "status:draft"}},
-    "dev": {"fresh": "status:dev-ready", "inprog": "status:in-dev",
-            "reclaim": "status:changes-requested", "gate": True, "containers": {"epic", "split"},
-            "resumable": {"status:in-dev"}},
-    "review": {"fresh": "status:review-ready", "inprog": "status:in-review", "reclaim": None,
-               "gate": False, "containers": {"epic", "split"}, "resumable": {"status:in-review"}},
-    "qa": {"fresh": "status:qa", "inprog": "status:in-qa", "reclaim": None,
-           "gate": True, "containers": set(), "resumable": {"status:in-qa"}},
-    "proto": {"fresh": None, "inprog": "status:poc-draft", "reclaim": None,
-              "gate": False, "containers": set(), "resumable": {"status:poc-draft"}},
-}
-STATUSES = {
-    "draft", "backlog", "in-spec", "dev-ready", "in-dev", "review-ready", "in-review",
-    "changes-requested", "approved", "wont-do", "split", "qa", "in-qa", "done",
-    "poc-draft", "poc-review", "poc-validated", "poc-rejected",
-}
-# What each phase produces (the statuses it sets), on top of what PHASES already says it consumes (fresh, reclaim,
-# in progress, resumable). `consumes` adds what a phase reads that PHASES does not list. A phase knows only these two
-# sides of itself; the chain is their composition, checked by `composition_problems`.
-CONTRACTS = {
-    "discovery": {"consumes": ["status:poc-validated"],
-                  "produces": ["status:draft", "status:backlog", "status:wont-do"]},
-    "spec": {"consumes": ["status:qa", "status:in-qa", "status:split"],
-             "produces": ["status:draft", "status:backlog", "status:dev-ready", "status:split", "status:wont-do"]},
-    "dev": {"consumes": [], "produces": ["status:review-ready", "status:dev-ready"]},  # dev-ready: handed back for a prerequisite
-    "review": {"consumes": [], "produces": ["status:approved", "status:changes-requested"]},
-    "qa": {"consumes": [], "produces": ["status:done", "status:qa"]},  # qa: handed back after a bug ticket
-    "proto": {"consumes": ["status:poc-review", "status:poc-validated"],
-              "produces": ["status:poc-draft", "status:poc-review", "status:poc-validated", "status:poc-rejected"]},
-}
-# transitions the merge/close workflow makes, or a human, not a phase
-EXTERNAL = (("status:approved", "status:done"), ("status:split", "status:done"), ("status:split", "status:qa"),
-            ("status:approved", "status:review-ready"))  # moved back by hand before the merge
-SINKS = ("status:done", "status:wont-do", "status:poc-rejected")  # statuses nothing consumes
+# The model (assets/docs/pilot-process.md §2): levels, statuses per level, flags, and what no workflow does by itself.
+LEVELS = ("epic", "story", "task")
+STATUSES = ("forming", "to-plan", "planning", "planned", "ready", "building", "reviewing", "merged", "done", "wont-do")
+LEVEL_STATUSES = {"epic": ("forming", "to-plan", "planning", "planned", "done", "wont-do"), "story": STATUSES,
+                  "task": ("ready", "building", "reviewing", "merged", "done")}
+# Transitions no workflow makes: a human closing a forming ticket or dropping one, or the script deriving a parent from its children.
+EXTERNAL = (("status:forming", "status:to-plan"), ("status:forming", "status:wont-do"), ("status:to-plan", "status:wont-do"),
+            ("status:planned", "status:building"), ("status:planned", "status:done"), ("status:building", "status:merged"))
+SINKS = ("status:done", "status:wont-do")  # statuses nothing consumes
+PERSONAS = ("pm", "architect", "techlead", "dev", "e2e", "qa", "designer")  # .claude/agents/pilot-<name>.md
+STEP_KINDS = ("human-start", "human-gate", "human-optional", "agent", "validator", "judge", "check", "wait", "end")
+OPEN_IF = ("delta-not-empty", "delta-not-empty-or-overcost", "blocked")  # when an optional human step opens
 
 
-DEFAULT_PROFILE = "standard"
-# A workflow profile is the part of the chain a project runs (`workflow.profile` in .pilot/state.json). `standard` is
-# the whole chain, what every project ran before profiles. A profile drops phases, merge-workflow transitions and the
-# statuses only those use, says whether a feature split carries an e2e task (`e2e_task`) and who reviews which type
-# (`review`, None = the default sets); what it keeps must still compose (`pilot.py workflow check`). `ready` stays false
-# while the skills, the task docs and the merge workflow do not follow a profile: `workflow set` refuses it until they do.
-REVIEWERS = ("pilot-pm", "pilot-techlead", "pilot-architect")
-DEFAULT_REVIEW = {"feature": ["pilot-pm", "pilot-techlead"], "e2e": ["pilot-pm", "pilot-techlead"],
-                  "tech": ["pilot-techlead"], "bug": ["pilot-techlead"]}
-PROFILES = {
-    "standard": {"drop_phases": (), "drop_external": (), "drop_statuses": (), "e2e_task": True, "review": None,
-                 "default_mode": "pair", "spec_tech": {"architect": "validates"}, "ready": True},
-    "lean": {"drop_phases": ("qa",), "drop_external": (("status:split", "status:qa"),),
-             "drop_statuses": ("status:qa", "status:in-qa"), "e2e_task": False,
-             "review": {kind: ["pilot-techlead"] for kind in DEFAULT_REVIEW},
-             "default_mode": "auto", "spec_tech": {"architect": "on-signal"}, "ready": True},
-}
+# ---- the workflows: assets/workflows/*.json (`.pilot/workflows/` in a project), expanded and checked here ----
+def workflow_dir():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for candidate in (os.path.join(here, "workflows"), os.path.join(here, os.pardir, "assets", "workflows")):
+        if os.path.isdir(candidate):
+            return os.path.normpath(candidate)
+    raise Refused({"ok": False, "reason": "no-workflows", "hint": "run /pilot-update: .pilot/workflows/ is missing"})
 
 
-def chain(profile=DEFAULT_PROFILE):
-    """The part of the chain a profile runs: its phases, their contracts, the merge-workflow transitions and the
-    statuses. A phase keeps no consumption of a status the profile dropped; a contract that still produces one is
-    a drift `composition_problems` reports."""
-    if profile not in PROFILES:
-        raise Refused({"ok": False, "reason": "unknown-profile", "expected": list(PROFILES)})
-    drop = PROFILES[profile]
-    gone = set(drop["drop_statuses"])
-    return {"phases": {k: v for k, v in PHASES.items() if k not in drop["drop_phases"]},
-            "contracts": {k: {"consumes": [st for st in v["consumes"] if st not in gone], "produces": list(v["produces"])}
-                          for k, v in CONTRACTS.items() if k not in drop["drop_phases"]},
-            "external": tuple(t for t in EXTERNAL if t not in drop["drop_external"]),
-            "statuses": {f"status:{name}" for name in STATUSES} - gone}
+def renumber(steps):
+    """Display numbers: 1, 2, … and `5bis` for a step that is the alternative of the one before it."""
+    n = 0
+    for step in steps:
+        if step.get("alt_of"):
+            step["n"] = f"{n}bis"
+        else:
+            n += 1
+            step["n"] = str(n)
+    return steps
 
 
-def profile_rules(profile=DEFAULT_PROFILE):
-    """What a profile means for the skills, the task docs and the merge workflow, as data they read (`workflow show`)
-    instead of restating it: whether there is a QA phase and an e2e task, where a finished feature story goes, and the
-    default reviewers of each ticket type."""
-    ch, meta = chain(profile), PROFILES[profile]
-    review = meta["review"] or DEFAULT_REVIEW
-    return {"qa": "qa" in ch["phases"], "e2e_task": meta["e2e_task"],
-            "feature_done_goes_to": "status:qa" if ("status:split", "status:qa") in ch["external"] else "status:done",
-            "review": {kind: list(review[kind]) for kind in DEFAULT_REVIEW},
-            "default_mode": meta["default_mode"], "spec": {"tech": dict(meta["spec_tech"])}}
+def expand(raw, wid):
+    """A workflow's steps with its `include` entries replaced by the steps of the workflow they name (prefixed ids, patched fields)."""
+    wf, steps = copy.deepcopy(raw[wid]), []
+    for step in wf["steps"]:
+        if "include" not in step:
+            steps.append(step)
+            continue
+        source = raw[step["include"]]["steps"]
+        wanted = step.get("ids") or [s["id"] for s in source]
+        prefix, patch = step.get("prefix", ""), step.get("patch", {})
+        for s in (copy.deepcopy(s) for s in source if s["id"] in wanted):
+            changes = patch.get(s["id"], {})
+            if "on_fail" in changes:
+                s["on_fail"] = {**s.get("on_fail", {}), **changes.pop("on_fail")}
+            s.update(changes)
+            old = s["id"]
+            s["id"] = prefix + old
+            for key in ("loop_to", "alt_of"):
+                if s.get(key) in wanted:
+                    s[key] = prefix + s[key]
+            if s.get("on_fail", {}).get("to") in wanted:
+                s["on_fail"]["to"] = prefix + s["on_fail"]["to"]
+            for rej in s.get("on_reject", []):
+                if rej["to"] in wanted:
+                    rej["to"] = prefix + rej["to"]
+            steps.append(s)
+    wf["steps"] = renumber(steps)
+    return wf
 
 
-def rules_problems(profile=DEFAULT_PROFILE):
-    """What makes a profile's rules contradict themselves: a QA stop without a QA phase (or the reverse), a review without
-    the tech lead (every change is reviewed by it, whatever the profile), or an unknown reviewer."""
-    rules, problems = profile_rules(profile), []
-    if rules["qa"] != (rules["feature_done_goes_to"] == "status:qa"):
-        problems.append({"code": "qa-stop-without-qa-phase" if not rules["qa"] else "qa-phase-without-qa-stop"})
-    if rules["default_mode"] not in ("auto", "pair"):
-        problems.append({"code": "bad-default-mode", "mode": rules["default_mode"]})
-    if rules["spec"]["tech"].get("architect") not in ("validates", "on-signal"):
-        problems.append({"code": "bad-spec-rule", "architect": rules["spec"]["tech"].get("architect")})
-    for kind, reviewers in rules["review"].items():
-        if "pilot-techlead" not in reviewers:
-            problems.append({"code": "review-without-techlead", "type": kind})
-        problems += [{"code": "unknown-reviewer", "type": kind, "reviewer": r} for r in reviewers if r not in REVIEWERS]
-    return problems
+def load_workflows(directory=None):
+    """Every workflow of the project, expanded: {id: workflow}."""
+    directory = directory or workflow_dir()
+    raw = {}
+    for name in sorted(os.listdir(directory)):
+        if name.endswith(".json"):
+            with open(os.path.join(directory, name), encoding="utf-8") as handle:
+                data = json.load(handle)
+            raw[data["id"]] = data
+    return {wid: expand(raw, wid) for wid in raw}
 
 
-def profile_problems(profile=DEFAULT_PROFILE):
-    """Everything wrong with a profile: its chain does not compose, or its rules contradict themselves."""
-    return composition_problems(profile) + rules_problems(profile)
+def workflow_problems(wfs):
+    """What is wrong with the workflows as data: structure, references, unknown personas, unimplemented checks, statuses that do not compose."""
+    problems = []
+    for wid, wf in wfs.items():
+        ids = [s["id"] for s in wf["steps"]]
+
+        def bad(code, step=None, **extra):
+            problems.append({"workflow": wid, **({"step": step["id"]} if step else {}), "code": code, **extra})
+
+        for dup in sorted({i for i in ids if ids.count(i) > 1}):
+            bad("duplicate-step-id", id=dup)
+        for step in wf["steps"]:
+            if step.get("kind") not in STEP_KINDS:
+                bad("unknown-kind", step, kind=step.get("kind"))
+            for key in ("loop_to", "alt_of"):
+                if step.get(key) and step[key] not in ids:
+                    bad("unknown-target", step, field=key, target=step[key])
+            targets = ([step["on_fail"]["to"]] if step.get("on_fail") else []) + [r["to"] for r in step.get("on_reject", [])]
+            bad_targets = [t for t in targets if t not in ids]
+            if bad_targets:
+                bad("unknown-target", step, target=bad_targets[0])
+            for agent in step.get("agents", []):
+                if agent["persona"] not in PERSONAS:
+                    bad("unknown-persona", step, persona=agent["persona"])
+            if step.get("open_if") and step["open_if"] not in OPEN_IF:
+                bad("unknown-open-if", step, open_if=step["open_if"])
+            if step["kind"] == "check" and not step.get("check"):
+                bad("check-without-id", step)
+            if step["kind"] == "judge" and not step.get("questions"):
+                bad("judge-without-questions", step)
+            if step.get("check") and step["check"] not in CHECKS:
+                bad("unimplemented-check", step, check=step["check"])
+        if not any(s["kind"] == "end" for s in wf["steps"]):
+            bad("no-end-step")
+    return problems + composition_problems(wfs)
 
 
-def phase_contract(phase, profile=DEFAULT_PROFILE):
-    """One phase's contract: the statuses it consumes, the one it claims into, the ones it produces."""
-    ch = chain(profile)
-    if phase not in ch["contracts"]:
-        if phase in CONTRACTS:
-            raise Refused({"ok": False, "reason": "phase-not-in-profile", "phase": phase, "profile": profile})
-        raise Refused({"ok": False, "reason": "unknown-phase", "expected": sorted(ch["contracts"])})
-    cfg, extra = ch["phases"].get(phase, {}), ch["contracts"][phase]
-    consumes = {cfg.get("fresh"), cfg.get("reclaim"), cfg.get("inprog")} | set(cfg.get("resumable", ())) | set(extra["consumes"])
-    consumes.discard(None)
-    return {"ok": True, "phase": phase, "consumes": sorted(consumes), "claims": cfg.get("inprog"),
-            "produces": sorted(extra["produces"])}
+def wf_cfg(wfs, wid):
+    """The claim/pool/resolve configuration of one workflow, from its contract (the `PHASES` of earlier versions)."""
+    if wid not in wfs:
+        raise Refused({"ok": False, "reason": "unknown-workflow", "expected": sorted(wfs)})
+    c = wfs[wid].get("contract") or {}
+    status = lambda name: f"status:{name}" if name else None
+    return {"fresh": status((c.get("consumes") or [None])[0]), "inprog": status(c.get("claims")), "reclaim": None,
+            "gate": bool(c.get("gate")), "containers": set(c.get("containers", ())),
+            "resumable": {status(n) for n in c.get("resumable", ())}}
 
 
-def composition_problems(profile=DEFAULT_PROFILE):
-    """The chain a profile runs as the composition of the contracts: every status has a producer and a consumer, a sink apart."""
-    ch = chain(profile)
-    known = ch["statuses"]
-    produced = {cfg["inprog"] for cfg in ch["phases"].values()} | {b for _a, b in ch["external"]}
-    consumed = {a for a, _b in ch["external"]}
-    for phase in ch["contracts"]:
-        contract = phase_contract(phase, profile)
-        produced |= set(contract["produces"])
-        consumed |= set(contract["consumes"])
+def workflow_contract(wfs, wid):
+    """One workflow's contract: the statuses it consumes, the one it claims into, the ones it produces."""
+    if wid not in wfs:
+        raise Refused({"ok": False, "reason": "unknown-workflow", "expected": sorted(wfs)})
+    c = wfs[wid].get("contract") or {}
+    pre = lambda names: sorted(f"status:{n}" for n in names or ())
+    return {"ok": True, "workflow": wid, "consumes": pre(set(c.get("consumes", ())) | set(c.get("resumable", ()))),
+            "claims": f"status:{c['claims']}" if c.get("claims") else None, "produces": pre(c.get("produces"))}
+
+
+def composition_problems(wfs):
+    """The chain as the composition of the contracts: every status has a producer and a consumer, a sink apart."""
+    known = {f"status:{s}" for s in STATUSES}
+    produced = {b for _a, b in EXTERNAL}
+    consumed = {a for a, _b in EXTERNAL}
+    for wid in wfs:
+        c = workflow_contract(wfs, wid)
+        produced |= set(c["produces"]) | ({c["claims"]} if c["claims"] else set())
+        consumed |= set(c["consumes"]) | ({c["claims"]} if c["claims"] else set())
     problems = [{"status": st, "code": "no-producer"} for st in sorted(known - produced)]
     problems += [{"status": st, "code": "no-consumer"} for st in sorted(known - consumed - set(SINKS))]
     problems += [{"status": st, "code": "unknown-status"} for st in sorted((produced | consumed) - known)]
     return problems
 
 
-def transition_allowed(current, new, profile=DEFAULT_PROFILE):
-    """Whether some contract of the profile admits `current` -> `new` (a phase that consumes or claims `current` and
-    produces or claims `new`, or the merge workflow). Creation (no status yet), no change and clearing the status are always fine."""
-    if not current or current == new or new == "status:none":
+def transition_allowed(wfs, current, new):
+    """Whether some contract admits `current` -> `new` (a workflow that consumes or claims `current` and produces or claims
+    `new`, or a closing or derivation). Creation (no status yet), no change and clearing the status are always fine."""
+    if not current or current == new or new == "status:none" or (current, new) in EXTERNAL:
         return True
-    ch = chain(profile)
-    if (current, new) in ch["external"]:
-        return True
-    for phase in ch["contracts"]:
-        contract = phase_contract(phase, profile)
-        if current in contract["consumes"] + [contract["claims"]] and new in contract["produces"] + [contract["claims"]]:
+    for wid in wfs:
+        c = workflow_contract(wfs, wid)
+        if current in c["consumes"] + [c["claims"]] and new in c["produces"] + [c["claims"]]:
             return True
     return False
 
 
-POC_OPEN = ("status:poc-draft", "status:poc-review", "status:poc-validated")  # a prototype can still be rejected
-RESCOPABLE = ("status:qa", "status:in-qa", "status:split")  # spec re-scopes these in place
-REQUIRED_LABELS = (
-    {"type:feature", "type:tech", "type:bug", "type:e2e", "type:poc", "level:epic", "level:story", "level:task",
-     "priority:P0", "priority:P1", "priority:P2", "needs-human", "on-hold", "can-resume"}
-    | {f"status:{name}" for name in STATUSES}
-)
+def required_labels(wfs=None):
+    return set(LABELS) | {f"run:{w}" for w in (wfs if wfs is not None else load_workflows())}
+
+
+# name -> (color, description): the one list of PILOT labels (`pilot.py labels sync` creates them)
+LABELS = {
+    "type:feature": ("1D76DB", "PILOT: a ticket that changes what the product does; validated by the PM, run by human F"),
+    "type:tech": ("0E8A16", "PILOT: a technical need; run by human T"),
+    "level:epic": ("5319E7", "PILOT: groups stories a human wants designed together; never built itself"),
+    "level:story": ("BFD4F2", "PILOT: one or more wiki entries that go together; built as is, or split into tasks"),
+    "level:task": ("C2C2C2", "PILOT: a technical split of a story, only when the code checks say it does not fit"),
+    "priority:P0": ("B60205", "PILOT: highest priority"),
+    "priority:P1": ("D93F0B", "PILOT: medium priority"),
+    "priority:P2": ("FBCA04", "PILOT: lowest priority"),
+    "status:forming": ("C5DEF5", "PILOT: still takes entries until a human closes it"),
+    "status:to-plan": ("BFD4F2", "PILOT: ready for the plan workflow"),
+    "status:planning": ("C5DEF5", "PILOT: the plan workflow has claimed it"),
+    "status:planned": ("D4C5F9", "PILOT: split into tasks; follows them"),
+    "status:ready": ("BFD4F2", "PILOT: designed, ready for the build workflow"),
+    "status:building": ("C5DEF5", "PILOT: the build workflow has claimed it"),
+    "status:reviewing": ("FBCA04", "PILOT: implemented, being reviewed and checked before the merge"),
+    "status:merged": ("0E8A16", "PILOT: merged on main, waits for the Recette"),
+    "status:done": ("0E8A16", "PILOT: the Recette passed"),
+    "status:wont-do": ("E4E669", "PILOT: decided not to build it"),
+    "needs-human": ("B60205", "PILOT: a blocking question for a human; status: stays where it was"),
+    "on-hold": ("C2C2C2", "PILOT: deliberately paused; in no pool"),
+    "can-resume": ("0E8A16", "PILOT: a human's signal that an interrupted run is safe to continue"),
+    "express": ("D93F0B", "PILOT: made by the express workflow; provisional documents await their catch-up"),
+    "fix": ("F9D0C4", "PILOT: a correction ticket made by a Recette"),
+    "gap": ("F9D0C4", "PILOT: depends on a ticket whose Recette is in gap"),
+}
+
 PRIORITY = {"priority:P0": 0, "priority:P1": 1, "priority:P2": 2}
 NO_PRIORITY = 9
 FLAGS = ("needs-human", "on-hold")
@@ -241,10 +276,10 @@ WIKI_VERIFIER = "process:pilot-wiki"
 WIKI_VERIFIERS = ("process:pilot-wiki", "process:pilot-dev", "process:pilot-qa")  # who verified: a lint, a Dev PR, a QA run
 WIKI_DEFAULT_TYPE = "Behavior"
 WIKI_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-WIKI_IN_DEV = ("status:in-dev",)
-WIKI_IN_REVIEW = ("status:review-ready", "status:in-review", "status:changes-requested")
-WIKI_IN_QA = ("status:qa", "status:in-qa")
-WIKI_PRE_DEV = ("status:draft", "status:backlog", "status:in-spec", "status:dev-ready")
+WIKI_IN_DEV = ("status:building",)
+WIKI_IN_REVIEW = ("status:reviewing",)
+WIKI_IN_QA = ("status:merged",)  # merged, waiting for the Recette
+WIKI_PRE_DEV = ("status:forming", "status:to-plan", "status:planning", "status:planned", "status:ready")
 
 
 class GhError(Exception):
@@ -263,73 +298,6 @@ def read_modules(path=STATE_PATH):
     return {k: bool(v) for k, v in modules.items()} if isinstance(modules, dict) else {}
 
 
-def read_workflow(path=STATE_PATH):
-    """The project's workflow profile, from `.pilot/state.json` (`workflow.profile`): {"profile", "source"} where source is
-    "state" or "default" (the standard chain: no file, no field, or a name that is not a profile, which `unknown` then names)."""
-    try:
-        with open(path, encoding="utf-8") as handle:
-            data = json.load(handle)
-    except (OSError, ValueError):
-        return {"profile": DEFAULT_PROFILE, "source": "default"}
-    block = data.get("workflow") if isinstance(data, dict) else None
-    name = block.get("profile") if isinstance(block, dict) else None
-    if name is None:
-        return {"profile": DEFAULT_PROFILE, "source": "default"}
-    if name not in PROFILES:
-        return {"profile": DEFAULT_PROFILE, "source": "default", "unknown": name}
-    return {"profile": name, "source": "state"}
-
-
-def workflow_ignored(path=STATE_PATH):
-    """The keys of the project's `workflow` block that nothing reads any more (risk signals and `allow`, removed in 5.0):
-    only `profile` counts."""
-    try:
-        with open(path, encoding="utf-8") as handle:
-            data = json.load(handle)
-    except (OSError, ValueError):
-        return []
-    block = data.get("workflow") if isinstance(data, dict) else None
-    return sorted(k for k in block if k != "profile") if isinstance(block, dict) else []
-
-
-def read_profile(path=STATE_PATH):
-    return read_workflow(path)["profile"]
-
-
-def set_workflow(name, path=STATE_PATH):
-    """Choose the project's workflow profile in `.pilot/state.json`, leaving every other field alone. Refused for a profile
-    the skills do not follow yet, or whose chain does not compose."""
-    if name not in PROFILES:
-        raise Refused({"ok": False, "reason": "unknown-profile", "expected": list(PROFILES)})
-    if not PROFILES[name]["ready"]:
-        raise Refused({"ok": False, "reason": "profile-not-ready", "profile": name,
-                       "hint": "the skills, task docs and merge workflow do not follow it yet"})
-    problems = profile_problems(name)
-    if problems:
-        raise Refused({"ok": False, "reason": "does-not-compose", "profile": name, "problems": problems})
-    try:
-        with open(path, encoding="utf-8") as handle:
-            data = json.load(handle)
-    except FileNotFoundError:
-        raise Refused({"ok": False, "reason": "no-state", "hint": "run /pilot-init"})
-    block = data.get("workflow") if isinstance(data.get("workflow"), dict) else {}
-    block["profile"] = name
-    data["workflow"] = block
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(data, handle, indent=2, ensure_ascii=False)
-        handle.write("\n")
-    result = {"ok": True, "profile": name}
-    gone = list(PROFILES[name]["drop_statuses"])
-    if gone:  # a ticket already at one of them has no phase to claim it any more
-        result["warning"] = {"code": "dropped-statuses", "statuses": gone,
-                             "hint": "no ticket should be at these statuses when the profile is switched: nothing claims them afterwards"}
-    return result
-
-
-# ---- one ticket's route: who leads its Spec, who reviews it, its mode ---------------------------------------------------
-DEPENDENCY_RE = re.compile(r"\b(?:Depends on|Blocks) #\d+", re.IGNORECASE)
-
-
 def state_apps(path=STATE_PATH):
     try:
         with open(path, encoding="utf-8") as handle:
@@ -338,49 +306,6 @@ def state_apps(path=STATE_PATH):
         return []
     apps = data.get("apps") if isinstance(data, dict) else None
     return [a["name"] for a in apps if isinstance(a, dict) and isinstance(a.get("name"), str)] if isinstance(apps, list) else []
-
-
-def spec_route(issue, profile, apps, declared=True):
-    """Who leads the Spec of a ticket and whether the architect validates: a feature always has the architect lead, a bug
-    never has one, and a tech story follows its profile: the tech lead leads, the architect leads instead when the ticket
-    declares dependencies or names several apps, and validates when the profile asks. A
-    project that declares no workflow keeps the dialogue of both, as every project had before profiles."""
-    both, alone = ["pilot-architect", "pilot-techlead"], ["pilot-techlead"]
-    if not declared and "type:bug" not in issue["labels"]:
-        return {"architect": "leads", "leads": both, "triggers": []}
-    if "type:feature" in issue["labels"]:
-        return {"architect": "leads", "leads": both, "triggers": []}
-    if "type:bug" in issue["labels"]:
-        return {"architect": "absent", "leads": alone, "triggers": []}
-    text, triggers = f"{issue['title']}\n{issue['body']}", []
-    if DEPENDENCY_RE.search(text):
-        triggers.append("dependencies")
-    if sum(1 for app in apps if re.search(r"(?<![\w-])" + re.escape(app) + r"(?![\w-])", text, re.IGNORECASE)) >= 2:
-        triggers.append("several-apps")
-    if triggers:
-        return {"architect": "leads", "leads": both, "triggers": triggers}
-    asked = PROFILES[profile]["spec_tech"]["architect"] == "validates"
-    return {"architect": "validates" if asked else "absent", "leads": alone, "triggers": []}
-
-
-def ticket_route(issue, path=STATE_PATH):
-    """One ticket's route under the project's profile: its mode, its reviewers by type, its Spec rule. A project without a
-    `workflow` block has the standard chain."""
-    declared = read_workflow(path)
-    profile = declared["profile"]
-    rules = profile_rules(profile)
-    kind = next((k for k in DEFAULT_REVIEW if f"type:{k}" in issue["labels"]), None)
-    return {"ok": True, "profile": profile, "rules": rules, "mode": rules["default_mode"],
-            "review": list(rules["review"][kind]) if kind else [],
-            "spec": spec_route(issue, profile, state_apps(path), declared["source"] == "state")}
-
-
-DEFAULT_LANGUAGE = "en"
-# a few of the commonest function words per language: enough to tell which of the two a paragraph is written in
-LANG_WORDS = {
-    "en": frozenset("the of and to in is are for with that this on be as by it from at or an not can when each".split()),
-    "fr": frozenset("le la les des du de et en est un une pour avec que qui dans sur par au aux ce cette ne pas ou chaque quand".split()),
-}
 
 
 def read_language(path=STATE_PATH):
@@ -545,6 +470,23 @@ class GhClient:
     def post_comment(self, number, text):
         self._run(f"repos/{self.repo}/issues/{number}/comments", method="POST", body={"body": text})
 
+    def comment_items(self, number):
+        return [{"id": c["id"], "body": c.get("body") or ""} for c in self._pages(f"repos/{self.repo}/issues/{number}/comments")]
+
+    def patch_comment(self, comment_id, text):
+        self._run(f"repos/{self.repo}/issues/comments/{comment_id}", method="PATCH", body={"body": text})
+
+    def create_issue(self, title, body, labels, assignees):
+        return json.loads(self._run(f"repos/{self.repo}/issues", method="POST",
+                                    body={"title": title, "body": body, "labels": labels, "assignees": assignees}))
+
+    def upsert_label(self, name, color, description, exists):
+        body = {"color": color, "description": description[:100]}
+        if exists:
+            self._run(f"repos/{self.repo}/labels/{name}", method="PATCH", body=body)
+        else:
+            self._run(f"repos/{self.repo}/labels", method="POST", body={"name": name, **body})
+
 
 def stage_history(events, labels):
     """What the dashboard's work view needs of a ticket's label events: `h`, the statuses it went through
@@ -628,17 +570,22 @@ class Refused(Exception):
         self.payload = payload
 
 
+CHECKS = {}  # check id -> function(input dict) -> list of problems; one per `check` step of the workflows
+
+
 class Machine:
-    def __init__(self, gh, profile=None, state_path=STATE_PATH):
+    def __init__(self, gh, workflows=None, state_path=STATE_PATH):
         self.gh = gh
         self.state_path = state_path
-        self.profile = profile or read_profile(state_path)
+        self.wfs = workflows if workflows is not None else load_workflows()
         self._open = {}
         self._parent_bodies = {}
 
-    def _require_phase(self, phase):
-        if phase not in chain(self.profile)["phases"]:
-            raise Refused({"ok": False, "reason": "phase-not-in-profile", "phase": phase, "profile": self.profile})
+    def _cfg(self, workflow):
+        cfg = wf_cfg(self.wfs, workflow)
+        if not cfg["inprog"]:
+            raise Refused({"ok": False, "reason": "workflow-claims-no-ticket", "workflow": workflow})
+        return cfg
 
     # ---- shared checks -------------------------------------------------------------------
     def open_state(self, number):
@@ -678,8 +625,7 @@ class Machine:
 
     # ---- pool ----------------------------------------------------------------------------
     def pool(self, phase, limit, only=None):
-        self._require_phase(phase)
-        cfg = PHASES[phase]
+        cfg = self._cfg(phase)
         candidates, excluded, raws = [], [], {}
 
         def reject(issue, reason, **extra):
@@ -742,20 +688,20 @@ class Machine:
                 continue
             found.append(child["number"])
             labels = normalize(child)["labels"]
-            if "status:split" in labels:
+            if "status:planned" in labels:
                 found += [g["number"] for g in self.gh.sub_issues(child["number"])
                           if g.get("state") == "open"]
         return found
 
     def resolve(self, phase, number, resume=False):
-        self._require_phase(phase)
+        self._cfg(phase)
         return self.resolve_raw(phase, number, resume, self.gh.get_issue(number))
 
     def resolve_raw(self, phase, number, resume, raw):
         return self._resolve(phase, number, resume, raw)
 
     def _resolve(self, phase, number, resume, raw):
-        cfg = PHASES[phase]
+        cfg = self._cfg(phase)
         if raw is None:
             return {"action": "stop", "reason": "not-found", "issue": number}
         issue = normalize(raw)
@@ -765,26 +711,18 @@ class Machine:
             return {"action": "stop", "reason": "closed", **base}
         if issue["is_pr"]:
             return {"action": "manual", "reason": "pr-number", **base}
-        if (phase == "proto") != ("type:poc" in labels):
-            return {"action": "stop", "reason": "not-a-poc" if phase == "proto" else "poc", **base}
         if not resume:
             kind = ("epic" if "level:epic" in labels else
-                    "split" if "level:story" in labels and status == "status:split" else None)
+                    "planned" if "level:story" in labels and status == "status:planned" else None)
             if kind in cfg["containers"]:
                 tree = self.open_tree(number)
                 if tree:
                     found = self.pool(phase, 5, only=set(tree))
                     return {"action": "descend", "via": number, "pick": found["pick"],
                             "candidate_count": found["candidate_count"]}
-                if phase == "spec" and kind == "epic":
-                    return {"action": "stop", "reason": "epic-without-open-subissues", **base}
-        if phase == "spec" and not resume and status in RESCOPABLE:
-            return {"action": "rescope", **base}
         flags = sorted(f for f in FLAGS if f in labels)
         assigned = issue["assignees"]
         if resume:
-            if phase == "spec" and status == "status:draft" and "type:feature" in labels:
-                return {"action": "stop", "reason": "draft-awaits-discovery", **base}  # Discovery's story, not yet approved
             if status in cfg["resumable"] and assigned and not flags:
                 return {"action": "resume-orphaned", **base}
             return {"action": "stop", "reason": "resume-mismatch", "flags": flags,
@@ -839,7 +777,7 @@ class Machine:
                       "the account can push (a session may still restrict writes)"
                       if perms.get("push") or perms.get("admin")
                       else "read-only access: claim/set/flag would be refused")
-                missing = sorted(REQUIRED_LABELS - self.gh.label_names())
+                missing = sorted(required_labels(self.wfs) - self.gh.label_names())
                 check("pilot-labels", not missing,
                       "all present" if not missing else
                       f"{len(missing)} missing (run /pilot-update): " + ", ".join(missing[:6])
@@ -907,10 +845,7 @@ class Machine:
         if modules is not None:
             doc["modules"] = modules  # the dashboard's tabs follow the modules a project has on
         doc["language"] = read_language()  # the dashboard opens in it (a reader can switch)
-        declared = read_workflow(self.state_path)
-        if declared["source"] == "state":  # the chain this project runs: the dashboard shows its phases and its rules
-            doc["workflow"] = {"profile": declared["profile"], "phases": sorted(chain(declared["profile"])["contracts"]),
-                               "rules": profile_rules(declared["profile"])}
+        doc["workflows"] = sorted(self.wfs)  # the dashboard shows the workflows this project runs
         while len(json.dumps(doc, ensure_ascii=False).encode()) > SNAPSHOT_MAX_BYTES and rows:
             del rows[max(1, len(rows) * 9 // 10):]
             doc["truncated"] = True
@@ -923,7 +858,7 @@ class Machine:
         failed = []
         def history(row):
             status = next((l[len("status:"):] for l in row["l"] if l.startswith("status:")), "")
-            if not status or status == "split":
+            if not status or status == "planned":
                 return
             try:
                 row.update(stage_history(self.gh.issue_events(row["n"]), row["l"]))
@@ -942,8 +877,7 @@ class Machine:
         return normalize(self.gh.patch_issue(number, body))
 
     def claim(self, phase, number, mode):
-        self._require_phase(phase)
-        cfg = PHASES[phase]
+        cfg = self._cfg(phase)
         raw = self.gh.get_issue(number)
         if raw is None:
             raise Refused({"claimed": False, "reason": "not-found", "issue": number})
@@ -962,10 +896,6 @@ class Machine:
             if status != cfg["fresh"] or issue["assignees"]:
                 refuse("not-claimable", expected=cfg["fresh"])
             labels = labels - {cfg["fresh"]} | {cfg["inprog"]}
-        elif mode == "reclaim":
-            if not cfg["reclaim"] or status != cfg["reclaim"]:
-                refuse("not-claimable", expected=cfg["reclaim"])
-            labels = labels - {cfg["reclaim"]} | {cfg["inprog"]}
         elif mode == "resume-orphaned":
             if status not in cfg["resumable"] or not issue["assignees"]:
                 refuse("not-claimable", expected=sorted(cfg["resumable"]))
@@ -973,10 +903,6 @@ class Machine:
             if status != cfg["inprog"] or "can-resume" not in labels:
                 refuse("not-claimable", expected=cfg["inprog"] + " + can-resume")
             new_assignees = None  # already claimed: only the one-time signal is consumed
-        elif mode == "rescope":
-            if phase != "spec" or status not in RESCOPABLE:
-                refuse("not-claimable", expected="status:qa, status:in-qa or status:split (spec only)")
-            labels = {l for l in labels if not l.startswith("status:")} | {cfg["inprog"]}
         else:
             refuse("unknown-mode")
         if any(f in labels for f in FLAGS):
@@ -1001,7 +927,7 @@ class Machine:
             name = status[len("status:"):] if status.startswith("status:") else status
             if name != "none" and name not in STATUSES:
                 raise Refused({"ok": False, "reason": "unknown-status", "status": status,
-                               "allowed": sorted(STATUSES)})
+                               "allowed": list(STATUSES)})
             labels = {l for l in labels if not l.startswith("status:")}
             if name != "none":
                 labels.add(f"status:{name}")
@@ -1013,51 +939,10 @@ class Machine:
         result = {"ok": True, "issue": number, "status": status_of(after["labels"]),
                   "labels": sorted(after["labels"]), "assignees": after["assignees"],
                   "state": after["state"], "event": self._event(after, "set", pr=pr)}
-        if not transition_allowed(before, result["status"], self.profile):
+        if not transition_allowed(self.wfs, before, result["status"]):
             result["warning"] = {"code": "unexpected-transition", "from": before, "to": result["status"],
-                                 "hint": "no phase contract (`pilot.py contract`) takes a ticket from one to the other"}
+                                 "hint": "no workflow contract (`pilot.py contract`) takes a ticket from one to the other"}
         return result
-
-    def proto(self, number, verdict, reason=None):
-        """accept / reject a prototype, or check it is accepted before a Discovery starts from it."""
-        raw = self.gh.get_issue(number)
-        if raw is None:
-            raise Refused({"ok": False, "reason": "not-found", "issue": number})
-        issue = normalize(raw)
-        labels, status = set(issue["labels"]), status_of(issue["labels"])
-
-        def refuse(why, **extra):
-            raise Refused({"ok": False, "reason": why, "issue": number, "status": status, **extra})
-
-        if issue["state"] != "open":
-            refuse("closed")
-        if issue["is_pr"] or "type:poc" not in labels:
-            refuse("not-a-poc")
-        flags = sorted(f for f in FLAGS if f in labels)
-        if flags:
-            refuse("flagged", flags=flags)
-        if verdict == "from-proto":
-            if status != "status:poc-validated":
-                refuse("not-accepted", expected="status:poc-validated")
-            return {"ok": True, "verdict": verdict, "issue": number, "status": status, "title": issue["title"]}
-        if verdict == "accept":
-            if status == "status:poc-validated":
-                return {"ok": True, "changed": False, "verdict": verdict, "issue": number, "status": status}
-            if status != "status:poc-review":
-                refuse("not-reviewable", expected="status:poc-review")
-            after = self._write(number, labels - {"status:poc-review"} | {"status:poc-validated"})
-            return {"ok": True, "changed": True, "verdict": verdict, "issue": number,
-                    "status": status_of(after["labels"]), "event": self._event(after, "accept", "proto")}
-        if status not in POC_OPEN:
-            refuse("not-rejectable", expected=list(POC_OPEN))
-        if not (reason or "").strip():
-            raise Refused({"ok": False, "reason": "reason-required"})
-        self.gh.post_comment(number, reason)  # the reason is on the record before anything changes
-        labels = {l for l in labels if not l.startswith("status:")} - {"can-resume"} | {"status:poc-rejected"}
-        after = self._write(number, labels, [], {"state": "closed", "state_reason": "not_planned"})
-        return {"ok": True, "changed": True, "verdict": "reject", "issue": number,
-                "status": status_of(after["labels"]), "state": after["state"],
-                "event": self._event(after, "reject", "proto")}
 
     def proto_pack(self, number, html_path, out_dir, brief=None, height=None):
         """Check a prototype's mockup and write the cockpit documents for it: proto-<n>.json (the
@@ -1066,8 +951,8 @@ class Machine:
         if raw is None:
             raise Refused({"ok": False, "reason": "not-found", "issue": number})
         issue = normalize(raw)
-        if "type:poc" not in issue["labels"]:
-            raise Refused({"ok": False, "reason": "not-a-poc", "issue": number})
+        if "run:proto" not in issue["labels"]:
+            raise Refused({"ok": False, "reason": "not-a-proto-run", "issue": number})
         with open(html_path, encoding="utf-8") as handle:
             html = handle.read()
         size = len(html.encode("utf-8"))
@@ -1127,6 +1012,238 @@ class Machine:
         self.gh.post_comment(number, comment)  # the resolution is always on the record first
         after = self._write(number, labels - {"needs-human"})
         return {"ok": True, "issue": number, "flagged": False, "event": self._event(after, "unflag")}
+
+    # ---- runs: one JSON comment on the run's issue, advanced by the workflow's own data -------------------------
+    RUN_MARK = "<!-- pilot:run -->"
+
+    def _wf(self, workflow):
+        if workflow not in self.wfs:
+            raise Refused({"ok": False, "reason": "unknown-workflow", "expected": sorted(self.wfs)})
+        return self.wfs[workflow]
+
+    def _run_comment(self, number):
+        found = None
+        for item in self.gh.comment_items(number):
+            if item["body"].startswith(self.RUN_MARK):
+                found = item
+        if found is None:
+            raise Refused({"ok": False, "reason": "no-run", "issue": number})
+        body = found["body"][len(self.RUN_MARK):].strip()
+        return found["id"], json.loads(body.removeprefix("```json").removesuffix("```").strip())
+
+    def _run_write(self, number, comment_id, record):
+        text = self.RUN_MARK + "\n```json\n" + json.dumps(record, ensure_ascii=False, indent=1) + "\n```"
+        if comment_id is None:
+            self.gh.post_comment(number, text)
+        else:
+            self.gh.patch_comment(comment_id, text)
+
+    def _run_event(self, number, record, action):
+        return {"kind": "run", "n": number, "workflow": record["workflow"], "step": record["step"], "state": record["state"],
+                "loops": record["loops"], "action": action, "by": self.gh.me(), "at": now_iso()}
+
+    @staticmethod
+    def step_view(step):
+        """What a runner needs to run one step: no prose, only the fields that decide what to do."""
+        keep = ("id", "n", "kind", "title", "actor", "agents", "task", "check", "judge", "questions", "open_if", "loop_to",
+                "alt_of", "on_fail", "on_reject", "in", "out")
+        return {k: step[k] for k in keep if k in step}
+
+    def run_start(self, workflow, issue=None, title=None, data=None):
+        wf = self._wf(workflow)
+        record = {"v": 1, "workflow": workflow, "state": "running", "step": wf["steps"][0]["id"], "history": [], "loops": {},
+                  "assumptions": [], "data": data or {}, "started": now_iso()}
+        if issue is None:
+            made = self.gh.create_issue(f"run:{workflow} {title or ''}".strip(), "A PILOT run. Its state is the JSON comment below.",
+                                        [f"run:{workflow}"], [self.gh.me()])
+            issue = made["number"]
+        else:
+            raw = self.gh.get_issue(issue)
+            if raw is None:
+                raise Refused({"ok": False, "reason": "not-found", "issue": issue})
+            try:
+                _cid, old = self._run_comment(issue)
+                if old["state"] != "done" and old["workflow"] == workflow:
+                    raise Refused({"ok": False, "reason": "run-in-progress", "issue": issue, "step": old["step"],
+                                   "hint": "`pilot.py run resume`"})
+            except Refused as err:
+                if err.payload.get("reason") != "no-run":
+                    raise
+        self._run_write(issue, None, record)
+        return {"ok": True, "run": issue, "step": self.step_view(wf["steps"][0]),
+                "event": self._run_event(issue, record, "start")}
+
+    def run_show(self, number):
+        _cid, record = self._run_comment(number)
+        step = next((s for s in self._wf(record["workflow"])["steps"] if s["id"] == record["step"]), None)
+        return {"ok": True, "run": number, **record, "current": self.step_view(step) if step else None}
+
+    def run_note(self, number, assumption=None, data=None):
+        """Record an assumption (with its default, shown at the gate) or a value the later steps need (e.g. the executant)."""
+        cid, record = self._run_comment(number)
+        if assumption:
+            record["assumptions"].append(assumption)
+        record["data"].update(data or {})
+        self._run_write(number, cid, record)
+        return {"ok": True, "run": number, "assumptions": len(record["assumptions"]), "data": record["data"]}
+
+    def run_advance(self, number, result, note=None):
+        """The next step after the current one, decided by the workflow's data: ok, skip, loop (a human revised: back to the
+        step that audits), fail (a check, judge or validator: back to the producer, twice at most, then the gate or a question)
+        or reject:<label> (a gate sends the work back where its label says)."""
+        cid, record = self._run_comment(number)
+        wf = self._wf(record["workflow"])
+        steps = wf["steps"]
+        index = next(i for i, s in enumerate(steps) if s["id"] == record["step"])
+        cur = steps[index]
+        if record["state"] == "done":
+            raise Refused({"ok": False, "reason": "run-done", "run": number})
+        record["history"].append({"step": cur["id"], "result": result, "at": now_iso(), **({"note": note} if note else {})})
+
+        def jump(step_id):
+            return next(i for i, s in enumerate(steps) if s["id"] == step_id)
+
+        def following(i):
+            j = i + 1
+            if j + 1 < len(steps) and steps[j + 1].get("alt_of") == steps[j]["id"]:  # entering alternatives: one runs
+                return j + 1 if record["data"].get("executant") == "human" else j
+            if j < len(steps) and steps[j].get("alt_of") == steps[i]["id"]:  # leaving the first alternative: skip the other
+                return j + 1
+            return j
+
+        record["state"] = "running"
+        target = None
+        if result in ("ok", "skip"):
+            target = following(index)
+            if cur["kind"] == "end":
+                record["state"] = "done"
+                target = None
+        elif result == "loop":
+            if not cur.get("loop_to"):
+                raise Refused({"ok": False, "reason": "no-loop", "step": cur["id"]})
+            target = jump(cur["loop_to"])
+        elif result == "fail":
+            rule = cur.get("on_fail")
+            if not rule:
+                raise Refused({"ok": False, "reason": "no-on-fail", "step": cur["id"]})
+            count = record["loops"].get(cur["id"], 0)
+            if count < rule.get("max", 2):
+                record["loops"][cur["id"]] = count + 1
+                target = jump(rule["to"])
+            elif rule.get("then") == "gate":
+                target = next((i for i in range(index + 1, len(steps)) if steps[i]["kind"] == "human-gate"), None)
+                record["data"]["escalated"] = {"from": cur["id"], "failures": count + 1}
+                if target is None:
+                    record["state"] = "waiting-human"
+            else:
+                record["state"] = "waiting-human"
+                record["data"]["escalated"] = {"from": cur["id"], "failures": count + 1}
+        elif result.startswith("reject:"):
+            label = result.split(":", 1)[1]
+            rule = next((r for r in cur.get("on_reject", []) if r["label"] == label), None)
+            if not rule:
+                raise Refused({"ok": False, "reason": "unknown-reject", "step": cur["id"],
+                               "expected": [r["label"] for r in cur.get("on_reject", [])]})
+            target = jump(rule["to"])
+        else:
+            raise Refused({"ok": False, "reason": "unknown-result", "expected": ["ok", "skip", "loop", "fail", "reject:<label>"]})
+        if target is not None and target >= len(steps):
+            record["state"], target = "done", None
+        if target is not None:
+            record["step"] = steps[target]["id"]
+        self._run_write(number, cid, record)
+        out = {"ok": True, "run": number, "from": cur["id"], "state": record["state"], "loops": record["loops"],
+               "event": self._run_event(number, record, "advance:" + result)}
+        if record["state"] == "running" and target is not None:
+            out["step"] = self.step_view(steps[target])
+        if record["state"] == "waiting-human":
+            out["escalated"] = record["data"].get("escalated")
+        return out
+
+    def run_resume(self, number):
+        """Where a run stopped: its step, loop counters and assumptions. Refused while a human question is open."""
+        raw = self.gh.get_issue(number)
+        if raw is None:
+            raise Refused({"ok": False, "reason": "not-found", "issue": number})
+        issue = normalize(raw)
+        if "needs-human" in issue["labels"]:
+            raise Refused({"ok": False, "reason": "needs-human", "issue": number, "hint": "a human removes the flag first"})
+        cid, record = self._run_comment(number)
+        if record["state"] == "done":
+            raise Refused({"ok": False, "reason": "run-done", "run": number})
+        record["state"] = "running"
+        self._run_write(number, cid, record)
+        shown = self.run_show(number)
+        return {**shown, "event": self._run_event(number, record, "resume")}
+
+    def run_end(self, number, result=None, data=None):
+        """Close a run: the record stays as the last comment (a Recette's record is read from it, a prototype's verdict too);
+        a run issue is closed, a ticket is left to its own status."""
+        cid, record = self._run_comment(number)
+        record.update({"state": "done", "ended": now_iso(), "result": result, "step": record["step"]})
+        if data:
+            record["record"] = data
+        self._run_write(number, cid, record)
+        raw = normalize(self.gh.get_issue(number))
+        if not any(l.startswith("level:") for l in raw["labels"]):
+            self._write(number, raw["labels"], [], {"state": "closed", "state_reason": "completed"})
+        return {"ok": True, "run": number, "result": result, "event": self._run_event(number, record, "end")}
+
+    # ---- tickets: the two human closings, and the statuses derived from the children --------------------------
+    def ticket_close_forming(self, number, drop=False):
+        raw = self.gh.get_issue(number)
+        if raw is None:
+            raise Refused({"ok": False, "reason": "not-found", "issue": number})
+        issue = normalize(raw)
+        status = status_of(issue["labels"])
+        allowed = ("status:forming", "status:to-plan") if drop else ("status:forming",)
+        if status not in allowed:
+            raise Refused({"ok": False, "reason": "wrong-status", "issue": number, "status": status, "expected": list(allowed)})
+        new = "wont-do" if drop else "to-plan"
+        return self.set(number, new, None, (), (), close=drop)
+
+    def derive(self, number):
+        """The status of a split story (from its tasks) or of an epic (from its stories), written when it changed."""
+        raw = self.gh.get_issue(number)
+        if raw is None:
+            raise Refused({"ok": False, "reason": "not-found", "issue": number})
+        issue = normalize(raw)
+        status = status_of(issue["labels"])
+        children = [normalize(c) for c in self.gh.sub_issues(number)]
+        if "level:story" in issue["labels"] and status in ("status:planned", "status:building", "status:merged") and children:
+            states = [status_of(c["labels"]) for c in children]
+            if all(s in ("status:merged", "status:done") for s in states):
+                new = "merged"
+            elif any(s in ("status:building", "status:reviewing", "status:merged", "status:done") for s in states):
+                new = "building"
+            else:
+                new = "planned"
+        elif "level:epic" in issue["labels"] and status == "status:planned" and children:
+            done = all(c["state"] == "closed" for c in children)
+            new = "done" if done else "planned"
+        else:
+            return {"ok": True, "issue": number, "status": status, "changed": False}
+        if f"status:{new}" == status:
+            return {"ok": True, "issue": number, "status": status, "changed": False}
+        result = self.set(number, new, None, (), (), close=(new == "done" and "level:epic" in issue["labels"]))
+        return {**result, "changed": True}
+
+    def sync_labels(self):
+        """Create or update every PILOT label (idempotent), and stamp `lastLabelsSyncAt` in .pilot/state.json when it exists."""
+        names = required_labels(self.wfs)
+        have = self.gh.label_names()
+        for name in sorted(names):
+            color, description = LABELS.get(name, ("EDEDED", f"PILOT: a run of the {name.split(':', 1)[-1]} workflow"))
+            self.gh.upsert_label(name, color, description, name in have)
+        if os.path.exists(self.state_path):
+            with open(self.state_path, encoding="utf-8") as handle:
+                state = json.load(handle)
+            if "lastLabelsSyncAt" in state:
+                state["lastLabelsSyncAt"] = now_iso()
+                with open(self.state_path, "w", encoding="utf-8") as handle:
+                    json.dump(state, handle, ensure_ascii=False, indent=2)
+                    handle.write("\n")
+        return {"ok": True, "labels": len(names)}
 
 
 def split_frontmatter(text):
@@ -2236,9 +2353,12 @@ def build_parser():
     sub = parser.add_subparsers(dest="cmd", required=True)
     _add = sub.add_parser
     sub.add_parser = lambda *a, **k: _add(*a, parents=[common], **k)
-    phases = sorted(PHASES)
+    try:
+        phases = sorted(w for w, wf in load_workflows().items() if (wf.get("contract") or {}).get("claims"))
+    except Refused:
+        phases = []
     p = sub.add_parser("pool")
-    p.add_argument("phase", choices=[x for x in phases if x != "proto"])
+    p.add_argument("phase", choices=phases)
     p.add_argument("--limit", type=int, default=5)
     p = sub.add_parser("resolve")
     p.add_argument("phase", choices=phases)
@@ -2248,10 +2368,10 @@ def build_parser():
     p.add_argument("phase", choices=phases)
     p.add_argument("issue", type=int)
     p.add_argument("--mode", required=True,
-                   choices=["fresh", "reclaim", "resume-orphaned", "resume-cleared", "rescope"])
+                   choices=["fresh", "resume-orphaned", "resume-cleared"])
     p = sub.add_parser("set")
     p.add_argument("issue", type=int)
-    p.add_argument("--status", help="a status name (e.g. review-ready) or 'none'")
+    p.add_argument("--status", help="a status name (e.g. building) or 'none'")
     group = p.add_mutually_exclusive_group()
     group.add_argument("--assign-me", action="store_true")
     group.add_argument("--unassign", action="store_true")
@@ -2259,12 +2379,8 @@ def build_parser():
     p.add_argument("--remove", action="append", default=[])
     p.add_argument("--close", action="store_true")
     p.add_argument("--pr", type=int, help="the open PR that closes this ticket, forwarded in the event")
-    p = sub.add_parser("proto")
-    p.add_argument("issue", type=int)
-    p.add_argument("verdict", choices=["accept", "reject", "from-proto"])
-    p.add_argument("--reason", help="why a prototype is rejected (required by reject)")
     p = sub.add_parser("proto-pack")
-    p.add_argument("issue", type=int)
+    p.add_argument("issue", type=int, help="the prototype's run issue")
     p.add_argument("--html", required=True, help="the mockup, one self-contained HTML file")
     p.add_argument("--out", required=True, help="directory for the documents to write to the cockpit")
     p.add_argument("--brief")
@@ -2306,13 +2422,48 @@ def build_parser():
         w.add_argument("folder")
         w.add_argument("description")
 
-    p = sub.add_parser("contract", help="a phase's contract (consumes, claims, produces), or all of them and the check that they compose")
-    p.add_argument("phase", nargs="?", choices=sorted(CONTRACTS))
-    p.add_argument("--profile", choices=list(PROFILES), help="the workflow profile (default: the project's, else standard)")
-    p = sub.add_parser("workflow", help="the project's workflow profile: show it, check that every profile composes, or set it")
-    p.add_argument("action", choices=["show", "check", "set"])
-    p.add_argument("name", nargs="?", choices=list(PROFILES))
-    p.add_argument("--ticket", type=int, help="show: one ticket's route (its mode, reviewers, Spec rule); needs GitHub")
+    p = sub.add_parser("contract", help="a workflow's contract (consumes, claims, produces), or all of them and the check that they compose")
+    p.add_argument("workflow", nargs="?")
+    p = sub.add_parser("workflow", help="the workflows as data: list them, show one (or one step), check them")
+    p.add_argument("action", choices=["list", "show", "check"])
+    p.add_argument("id", nargs="?")
+    p.add_argument("--step", help="show: one step, in the form a runner needs (id or number)")
+    p = sub.add_parser("run", help="a run of a workflow: its state is one JSON comment on its issue")
+    rs = p.add_subparsers(dest="run_cmd", required=True)
+    w = rs.add_parser("start", parents=[common])
+    w.add_argument("workflow")
+    w.add_argument("--issue", type=int, help="the ticket it works (default: a new `run` issue)")
+    w.add_argument("--title")
+    w.add_argument("--data", help="JSON object kept in the run (e.g. the executant)")
+    w = rs.add_parser("show", parents=[common])
+    w.add_argument("issue", type=int)
+    w = rs.add_parser("note", parents=[common], help="record an assumption, or a value later steps need")
+    w.add_argument("issue", type=int)
+    w.add_argument("--assumption")
+    w.add_argument("--data", help="JSON object merged into the run's data")
+    w = rs.add_parser("advance", parents=[common], help="the next step, decided by the workflow's data")
+    w.add_argument("issue", type=int)
+    w.add_argument("--result", required=True, help="ok | skip | loop | fail | reject:<label>")
+    w.add_argument("--note")
+    w = rs.add_parser("resume", parents=[common])
+    w.add_argument("issue", type=int)
+    w = rs.add_parser("end", parents=[common])
+    w.add_argument("issue", type=int)
+    w.add_argument("--result", help="e.g. accepted, rejected, ok, ko")
+    w.add_argument("--record", help="a JSON file kept in the run's last comment (a Recette's record)")
+    p = sub.add_parser("ticket", help="the two human closings of a ticket")
+    p.add_argument("action", choices=["close-forming", "drop"])
+    p.add_argument("issue", type=int)
+    p = sub.add_parser("derive", help="a split story's status from its tasks, an epic's from its stories")
+    p.add_argument("issue", type=int)
+    p = sub.add_parser("labels", help="create or update every PILOT label")
+    p.add_argument("action", choices=["sync"])
+    p = sub.add_parser("check", help="run one code check of a workflow step")
+    p.add_argument("id")
+    p.add_argument("--input", help="the JSON file the check reads")
+    p = sub.add_parser("judge", help="validate a judge's answers: every question answered twice, with a quote, passes agreeing")
+    p.add_argument("id")
+    p.add_argument("--input", required=True, help="the JSON file of the two passes")
     p = sub.add_parser("wiki")
     p.add_argument("--dir", default=WIKI_DIR, help="the wiki directory (default: wiki)")
     ws = p.add_subparsers(dest="bundle_cmd", required=True)
@@ -2437,41 +2588,102 @@ def run_bundle(args, gh):
 
 
 def run_contract(args):
-    profile = getattr(args, "profile", None) or read_profile()
-    if args.phase:
-        return phase_contract(args.phase, profile)
-    ch = chain(profile)
-    problems = composition_problems(profile)
-    return {"ok": not problems, "profile": profile, "phases": {p: phase_contract(p, profile) for p in sorted(ch["contracts"])},
-            "external": [list(t) for t in ch["external"]], "sinks": list(SINKS), "problems": problems}
+    wfs = load_workflows()
+    if args.workflow:
+        return workflow_contract(wfs, args.workflow)
+    problems = composition_problems(wfs)
+    return {"ok": not problems, "workflows": {w: workflow_contract(wfs, w) for w in sorted(wfs) if (wfs[w].get("contract") or {})},
+            "external": [list(t) for t in EXTERNAL], "sinks": list(SINKS), "problems": problems}
 
 
-def run_workflow(args, gh=None):
-    if args.action == "show" and getattr(args, "ticket", None):
-        raw = gh.get_issue(args.ticket)
-        if raw is None:
-            raise Refused({"ok": False, "reason": "not-found", "issue": args.ticket})
-        return {"issue": args.ticket, **ticket_route(normalize(raw), STATE_PATH)}
-    if args.action == "set":
-        if not args.name:
-            raise Refused({"ok": False, "reason": "profile-name-required", "expected": list(PROFILES)})
-        return set_workflow(args.name)
+def run_workflow(args):
+    wfs = load_workflows()
+    if args.action == "list":
+        return {"ok": True, "workflows": [{"id": w, "title": wf["title"], "category": wf["category"], "steps": len(wf["steps"])}
+                                          for w, wf in sorted(wfs.items())]}
     if args.action == "check":
-        profiles = {name: {"ready": meta["ready"], "phases": sorted(chain(name)["contracts"]),
-                           "rules": profile_rules(name), "problems": profile_problems(name)}
-                    for name, meta in PROFILES.items()}
-        return {"ok": not any(p["problems"] for p in profiles.values()), "profiles": profiles}
-    current = read_workflow()
-    problems = profile_problems(current["profile"])
-    return {"ok": not problems, **current, "ignored": workflow_ignored(), "ready": PROFILES[current["profile"]]["ready"],
-            "phases": sorted(chain(current["profile"])["contracts"]), "rules": profile_rules(current["profile"]),
-            "problems": problems}
+        problems = workflow_problems(wfs)
+        return {"ok": not problems, "workflows": len(wfs), "problems": problems}
+    if args.id not in wfs:
+        raise Refused({"ok": False, "reason": "unknown-workflow", "expected": sorted(wfs)})
+    wf = wfs[args.id]
+    if args.step:
+        step = next((s for s in wf["steps"] if args.step in (s["id"], s["n"])), None)
+        if step is None:
+            raise Refused({"ok": False, "reason": "unknown-step", "expected": [s["id"] for s in wf["steps"]]})
+        return {"ok": True, "workflow": args.id, "step": Machine.step_view(step)}
+    return {"ok": True, "workflow": args.id, "title": wf["title"], "category": wf["category"], "contract": wf.get("contract"),
+            "steps": [Machine.step_view(s) for s in wf["steps"]]}
+
+
+def judge_check(wfs, jid, passes):
+    """A judge's answers are valid when both passes answer every question with yes or no and a quote, and agree. The failing
+    questions are those answered the way their `fail_on` says."""
+    step = next((s for wf in wfs.values() for s in wf["steps"] if s.get("judge") == jid), None)
+    if step is None:
+        raise Refused({"ok": False, "reason": "unknown-judge", "expected": sorted(s["judge"] for wf in wfs.values() for s in wf["steps"] if s.get("judge"))})
+    questions, problems = step["questions"], []
+    if not isinstance(passes, list) or len(passes) != 2:
+        raise Refused({"ok": False, "reason": "two-passes-required"})
+    answers = []
+    for n, one in enumerate(passes, 1):
+        by_q = {a.get("q"): a for a in one if isinstance(a, dict)}
+        row = {}
+        for i, q in enumerate(questions):
+            a = by_q.get(i)
+            if a is None:
+                if q.get("when") is None:
+                    problems.append({"code": "unanswered", "pass": n, "q": i})
+                continue
+            if a.get("answer") not in ("yes", "no"):
+                problems.append({"code": "answer-not-yes-or-no", "pass": n, "q": i})
+            elif not str(a.get("quote") or "").strip():
+                problems.append({"code": "no-quote", "pass": n, "q": i})
+            else:
+                row[i] = a["answer"]
+        answers.append(row)
+    for i in sorted(set(answers[0]) & set(answers[1])):
+        if answers[0][i] != answers[1][i]:
+            problems.append({"code": "passes-disagree", "q": i})
+    failing = [{"q": i, "text": questions[i]["q"]} for i in sorted(set(answers[0]) & set(answers[1]))
+               if answers[0][i] == answers[1][i] == questions[i]["fail_on"]]
+    return {"ok": not problems, "judge": jid, "problems": problems, "failing": failing, "passed": not problems and not failing}
+
+
+def run_check(args, wfs):
+    fn = CHECKS.get(args.id)
+    if fn is None:
+        raise Refused({"ok": False, "reason": "unimplemented-check", "check": args.id, "implemented": sorted(CHECKS)})
+    data = {}
+    if args.input:
+        with open(args.input, encoding="utf-8") as handle:
+            data = json.load(handle)
+    problems = fn(data)
+    return {"ok": not problems, "check": args.id, "problems": problems}
+
+
+def run_runs(args, gh):
+    machine = Machine(gh)
+    cmd = args.run_cmd
+    if cmd == "start":
+        return machine.run_start(args.workflow, args.issue, args.title, json.loads(args.data) if args.data else None)
+    if cmd == "show":
+        return machine.run_show(args.issue)
+    if cmd == "note":
+        return machine.run_note(args.issue, args.assumption, json.loads(args.data) if args.data else None)
+    if cmd == "advance":
+        return machine.run_advance(args.issue, args.result, args.note)
+    if cmd == "resume":
+        return machine.run_resume(args.issue)
+    record = None
+    if args.record:
+        with open(args.record, encoding="utf-8") as handle:
+            record = json.load(handle)
+    return machine.run_end(args.issue, args.result, record)
 
 
 def needs_github(args):
-    if args.cmd == "workflow":
-        return bool(getattr(args, "ticket", None))
-    if args.cmd in ("module", "contract", "flow"):
+    if args.cmd in ("module", "contract", "flow", "workflow", "check", "judge"):
         return False
     if args.cmd == "arch":
         return False
@@ -2557,7 +2769,14 @@ def run(args, gh):
     if args.cmd == "flow":
         return run_flow(args)
     if args.cmd == "workflow":
-        return run_workflow(args, gh)
+        return run_workflow(args)
+    if args.cmd == "judge":
+        with open(args.input, encoding="utf-8") as handle:
+            return judge_check(load_workflows(), args.id, json.load(handle))
+    if args.cmd == "check":
+        return run_check(args, None)
+    if args.cmd == "run":
+        return run_runs(args, gh)
     if args.cmd in ("wiki", "arch"):
         return run_bundle(args, gh)
     machine = Machine(gh)
@@ -2570,8 +2789,12 @@ def run(args, gh):
     if args.cmd == "set":
         assign = "me" if args.assign_me else "none" if args.unassign else None
         return machine.set(args.issue, args.status, assign, args.add, args.remove, args.close, args.pr)
-    if args.cmd == "proto":
-        return machine.proto(args.issue, args.verdict, args.reason)
+    if args.cmd == "ticket":
+        return machine.ticket_close_forming(args.issue, drop=args.action == "drop")
+    if args.cmd == "derive":
+        return machine.derive(args.issue)
+    if args.cmd == "labels":
+        return machine.sync_labels()
     if args.cmd == "proto-pack":
         return machine.proto_pack(args.issue, args.html, args.out, args.brief, args.height)
     if args.cmd == "event":
@@ -2606,7 +2829,7 @@ def main(argv=None):
         print(json.dumps({"error": str(err) or "gh CLI not found"}))
         return 2
     print(json.dumps({"repo": repo, **result} if repo else result, ensure_ascii=False))
-    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki", "arch", "contract", "workflow") else 0
+    return 1 if result.get("ok") is False and args.cmd in ("doctor", "wiki", "arch", "contract", "workflow", "check", "judge") else 0
 
 
 if __name__ == "__main__":

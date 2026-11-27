@@ -1,0 +1,577 @@
+{
+ "id": "technical-frame",
+ "title": "Cadre technique",
+ "category": "admin",
+ "steps": [
+  {
+   "id": "start",
+   "n": "1",
+   "kind": "human-start",
+   "title": "Intention",
+   "actor": "Humain T",
+   "in": [
+    [
+     "TEXTE",
+     "La préoccupation, dans ses mots"
+    ]
+   ],
+   "out": [
+    [
+     "TEXTE",
+     "Intention technique"
+    ]
+   ]
+  },
+  {
+   "id": "audit",
+   "n": "2",
+   "kind": "agent",
+   "title": "Auditeur",
+   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "agents": [
+    {
+     "persona": "architect"
+    }
+   ],
+   "task": "audit",
+   "in": [
+    [
+     "TEXTE",
+     "Intention technique"
+    ],
+    [
+     "ARCHI GLOBAL",
+     "Overview et guidelines dont le périmètre recoupe celui de l'intention. Sélection par script, index d'abord. Jamais le code"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Delta : recouvre, contredit, modifie, trou. Trois champs par ligne : entrée, conséquence, résolution proposée. Vide si RAS"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+    ]
+   ]
+  },
+  {
+   "id": "challenge",
+   "n": "3",
+   "kind": "human-optional",
+   "title": "Challenge",
+   "actor": "Humain T, ouvert par script seulement si le delta n'est pas vide",
+   "in": [
+    [
+     "RAPPORT",
+     "Le delta, court et en forme fixe"
+    ],
+    [
+     "TEXTE",
+     "À la demande : une question à l'auditeur sur une ligne du delta"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Maintient ou modifie l'intention"
+    ],
+    [
+     "TEXTE",
+     "Intention révisée, retour à l'audit"
+    ],
+    [
+     "RAPPORT",
+     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+    ]
+   ],
+   "open_if": "delta-not-empty",
+   "loop_to": "audit"
+  },
+  {
+   "id": "write",
+   "n": "4",
+   "kind": "agent",
+   "title": "Rédacteur",
+   "actor": "IA",
+   "agents": [
+    {
+     "persona": "architect"
+    }
+   ],
+   "task": "write-technical-frame",
+   "in": [
+    [
+     "TEXTE",
+     "Intention technique"
+    ],
+    [
+     "RAPPORT",
+     "Delta"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé"
+    ]
+   ],
+   "out": [
+    [
+     "ARCHI GLOBAL",
+     "Guideline proposée, ou mise à jour de l'overview : la règle, sa raison en quelques lignes, ce qu'elle remplace, comment la vérifier (linter, test, build ou jugement), son périmètre"
+    ]
+   ]
+  },
+  {
+   "id": "validate",
+   "n": "5",
+   "kind": "validator",
+   "title": "Validateur",
+   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "agents": [
+    {
+     "persona": "techlead"
+    }
+   ],
+   "task": "validate",
+   "in": [
+    [
+     "TEXTE",
+     "Intention technique"
+    ],
+    [
+     "ARCHI GLOBAL",
+     "Guideline proposée"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Liste de défauts, critique libre"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "check",
+   "n": "6",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "technical-frame.check",
+   "in": [
+    [
+     "ARCHI GLOBAL",
+     "Guideline proposée"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Schéma valide, périmètre présent et issu du vocabulaire, identifiants cités existants, chaque énoncé cite sa source, mots ambigus, vérification renseignée, aucun recouvrement de périmètre avec une guideline acceptée sans « remplace »"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "judge",
+   "n": "7",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "IA, quatre questions fixes, citation exigée",
+   "task": "judge",
+   "judge": "technical-frame.judge",
+   "questions": [
+    {
+     "q": "Chaque phrase de l'intention est-elle portée ?",
+     "fail_on": "no"
+    },
+    {
+     "q": "Un énoncé est-il non soutenu par sa source citée ?",
+     "fail_on": "yes"
+    },
+    {
+     "q": "Y a-t-il contradiction avec une guideline citée ?",
+     "fail_on": "yes"
+    },
+    {
+     "q": "Deux énoncés se contredisent-ils ?",
+     "fail_on": "yes"
+    }
+   ],
+   "in": [
+    [
+     "TEXTE",
+     "Intention technique"
+    ],
+    [
+     "ARCHI GLOBAL",
+     "Guideline proposée"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non, avec citation : chaque phrase de l'intention est-elle portée ? un énoncé non soutenu par sa source citée ? contradiction avec une guideline citée ? deux énoncés qui se contredisent ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "gate",
+   "n": "8",
+   "kind": "human-gate",
+   "title": "Gate 1 · Relecture",
+   "actor": "Humain T",
+   "in": [
+    [
+     "ARCHI GLOBAL",
+     "Guideline proposée"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé"
+    ],
+    [
+     "RAPPORT",
+     "Contrôles de code et juge, tous verts"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Texte et périmètre validés. La guideline reste proposée tant que la règle n'est pas mergée"
+    ],
+    [
+     "TEXTE",
+     "Ou modifications : retour à l'intention"
+    ]
+   ],
+   "on_reject": [
+    {
+     "label": "fond",
+     "to": "start"
+    }
+   ]
+  },
+  {
+   "id": "implement",
+   "n": "9",
+   "kind": "agent",
+   "title": "Implémenteur",
+   "actor": "IA",
+   "agents": [
+    {
+     "persona": "dev"
+    }
+   ],
+   "task": "implement-rule",
+   "in": [
+    [
+     "ARCHI GLOBAL",
+     "Guideline validée, et les guidelines et outillage dont le périmètre recoupe le sien"
+    ]
+   ],
+   "out": [
+    [
+     "RÈGLE",
+     "Linter, test ou contrainte de build, limité au périmètre de la guideline"
+    ],
+    [
+     "TEST",
+     "Exemples qui doivent passer et qui doivent échouer"
+    ],
+    [
+     "CODE",
+     "Configuration dans architecture/ et le projet"
+    ]
+   ]
+  },
+  {
+   "id": "validate-2",
+   "n": "10",
+   "kind": "validator",
+   "title": "Validateur",
+   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "agents": [
+    {
+     "persona": "techlead"
+    }
+   ],
+   "task": "validate",
+   "in": [
+    [
+     "ARCHI GLOBAL",
+     "Guideline validée"
+    ],
+    [
+     "RÈGLE",
+     "La règle"
+    ],
+    [
+     "TEST",
+     "Exemples"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Liste de défauts, critique libre : la règle fait-elle ce que dit la guideline ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "implement",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "check-2",
+   "n": "11",
+   "kind": "check",
+   "title": "Contrôles de code et dossier",
+   "actor": "Script",
+   "check": "technical-frame.check-2",
+   "in": [
+    [
+     "RÈGLE",
+     "La règle"
+    ],
+    [
+     "TEST",
+     "Exemples"
+    ],
+    [
+     "CODE",
+     "Historique des changements et code actuel"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Chaque énoncé couvert par une règle ou marqué « jugement », chaque règle rattachée à un énoncé, exemples ok, règle non vide (violation injectée détectée)"
+    ],
+    [
+     "RAPPORT",
+     "Dossier d'une page : rejeu sur l'historique (changements qui auraient été bloqués), violations existantes par dossier"
+    ]
+   ],
+   "on_fail": {
+    "to": "implement",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "judge-2",
+   "n": "12",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "IA, question fixe, citation exigée",
+   "task": "judge",
+   "judge": "technical-frame.judge-2",
+   "questions": [
+    {
+     "q": "Les exemples illustrent-ils l'énoncé ?",
+     "fail_on": "no"
+    }
+   ],
+   "in": [
+    [
+     "ARCHI GLOBAL",
+     "Guideline validée"
+    ],
+    [
+     "RÈGLE",
+     "La règle et ses exemples"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non : les exemples illustrent-ils l'énoncé ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "implement",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "pr-ci",
+   "n": "13",
+   "kind": "check",
+   "title": "Ouverture de la PR et CI",
+   "actor": "Script",
+   "check": "technical-frame.pr-ci",
+   "in": [
+    [
+     "CODE",
+     "Configuration, règle et exemples"
+    ],
+    [
+     "RAPPORT",
+     "Contrôles de code et juge, tous verts"
+    ]
+   ],
+   "out": [
+    [
+     "CODE",
+     "Pull request ouverte sans revue d'agents : le diff et les rapports en description. La CI s'y exécute"
+    ],
+    [
+     "RAPPORT",
+     "CI verte sur la PR : le script attend le résultat. Le merge n'a lieu qu'après la gate"
+    ]
+   ],
+   "on_fail": {
+    "to": "implement",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "gate-2",
+   "n": "14",
+   "kind": "human-gate",
+   "title": "Gate 2 · Vérification",
+   "actor": "Humain T",
+   "in": [
+    [
+     "RAPPORT",
+     "CI verte sur la PR"
+    ],
+    [
+     "RAPPORT",
+     "Dossier d'une page"
+    ],
+    [
+     "RAPPORT",
+     "Couverture des énoncés, y compris ceux restés en « jugement »"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Merge : la guideline passe au statut accepté et la règle devient active"
+    ],
+    [
+     "CODE",
+     "Si violations tolérées : liste de base figée des violations existantes"
+    ],
+    [
+     "TEXTE",
+     "Si chantier de remédiation : nouveau besoin technique, workflow Conception technique (entrée 2)"
+    ],
+    [
+     "TEXTE",
+     "Ou rejet : règle trop large ou trop étroite, retour à l'implémenteur. Décision fausse, retour à l'intention"
+    ]
+   ],
+   "on_reject": [
+    {
+     "label": "fond",
+     "to": "start"
+    },
+    {
+     "label": "execution",
+     "to": "implement"
+    }
+   ]
+  },
+  {
+   "id": "end",
+   "n": "15",
+   "kind": "end",
+   "title": "Accepté · merge",
+   "in": [
+    [
+     "VALIDATION",
+     "Gate 2 passée"
+    ]
+   ],
+   "out": [
+    [
+     "CODE",
+     "PR mergée par script, après la gate"
+    ],
+    [
+     "ARCHI GLOBAL",
+     "Guideline acceptée dans architecture/, avec son périmètre"
+    ],
+    [
+     "RÈGLE",
+     "Active en CI"
+    ]
+   ]
+  }
+ ],
+ "doc": {
+  "contract": [
+   [
+    "Déclenché par",
+    "Une préoccupation technique : dette, incident, nouvelle contrainte, évolution de stack, exigence non fonctionnelle (performance, sécurité, accessibilité), nouveau périmètre à définir, ou un ADR local répété (promotion)."
+   ],
+   [
+    "Produit",
+    "Une guideline acceptée dans architecture/ et une règle active en CI."
+   ],
+   [
+    "Humain",
+    "Humain T, aux deux gates. Aucun humain F."
+   ]
+  ],
+  "notes": [
+   [
+    "Quand le challenge s'ouvre",
+    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+   ],
+   [
+    "Une PR, sans revue d'agents",
+    "Elle ne sert qu'à faire passer la CI avant main, parce que la règle bloquera toutes les PR suivantes. Le code a déjà été relu par le validateur, et l'humain valide le dossier à la gate. Le merge a lieu après la gate."
+   ],
+   [
+    "Vocabulaire de périmètres",
+    "Le définir ou le modifier est une décision de ce workflow, avec gate : front, back, mobile, ou toute autre découpe du projet."
+   ],
+   [
+    "Exigences non fonctionnelles",
+    "Performance, sécurité, accessibilité sont des décisions techniques : l'humain T les pose seul ici, avec une règle vérifiable (budget de performance, contrôle d'accessibilité automatique). Chaque réalisation les applique par les règles du cadre."
+   ],
+   [
+    "Partage avec la Conception technique",
+    "Une règle durable pour tout le code futur relève de ce workflow. Mettre le code existant en conformité relève de la Conception technique, entrée 2."
+   ],
+   [
+    "Seul workflow où l'audit ignore le code",
+    "L'intention est transverse : elle se confronte aux décisions déjà prises, pas à l'état du code."
+   ],
+   [
+    "La règle est le livrable",
+    "Une décision sans vérification est refusée au format. « Jugement » est permis, mais listé à la gate 2."
+   ],
+   [
+    "Le validateur de l'implémentation",
+    "Il s'ajoute aux exemples, à la règle non vide et au rejeu sur l'historique. Le protocole de contrôle, c'est-à-dire quand et combien de tours, sera défini plus tard."
+   ],
+   [
+    "Pas d'ADR ici",
+    "La raison d'une guideline tient dans la guideline elle-même. Les alternatives écartées ne sont pas conservées pour l'instant."
+   ]
+  ],
+  "lede": "Un humain T pose une décision technique qui ne dépend d'aucun besoin. Elle devient une guideline et une règle vérifiable en CI.",
+  "eyebrow": "Admin · décisions techniques transverses"
+ }
+}

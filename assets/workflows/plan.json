@@ -1,0 +1,523 @@
+{
+ "id": "plan",
+ "title": "Conception technique",
+ "category": "run",
+ "contract": {
+  "consumes": [
+   "to-plan"
+  ],
+  "claims": "planning",
+  "produces": [
+   "planned",
+   "ready"
+  ],
+  "resumable": [
+   "planning"
+  ]
+ },
+ "steps": [
+  {
+   "id": "eligibility",
+   "n": "1",
+   "kind": "check",
+   "title": "Éligibilité",
+   "actor": "Script, entrée 1 seulement",
+   "check": "plan.eligibility",
+   "in": [
+    [
+     "TICKET",
+     "Entrée 1 : l'epic ou la story"
+    ],
+    [
+     "WIKI",
+     "Les entrées de ses stories"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Epic ou story prête à concevoir (et toutes ses stories), entrées prêtes, critères valides, aucune conception en cours sur aucune"
+    ],
+    [
+     "TICKET",
+     "Statut de l'epic ou de la story : en conception"
+    ],
+    [
+     "WIKI",
+     "Statut de chaque entrée : en conception"
+    ]
+   ]
+  },
+  {
+   "id": "orientation",
+   "n": "2",
+   "kind": "human-start",
+   "title": "Orientation",
+   "actor": "Humain T",
+   "in": [
+    [
+     "WIKI",
+     "Entrée 1 : l'epic ou la story, ses entrées de besoin, intentions et critères"
+    ],
+    [
+     "TEXTE",
+     "Entrée 2 : le besoin technique, dans ses mots"
+    ],
+    [
+     "RAPPORT",
+     "Entrée 2, s'il y a lieu : la dérive relevée par la surveillance"
+    ]
+   ],
+   "out": [
+    [
+     "TEXTE",
+     "Orientation : contraintes, préférences, pistes, ou la déclaration explicite « aucune orientation ». L'humain T l'écrit lui-même, sans valeur par défaut. Entrée 2 : ajoute ce qui doit rester vrai après le changement"
+    ]
+   ]
+  },
+  {
+   "id": "audit",
+   "n": "3",
+   "kind": "agent",
+   "title": "Auditeur",
+   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "agents": [
+    {
+     "persona": "architect"
+    },
+    {
+     "persona": "techlead"
+    }
+   ],
+   "task": "audit",
+   "in": [
+    [
+     "WIKI",
+     "Entrées de besoin (entrée 1)"
+    ],
+    [
+     "TEXTE",
+     "Orientation"
+    ],
+    [
+     "ARCHI GLOBAL",
+     "Overview et guidelines, plus les ADR dont le périmètre recoupe celui du besoin. Sélection par script, index d'abord"
+    ],
+    [
+     "CODE",
+     "Structure et zones touchées"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Delta : recouvre, contredit, trou, zones de code touchées, surcoût estimé."
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre technique proposé pour chaque ticket (story ou tâche). Le périmètre fonctionnel vient de l'entrée de besoin"
+    ]
+   ]
+  },
+  {
+   "id": "challenge",
+   "n": "4",
+   "kind": "human-optional",
+   "title": "Challenge",
+   "actor": "Humain T, ouvert par script seulement si le delta n'est pas vide ou si le surcoût dépasse le seuil",
+   "in": [
+    [
+     "RAPPORT",
+     "Le delta, court et en forme fixe"
+    ],
+    [
+     "TEXTE",
+     "À la demande : une question à l'auditeur sur une ligne du delta"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Maintient ou modifie l'orientation"
+    ],
+    [
+     "TEXTE",
+     "Orientation révisée, retour à l'audit"
+    ],
+    [
+     "QUESTION",
+     "Si surcoût ou critère impossible : carte à options chiffrées pour l'humain F, entrée au statut à recadrer"
+    ],
+    [
+     "RAPPORT",
+     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+    ]
+   ],
+   "open_if": "delta-not-empty-or-overcost",
+   "loop_to": "audit"
+  },
+  {
+   "id": "write",
+   "n": "5",
+   "kind": "agent",
+   "title": "Rédacteur",
+   "actor": "IA",
+   "agents": [
+    {
+     "persona": "architect",
+     "when": "les ADR et les périmètres"
+    },
+    {
+     "persona": "techlead",
+     "when": "le découpage et les tickets"
+    }
+   ],
+   "task": "write-plan",
+   "in": [
+    [
+     "WIKI",
+     "Entrées de besoin"
+    ],
+    [
+     "TEXTE",
+     "Orientation"
+    ],
+    [
+     "RAPPORT",
+     "Delta"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre technique proposé"
+    ],
+    [
+     "TEXTE",
+     "Aux tours suivants : la réponse de l'humain T, ou ses retours de la gate"
+    ]
+   ],
+   "out": [
+    [
+     "ADR",
+     "ADR locaux, statut proposé, avec leur périmètre. Entrée 2 : porte aussi le pourquoi du besoin, faute d'entrée de wiki"
+    ],
+    [
+     "CRITÈRES",
+     "Entrée 2 seulement : critères techniques portés par les tickets (non-régression, invariant vérifiable)"
+    ],
+    [
+     "TICKET",
+     "Découpage proposé : chaque story telle quelle, ou découpée en tâches seulement si nécessaire. Pour chaque ticket : critères, décisions liées, dépendances, périmètre"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses prises : chaque point où il a choisi une valeur par défaut (un choix technique, un découpage, un périmètre), avec la question qu'il aurait posée et sa valeur par défaut. Il continue avec cette valeur"
+    ],
+    [
+     "QUESTION",
+     "Seulement si un point le bloque : voir l'étape suivante"
+    ]
+   ]
+  },
+  {
+   "id": "ask",
+   "n": "6",
+   "kind": "human-optional",
+   "title": "Question du rédacteur",
+   "actor": "Humain T, seulement si le rédacteur est bloqué : répond à sa question",
+   "in": [
+    [
+     "QUESTION",
+     "Carte : le point qui bloque, les options, la recommandation du rédacteur"
+    ]
+   ],
+   "out": [
+    [
+     "TEXTE",
+     "Réponse, retour au rédacteur : il reprend"
+    ]
+   ],
+   "open_if": "blocked",
+   "loop_to": "write"
+  },
+  {
+   "id": "validate",
+   "n": "7",
+   "kind": "validator",
+   "title": "Validateur",
+   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "agents": [
+    {
+     "persona": "pm",
+     "when": "entrée 1 : les critères sont couverts, le besoin n'est pas déformé"
+    },
+    {
+     "persona": "dev",
+     "when": "entrée 2 : les ADR sont applicables, les tâches autonomes"
+    }
+   ],
+   "task": "validate",
+   "in": [
+    [
+     "WIKI",
+     "Entrée 1 : entrées de besoin"
+    ],
+    [
+     "TEXTE",
+     "Entrée 2 : le besoin technique et son pourquoi"
+    ],
+    [
+     "ADR",
+     "ADR locaux"
+    ],
+    [
+     "TICKET",
+     "Tickets proposés"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Liste de défauts, critique libre. Entrée 1 : les critères sont-ils couverts, le besoin est-il déformé ? Entrée 2 : les ADR sont-ils applicables, les tâches autonomes ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "check",
+   "n": "8",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "plan.check",
+   "in": [
+    [
+     "ADR",
+     "ADR locaux"
+    ],
+    [
+     "TICKET",
+     "Tickets proposés"
+    ],
+    [
+     "WIKI",
+     "Entrées de besoin, pour leurs critères"
+    ],
+    [
+     "CODE",
+     "Structure du code, pour mesurer la taille de lecture de chaque tâche"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Schéma valide, périmètres issus du vocabulaire, chaque critère (de chaque entrée de la story, ou porté par la tâche) dans exactement un ticket, la story ou l'une de ses tâches, dépendances sans cycle, ADR cités existants, aucun recouvrement de périmètre avec un ADR accepté sans « remplace ». Orientation présente, ou « aucune orientation » déclarée par l'humain T. Chaque critère lié à au moins une décision. Chaque tâche porte au moins un critère vérifiable. Deux tâches aux périmètres qui se recouvrent sont reliées par une dépendance. La taille de lecture de chaque tâche (périmètre, ADR, critères) tient sous le seuil du projet. Une story n'est découpée que si elle dépasse ce seuil"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "judge",
+   "n": "9",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "IA, questions fixes, citation exigée",
+   "task": "judge",
+   "judge": "plan.judge",
+   "questions": [
+    {
+     "q": "Un ADR local contredit-il un critère ?",
+     "fail_on": "yes"
+    },
+    {
+     "q": "La décision liée à un critère le couvre-t-elle réellement ?",
+     "fail_on": "no"
+    },
+    {
+     "q": "Un comportement visible change-t-il ?",
+     "fail_on": "yes",
+     "when": "entry-2"
+    }
+   ],
+   "in": [
+    [
+     "WIKI",
+     "Entrées de besoin"
+    ],
+    [
+     "TICKET",
+     "Tickets"
+    ],
+    [
+     "ADR",
+     "ADR locaux"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non : un ADR local contredit-il un critère ? la décision liée à un critère le couvre-t-elle réellement ? Entrée 2 : un comportement visible change-t-il ? Si oui, bascule vers le workflow Besoin"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "gate",
+   "n": "10",
+   "kind": "human-gate",
+   "title": "Gate · Relecture",
+   "actor": "Humain T",
+   "in": [
+    [
+     "ADR",
+     "ADR locaux"
+    ],
+    [
+     "TICKET",
+     "Tickets proposés"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètres proposés"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses prises par le rédacteur, avec leur valeur par défaut"
+    ],
+    [
+     "RAPPORT",
+     "Contrôles de code et juge, tous verts"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "ADR au statut accepté, tickets et périmètres validés, tickets créés au statut prêt"
+    ],
+    [
+     "TEXTE",
+     "Ou retour au rédacteur si c'est la formulation, le découpage ou une hypothèse à corriger, ou à l'orientation si c'est le fond"
+    ]
+   ],
+   "on_reject": [
+    {
+     "label": "execution",
+     "to": "write"
+    }
+   ]
+  },
+  {
+   "id": "end",
+   "n": "11",
+   "kind": "end",
+   "title": "Conçue",
+   "in": [
+    [
+     "VALIDATION",
+     "Gate passée"
+    ]
+   ],
+   "out": [
+    [
+     "ADR",
+     "ADR locaux dans architecture/"
+    ],
+    [
+     "TICKET",
+     "Une story non découpée est réalisée telle quelle. Sinon ses tâches, sous-issues minces : critères, décisions, dépendances, périmètre"
+    ],
+    [
+     "TICKET",
+     "Entrée 1 seulement : une story non découpée passe à prête, pour la Réalisation. Une story découpée passe à conçue, et ses tâches sont prêtes. L'epic passe à conçue quand toutes ses stories le sont. Statuts déduits par script"
+    ],
+    [
+     "WIKI",
+     "Entrée 1 seulement : statut conçue pour chaque entrée de l'epic ou de la story"
+    ]
+   ]
+  }
+ ],
+ "doc": {
+  "contract": [
+   [
+    "Déclenché par",
+    "Entrée 1 : une epic ou une story au statut « prête à concevoir » (workflow Besoin). Une story regroupe une ou plusieurs entrées de wiki qui vont ensemble ; une epic regroupe des stories. Entrée 2 : un besoin technique exprimé directement par l'humain T (dette, migration, remédiation, correction d'une dérive), un signalement qualifié « défaut technique », ou le rattrapage d'une décision provisoire d'express, sans entrée de wiki."
+   ],
+   [
+    "Produit",
+    "ADR locaux acceptés et tickets prêts : chaque story telle quelle, ou ses tâches si elle a été découpée. Pour l'entrée 1, l'epic ou la story et ses entrées passent au statut conçu."
+   ],
+   [
+    "Humain",
+    "Humain T. L'humain F n'est consulté que si un critère est impossible ou coûte trop cher, ou si un besoin technique change un comportement visible."
+   ]
+  ],
+  "notes": [
+   [
+    "Quand le challenge s'ouvre",
+    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+   ],
+   [
+    "Ce qui bloque le rédacteur",
+    "Un point est bloquant quand un choix n'est couvert par aucune décision ni guideline, et que ses options diffèrent par leur effet ou leur coût. Le rédacteur pose alors une question, avec les options et sa recommandation. Tout le reste devient une hypothèse prise, visible à la gate."
+   ],
+   [
+    "Le rédacteur avance, l'humain tranche à la gate",
+    "Sans blocage, le rédacteur continue et les contrôles s'enchaînent. L'humain T n'est sollicité avant la gate que si un point bloque le rédacteur. À la gate, il peut tout renvoyer au rédacteur. Pas de nombre maximal de tours."
+   ],
+   [
+    "Epic, story, tâche",
+    "L'humain F décide au Besoin quelles entrées partent ensemble (une story) et quelles stories se regroupent (une epic). La Conception prend une epic ou une story déjà formée, et ne la redécoupe pas fonctionnellement. Elle ne crée de tâches que si la story ne tient pas telle quelle. Une seule gate valide l'ensemble."
+   ],
+   [
+    "Quand découper une story en tâches",
+    "Une tâche doit être vérifiable seule, mergeable seule et tenir dans un contexte de travail. Ce n'est pas une question d'effort, et un script le mesure : un critère par tâche au moins, une dépendance entre périmètres qui se recouvrent, une taille de lecture sous le seuil. Si la story satisfait déjà ces trois conditions, elle est réalisée telle quelle. Si l'on ne peut pas la découper sans casser le sens fonctionnel, c'est une question à l'humain F, qui peut scinder la story au Besoin."
+   ],
+   [
+    "Orientation obligatoire, sans défaut",
+    "L'étape ne se saute pas : l'humain T donne une orientation, ou déclare lui-même qu'il n'en a pas besoin. Le silence ne vaut pas « aucune orientation »."
+   ],
+   [
+    "ADR locaux seulement ici",
+    "Le cadre technique ne produit que des guidelines. Un ADR local naît dans cette conception, pour une story ou une epic, ou pour un besoin technique."
+   ],
+   [
+    "Un validateur par entrée",
+    "Le PM valide l'entrée 1, la seule qui a un besoin fonctionnel à protéger. Le Dev valide l'entrée 2 : les deux leads sont du même bord technique, et c'est lui qui implémentera. Ce que le code mesure (taille, autonomie, couverture des critères) n'est pas redemandé au validateur."
+   ],
+   [
+    "L'audit lit le code",
+    "Contrairement au cadre technique, le découpage et les dépendances exigent de voir où le besoin touche le code."
+   ],
+   [
+    "Entrée 2 sans wiki",
+    "L'ADR local est la trace du besoin technique, avec son pourquoi. Aucune entrée de besoin n'est créée, puisque l'humain T est la source."
+   ],
+   [
+    "Promotion",
+    "Un ADR local qui se répète devient candidat au workflow Cadre technique, détecté par sa surveillance."
+   ],
+   [
+    "Vérification d'un ADR local",
+    "Elle est portée par les tests des critères de ses tickets, contrairement à un ADR transversal qui a sa propre règle."
+   ],
+   [
+    "Le seul retour vers le fonctionnel",
+    "Un surcoût ou un critère impossible renvoie l'entrée à l'humain F, avec les options chiffrées."
+   ]
+  ],
+  "lede": "Un besoin, fonctionnel ou technique, est traduit en décisions techniques locales et en tickets réalisables. Le découpage en tâches se fait ici, seulement si nécessaire, parce qu'il dépend du code.",
+  "eyebrow": "Run · conception technique, besoin fonctionnel ou technique"
+ }
+}

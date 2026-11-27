@@ -1,0 +1,521 @@
+{
+ "id": "express",
+ "title": "Express",
+ "category": "run",
+ "contract": {
+  "produces": [
+   "building",
+   "reviewing",
+   "merged"
+  ]
+ },
+ "steps": [
+  {
+   "id": "start",
+   "n": "1",
+   "kind": "human-start",
+   "title": "Demande express",
+   "actor": "Humain F ou T disposant du droit d'express",
+   "in": [
+    [
+     "TEXTE",
+     "Le besoin ou le correctif à traiter vite (correctif, fonctionnalité cœur…), dans ses mots, quelle que soit sa taille"
+    ],
+    [
+     "SIGNALEMENT",
+     "Si la demande vient d'un signalement de gravité bloquante : sa qualification validée"
+    ]
+   ],
+   "out": [
+    [
+     "TEXTE",
+     "Intention express et motif du recours à l'express"
+    ]
+   ]
+  },
+  {
+   "id": "audit",
+   "n": "2",
+   "kind": "agent",
+   "title": "Auditeur",
+   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "agents": [
+    {
+     "persona": "pm"
+    },
+    {
+     "persona": "architect",
+     "when": "contradiction avec un ADR ou une guideline"
+    },
+    {
+     "persona": "techlead",
+     "when": "zones de code touchées"
+    }
+   ],
+   "task": "audit",
+   "in": [
+    [
+     "TEXTE",
+     "Intention express"
+    ],
+    [
+     "ARCHI GLOBAL",
+     "Overview et guidelines, plus les ADR dont le périmètre recoupe celui de l'intention. Sélection par script, index d'abord"
+    ],
+    [
+     "WIKI GLOBAL",
+     "Guidelines fonctionnelles et vocabulaire"
+    ],
+    [
+     "WIKI",
+     "Entrées de besoin concernées, avec leur journal"
+    ],
+    [
+     "CODE",
+     "Zones touchées"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Delta : critères concernés, rétablissement d'un comportement déjà décrit ou changement de comportement, contradiction avec un ADR ou une guideline technique acceptés. Une telle contradiction refuse l'express ; un écart avec le cadre fonctionnel est seulement signalé"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+    ]
+   ]
+  },
+  {
+   "id": "challenge",
+   "n": "3",
+   "kind": "human-optional",
+   "title": "Challenge",
+   "actor": "Humain F ou T qui a demandé l'express, ouvert par script seulement si le delta n'est pas vide",
+   "in": [
+    [
+     "RAPPORT",
+     "Le delta, court et en forme fixe"
+    ],
+    [
+     "TEXTE",
+     "À la demande : une question à l'auditeur sur une ligne du delta"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Maintient ou modifie l'intention express"
+    ],
+    [
+     "TEXTE",
+     "Intention révisée, retour à l'audit"
+    ],
+    [
+     "RAPPORT",
+     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+    ]
+   ],
+   "open_if": "delta-not-empty",
+   "loop_to": "audit"
+  },
+  {
+   "id": "write",
+   "n": "4",
+   "kind": "agent",
+   "title": "Rédacteur de la documentation provisoire",
+   "actor": "IA",
+   "agents": [
+    {
+     "persona": "pm",
+     "when": "les critères provisoires"
+    },
+    {
+     "persona": "architect",
+     "when": "l'ADR provisoire, si une décision technique est prise"
+    }
+   ],
+   "task": "write-provisional",
+   "in": [
+    [
+     "TEXTE",
+     "Intention express"
+    ],
+    [
+     "RAPPORT",
+     "Delta"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé"
+    ],
+    [
+     "TEXTE",
+     "Aux tours suivants : la réponse de l'humain"
+    ]
+   ],
+   "out": [
+    [
+     "CRITÈRES",
+     "Critères nouveaux ou modifiés, dans l'entrée de besoin concernée (créée si elle n'existe pas), au statut provisoire. Rien si le correctif rétablit un comportement déjà décrit"
+    ],
+    [
+     "JOURNAL",
+     "Ligne de journal provisoire : décision, alternatives écartées, raison"
+    ],
+    [
+     "ADR",
+     "ADR local au statut provisoire, seulement si une décision technique est prise"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses prises : chaque point où il a choisi une valeur par défaut, avec la question qu'il aurait posée. Consignées sur le ticket pour la Recette"
+    ],
+    [
+     "QUESTION",
+     "Seulement si un point le bloque : voir l'étape suivante"
+    ]
+   ]
+  },
+  {
+   "id": "ask",
+   "n": "5",
+   "kind": "human-optional",
+   "title": "Question du rédacteur",
+   "actor": "Humain qui a demandé l'express, seulement si le rédacteur est bloqué : répond à sa question",
+   "in": [
+    [
+     "QUESTION",
+     "Carte : le point qui bloque, les options, la recommandation du rédacteur"
+    ]
+   ],
+   "out": [
+    [
+     "TEXTE",
+     "Réponse, retour au rédacteur : il reprend"
+    ]
+   ],
+   "open_if": "blocked",
+   "loop_to": "write"
+  },
+  {
+   "id": "validate",
+   "n": "6",
+   "kind": "validator",
+   "title": "Validateur",
+   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "agents": [
+    {
+     "persona": "techlead"
+    }
+   ],
+   "task": "validate",
+   "in": [
+    [
+     "CRITÈRES",
+     "Critères provisoires"
+    ],
+    [
+     "JOURNAL",
+     "Ligne de journal"
+    ],
+    [
+     "ADR",
+     "ADR provisoire, s'il y en a un"
+    ],
+    [
+     "TEXTE",
+     "Intention express"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Liste de défauts, critique libre : les critères portent-ils l'intention, sont-ils réalisables dans le code, l'ADR est-il applicable ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "check",
+   "n": "7",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "express.check",
+   "in": [
+    [
+     "CRITÈRES",
+     "Critères provisoires"
+    ],
+    [
+     "JOURNAL",
+     "Ligne de journal"
+    ],
+    [
+     "ADR",
+     "ADR provisoire"
+    ],
+    [
+     "TICKET",
+     "Tickets ouverts"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Schéma, périmètre issu du vocabulaire, statut provisoire posé, mots ambigus, format du journal, chaque critère existant modifié a sa ligne de journal, aucun ADR accepté contredit, aucun cadre (Admin) modifié, aucun ticket ouvert sur les critères concernés"
+    ],
+    [
+     "TICKET",
+     "Brouillon du ticket express, assemblé par script : critères, ADR, périmètre, verrou. Une seule story, sans tâches"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "judge",
+   "n": "8",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "IA, deux questions fixes, citation exigée",
+   "task": "judge",
+   "judge": "express.judge",
+   "questions": [
+    {
+     "q": "Chaque critère provisoire est-il observable ?",
+     "fail_on": "no"
+    },
+    {
+     "q": "La raison du journal est-elle distincte de la décision ?",
+     "fail_on": "no"
+    }
+   ],
+   "in": [
+    [
+     "TEXTE",
+     "Intention express"
+    ],
+    [
+     "CRITÈRES",
+     "Critères provisoires"
+    ],
+    [
+     "JOURNAL",
+     "Ligne de journal"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non : chaque critère provisoire est-il observable ? la raison du journal est-elle distincte de la décision ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "gate",
+   "n": "9",
+   "kind": "human-gate",
+   "title": "Gate · Relecture",
+   "actor": "Humain F ou T qui a demandé l'express",
+   "in": [
+    [
+     "TICKET",
+     "Brouillon du ticket express"
+    ],
+    [
+     "WIKI",
+     "Entrée de besoin touchée, avec ses critères provisoires"
+    ],
+    [
+     "ADR",
+     "ADR provisoire, s'il y en a un"
+    ],
+    [
+     "JOURNAL",
+     "Ligne de journal provisoire"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses prises par le rédacteur, avec leur valeur par défaut"
+    ],
+    [
+     "RAPPORT",
+     "Contrôles de code et juge, tous verts"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Documentation provisoire, périmètre et ticket validés"
+    ],
+    [
+     "TEXTE",
+     "Ou retour au rédacteur si c'est la formulation ou une hypothèse à corriger, ou à la demande si c'est le fond"
+    ]
+   ],
+   "on_reject": [
+    {
+     "label": "fond",
+     "to": "start"
+    },
+    {
+     "label": "formulation",
+     "to": "write"
+    }
+   ]
+  },
+  {
+   "id": "lock",
+   "n": "10",
+   "kind": "check",
+   "title": "Ticket et verrou",
+   "actor": "Script",
+   "check": "express.lock",
+   "in": [
+    [
+     "VALIDATION",
+     "Gate passée"
+    ]
+   ],
+   "out": [
+    [
+     "TICKET",
+     "Créé par script, marqué express et prioritaire, statut en réalisation, verrou posé : critères, ADR, périmètre. Aucune découpe : une seule story, quelle que soit la taille"
+    ],
+    [
+     "TICKET",
+     "Rattrapage : un élément créé dans le Besoin ou la Conception pour confirmer, corriger ou remplacer le provisoire, avec un délai et une alerte à l'expiration"
+    ],
+    [
+     "WIKI",
+     "Critères provisoires de l'entrée au statut en réalisation"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "include": "build",
+   "ids": [
+    "implement",
+    "ask",
+    "validate",
+    "check",
+    "judge",
+    "review",
+    "decision",
+    "pr-ci",
+    "merge"
+   ],
+   "prefix": "build-",
+   "patch": {
+    "ask": {
+     "actor": "Humain qui a demandé l'express, seulement si un choix n'est couvert par rien, ou après deux échecs de suite : il répond tout de suite",
+     "out": [
+      [
+       "TEXTE",
+       "Réponse, consignée dans le journal ou l'ADR provisoire. L'implémentation reprend"
+      ],
+      [
+       "TEXTE",
+       "Ou critère impossible, ou besoin à changer : retour au rédacteur de l'Express, qui corrige le besoin provisoire en direct. La gate de relecture repasse, puis la réalisation reprend à l'implémenteur, qui refait ses tests, car les critères ont changé"
+      ]
+     ]
+    },
+    "decision": {
+     "out": [
+      [
+       "VALIDATION",
+       "Tous les avis approuvent : le diff est approuvé"
+      ],
+      [
+       "TEXTE",
+       "Au moins un avis demande des changements : renvoi selon la classe du défaut. Code : retour à l'implémenteur, et toute la chaîne se rejoue. Test : retour à l'implémenteur, qui corrige ses tests. Critère impossible ou ambigu : retour au rédacteur de l'Express, qui corrige le besoin provisoire en direct avec l'humain qui a demandé l'express."
+      ]
+     ]
+    }
+   }
+  }
+ ],
+ "doc": {
+  "contract": [
+   [
+    "Déclenché par",
+    "Une demande express d'un humain F ou T disposant du droit d'express, ou un signalement bloquant qualifié « écart »."
+   ],
+   [
+    "Produit",
+    "Une story express unique, jamais découpée en tâches et quelle que soit sa taille, du code mergé sur main, de la documentation provisoire et un rattrapage. La Recette est lancée à la main ensuite."
+   ],
+   [
+    "Humain",
+    "La demande, la discussion si le delta ou le rédacteur l'exige, la gate de relecture, puis il reste l'interlocuteur pendant la réalisation, qui lui pose ses questions. La Recette est lancée à la main et garde ses règles : exécutant par défaut du projet, gate humaine si l'exécutant est l'IA."
+   ]
+  ],
+  "notes": [
+   [
+    "Quand le challenge s'ouvre",
+    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+   ],
+   [
+    "La Réalisation est dans le workflow",
+    "Les étapes de la Réalisation sont reprises telles quelles dans ce workflow, de l'implémentation en TDD jusqu'au merge, hors tests e2e. Tout ce qu'elle vérifie s'applique donc à l'identique. La Recette reste un workflow à part, lancé à la main."
+   ],
+   [
+    "Pourquoi un seul workflow",
+    "L'humain qui a demandé l'express est encore là. Si la réalisation rencontre un critère impossible ou un choix non couvert, il répond tout de suite et peut changer le besoin sans repasser par le Besoin : le rédacteur corrige le provisoire, la gate repasse, puis la réalisation reprend à l'implémenteur, qui refait ses tests."
+   ],
+   [
+    "Aucune découpe",
+    "Le découpage est fait par la Conception, que l'express contourne. Un besoin express, même gros, donne une seule story, une PR et une recette. C'est là que l'express gagne du temps, pas en allégeant les contrôles."
+   ],
+   [
+    "Provisoire, puis rattrapage",
+    "Un critère ou un ADR écrit en express porte le statut provisoire, visible comme tel. Le rattrapage est créé par script avec un délai, et son alerte se déclenche à l'expiration."
+   ],
+   [
+    "Pas de tests e2e",
+    "L'Express ne passe pas par les tests e2e de fin de réalisation : le dev garde ses tests écrits d'abord, et la Recette vérifie le comportement."
+   ],
+   [
+    "Ce que l'express ne contourne jamais",
+    "La validation et la gate de relecture, la CI, les règles du cadre technique, les tests du dev écrits avant le code, le diff dans le périmètre, le verrou, la revue de code, la recette. Il ne modifie jamais un cadre, et une contradiction avec un ADR ou une guideline acceptés le refuse."
+   ],
+   [
+    "Le droit d'express",
+    "Il est réservé à des comptes désignés : la plateforme n'ouvre ce workflow qu'à eux."
+   ],
+   [
+    "La discussion et la gate",
+    "Le déclarant dialogue avec l'auditeur et répond au rédacteur s'il est bloqué. À la gate, il voit le ticket, l'entrée de besoin, l'ADR et le journal provisoires, et peut tout renvoyer au rédacteur. Pas de nombre maximal de tours. Le provisoire est rattrapé ensuite par le Besoin ou la Conception, qui ont leur propre gate."
+   ],
+   [
+    "Ce qui refuse l'express",
+    "Un cadre modifié, une contradiction avec un ADR ou une guideline acceptés, ou un ticket déjà ouvert sur les critères concernés : le besoin passe alors par le workflow standard."
+   ]
+  ],
+  "lede": "Un parcours simplifié pour aller vite : un correctif, une fonctionnalité cœur, tout besoin que l'humain choisit de ne pas faire passer par le Besoin et la Conception. Le workflow écrit la documentation provisoire et crée une seule story sans tâches et la réalise dans le même workflow : si un souci apparaît, le besoin se change en direct. Il ne contourne ni la CI, ni les règles, ni les tests écrits avant, ni la revue de code.",
+  "eyebrow": "Run · parcours simplifié, pour aller vite"
+ }
+}

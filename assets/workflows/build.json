@@ -1,0 +1,606 @@
+{
+ "id": "build",
+ "title": "Réalisation",
+ "category": "run",
+ "contract": {
+  "consumes": [
+   "ready"
+  ],
+  "claims": "building",
+  "produces": [
+   "reviewing",
+   "merged"
+  ],
+  "resumable": [
+   "building",
+   "reviewing"
+  ],
+  "gate": true,
+  "containers": [
+   "epic",
+   "planned"
+  ]
+ },
+ "steps": [
+  {
+   "id": "claim",
+   "n": "1",
+   "kind": "check",
+   "title": "Éligibilité et verrou",
+   "actor": "Script",
+   "check": "build.claim",
+   "in": [
+    [
+     "TICKET",
+     "Le ticket, avec son périmètre et ses dépendances"
+    ],
+    [
+     "CRITÈRES",
+     "Critères du ticket : ceux des entrées de la story (ou le sous-ensemble porté par la tâche), ou ceux qu'un ticket technique porte lui-même"
+    ],
+    [
+     "ADR",
+     "ADR cités"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Critères prêts (ou en écart pour un ticket de correction), ADR acceptés, dépendances mergées, aucun autre ticket ouvert sur ces critères. Une dépendance dont la recette est en écart marque ce ticket « sur dépendance en écart »"
+    ],
+    [
+     "TICKET",
+     "Pris par cet agent, statut en réalisation"
+    ],
+    [
+     "WIKI",
+     "Ticket fonctionnel : ses critères, dans leurs entrées, au statut en réalisation"
+    ]
+   ]
+  },
+  {
+   "id": "implement",
+   "n": "2",
+   "kind": "agent",
+   "title": "Implémenteur",
+   "actor": "IA, en TDD : ses tests d'abord, puis le code",
+   "agents": [
+    {
+     "persona": "dev"
+    }
+   ],
+   "task": "implement",
+   "in": [
+    [
+     "TICKET",
+     "Le ticket"
+    ],
+    [
+     "ADR",
+     "ADR liés"
+    ],
+    [
+     "ARCHI GLOBAL",
+     "Guidelines dont le périmètre recoupe celui du ticket. Sélection par script"
+    ],
+    [
+     "RÈGLE",
+     "Règles du cadre technique dont le périmètre recoupe celui du ticket"
+    ],
+    [
+     "CRITÈRES",
+     "Critères du ticket"
+    ],
+    [
+     "CODE",
+     "Conventions de test du projet, et code actuel"
+    ]
+   ],
+   "out": [
+    [
+     "TEST",
+     "Ses tests, écrits d'abord depuis les critères"
+    ],
+    [
+     "CODE",
+     "Changement dans le périmètre du ticket, après ses tests"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses prises, déclarées"
+    ],
+    [
+     "QUESTION",
+     "Seulement si un choix n'est couvert par rien : voir l'étape suivante"
+    ]
+   ]
+  },
+  {
+   "id": "ask",
+   "n": "3",
+   "kind": "human-optional",
+   "title": "Question routée",
+   "actor": "Humain F ou T, seulement si un choix n'est couvert par rien, ou après deux échecs de suite",
+   "in": [
+    [
+     "QUESTION",
+     "Carte : options, effet, coût, recommandation. Après deux échecs : la liste des contrôles en échec"
+    ]
+   ],
+   "out": [
+    [
+     "TEXTE",
+     "Réponse, consignée dans le wiki ou un ADR. L'implémentation reprend"
+    ],
+    [
+     "TEXTE",
+     "Ou critère impossible : entrée à recadrer (workflow Besoin), ou retour à la conception pour un ticket technique"
+    ]
+   ],
+   "open_if": "blocked",
+   "loop_to": "implement"
+  },
+  {
+   "id": "validate",
+   "n": "4",
+   "kind": "validator",
+   "title": "Validateur",
+   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "agents": [
+    {
+     "persona": "techlead"
+    }
+   ],
+   "task": "validate",
+   "in": [
+    [
+     "CODE",
+     "Diff"
+    ],
+    [
+     "CRITÈRES",
+     "Critères"
+    ],
+    [
+     "ADR",
+     "ADR liés"
+    ],
+    [
+     "ARCHI GLOBAL",
+     "Guidelines dont le périmètre recoupe celui du ticket"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses déclarées"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Liste de défauts, critique libre : écart avec un ADR ou une guideline, lisibilité, duplication, cas limite non couvert"
+    ]
+   ],
+   "on_fail": {
+    "to": "implement",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "check",
+   "n": "5",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "build.check",
+   "in": [
+    [
+     "CODE",
+     "Changement"
+    ],
+    [
+     "TEST",
+     "Tests du ticket"
+    ],
+    [
+     "RÈGLE",
+     "Règles du cadre technique applicables au périmètre du ticket"
+    ],
+    [
+     "CRITÈRES",
+     "Critères"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Tests verts, lancés en local par le script avant toute PR, règles du cadre vertes, diff dans le périmètre déclaré du ticket, hypothèses déclarées, chaque critère référencé par au moins un test du diff (hors e2e)"
+    ],
+    [
+     "TICKET",
+     "Statut : en revue, posé quand les contrôles passent"
+    ]
+   ],
+   "on_fail": {
+    "to": "implement",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "judge",
+   "n": "6",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "IA, trois questions fixes, citation exigée",
+   "task": "judge",
+   "judge": "build.judge",
+   "questions": [
+    {
+     "q": "Le changement ajoute-t-il un comportement hors critères ?",
+     "fail_on": "yes"
+    },
+    {
+     "q": "Une hypothèse est-elle non déclarée ?",
+     "fail_on": "yes"
+    },
+    {
+     "q": "Chaque test exprime-t-il son critère, ni plus ni moins ?",
+     "fail_on": "no"
+    }
+   ],
+   "in": [
+    [
+     "CRITÈRES",
+     "Critères"
+    ],
+    [
+     "CODE",
+     "Diff"
+    ],
+    [
+     "TEST",
+     "Tests du diff"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses déclarées"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non : le changement ajoute-t-il un comportement hors critères ? une hypothèse est-elle non déclarée ? chaque test exprime-t-il son critère, ni plus ni moins ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "implement",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "review",
+   "n": "7",
+   "kind": "validator",
+   "title": "Revue de code",
+   "actor": "Relecteurs d'autres types, en parallèle, sans voir le raisonnement de l'implémenteur ni l'avis des autres",
+   "agents": [
+    {
+     "persona": "pm",
+     "when": "ticket fonctionnel"
+    },
+    {
+     "persona": "architect",
+     "when": "structure, performance, sécurité : périmètre touchant un ADR, une guideline, les exigences non fonctionnelles, ou ticket technique"
+    },
+    {
+     "persona": "designer",
+     "when": "usage et accessibilité : périmètre d'interface"
+    }
+   ],
+   "in": [
+    [
+     "CODE",
+     "Diff local, avant toute PR"
+    ],
+    [
+     "CRITÈRES",
+     "Critères"
+    ],
+    [
+     "ADR",
+     "ADR liés"
+    ],
+    [
+     "ARCHI GLOBAL",
+     "Guidelines dont le périmètre recoupe celui du ticket"
+    ],
+    [
+     "RÈGLE",
+     "Règles du cadre technique applicables"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses déclarées"
+    ],
+    [
+     "TICKET",
+     "Type et périmètre du ticket, dont un script tire la liste des relecteurs"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Un avis par relecteur sur le diff : il approuve, ou il demande des changements avec ses défauts bloquants, chacun classé « code », « test » ou « critère ». Les défauts non bloquants sont de simples commentaires, consignés sur le ticket"
+    ]
+   ]
+  },
+  {
+   "id": "decision",
+   "n": "8",
+   "kind": "check",
+   "title": "Décision de revue",
+   "actor": "Script",
+   "check": "build.decision",
+   "in": [
+    [
+     "RAPPORT",
+     "Les avis des relecteurs"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Tous les avis approuvent : le diff est approuvé"
+    ],
+    [
+     "TEXTE",
+     "Au moins un avis demande des changements : renvoi selon la classe du défaut. Code : retour à l'implémenteur, et toute la chaîne se rejoue. Test : retour à l'implémenteur, qui corrige ses tests. Critère impossible ou ambigu : question à l'humain F, entrée à recadrer."
+    ]
+   ],
+   "on_fail": {
+    "to": "implement",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "e2e",
+   "n": "9",
+   "kind": "agent",
+   "title": "Tests e2e",
+   "actor": "IA, sur le comportement intégré, une fois le diff approuvé",
+   "agents": [
+    {
+     "persona": "e2e"
+    }
+   ],
+   "task": "write-e2e",
+   "in": [
+    [
+     "CRITÈRES",
+     "Critères dont le vérifié_par est e2e"
+    ],
+    [
+     "CODE",
+     "Diff approuvé par la revue, lancé en local par le script, jamais en CI"
+    ],
+    [
+     "CODE",
+     "Conventions de test du projet"
+    ]
+   ],
+   "out": [
+    [
+     "TEST",
+     "Un test e2e par critère « vérifié par e2e », ajouté au diff"
+    ],
+    [
+     "TEXTE",
+     "Un test rouge est classé par l'agent : défaut de code (retour à l'implémenteur, et toute la chaîne se rejoue) ou défaut du test (il le corrige)"
+    ]
+   ]
+  },
+  {
+   "id": "check-2",
+   "n": "10",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "build.check-2",
+   "in": [
+    [
+     "TEST",
+     "Tests e2e"
+    ],
+    [
+     "CRITÈRES",
+     "Critères"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Chaque critère « vérifié par e2e » a un test e2e rattaché, tous VERTS, exécutés en local par le script"
+    ]
+   ],
+   "on_fail": {
+    "to": "e2e",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "judge-2",
+   "n": "11",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "IA, question fixe, citation exigée",
+   "task": "judge",
+   "judge": "build.judge-2",
+   "questions": [
+    {
+     "q": "Chaque test e2e exprime-t-il son critère, ni plus ni moins ?",
+     "fail_on": "no"
+    }
+   ],
+   "in": [
+    [
+     "CRITÈRES",
+     "Critères"
+    ],
+    [
+     "TEST",
+     "Tests e2e"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non : chaque test e2e exprime-t-il son critère, ni plus ni moins ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "e2e",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "pr-ci",
+   "n": "12",
+   "kind": "check",
+   "title": "Ouverture de la PR et CI",
+   "actor": "Script",
+   "check": "build.pr-ci",
+   "in": [
+    [
+     "CODE",
+     "Diff approuvé par la revue, e2e verts"
+    ],
+    [
+     "RAPPORT",
+     "Contrôles de code et juge, tous verts"
+    ]
+   ],
+   "out": [
+    [
+     "CODE",
+     "Pull request ouverte sur la branche du ticket : le diff, le lien du ticket et les rapports en description. Elle ne sert qu'à faire passer la CI, sans les e2e"
+    ],
+    [
+     "RAPPORT",
+     "CI verte sur la PR : le script attend le résultat"
+    ]
+   ],
+   "on_fail": {
+    "to": "implement",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "merge",
+   "n": "13",
+   "kind": "end",
+   "title": "Merge sur main",
+   "in": [
+    [
+     "RAPPORT",
+     "CI verte sur la PR"
+    ]
+   ],
+   "out": [
+    [
+     "CODE",
+     "PR mergée sur main par le script, après la CI verte"
+    ],
+    [
+     "TICKET",
+     "Statut : « mergée, à recetter » pour une story non découpée, « mergée » pour une tâche. Quand toutes ses tâches sont mergées, la story passe à « mergée, à recetter », par script"
+    ],
+    [
+     "WIKI",
+     "Ticket fonctionnel : ses critères au statut implémenté, avec le commit. Ticket technique : critères portés au statut implémenté"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses déclarées, enregistrées sur le ticket pour la Recette"
+    ]
+   ]
+  }
+ ],
+ "doc": {
+  "contract": [
+   [
+    "Déclenché par",
+    "Un ticket au statut prêt : une story non découpée ou une tâche, créée par la Conception, ou par la Recette pour une correction. Il référence des critères, des ADR, un périmètre et ses dépendances."
+   ],
+   [
+    "Produit",
+    "Du code mergé sur main, le ticket au statut « mergée, à recetter » (une tâche : « mergée ») et ses critères au statut implémenté, avec le commit. Une story découpée passe à « mergée, à recetter » quand toutes ses tâches sont mergées, par script."
+   ],
+   [
+    "Humain",
+    "Aucun humain obligatoire. L'humain F ou T répond seulement à une question."
+   ]
+  ],
+  "notes": [
+   [
+    "Pas de gate humaine",
+    "Le merge est contrôlé par les contrôles de code, le juge, la revue de code, les tests e2e et la CI. L'humain valide le comportement après coup, dans la Recette."
+   ],
+   [
+    "Deux marques, deux vérifications",
+    "« Implémenté » est posé ici par le code : le test écrit pour le critère passe. « Recetté » ne l'est que par la Recette."
+   ],
+   [
+    "Après deux échecs",
+    "Le ticket est bloqué et une question part à l'humain concerné. Il n'y a plus de gate pour l'ouvrir."
+   ],
+   [
+    "Pas de plan technique ici",
+    "Les décisions viennent de la conception technique. Cela évite un plan périmé quand le ticket attend."
+   ],
+   [
+    "Qui relit le diff",
+    "Un script tire les relecteurs du type du ticket et de son périmètre, parmi les personas existants. Le tech lead a déjà validé l'implémentation à l'étape 4 et ne relit pas une seconde fois. Le PM relit un ticket fonctionnel : les critères sont-ils tenus. L'architecte relit la structure, la performance et la sécurité quand le périmètre les touche, ou si le ticket est technique. Le designer relit l'usage et l'accessibilité d'un périmètre d'interface. Chacun lit les guidelines et règles du cadre qui concernent son angle : il n'y a pas de liste de contrôle à part."
+   ],
+   [
+    "La PR vient en dernier",
+    "La revue porte sur le diff local, avant toute PR. La PR n'est ouverte qu'une fois la revue, les e2e et tous les contrôles passés : elle ne sert qu'à faire passer la CI. Chaque aller-retour de la revue se fait donc en local, sans consommer de quota GitHub."
+   ],
+   [
+    "Où repart une demande de changements",
+    "Au plus près de la cause. Un défaut de code repart à l'implémenteur, les tests déjà validés restent. Un défaut de test repart à l'implémenteur, qui corrige ses tests. Un critère impossible ou ambigu part à l'humain F. La classe du défaut est posée par le relecteur, le routage par un script."
+   ],
+   [
+    "Les tests restent",
+    "Les tests du dev et les tests e2e sont mergés avec le code. Ceux du dev restent des tests de non-régression, rejoués par la CI. Les e2e ne sont pas rejoués par la CI : un script les lance en local, à la demande."
+   ],
+   [
+    "Les tests e2e à la fin",
+    "Le dev travaille en TDD : ses tests viennent avant le code, donc des tests e2e avant le code n'apporteraient rien. Ils sont écrits à la fin, sur le comportement intégré, une fois le diff approuvé, et seulement pour les critères dont le vérifié_par est e2e. Ils ne tournent jamais en CI, car ils consomment trop de quota GitHub : un script les lance en local."
+   ],
+   [
+    "Recette sur la story complète",
+    "La Recette porte sur une story dont toutes les tâches sont mergées, jamais sur une tâche seule."
+   ],
+   [
+    "Hypothèses",
+    "Un choix technique non couvert par une décision n'est pas une hypothèse : c'est une question, à l'étape dédiée. Les autres hypothèses sont déclarées et vues à la Recette."
+   ],
+   [
+    "Un validateur",
+    "Il remplace la relecture humaine du code, qui n'a pas de valeur. Elle cherche ce que ni les tests ni les règles ne voient : un écart avec un ADR, la lisibilité, un cas limite. Les tests écrits d'abord par le dev restent le contrôle principal."
+   ],
+   [
+    "Un ticket technique",
+    "Ses critères sont techniques (non-régression, invariant). Sa recette est tenue par l'humain T."
+   ]
+  ],
+  "lede": "Un ticket devient du code mergé sur main, vérifié par les tests que le dev écrit d'abord (TDD), puis par des tests e2e juste avant le merge. Aucun humain n'intervient, sauf pour une question. Le comportement est validé après, par la Recette.",
+  "eyebrow": "Run · réalisation d'un ticket"
+ }
+}

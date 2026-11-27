@@ -1,0 +1,335 @@
+{
+ "id": "functional-frame",
+ "title": "Cadre fonctionnel",
+ "category": "admin",
+ "steps": [
+  {
+   "id": "start",
+   "n": "1",
+   "kind": "human-start",
+   "title": "Intention",
+   "actor": "Humain F",
+   "in": [
+    [
+     "TEXTE",
+     "La préoccupation produit, dans ses mots"
+    ]
+   ],
+   "out": [
+    [
+     "TEXTE",
+     "Intention fonctionnelle"
+    ]
+   ]
+  },
+  {
+   "id": "audit",
+   "n": "2",
+   "kind": "agent",
+   "title": "Auditeur",
+   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "agents": [
+    {
+     "persona": "pm"
+    }
+   ],
+   "task": "audit",
+   "in": [
+    [
+     "TEXTE",
+     "Intention fonctionnelle"
+    ],
+    [
+     "WIKI GLOBAL",
+     "Vision, guidelines fonctionnelles et vocabulaire, plus les entrées dont le périmètre recoupe celui de l'intention. Sélection par script, index d'abord. Jamais le code"
+    ],
+    [
+     "WIKI",
+     "Entrées de besoin et parcours dont le périmètre recoupe celui de l'intention. Sélection par script, index d'abord"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Delta : recouvre, contredit, modifie, trou, parcours existants touchés. Trois champs par ligne : entrée, conséquence, résolution proposée. Vide si RAS"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+    ]
+   ]
+  },
+  {
+   "id": "challenge",
+   "n": "3",
+   "kind": "human-optional",
+   "title": "Challenge",
+   "actor": "Humain F, ouvert par script seulement si le delta n'est pas vide",
+   "in": [
+    [
+     "RAPPORT",
+     "Le delta, court et en forme fixe"
+    ],
+    [
+     "TEXTE",
+     "À la demande : une question à l'auditeur sur une ligne du delta"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Maintient ou modifie l'intention"
+    ],
+    [
+     "TEXTE",
+     "Intention révisée, retour à l'audit"
+    ],
+    [
+     "RAPPORT",
+     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+    ]
+   ],
+   "open_if": "delta-not-empty",
+   "loop_to": "audit"
+  },
+  {
+   "id": "write",
+   "n": "4",
+   "kind": "agent",
+   "title": "Rédacteur",
+   "actor": "IA",
+   "agents": [
+    {
+     "persona": "pm"
+    }
+   ],
+   "task": "write-functional-frame",
+   "in": [
+    [
+     "TEXTE",
+     "Intention fonctionnelle"
+    ],
+    [
+     "RAPPORT",
+     "Delta"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé"
+    ]
+   ],
+   "out": [
+    [
+     "WIKI GLOBAL",
+     "Entrée proposée au format fixe : vision, guideline fonctionnelle ou vocabulaire, avec son périmètre et ce qu'elle remplace"
+    ]
+   ]
+  },
+  {
+   "id": "validate",
+   "n": "5",
+   "kind": "validator",
+   "title": "Validateur",
+   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "agents": [
+    {
+     "persona": "architect"
+    }
+   ],
+   "task": "validate",
+   "in": [
+    [
+     "TEXTE",
+     "Intention fonctionnelle"
+    ],
+    [
+     "WIKI GLOBAL",
+     "Entrée proposée"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Liste de défauts, critique libre"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "check",
+   "n": "6",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "functional-frame.check",
+   "in": [
+    [
+     "WIKI GLOBAL",
+     "Entrée proposée"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Schéma valide, périmètre issu du vocabulaire, mots ambigus, vocabulaire sans doublon, chaque énoncé cite sa source, aucun recouvrement de périmètre avec une entrée acceptée sans « remplace »"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "judge",
+   "n": "7",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "IA, trois questions fixes, citation exigée",
+   "task": "judge",
+   "judge": "functional-frame.judge",
+   "questions": [
+    {
+     "q": "Chaque phrase de l'intention est-elle portée ?",
+     "fail_on": "no"
+    },
+    {
+     "q": "Un énoncé est-il non soutenu par sa source citée ?",
+     "fail_on": "yes"
+    },
+    {
+     "q": "Y a-t-il contradiction avec une entrée citée ?",
+     "fail_on": "yes"
+    }
+   ],
+   "in": [
+    [
+     "TEXTE",
+     "Intention fonctionnelle"
+    ],
+    [
+     "WIKI GLOBAL",
+     "Entrée proposée"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non : chaque phrase de l'intention est-elle portée ? un énoncé non soutenu par sa source citée ? contradiction avec une entrée citée ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "gate",
+   "n": "8",
+   "kind": "human-gate",
+   "title": "Gate · Relecture",
+   "actor": "Humain F",
+   "in": [
+    [
+     "WIKI GLOBAL",
+     "Entrée proposée"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé"
+    ],
+    [
+     "RAPPORT",
+     "Contrôles de code et juge, tous verts"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Entrée acceptée, périmètre validé"
+    ],
+    [
+     "TEXTE",
+     "Ou modifications : retour à l'intention"
+    ]
+   ],
+   "on_reject": [
+    {
+     "label": "fond",
+     "to": "start"
+    }
+   ]
+  },
+  {
+   "id": "end",
+   "n": "9",
+   "kind": "end",
+   "title": "Accepté · merge",
+   "in": [
+    [
+     "VALIDATION",
+     "Gate passée"
+    ]
+   ],
+   "out": [
+    [
+     "WIKI GLOBAL",
+     "Entrée acceptée dans le wiki, avec son périmètre. Le Prototype et le Besoin la lisent"
+    ]
+   ]
+  }
+ ],
+ "doc": {
+  "contract": [
+   [
+    "Déclenché par",
+    "Une préoccupation produit : principe à poser, ligne récurrente, vocabulaire à fixer, nouveau périmètre à définir, ou une règle locale répétée (promotion)."
+   ],
+   [
+    "Produit",
+    "Une entrée de wiki global acceptée : vision, guideline fonctionnelle ou vocabulaire."
+   ],
+   [
+    "Humain",
+    "Humain F, à la gate. Aucun humain T."
+   ]
+  ],
+  "notes": [
+   [
+    "Quand le challenge s'ouvre",
+    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+   ],
+   [
+    "Des repères, pas des verrous",
+    "Contrairement au cadre technique, rien n'est exécuté en CI et rien ne bloque. Le Prototype et le Besoin lisent ces entrées, et leur auditeur signale un écart dans son delta. L'humain décide."
+   ],
+   [
+    "Pas de tests ici",
+    "Il n'y a rien à implémenter, donc rien à prouver : ni tests écrits d'abord, ni seconde gate."
+   ],
+   [
+    "Vocabulaire de périmètres fonctionnels",
+    "Le définir ou le modifier est une décision de ce workflow, avec gate : par exemple les domaines produit."
+   ],
+   [
+    "Pas d'exigence non fonctionnelle",
+    "Performance, sécurité et accessibilité restent dans le Cadre technique, décidées par l'humain T seul."
+   ],
+   [
+    "Personas et parcours",
+    "Ils relèvent du workflow Personas et user flows : ce sont des entrées différentes, au service de la recette."
+   ],
+   [
+    "Comme le cadre technique",
+    "L'audit ignore le code. Alternatives écartées : rien n'est conservé pour l'instant."
+   ]
+  ],
+  "lede": "Un humain F pose une grande ligne produit qui ne dépend d'aucun besoin : vision, guideline fonctionnelle, vocabulaire. Elle devient une entrée de wiki global acceptée. Ce sont des repères que le Prototype et le Besoin lisent pour le savoir, pas des règles bloquantes.",
+  "eyebrow": "Admin · repères fonctionnels"
+ }
+}

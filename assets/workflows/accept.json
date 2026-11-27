@@ -1,0 +1,439 @@
+{
+ "id": "accept",
+ "title": "Recette",
+ "category": "run",
+ "contract": {
+  "consumes": [
+   "merged"
+  ],
+  "produces": [
+   "done",
+   "ready"
+  ]
+ },
+ "steps": [
+  {
+   "id": "eligibility",
+   "n": "1",
+   "kind": "check",
+   "title": "Éligibilité",
+   "actor": "Script",
+   "check": "accept.eligibility",
+   "in": [
+    [
+     "TICKET",
+     "Entrée ticket : la story mergée (ou le ticket technique), avec ses critères"
+    ],
+    [
+     "WIKI",
+     "Entrée user flow : le user flow à vérifier, avec ses étapes attendues"
+    ],
+    [
+     "WIKI",
+     "Entrée critères : les critères d'une entrée de besoin, pour reproduire un défaut signalé"
+    ],
+    [
+     "SIGNALEMENT",
+     "Si la recette vient d'un signalement : ses étapes et la version où le défaut a été vu"
+    ],
+    [
+     "WIKI GLOBAL",
+     "Persona, s'il y en a un"
+    ],
+    [
+     "CODE",
+     "Environnement déployé depuis main, et sa version"
+    ],
+    [
+     "TEXTE",
+     "Exécutant demandé : humain ou IA"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "La version déployée contient le merge de la story, tâches comprises (ou, pour un signalement, la version où le défaut a été vu, ou une plus récente), l'environnement est sain, le persona existe, l'exécutant est autorisé : humain imposé si un critère est marqué vérifié_par: humain"
+    ],
+    [
+     "ENREGISTREMENT",
+     "Recette ouverte, statut en cours"
+    ]
+   ]
+  },
+  {
+   "id": "plan-cases",
+   "n": "2",
+   "kind": "agent",
+   "title": "Préparateur du plan",
+   "actor": "IA",
+   "agents": [
+    {
+     "persona": "qa"
+    }
+   ],
+   "task": "recipe-plan",
+   "in": [
+    [
+     "CRITÈRES",
+     "Critères du ticket. Ou étapes attendues du user flow"
+    ],
+    [
+     "WIKI GLOBAL",
+     "Persona, s'il y en a un"
+    ]
+   ],
+   "out": [
+    [
+     "TEST",
+     "Plan de test : un cas par critère ou par étape, avec l'attendu observable et la manière de jouer propre au persona"
+    ]
+   ]
+  },
+  {
+   "id": "check",
+   "n": "3",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "accept.check",
+   "in": [
+    [
+     "TEST",
+     "Plan de test"
+    ],
+    [
+     "CRITÈRES",
+     "Critères ou étapes"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Chaque cas rattaché à sa source, attendu observable, aucun cas sans source, aucun critère sans cas"
+    ]
+   ],
+   "on_fail": {
+    "to": "plan-cases",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "judge",
+   "n": "4",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "IA, deux questions fixes, citation exigée",
+   "task": "judge",
+   "judge": "accept.judge",
+   "questions": [
+    {
+     "q": "Chaque cas exprime-t-il son critère, ni plus ni moins ?",
+     "fail_on": "no"
+    },
+    {
+     "q": "Le persona change-t-il la manière de jouer sans changer l'attendu ?",
+     "fail_on": "yes"
+    }
+   ],
+   "in": [
+    [
+     "CRITÈRES",
+     "Critères ou étapes"
+    ],
+    [
+     "TEST",
+     "Plan de test"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non : chaque cas exprime-t-il son critère, ni plus ni moins ? le persona change-t-il la manière de jouer sans changer l'attendu ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "plan-cases",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "run-ai",
+   "n": "5",
+   "kind": "agent",
+   "title": "Exécution par l'IA",
+   "actor": "Si l'exécutant est l'IA : un rejoueur dans un navigateur, sur l'environnement",
+   "agents": [
+    {
+     "persona": "qa",
+     "when": "dans un navigateur"
+    }
+   ],
+   "task": "recipe-run",
+   "in": [
+    [
+     "TEST",
+     "Plan de test"
+    ],
+    [
+     "WIKI GLOBAL",
+     "Persona, s'il y en a un"
+    ],
+    [
+     "CODE",
+     "Environnement déployé depuis main"
+    ]
+   ],
+   "out": [
+    [
+     "PREUVE",
+     "Enregistrement ou capture par cas"
+    ],
+    [
+     "RAPPORT",
+     "Résultat par cas : ok ou ko"
+    ]
+   ]
+  },
+  {
+   "id": "run-human",
+   "n": "5bis",
+   "kind": "human-start",
+   "title": "Exécution guidée",
+   "actor": "Si l'exécutant est humain : humain F ou T, guidé par une IA",
+   "agents": [
+    {
+     "persona": "qa",
+     "when": "guide l'humain cas par cas"
+    }
+   ],
+   "task": "recipe-guide",
+   "in": [
+    [
+     "TEST",
+     "Plan de test, présenté cas par cas"
+    ],
+    [
+     "WIKI GLOBAL",
+     "Persona, s'il y en a un"
+    ],
+    [
+     "CODE",
+     "Environnement déployé depuis main"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Résultat par cas : ok ou ko, avec commentaire"
+    ],
+    [
+     "PREUVE",
+     "Capture facultative"
+    ],
+    [
+     "VALIDATION",
+     "Son verdict vaut validation : il tranche aussi les hypothèses en fin de session. Pas de gate ensuite"
+    ]
+   ],
+   "alt_of": "run-ai"
+  },
+  {
+   "id": "dossier",
+   "n": "6",
+   "kind": "check",
+   "title": "Dossier",
+   "actor": "Script",
+   "check": "accept.dossier",
+   "in": [
+    [
+     "PREUVE",
+     "Preuves, ou commentaires de l'exécutant humain"
+    ],
+    [
+     "RAPPORT",
+     "Résultats"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Dossier d'une page : un résultat et une preuve ou un commentaire par cas, version testée, hashes du référentiel et du persona"
+    ]
+   ],
+   "on_fail": {
+    "to": "run-ai",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "judge-2",
+   "n": "7",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "Exécutant IA seulement. IA, question fixe, citation exigée",
+   "task": "judge",
+   "judge": "accept.judge-2",
+   "questions": [
+    {
+     "q": "Pour chaque cas, la preuve montre-t-elle le comportement décrit ?",
+     "fail_on": "no"
+    }
+   ],
+   "in": [
+    [
+     "CRITÈRES",
+     "Critères ou étapes"
+    ],
+    [
+     "PREUVE",
+     "Preuves"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non : pour chaque cas, la preuve montre-t-elle le comportement décrit ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "run-ai",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "gate",
+   "n": "8",
+   "kind": "human-gate",
+   "title": "Gate · Validation",
+   "actor": "Exécutant IA seulement. Humain F (ticket fonctionnel, user flow) ou humain T (ticket technique)",
+   "in": [
+    [
+     "RAPPORT",
+     "Dossier d'une page"
+    ],
+    [
+     "PREUVE",
+     "Preuves"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses déclarées par la Réalisation, lues sur le ticket"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Dossier validé. Chaque hypothèse est acceptée ou rejetée"
+    ],
+    [
+     "TEXTE",
+     "Pour un user flow : chaque écart est qualifié, bug ou attente fausse"
+    ],
+    [
+     "TEXTE",
+     "Ou preuve insuffisante : la recette est rejouée"
+    ]
+   ],
+   "on_reject": [
+    {
+     "label": "execution",
+     "to": "run-ai"
+    }
+   ]
+  },
+  {
+   "id": "record",
+   "n": "9",
+   "kind": "end",
+   "title": "Enregistrement",
+   "in": [
+    [
+     "VALIDATION",
+     "Verdict de l'humain : celui de l'exécutant, ou la gate"
+    ]
+   ],
+   "out": [
+    [
+     "ENREGISTREMENT",
+     "Ajouté à l'historique, jamais modifié : cible, version, date, persona (ou aucun), exécutant, validé_par, résultat par cas, hashes"
+    ],
+    [
+     "TICKET",
+     "Si ko ou hypothèse rejetée : tickets de correction créés par script, qui référencent les critères en échec. Les tickets dépendants sont marqués « sur dépendance en écart »"
+    ],
+    [
+     "TICKET",
+     "Si ok : la story est close par script, et son epic quand toutes ses stories le sont"
+    ],
+    [
+     "WIKI",
+     "Écart qualifié attente fausse, ou bug de user flow sans critère correspondant : entrée à recadrer (workflow Besoin)"
+    ],
+    [
+     "JOURNAL",
+     "Hypothèse acceptée : consignée dans le journal de l'entrée (ticket fonctionnel) ou dans l'ADR (ticket technique)"
+    ]
+   ]
+  }
+ ],
+ "doc": {
+  "contract": [
+   [
+    "Déclenché par",
+    "Une story mergée à recetter (toutes ses tâches mergées), un ticket technique mergé, un user flow à vérifier, ou un signalement qualifié « écart » : lancée à la main."
+   ],
+   [
+    "Cible",
+    "Un environnement déployé depuis main, à une version. Pour une story, la version doit contenir le merge de toutes ses tâches. Aucun aperçu par PR."
+   ],
+   [
+    "Choix à l'entrée",
+    "Le référentiel (story, ticket technique, user flow, ou critères d'une entrée de besoin pour reproduire un défaut signalé), un persona facultatif, et l'exécutant : humain ou IA. La personne qui lance la recette choisit, avec une valeur par défaut au niveau du projet."
+   ],
+   [
+    "Produit",
+    "Un enregistrement de recette et, si ko, des tickets de correction."
+   ],
+   [
+    "Humain",
+    "Humain F pour un ticket fonctionnel ou un user flow, humain T pour un ticket technique."
+   ]
+  ],
+  "notes": [
+   [
+    "On teste main",
+    "L'environnement est déployé depuis main, à la version qui contient le merge. Une recette est donc forcément après le merge. Un échec trouve le code déjà sur main : la correction se fait en avant, par un ticket."
+   ],
+   [
+    "Marques dérivées",
+    "Recetté : le dernier enregistrement sur le critère est ok et le hash du critère n'a pas changé. En écart : le dernier est ko. La date de dernière réussite se lit dans l'historique. Rien n'est écrit dans l'entrée."
+   ],
+   [
+    "Humain ou IA",
+    "Avec un exécutant IA, la gate humaine valide le dossier. Avec un exécutant humain, il n'y a pas de gate : son verdict est la validation. Un critère marqué « jugement » impose l'exécution humaine pour ce critère."
+   ],
+   [
+    "Le persona oriente, il ne change pas le verdict",
+    "Pour un ticket, un persona décide de la manière de jouer les critères. Pour un user flow, ce sont les personas du flow qui sont joués. Les personas et les user flows sont créés dans le workflow Personas et user flows."
+   ],
+   [
+    "Recette d'un express",
+    "Mêmes règles que les autres : exécutant par défaut du projet, gate humaine si l'exécutant est l'IA."
+   ],
+   [
+    "Seule source de tickets de correction",
+    "Tout ticket de correction est créé par une recette, y compris pour un défaut signalé. Il a donc toujours un enregistrement derrière lui : version, exécutant, preuve."
+   ],
+   [
+    "Attribution d'un échec",
+    "Si plusieurs tickets sont mergés avant la recette de l'un d'eux, le dossier note la version testée et le ticket de correction référence les merges concernés."
+   ]
+  ],
+  "lede": "Une recette vérifie sur main, par un humain ou par une IA, qu'une story mergée, un ticket technique mergé ou un user flow se comporte comme décrit. Elle laisse un enregistrement, dont dérivent les marques « recetté » et « en écart ».",
+  "eyebrow": "Run · recette (QA)"
+ }
+}

@@ -1,0 +1,570 @@
+{
+ "id": "need",
+ "title": "Besoin",
+ "category": "run",
+ "contract": {
+  "consumes": [
+   "forming"
+  ],
+  "produces": [
+   "forming",
+   "to-plan"
+  ]
+ },
+ "steps": [
+  {
+   "id": "start",
+   "n": "1",
+   "kind": "human-start",
+   "title": "Demande",
+   "actor": "Humain F",
+   "in": [
+    [
+     "TEXTE",
+     "La demande brute"
+    ],
+    [
+     "WIKI",
+     "Proto accepté, s'il existe"
+    ],
+    [
+     "QUESTION",
+     "Si recadrage : la carte de question, avec ses options chiffrées, et l'entrée au statut à recadrer"
+    ],
+    [
+     "TEXTE",
+     "Si elle part d'une demande candidate de user flow : sa source, le flow et l'étape"
+    ]
+   ],
+   "out": [
+    [
+     "TEXTE",
+     "Besoin : qui, problème, pourquoi, non-objectifs"
+    ]
+   ]
+  },
+  {
+   "id": "audit",
+   "n": "2",
+   "kind": "agent",
+   "title": "Auditeur",
+   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "agents": [
+    {
+     "persona": "pm"
+    }
+   ],
+   "task": "audit",
+   "in": [
+    [
+     "TEXTE",
+     "Besoin"
+    ],
+    [
+     "WIKI GLOBAL",
+     "Vision, guidelines fonctionnelles et vocabulaire"
+    ],
+    [
+     "WIKI",
+     "Entrées de besoin et parcours, implémentés ou recettés, dont le périmètre recoupe celui du besoin, avec leur journal. Sélection par script, index d'abord"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Delta : doublon, contradiction, impact sur un parcours existant, option déjà écartée dans un journal, écart avec la vision, les principes ou le vocabulaire (signalé, jamais bloquant), trou"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+    ],
+    [
+     "RAPPORT",
+     "Proposition : nouvelle entrée de besoin, ou modification d'une entrée existante, avec laquelle"
+    ]
+   ]
+  },
+  {
+   "id": "challenge",
+   "n": "3",
+   "kind": "human-optional",
+   "title": "Challenge",
+   "actor": "Humain F, ouvert par script seulement si le delta n'est pas vide",
+   "in": [
+    [
+     "RAPPORT",
+     "Le delta, court et en forme fixe"
+    ],
+    [
+     "TEXTE",
+     "À la demande : une question à l'auditeur sur une ligne du delta"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Maintient ou modifie le besoin"
+    ],
+    [
+     "TEXTE",
+     "Besoin révisé, retour à l'audit"
+    ],
+    [
+     "RAPPORT",
+     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+    ]
+   ],
+   "open_if": "delta-not-empty",
+   "loop_to": "audit"
+  },
+  {
+   "id": "write",
+   "n": "4",
+   "kind": "agent",
+   "title": "Rédacteur",
+   "actor": "IA",
+   "agents": [
+    {
+     "persona": "pm"
+    }
+   ],
+   "task": "write-need",
+   "in": [
+    [
+     "TEXTE",
+     "Besoin"
+    ],
+    [
+     "RAPPORT",
+     "Delta"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé"
+    ],
+    [
+     "PROTO",
+     "Proto accepté, s'il existe"
+    ],
+    [
+     "TEXTE",
+     "Aux tours suivants : la réponse de l'humain, ou ses retours de la gate"
+    ]
+   ],
+   "out": [
+    [
+     "WIKI",
+     "Entrée proposée (nouvelle, ou modification d'une entrée existante), statut en cadrage : intention, non-objectifs, périmètre, et sa source si la demande vient d'une demande candidate (celle-ci passe alors à « lancée »)"
+    ],
+    [
+     "CRITÈRES",
+     "« Quand X, je vois Y », chacun avec son vérifié_par"
+    ],
+    [
+     "JOURNAL",
+     "Si l'entrée existe déjà : une nouvelle ligne ajoutée, avec la décision, les alternatives écartées et la raison"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses prises : chaque point où il a choisi une valeur par défaut (une formulation, un critère, un périmètre), avec la question qu'il aurait posée et sa valeur par défaut. Il continue avec cette valeur"
+    ],
+    [
+     "QUESTION",
+     "Seulement si un point le bloque : voir l'étape suivante"
+    ]
+   ]
+  },
+  {
+   "id": "ask",
+   "n": "5",
+   "kind": "human-optional",
+   "title": "Question du rédacteur",
+   "actor": "Humain F, seulement si le rédacteur est bloqué : répond à sa question",
+   "in": [
+    [
+     "QUESTION",
+     "Carte : le point qui bloque, les options, la recommandation du rédacteur"
+    ]
+   ],
+   "out": [
+    [
+     "TEXTE",
+     "Réponse, retour au rédacteur : il reprend"
+    ]
+   ],
+   "open_if": "blocked",
+   "loop_to": "write"
+  },
+  {
+   "id": "validate",
+   "n": "6",
+   "kind": "validator",
+   "title": "Validateur",
+   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "agents": [
+    {
+     "persona": "architect"
+    }
+   ],
+   "task": "validate",
+   "in": [
+    [
+     "TEXTE",
+     "Besoin"
+    ],
+    [
+     "WIKI",
+     "Entrée proposée"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Liste de défauts, critique libre"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "check",
+   "n": "7",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "need.check",
+   "in": [
+    [
+     "WIKI",
+     "Entrée proposée"
+    ],
+    [
+     "CRITÈRES",
+     "Critères"
+    ],
+    [
+     "JOURNAL",
+     "Journal de l'entrée, avant et après"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Schéma, source citée existante, périmètre issu du vocabulaire, quand / alors / vérifié_par, mots ambigus, chaque critère rattaché à une phrase du besoin, chaque parcours du proto couvert"
+    ],
+    [
+     "RAPPORT",
+     "Journal : lignes précédentes inchangées, une nouvelle ligne si une entrée existante est modifiée, format complet (date, besoin d'origine, décision, alternative écartée, raison)"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "judge",
+   "n": "8",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "IA, quatre questions fixes, plus deux si une entrée existante est modifiée, citation exigée",
+   "task": "judge",
+   "judge": "need.judge",
+   "questions": [
+    {
+     "q": "Une phrase du besoin est-elle non portée ?",
+     "fail_on": "yes"
+    },
+    {
+     "q": "Un critère est-il non soutenu par la phrase du besoin qu'il cite ?",
+     "fail_on": "yes"
+    },
+    {
+     "q": "Un critère est-il non observable ?",
+     "fail_on": "yes"
+    },
+    {
+     "q": "Deux critères se contredisent-ils ?",
+     "fail_on": "yes"
+    },
+    {
+     "q": "La raison est-elle distincte de la décision ?",
+     "fail_on": "no",
+     "when": "existing-entry-modified"
+    },
+    {
+     "q": "Une alternative écartée est-elle réellement différente ?",
+     "fail_on": "no",
+     "when": "existing-entry-modified"
+    }
+   ],
+   "in": [
+    [
+     "TEXTE",
+     "Besoin"
+    ],
+    [
+     "WIKI",
+     "Entrée proposée"
+    ],
+    [
+     "JOURNAL",
+     "Nouvelle ligne de journal, s'il y en a une"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non : une phrase du besoin non portée ? un critère non soutenu par la phrase du besoin qu'il cite ? un critère non observable ? deux critères qui se contredisent ?"
+    ],
+    [
+     "RAPPORT",
+     "Si une entrée existante est modifiée : la raison est-elle distincte de la décision ? une alternative écartée est-elle réellement différente ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "gate",
+   "n": "9",
+   "kind": "human-gate",
+   "title": "Gate · Critères",
+   "actor": "Humain F",
+   "in": [
+    [
+     "WIKI",
+     "Entrée proposée"
+    ],
+    [
+     "CRITÈRES",
+     "Critères"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé"
+    ],
+    [
+     "JOURNAL",
+     "Nouvelle ligne de journal, s'il y en a une"
+    ],
+    [
+     "TEXTE",
+     "Hypothèses prises par le rédacteur, avec leur valeur par défaut"
+    ],
+    [
+     "RAPPORT",
+     "Contrôles de code et juge, tous verts"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Entrée au statut prête, périmètre, journal, choix « nouvelle entrée ou modification » validés"
+    ],
+    [
+     "TEXTE",
+     "Ou retour au rédacteur si c'est la formulation ou une hypothèse à corriger, ou à la demande si c'est le fond du besoin"
+    ]
+   ],
+   "on_reject": [
+    {
+     "label": "fond",
+     "to": "start"
+    },
+    {
+     "label": "formulation",
+     "to": "write"
+    }
+   ]
+  },
+  {
+   "id": "group",
+   "n": "10",
+   "kind": "agent",
+   "title": "Regroupement",
+   "actor": "IA",
+   "agents": [
+    {
+     "persona": "pm"
+    }
+   ],
+   "task": "group-entries",
+   "in": [
+    [
+     "WIKI",
+     "Entrée validée, au statut prête"
+    ],
+    [
+     "WIKI",
+     "Autres entrées prêtes dont le périmètre recoupe la sienne"
+    ],
+    [
+     "TICKET",
+     "Stories en constitution, avec leur epic, dont le périmètre recoupe celui de l'entrée"
+    ]
+   ],
+   "out": [
+    [
+     "TICKET",
+     "Proposition : rejoindre la story S-n en constitution, ou créer une nouvelle story (choix par défaut). Si la demande est large : la placer dans une epic, existante ou à créer, sinon aucune epic"
+    ],
+    [
+     "TEXTE",
+     "Explication courte : pourquoi ces entrées vont ensemble, en trois phrases au plus"
+    ]
+   ]
+  },
+  {
+   "id": "check-2",
+   "n": "11",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "need.check-2",
+   "in": [
+    [
+     "TICKET",
+     "Proposition de regroupement"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Story citée existante et en constitution, epic citée existante, chaque entrée dans exactement une story, une explication présente"
+    ]
+   ],
+   "on_fail": {
+    "to": "group",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "gate-2",
+   "n": "12",
+   "kind": "human-gate",
+   "title": "Gate · Regroupement",
+   "actor": "Humain F",
+   "in": [
+    [
+     "TICKET",
+     "Proposition de regroupement"
+    ],
+    [
+     "TEXTE",
+     "Explication courte"
+    ],
+    [
+     "RAPPORT",
+     "Contrôles de code, verts"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Regroupement validé : story, et epic s'il y en a une"
+    ],
+    [
+     "TEXTE",
+     "Ou correction : une autre story, une scission, une epic. Retour à l'IA du regroupement avec cette correction"
+    ]
+   ],
+   "on_reject": [
+    {
+     "label": "execution",
+     "to": "group"
+    }
+   ]
+  },
+  {
+   "id": "end",
+   "n": "13",
+   "kind": "end",
+   "title": "Besoin prêt",
+   "in": [
+    [
+     "VALIDATION",
+     "Gate passée"
+    ]
+   ],
+   "out": [
+    [
+     "WIKI",
+     "Entrée prête, critères et périmètre validés"
+    ],
+    [
+     "TICKET",
+     "Story : créée pour cette entrée, ou entrée ajoutée à une story en constitution. Une story d'une seule entrée est prête à concevoir tout de suite. Une story de plusieurs entrées reste « en constitution » jusqu'à ce que l'humain F la ferme. Epic : créée ou rejointe si la demande est large. Les statuts se déduisent par script, sauf la fermeture"
+    ]
+   ]
+  }
+ ],
+ "doc": {
+  "contract": [
+   [
+    "Déclenché par",
+    "Une demande brute (avec un proto accepté s'il existe), une entrée à recadrer renvoyée par la conception, la réalisation ou la recette, une demande candidate issue d'un user flow, un signalement qualifié « comportement non couvert », ou le rattrapage d'un critère provisoire d'express."
+   ],
+   [
+    "Produit",
+    "Une entrée de besoin au statut prête, aux critères et au périmètre validés, rattachée à une story, elle-même éventuellement dans une epic, après deux validations : les critères, puis le regroupement."
+   ],
+   [
+    "Humain",
+    "Humain F, à deux gates : les critères, puis le regroupement. Aucun humain T."
+   ]
+  ],
+  "notes": [
+   [
+    "Quand le challenge s'ouvre",
+    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+   ],
+   [
+    "Journal des décisions",
+    "Section de l'entrée, en ajout seulement : chaque modification d'une entrée existante ajoute une ligne avec la décision, les alternatives écartées et la raison. L'auditeur la lit pour repérer une demande qui reprend une option déjà écartée. Adopté pour l'instant, à réviser à l'usage."
+   ],
+   [
+    "Ce qui bloque le rédacteur",
+    "Un point est bloquant quand un choix n'est couvert par aucune décision ni guideline, et que ses options diffèrent par leur effet ou leur coût. Le rédacteur pose alors une question, avec les options et sa recommandation. Tout le reste devient une hypothèse prise, visible à la gate."
+   ],
+   [
+    "Le rédacteur avance, l'humain tranche à la gate",
+    "Sans blocage, le rédacteur continue et les contrôles s'enchaînent. L'humain n'est sollicité avant la gate que si un point bloque le rédacteur. À la gate, il peut tout renvoyer au rédacteur. Pas de nombre maximal de tours."
+   ],
+   [
+    "Nouvelle entrée ou modification",
+    "Un besoin qui touche une fonctionnalité déjà décrite modifie son entrée, avec une ligne de journal. Sinon il en crée une. L'auditeur le propose dans son delta et l'humain le confirme à la gate. Une fonctionnalité n'est jamais retirée : elle évolue, par un besoin classique."
+   ],
+   [
+    "Fermer une story ou une epic",
+    "Tant qu'une story de plusieurs entrées est en constitution, elle accepte d'autres entrées. L'humain F la ferme par une action explicite, et elle devient « prête à concevoir ». Une story d'une seule entrée l'est d'office. Une epic se ferme de la même façon, une fois ses stories formées."
+   ],
+   [
+    "Epic, story, tâche : des issues GitHub",
+    "Une story est une issue mince qui pointe vers ses entrées de wiki, sans recopier leur texte. Elle regroupe une ou plusieurs entrées qui ont un sens ensemble et se développent ensemble. Une epic est l'issue parente de plusieurs stories. Les tâches, sous-issues d'une story, viennent de la Conception."
+   ],
+   [
+    "Deux gates, deux questions",
+    "La première valide le fond : ce que la fonctionnalité doit faire, avec ses critères. La seconde valide le regroupement, sur des entrées déjà validées, avec une explication courte. Un regroupement se corrige tant que la story est en constitution : il n'y a donc ni validateur ni juge, seulement des contrôles de code."
+   ],
+   [
+    "Découpage fonctionnel ici, technique ailleurs",
+    "Le Besoin regroupe les entrées en stories et les stories en epic, selon le sens fonctionnel. Découper une story en tâches dépend du code : c'est le rôle de la conception technique."
+   ],
+   [
+    "Les critères sont les tests",
+    "L'humain F valide des phrases observables. Le workflow Réalisation en fait des tests qui échouent avant tout code."
+   ]
+  ],
+  "lede": "Une demande devient une entrée de wiki aux critères observables, validée par l'humain F. Ces critères deviendront les tests.",
+  "eyebrow": "Run · besoin fonctionnel"
+ }
+}

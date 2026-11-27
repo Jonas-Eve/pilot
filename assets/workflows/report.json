@@ -1,0 +1,303 @@
+{
+ "id": "report",
+ "title": "Signalement",
+ "category": "run",
+ "steps": [
+  {
+   "id": "start",
+   "n": "1",
+   "kind": "human-start",
+   "title": "Signalement",
+   "actor": "Toute personne : utilisateur, support, équipe. Une IA l'aide à remplir, sans deviner ce qui manque",
+   "agents": [
+    {
+     "persona": "qa",
+     "when": "aide à remplir, sans deviner"
+    }
+   ],
+   "task": "assist-report",
+   "in": [
+    [
+     "TEXTE",
+     "Ce qui s'est passé, dans ses mots"
+    ]
+   ],
+   "out": [
+    [
+     "SIGNALEMENT",
+     "Formulaire au format fixe : étapes, attendu, observé, version ou date, capture facultative, gravité ressentie"
+    ]
+   ]
+  },
+  {
+   "id": "check",
+   "n": "2",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "report.check",
+   "in": [
+    [
+     "SIGNALEMENT",
+     "Le formulaire"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Formulaire complet, version ou date existante, capture lisible si elle est présente"
+    ]
+   ],
+   "on_fail": {
+    "to": "start",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  {
+   "id": "audit",
+   "n": "3",
+   "kind": "agent",
+   "title": "Auditeur",
+   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "agents": [
+    {
+     "persona": "pm"
+    }
+   ],
+   "task": "audit",
+   "in": [
+    [
+     "SIGNALEMENT",
+     "Le formulaire"
+    ],
+    [
+     "WIKI GLOBAL",
+     "Guidelines fonctionnelles, vocabulaire, personas. Sélection par script, index d'abord"
+    ],
+    [
+     "WIKI",
+     "Entrées de besoin et user flows dont le périmètre recoupe celui du signalement, avec leur journal"
+    ],
+    [
+     "ADR",
+     "ADR dont le périmètre recoupe celui du signalement"
+    ],
+    [
+     "TICKET",
+     "Tickets de correction et signalements ouverts"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Qualification proposée, avec citation : écart sur le critère ou l'étape X, ou comportement non couvert, ou conforme à la décision Y (journal ou ADR), ou défaut technique sans critère visible, ou doublon de T-n"
+    ],
+    [
+     "RAPPORT",
+     "Gravité proposée : bloquante, majeure ou mineure"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+    ]
+   ]
+  },
+  {
+   "id": "check-2",
+   "n": "4",
+   "kind": "check",
+   "title": "Contrôles de code",
+   "actor": "Script",
+   "check": "report.check-2",
+   "in": [
+    [
+     "RAPPORT",
+     "Qualification proposée"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Le critère, l'étape, la décision ou le ticket cité existe, périmètre issu du vocabulaire, une qualification et une gravité présentes"
+    ]
+   ],
+   "on_fail": {
+    "to": "audit",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "judge",
+   "n": "5",
+   "kind": "judge",
+   "title": "Juge",
+   "actor": "IA, trois questions fixes, citation exigée",
+   "task": "judge",
+   "judge": "report.judge",
+   "questions": [
+    {
+     "q": "Le critère, l'étape ou la décision cité concerne-t-il réellement le comportement signalé ?",
+     "fail_on": "no"
+    },
+    {
+     "q": "Le doublon cité en est-il un ?",
+     "fail_on": "no"
+    },
+    {
+     "q": "L'attendu du signalement contredit-il une option écartée dans un journal ?",
+     "fail_on": "yes"
+    }
+   ],
+   "in": [
+    [
+     "SIGNALEMENT",
+     "Le formulaire"
+    ],
+    [
+     "RAPPORT",
+     "Qualification proposée"
+    ]
+   ],
+   "out": [
+    [
+     "RAPPORT",
+     "Oui ou non : le critère, l'étape ou la décision cité concerne-t-il réellement le comportement signalé ? un doublon cité l'est-il réellement ? l'attendu du signalement contredit-il une option écartée dans un journal ?"
+    ]
+   ],
+   "on_fail": {
+    "to": "audit",
+    "max": 2,
+    "then": "gate"
+   }
+  },
+  {
+   "id": "gate",
+   "n": "6",
+   "kind": "human-gate",
+   "title": "Gate · Qualification",
+   "actor": "Humain F, ou humain T pour un défaut technique. Obligatoire sauf si la qualification est « écart » et que le juge et les contrôles sont verts",
+   "in": [
+    [
+     "SIGNALEMENT",
+     "Le formulaire"
+    ],
+    [
+     "RAPPORT",
+     "Qualification et gravité proposées"
+    ],
+    [
+     "PÉRIMÈTRE",
+     "Périmètre proposé"
+    ],
+    [
+     "RAPPORT",
+     "Contrôles de code et juge, tous verts"
+    ]
+   ],
+   "out": [
+    [
+     "VALIDATION",
+     "Qualification, gravité et périmètre validés"
+    ],
+    [
+     "TEXTE",
+     "Ou autre qualification : retour à l'audit, avec la raison"
+    ],
+    [
+     "TEXTE",
+     "Ou signalement incomplet : retour à la personne qui signale"
+    ]
+   ],
+   "on_reject": [
+    {
+     "label": "fond",
+     "to": "start"
+    }
+   ]
+  },
+  {
+   "id": "orientation",
+   "n": "7",
+   "kind": "end",
+   "title": "Orientation",
+   "in": [
+    [
+     "VALIDATION",
+     "Qualification validée, ou « écart » sans gate"
+    ]
+   ],
+   "out": [
+    [
+     "CRITÈRES",
+     "Écart : workflow Recette à lancer. Input prêt : le référentiel (les critères ou le user flow cités), la version du signalement, le persona suggéré s'il y en a un. La Recette crée seule le ticket de correction si elle échoue"
+    ],
+    [
+     "WIKI",
+     "Comportement non couvert : workflow Besoin à lancer. Input prêt : le signalement comme demande, avec son périmètre proposé"
+    ],
+    [
+     "TEXTE",
+     "Défaut technique : workflow Conception technique à lancer, entrée 2. Input prêt : le signalement comme besoin technique, avec son périmètre proposé"
+    ],
+    [
+     "TEXTE",
+     "Conforme : réponse motivée à la personne, qui cite le journal ou l'ADR, puis clôture"
+    ],
+    [
+     "TEXTE",
+     "Doublon : lien vers le ticket ou le signalement existant, puis clôture"
+    ],
+    [
+     "TEXTE",
+     "Recette sans écart : le défaut n'est pas reproduit, une demande de précision part à la personne, puis clôture selon le délai fixé par le projet"
+    ]
+   ]
+  }
+ ],
+ "doc": {
+  "contract": [
+   [
+    "Déclenché par",
+    "Un défaut constaté en dehors d'une recette, par un utilisateur, le support ou l'équipe."
+   ],
+   [
+    "Produit",
+    "Une qualification validée, puis selon le cas : une recette de reproduction, une entrée à recadrer, un besoin technique, ou une clôture motivée."
+   ],
+   [
+    "Humain",
+    "La personne qui signale, puis l'humain F pour trancher, ou l'humain T pour un défaut technique. Pas de gate si la qualification est « écart » et que le juge et les contrôles sont verts : la Recette qui suit a la sienne."
+   ]
+  ],
+  "notes": [
+   [
+    "Signalement est un aiguilleur",
+    "Il ne corrige rien et ne crée aucun ticket. Il qualifie, désigne le workflow suivant et prépare son input. L'humain lance ce workflow à la main."
+   ],
+   [
+    "Un seul producteur de tickets de correction",
+    "C'est la Recette. Signalement ne les crée jamais lui-même : tout ticket de correction a ainsi un enregistrement de recette derrière lui."
+   ],
+   [
+    "Même vocabulaire de qualification que la Recette",
+    "Écart (bug), comportement non couvert ou attente fausse (Besoin), défaut technique (Conception). Il est défini à un seul endroit."
+   ],
+   [
+    "Pas de validateur",
+    "Le juge et les contrôles de code le remplacent. La gate est obligatoire, sauf pour un « écart » que la Recette vérifie ensuite."
+   ],
+   [
+    "Gravité",
+    "La gravité proposée ordonne les tickets de correction. Une gravité bloquante peut motiver le recours au workflow Express."
+   ]
+  ],
+  "lede": "Une personne constate un comportement anormal hors recette. Le workflow le qualifie, puis l'envoie au bon endroit. Il ne crée jamais de ticket de correction : seule la Recette en crée.",
+  "eyebrow": "Run · signalement d'un défaut"
+ }
+}
