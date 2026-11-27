@@ -328,6 +328,8 @@ LANG_WORDS = {
 }
 
 
+STATE_KEYS = ("pilotInitialized", "pilotInitializedAt", "pilotVersion", "modules", "dashboardUrl",
+              "lastProcessDocSyncAt", "lastLabelsSyncAt", "lastIntroSyncAt", "lastSkillsSyncAt")  # written by init/update, besides CONFIG_KEYS
 CONFIG_KEYS = ("projectName", "language", "dashboardUrl", "commands", "scopes", "threshold")  # what `config` may write
 COMMAND_KEYS = ("test", "rules", "e2e", "build", "a11y", "render", "version")  # the project's own commands the checks read results from
 
@@ -863,6 +865,14 @@ class Machine:
                 check(name, os.path.isdir(folder),
                       f"{folder}/ found" if os.path.isdir(folder) else
                       f"the {name} module is enabled but {folder}/ is missing: run {meta['use']}")
+        try:
+            with open(STATE_PATH, encoding="utf-8") as handle:
+                state = json.load(handle)
+        except (OSError, ValueError):
+            state = {}
+        unknown = sorted(k for k in state if k not in STATE_KEYS and k not in CONFIG_KEYS) if isinstance(state, dict) else []
+        check("state-keys", not unknown, "all known" if not unknown else
+              "obsolete keys of .pilot/state.json, remove them: " + ", ".join(unknown))
         failed = [c for c in checks if not c["ok"]]
         return {"ok": not failed, "login": login, "failed": failed, "checks": checks}
 

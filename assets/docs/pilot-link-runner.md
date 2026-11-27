@@ -21,7 +21,7 @@ step (or `waiting-human` with what failed, or `done`). Push every `event` a `pil
 | `human-start` | ask the human for the step's `in` (or take it from the call), write what `out` says | `ok` |
 | `agent` | one `Agent` call per persona of `agents`, in order: persona `pilot-<persona>`, the task doc `.pilot/pilot-task-<task>.md`, `.pilot/pilot-link-agent-contract.md`, and the documents of `in` — nothing else | `ok` |
 | `validator` | as an agent, given the deliverable alone (never the discussion or the producer's reasoning) | `ok` if it lists no defect, else `fail` |
-| `judge` | two `Agent` calls without a persona: `.pilot/pilot-task-judge.md`, the contract, the step's `questions` and the documents; then `pilot.py judge check <judge> --input FILE` | `ok` if `passed`, else `fail` |
+| `judge` | two `Agent` calls without a persona: `.pilot/pilot-task-judge.md`, the contract, the step's `questions` and the documents; then `pilot.py judge <judge> --input FILE` | `ok` if `passed`, else `fail` |
 | `check` | `pilot.py check <check> --arg key=value …` (the arguments are in the check's docstring, `pilot_checks.py`); a step flagged `action` is a script: run what its `out` says with `pilot.py` (claim, ticket, `pr open|ci|merge`, labels) | `ok` if `ok`, else `fail` |
 | `human-optional` | open it only when its `open_if` holds (`delta-not-empty`: the audit's delta is not empty; `blocked`: the agent returned a QUESTION), else `skip` | `ok` (continue), `loop` (the human revised: back to `loop_to`) or `skip` |
 | `human-gate` | show the documents of `in`, the recorded assumptions (`pilot.py run show`) and the checks and judges' reports; the human validates or sends back | `ok` or `reject:<label>` among the step's `on_reject` |

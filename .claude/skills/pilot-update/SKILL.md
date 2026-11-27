@@ -41,11 +41,7 @@ Never touched: the project's own skills and agents (no match upstream), `wiki/`,
    overwriting; identical: nothing. A decline never blocks another file or step.
    **Orphans:** any local `.claude/skills/pilot-*`, `.claude/agents/pilot-*.md`, `.pilot/workflows/*.json` or
    `.pilot/pilot-*.md` with nothing matching upstream is flagged and deleted only on confirmation, without guessing
-   a replacement. In a 5.x to 6.0.0 move that is the old `pilot-discovery`, `pilot-spec`, `pilot-dev`,
-   `pilot-review`, `pilot-qa`, `pilot-auto` skills, every `pilot-task-*`/`pilot-link-*` doc gone upstream,
-   `pilot-process-companion.md`, and the `workflow.profile` and other obsolete keys of `state.json`. The old
-   `setup-github-labels.sh` copy and the earlier logic of `pilot-status-on-merge.yml` go too (the workflow
-   is overwritten like any file).
+   a replacement. `pilot.py doctor` lists the obsolete keys of `state.json`: remove them.
 
 3. **Marked blocks.** For `(CLAUDE.md, INTRO)`, `(README.md, INTRO)`, `(CLAUDE.md, MAINTENANCE)`: no
    `<!-- PILOT:<name>:START -->` marker means the file predates the convention: report and skip (unless the
@@ -67,7 +63,7 @@ Never touched: the project's own skills and agents (no match upstream), `wiki/`,
    entry for the project's test, rules, e2e, build, a11y, render or version commands, ask for them and set each with
    `python3 .pilot/pilot.py config set commands.<key> "<cmd>"` (same for `threshold`).
 
-6. **Migrate existing tickets** (when moving across a major release; the 6.0.0 labels differ from the old ones).
+6. **Migrate existing tickets** (when `labels migrate` reports tickets to move).
    Tell the human: `python3 .pilot/pilot.py labels migrate` is the migration step: a dry run that shows how the old
    `status:` and `type:` labels map to the new ones and lists what it cannot map; `--apply` writes. Run the dry run,
    include its output in the report, run `--apply` only if the human agrees, and leave the unmapped tickets to them.

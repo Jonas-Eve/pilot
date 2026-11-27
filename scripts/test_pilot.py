@@ -1916,6 +1916,23 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual([c["name"] for c in self.report(perms={"push": False})["failed"]], ["repo-write-permission"])
 
 
+class DoctorStateKeysTests(unittest.TestCase):
+    def test_an_obsolete_state_key_is_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            old = os.getcwd()
+            os.chdir(d)
+            try:
+                os.makedirs(".pilot")
+                with open(".pilot/state.json", "w") as f:
+                    json.dump({"pilotVersion": "6.0.0", "language": "en", "workflow": {"profile": "lean"}}, f)
+                m, _gh = machine([])
+                got = m.doctor(modules={})
+            finally:
+                os.chdir(old)
+        self.assertEqual([c["name"] for c in got["failed"]], ["state-keys"])
+        self.assertIn("workflow", got["failed"][0]["detail"])
+
+
 class DashboardPayloadTests(unittest.TestCase):
     def test_events_carry_the_ticket_state_and_the_parent(self):
         m, gh = machine([ticket(1), ticket(2, level="task")], subs={1: [2]})
