@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Read `.pilot/pilot-link-knowledge.md`, `.pilot/pilot-link-wiki.md`, `.pilot/pilot-process.md` and `.pilot/pilot-link-runner.md` first: the runner file says how any workflow runs. The `wiki` module must be on (`python3 .pilot/pilot.py module list`), else say so and stop.
 
-`pilot-flow <flow> --as <persona>` no longer exists: running a user flow as personas is the `accept` workflow, `/pilot-accept <user-flow id> [--persona P]`. Say so if asked.
+Running a user flow as personas is the `accept` workflow: `/pilot-accept <user-flow id> [--persona P]`.
 
 ## `--new persona|flow <description>` and `--edit <id> "<change>"`
 
