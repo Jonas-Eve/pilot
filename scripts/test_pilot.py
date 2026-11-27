@@ -1502,7 +1502,7 @@ class WorkflowDataTests(unittest.TestCase):
         rule = next(s for s in wfs["express"]["steps"] if s["id"] == "build-validate")["on_fail"]
         self.assertEqual(rule["to"], "build-implement")  # references follow the prefix
         ask = next(s for s in wfs["express"]["steps"] if s["id"] == "build-ask")
-        self.assertIn("demandé l'express", ask["actor"])  # a patched field
+        self.assertIn("requested the express", ask["actor"])  # a patched field
 
     def test_the_contracts_compose_and_a_missing_producer_is_found(self):
         wfs = pilot.load_workflows()

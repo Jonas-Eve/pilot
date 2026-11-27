@@ -7,18 +7,18 @@
    "id": "idee",
    "n": "1",
    "kind": "human-start",
-   "title": "Idée",
-   "actor": "Humain F",
+   "title": "Idea",
+   "actor": "Human F",
    "in": [
     [
-     "TEXTE",
-     "L'idée brute"
+     "TEXT",
+     "The raw idea"
     ]
    ],
    "out": [
     [
-     "TEXTE",
-     "Intention : qui, quel problème, pourquoi"
+     "TEXT",
+     "Intent: who, what problem, why"
     ]
    ]
   },
@@ -26,8 +26,8 @@
    "id": "audit",
    "n": "2",
    "kind": "agent",
-   "title": "Auditeur",
-   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "title": "Auditor",
+   "actor": "AI: a single auditor, who holds the discussion with the human",
    "agents": [
     {
      "persona": "designer"
@@ -36,26 +36,26 @@
    "task": "audit",
    "in": [
     [
-     "TEXTE",
-     "Intention"
+     "TEXT",
+     "Intent"
     ],
     [
      "WIKI GLOBAL",
-     "Vision, guidelines fonctionnelles et vocabulaire, plus les entrées dont le périmètre recoupe celui de l'intention. Sélection par script, index d'abord. Jamais le code"
+     "Vision, functional guidelines and vocabulary, plus the entries whose scope overlaps the intent's. Selected by script, index first. Never the code"
     ],
     [
      "DESIGN",
-     "Design system du projet"
+     "The project's design system"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Delta : doublon, incohérence avec un parcours existant, écart avec la vision, les principes ou le vocabulaire (signalé, jamais bloquant), trou"
+     "REPORT",
+     "Delta: duplicate, inconsistency with an existing flow, gap with the vision, principles or vocabulary (flagged, never blocking), hole"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+     "SCOPE",
+     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
     ]
    ]
   },
@@ -64,29 +64,29 @@
    "n": "3",
    "kind": "human-optional",
    "title": "Challenge",
-   "actor": "Humain F, ouvert par script seulement si le delta n'est pas vide",
+   "actor": "Human F, opened by script only if the delta is not empty",
    "in": [
     [
-     "RAPPORT",
-     "Le delta, court et en forme fixe"
+     "REPORT",
+     "The delta, short and in fixed form"
     ],
     [
-     "TEXTE",
-     "À la demande : une question à l'auditeur sur une ligne du delta"
+     "TEXT",
+     "On request: a question to the auditor about a line of the delta"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Maintient ou modifie l'intention"
+     "Keeps or modifies the intent"
     ],
     [
-     "TEXTE",
-     "Intention révisée, retour à l'audit"
+     "TEXT",
+     "Revised intent, back to the audit"
     ],
     [
-     "RAPPORT",
-     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+     "REPORT",
+     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
     ]
    ],
    "open_if": "delta-not-empty",
@@ -97,7 +97,7 @@
    "n": "4",
    "kind": "agent",
    "title": "Designer",
-   "actor": "IA",
+   "actor": "AI",
    "agents": [
     {
      "persona": "designer"
@@ -106,34 +106,34 @@
    "task": "build-proto",
    "in": [
     [
-     "TEXTE",
-     "Intention"
+     "TEXT",
+     "Intent"
     ],
     [
      "DESIGN",
-     "Design system du projet"
+     "The project's design system"
     ],
     [
-     "TEXTE",
-     "Aux tours suivants : la réponse de l'humain, ou ses retours de la gate"
+     "TEXT",
+     "In later rounds: the human's answer, or their feedback from the gate"
     ]
    ],
    "out": [
     [
      "PROTO",
-     "Prototype cliquable"
+     "Clickable prototype"
     ],
     [
-     "TEXTE",
-     "Liste des parcours qu'il montre"
+     "TEXT",
+     "List of the parcours it shows"
     ],
     [
-     "TEXTE",
-     "Hypothèses : chaque trou comblé (un écran, un libellé, une règle), avec une question et une valeur par défaut. Le designer continue avec la valeur par défaut"
+     "TEXT",
+     "Hypotheses: each gap filled (a screen, a label, a rule), with a question and a default value. The designer continues with the default value"
     ],
     [
      "QUESTION",
-     "Seulement si un point le bloque : voir l'étape suivante"
+     "Only if a point blocks it: see the next step"
     ]
    ]
   },
@@ -141,18 +141,18 @@
    "id": "question-du-designer",
    "n": "5",
    "kind": "human-optional",
-   "title": "Question du designer",
-   "actor": "Humain F, seulement si le designer est bloqué : répond à sa question",
+   "title": "Designer's question",
+   "actor": "Human F, only if the designer is blocked: answers its question",
    "in": [
     [
      "QUESTION",
-     "Carte : le point qui bloque, les options, la recommandation du designer"
+     "Card: the blocking point, the options, the designer's recommendation"
     ]
    ],
    "out": [
     [
-     "TEXTE",
-     "Réponse, retour au designer : il reprend"
+     "TEXT",
+     "Answer, back to the designer: it resumes"
     ]
    ],
    "open_if": "blocked",
@@ -162,8 +162,8 @@
    "id": "validate",
    "n": "6",
    "kind": "validator",
-   "title": "Validateur",
-   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "title": "Validator",
+   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
    "agents": [
     {
      "persona": "pm"
@@ -172,8 +172,8 @@
    "task": "validate",
    "in": [
     [
-     "TEXTE",
-     "Intention"
+     "TEXT",
+     "Intent"
     ],
     [
      "PROTO",
@@ -182,8 +182,8 @@
    ],
    "out": [
     [
-     "RAPPORT",
-     "Liste de défauts, critique libre"
+     "REPORT",
+     "List of defects, free critique"
     ]
    ],
    "on_fail": {
@@ -196,7 +196,7 @@
    "id": "check",
    "n": "7",
    "kind": "check",
-   "title": "Contrôles de code",
+   "title": "Code checks",
    "actor": "Script",
    "check": "proto.check",
    "in": [
@@ -205,26 +205,26 @@
      "Prototype"
     ],
     [
-     "TEXTE",
-     "Liste des parcours"
+     "TEXT",
+     "List of parcours"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ],
     [
      "DESIGN",
-     "Tokens et composants du design system"
+     "Design-system tokens and components"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Un seul document autonome sans ressource externe, moins de 200 Ko, lisible dès 360 px de large, cibles tactiles d'au moins 44 px, contraste AA, utilisable au clavier, écrans et liens atteignables, chaque parcours listé a ses écrans, périmètre issu du vocabulaire"
+     "REPORT",
+     "A single self-contained document with no external resource, under 200 KB, readable from 360 px wide, touch targets of at least 44 px, AA contrast, keyboard usable, screens and links reachable, each listed parcours has its screens, scope from the vocabulary"
     ],
     [
-     "RAPPORT",
-     "Éléments hors design system : la liste exacte des valeurs et composants du prototype qui n'y figurent pas, calculée par comparaison avec ses tokens"
+     "REPORT",
+     "Elements outside the design system: the exact list of the prototype's values and components not in it, computed by comparison with its tokens"
     ]
    ],
    "on_fail": {
@@ -237,38 +237,38 @@
    "id": "judge",
    "n": "8",
    "kind": "judge",
-   "title": "Juge",
-   "actor": "IA, deux questions fixes, citation exigée",
+   "title": "Judge",
+   "actor": "AI, two fixed questions, citation required",
    "task": "judge",
    "judge": "proto.judge",
    "questions": [
     {
-     "q": "Chaque parcours de l'intention est-il présent dans la liste des parcours ?",
+     "q": "Is each parcours of the intent present in the parcours list?",
      "fail_on": "no"
     },
     {
-     "q": "Un écran est-il hors intention ?",
+     "q": "Is a screen outside the intent?",
      "fail_on": "yes"
     }
    ],
    "in": [
     [
-     "TEXTE",
-     "Intention"
+     "TEXT",
+     "Intent"
     ],
     [
      "PROTO",
      "Prototype"
     ],
     [
-     "TEXTE",
+     "TEXT",
      "Parcours"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Oui ou non : chaque parcours de l'intention est-il présent ? un écran hors intention ?"
+     "REPORT",
+     "Yes or no: is each parcours of the intent present? a screen outside the intent?"
     ]
    ],
    "on_fail": {
@@ -281,42 +281,42 @@
    "id": "gate",
    "n": "9",
    "kind": "human-gate",
-   "title": "Gate · Acceptation",
-   "actor": "Humain F",
+   "title": "Gate · Acceptance",
+   "actor": "Human F",
    "in": [
     [
      "PROTO",
-     "Prototype cliquable, à manipuler"
+     "Clickable prototype, to try"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ],
     [
-     "TEXTE",
-     "Hypothèses du designer, avec leur valeur par défaut"
+     "TEXT",
+     "The designer's hypotheses, with their default value"
     ],
     [
-     "RAPPORT",
-     "Éléments hors design system, élément par élément"
+     "REPORT",
+     "Elements outside the design system, element by element"
     ],
     [
-     "RAPPORT",
-     "Contrôles de code et juge, tous verts"
+     "REPORT",
+     "Code checks and judge, all green"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Proto et périmètre acceptés"
+     "Proto and scope accepted"
     ],
     [
-     "TEXTE",
-     "Pour chaque élément hors design system : « à intégrer » (il devient l'intention du workflow Design system) ou « exception locale » (inscrite dans l'entrée du proto, provisoire, avec un rattrapage)"
+     "TEXT",
+     "For each element outside the design system: \"to integrate\" (it becomes the intent of the Design system workflow) or \"local exception\" (recorded in the proto entry, provisional, with a catch-up)"
     ],
     [
-     "TEXTE",
-     "Ou retour au designer si c'est la forme ou une hypothèse à corriger, ou à l'intention si c'est le fond"
+     "TEXT",
+     "Or back to the designer if the form or a hypothesis must be corrected, or to the intent if the substance"
     ]
    ],
    "on_reject": [
@@ -334,30 +334,30 @@
    "id": "attente-du-design-system",
    "n": "10",
    "kind": "wait",
-   "title": "Attente du design system",
-   "actor": "Un script évalue la condition à l'entrée et à chaque demande de reprise. L'humain F dit « c'est bon » quand le workflow Design system est terminé",
+   "title": "Waiting for the design system",
+   "actor": "A script evaluates the condition at entry and at each resume request. Human F says \"it's good\" when the Design system workflow is finished",
    "in": [
     [
      "VALIDATION",
-     "Éléments « à intégrer » décidés à la gate"
+     "\"To integrate\" elements decided at the gate"
     ],
     [
      "DESIGN",
-     "Design system accepté, relu à chaque contrôle"
+     "Accepted design system, re-read at each check"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Contrôle à l'entrée : si la liste est vide, ou si chaque élément existe déjà dans le design system accepté, le workflow continue sans pause"
+     "REPORT",
+     "Check at entry: if the list is empty, or if each element already exists in the accepted design system, the workflow continues without a pause"
     ],
     [
-     "ENREGISTREMENT",
-     "Sinon, run en pause : la condition attendue et la dernière étape terminée, relus à chaque reprise"
+     "RECORD",
+     "Otherwise, run paused: the awaited condition and the last completed step, re-read at each resume"
     ],
     [
-     "RAPPORT",
-     "À chaque « c'est bon » de l'humain : le même contrôle. S'il passe, le workflow continue"
+     "REPORT",
+     "At each \"it's good\" from the human: the same check. If it passes, the workflow continues"
     ]
    ]
   },
@@ -365,21 +365,21 @@
    "id": "proto-accepte",
    "n": "11",
    "kind": "end",
-   "title": "Proto accepté",
+   "title": "Proto accepted",
    "in": [
     [
      "VALIDATION",
-     "Gate passée, et reprise validée s'il y avait une attente"
+     "Gate passed, and resume validated if there was a wait"
     ]
    ],
    "out": [
     [
      "WIKI",
-     "Entrée proto : parcours, lien du prototype, périmètre, statut accepté. Les exceptions locales y sont inscrites, au statut provisoire"
+     "Proto entry: parcours, prototype link, scope, status accepted. Local exceptions are recorded there, at status provisional"
     ],
     [
      "TICKET",
-     "Rattrapage : pour chaque exception locale, un élément créé dans le workflow Design system pour la confirmer ou l'intégrer, avec un délai"
+     "Catch-up: for each local exception, an item created in the Design system workflow to confirm or integrate it, with a deadline"
     ]
    ]
   }
@@ -387,45 +387,45 @@
  "doc": {
   "contract": [
    [
-    "Déclenché par",
-    "Une idée dont l'interface est essentielle."
+    "Triggered by",
+    "An idea whose interface is essential."
    ],
    [
-    "Produit",
-    "Une entrée de wiki « proto » acceptée, que le besoin référence."
+    "Produces",
+    "An accepted \"proto\" wiki entry, which the need references."
    ],
    [
-    "Humain",
-    "Humain F, à la gate."
+    "Human",
+    "Human F, at the gate."
    ]
   ],
   "notes": [
    [
-    "Quand le challenge s'ouvre",
-    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+    "When the challenge opens",
+    "A script opens it only if the auditor's delta is not empty. Otherwise writing follows directly. The discussion is a loop between the human and the auditor, with no maximum number of rounds: at each round, the auditor receives the delta and the messages exchanged since its last round."
    ],
    [
-    "Facultatif",
-    "Un besoin sans interface saute ce workflow. Un besoin peut aussi naître d'un proto sans demande écrite."
+    "Optional",
+    "A need without an interface skips this workflow. A need can also be born from a proto with no written request."
    ],
    [
-    "Où le design system bloque",
-    "Le contrôle de code établit seulement la liste des éléments hors design system : il ne refuse rien. Le blocage vient de l'étape d'attente : un script vérifie à l'entrée que les éléments « à intégrer » existent dans le design system, sinon le run se met en pause, et le même contrôle revient à chaque demande de reprise. Le proto n'est accepté, et donc lisible par le Besoin, qu'une fois ces éléments intégrés."
+    "Where the design system blocks",
+    "The code check only establishes the list of elements outside the design system: it refuses nothing. The block comes from the waiting step: a script checks at entry that the \"to integrate\" elements exist in the design system, otherwise the run pauses, and the same check returns at each resume request. The proto is accepted, and thus readable by Need, only once these elements are integrated."
    ],
    [
-    "Le designer avance, l'humain tranche à la gate",
-    "Sans blocage, le designer continue avec des valeurs par défaut pour ses hypothèses, et l'humain les corrige à la gate, où un retour au designer est toujours possible. Il n'est sollicité avant que si un point bloque le designer. Pas de nombre maximal de tours."
+    "The designer proceeds, the human decides at the gate",
+    "Without a block, the designer continues with default values for their hypotheses, and the human corrects them at the gate, where a return to the designer is always possible. They are asked before only if a point blocks the designer. No maximum number of rounds."
    ],
    [
-    "Le Prototype n'écrit jamais dans le design system",
-    "Il lit ses tokens, calcule ce qui en sort, et l'humain décide à la gate. Seul le workflow Design system le modifie."
+    "The Prototype never writes into the design system",
+    "It reads its tokens, computes what falls outside, and the human decides at the gate. Only the Design system workflow modifies it."
    ],
    [
-    "Pas de design system",
-    "Le prototype choisit librement. La liste de ses choix devient la première intention du workflow Design system."
+    "No design system",
+    "The prototype chooses freely. The list of its choices becomes the first intent of the Design system workflow."
    ]
   ],
-  "lede": "Un humain F prototype une idée pour rendre l'intention observable avant de rédiger le besoin. Utile quand l'interface porte l'intention.",
-  "eyebrow": "Run · prototype (facultatif)"
+  "lede": "A human F prototypes an idea to make the intent observable before writing the need. Useful when the interface carries the intent.",
+  "eyebrow": "Run · prototype (optional)"
  }
 }

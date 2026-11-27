@@ -1,24 +1,24 @@
 {
  "id": "functional-frame",
- "title": "Cadre fonctionnel",
+ "title": "Functional frame",
  "category": "admin",
  "steps": [
   {
    "id": "start",
    "n": "1",
    "kind": "human-start",
-   "title": "Intention",
-   "actor": "Humain F",
+   "title": "Intent",
+   "actor": "Human F",
    "in": [
     [
-     "TEXTE",
-     "La préoccupation produit, dans ses mots"
+     "TEXT",
+     "The product concern, in their words"
     ]
    ],
    "out": [
     [
-     "TEXTE",
-     "Intention fonctionnelle"
+     "TEXT",
+     "Functional intent"
     ]
    ]
   },
@@ -26,8 +26,8 @@
    "id": "audit",
    "n": "2",
    "kind": "agent",
-   "title": "Auditeur",
-   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "title": "Auditor",
+   "actor": "AI: a single auditor, who holds the discussion with the human",
    "agents": [
     {
      "persona": "pm"
@@ -36,26 +36,26 @@
    "task": "audit",
    "in": [
     [
-     "TEXTE",
-     "Intention fonctionnelle"
+     "TEXT",
+     "Functional intent"
     ],
     [
      "WIKI GLOBAL",
-     "Vision, guidelines fonctionnelles et vocabulaire, plus les entrées dont le périmètre recoupe celui de l'intention. Sélection par script, index d'abord. Jamais le code"
+     "Vision, functional guidelines and vocabulary, plus the entries whose scope overlaps the intent's. Selected by script, index first. Never the code"
     ],
     [
      "WIKI",
-     "Entrées de besoin et parcours dont le périmètre recoupe celui de l'intention. Sélection par script, index d'abord"
+     "Need entries and parcours whose scope overlaps the intent's. Selected by script, index first"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Delta : recouvre, contredit, modifie, trou, parcours existants touchés. Trois champs par ligne : entrée, conséquence, résolution proposée. Vide si RAS"
+     "REPORT",
+     "Delta: overlaps, contradicts, modifies, hole, existing flows touched. Three fields per line: entry, consequence, proposed resolution. Empty if nothing to report"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+     "SCOPE",
+     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
     ]
    ]
   },
@@ -64,29 +64,29 @@
    "n": "3",
    "kind": "human-optional",
    "title": "Challenge",
-   "actor": "Humain F, ouvert par script seulement si le delta n'est pas vide",
+   "actor": "Human F, opened by script only if the delta is not empty",
    "in": [
     [
-     "RAPPORT",
-     "Le delta, court et en forme fixe"
+     "REPORT",
+     "The delta, short and in fixed form"
     ],
     [
-     "TEXTE",
-     "À la demande : une question à l'auditeur sur une ligne du delta"
+     "TEXT",
+     "On request: a question to the auditor about a line of the delta"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Maintient ou modifie l'intention"
+     "Keeps or modifies the intent"
     ],
     [
-     "TEXTE",
-     "Intention révisée, retour à l'audit"
+     "TEXT",
+     "Revised intent, back to the audit"
     ],
     [
-     "RAPPORT",
-     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+     "REPORT",
+     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
     ]
    ],
    "open_if": "delta-not-empty",
@@ -96,8 +96,8 @@
    "id": "write",
    "n": "4",
    "kind": "agent",
-   "title": "Rédacteur",
-   "actor": "IA",
+   "title": "Writer",
+   "actor": "AI",
    "agents": [
     {
      "persona": "pm"
@@ -106,22 +106,22 @@
    "task": "write-functional-frame",
    "in": [
     [
-     "TEXTE",
-     "Intention fonctionnelle"
+     "TEXT",
+     "Functional intent"
     ],
     [
-     "RAPPORT",
+     "REPORT",
      "Delta"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ]
    ],
    "out": [
     [
      "WIKI GLOBAL",
-     "Entrée proposée au format fixe : vision, guideline fonctionnelle ou vocabulaire, avec son périmètre et ce qu'elle remplace"
+     "Proposed entry in fixed format: vision, functional guideline or vocabulary, with its scope and what it replaces"
     ]
    ]
   },
@@ -129,8 +129,8 @@
    "id": "validate",
    "n": "5",
    "kind": "validator",
-   "title": "Validateur",
-   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "title": "Validator",
+   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
    "agents": [
     {
      "persona": "architect"
@@ -139,18 +139,18 @@
    "task": "validate",
    "in": [
     [
-     "TEXTE",
-     "Intention fonctionnelle"
+     "TEXT",
+     "Functional intent"
     ],
     [
      "WIKI GLOBAL",
-     "Entrée proposée"
+     "Proposed entry"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Liste de défauts, critique libre"
+     "REPORT",
+     "List of defects, free critique"
     ]
    ],
    "on_fail": {
@@ -163,19 +163,19 @@
    "id": "check",
    "n": "6",
    "kind": "check",
-   "title": "Contrôles de code",
+   "title": "Code checks",
    "actor": "Script",
    "check": "functional-frame.check",
    "in": [
     [
      "WIKI GLOBAL",
-     "Entrée proposée"
+     "Proposed entry"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Schéma valide, périmètre issu du vocabulaire, mots ambigus, vocabulaire sans doublon, chaque énoncé cite sa source, aucun recouvrement de périmètre avec une entrée acceptée sans « remplace »"
+     "REPORT",
+     "Valid schema, scope from the vocabulary, ambiguous words, vocabulary without duplicates, each statement cites its source, no scope overlap with an accepted entry without \"replaces\""
     ]
    ],
    "on_fail": {
@@ -188,38 +188,38 @@
    "id": "judge",
    "n": "7",
    "kind": "judge",
-   "title": "Juge",
-   "actor": "IA, trois questions fixes, citation exigée",
+   "title": "Judge",
+   "actor": "AI, three fixed questions, citation required",
    "task": "judge",
    "judge": "functional-frame.judge",
    "questions": [
     {
-     "q": "Chaque phrase de l'intention est-elle portée ?",
+     "q": "Is each sentence of the intent carried?",
      "fail_on": "no"
     },
     {
-     "q": "Un énoncé est-il non soutenu par sa source citée ?",
+     "q": "Is a statement unsupported by its cited source?",
      "fail_on": "yes"
     },
     {
-     "q": "Y a-t-il contradiction avec une entrée citée ?",
+     "q": "Is there a contradiction with a cited entry?",
      "fail_on": "yes"
     }
    ],
    "in": [
     [
-     "TEXTE",
-     "Intention fonctionnelle"
+     "TEXT",
+     "Functional intent"
     ],
     [
      "WIKI GLOBAL",
-     "Entrée proposée"
+     "Proposed entry"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Oui ou non : chaque phrase de l'intention est-elle portée ? un énoncé non soutenu par sa source citée ? contradiction avec une entrée citée ?"
+     "REPORT",
+     "Yes or no: is each sentence of the intent carried? a statement unsupported by its cited source? a contradiction with a cited entry?"
     ]
    ],
    "on_fail": {
@@ -232,30 +232,30 @@
    "id": "gate",
    "n": "8",
    "kind": "human-gate",
-   "title": "Gate · Relecture",
-   "actor": "Humain F",
+   "title": "Gate · Review",
+   "actor": "Human F",
    "in": [
     [
      "WIKI GLOBAL",
-     "Entrée proposée"
+     "Proposed entry"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ],
     [
-     "RAPPORT",
-     "Contrôles de code et juge, tous verts"
+     "REPORT",
+     "Code checks and judge, all green"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Entrée acceptée, périmètre validé"
+     "Entry accepted, scope validated"
     ],
     [
-     "TEXTE",
-     "Ou modifications : retour à l'intention"
+     "TEXT",
+     "Or changes: back to the intent"
     ]
    ],
    "on_reject": [
@@ -269,17 +269,17 @@
    "id": "end",
    "n": "9",
    "kind": "end",
-   "title": "Accepté · merge",
+   "title": "Accepted · merge",
    "in": [
     [
      "VALIDATION",
-     "Gate passée"
+     "Gate passed"
     ]
    ],
    "out": [
     [
      "WIKI GLOBAL",
-     "Entrée acceptée dans le wiki, avec son périmètre. Le Prototype et le Besoin la lisent"
+     "Entry accepted in the wiki, with its scope. The Prototype and Need read it"
     ]
    ]
   }
@@ -287,49 +287,49 @@
  "doc": {
   "contract": [
    [
-    "Déclenché par",
-    "Une préoccupation produit : principe à poser, ligne récurrente, vocabulaire à fixer, nouveau périmètre à définir, ou une règle locale répétée (promotion)."
+    "Triggered by",
+    "A product concern: principle to set, recurring line, vocabulary to fix, new scope to define, or a repeated local rule (promotion)."
    ],
    [
-    "Produit",
-    "Une entrée de wiki global acceptée : vision, guideline fonctionnelle ou vocabulaire."
+    "Produces",
+    "An accepted global wiki entry: vision, functional guideline or vocabulary."
    ],
    [
-    "Humain",
-    "Humain F, à la gate. Aucun humain T."
+    "Human",
+    "Human F, at the gate. No human T."
    ]
   ],
   "notes": [
    [
-    "Quand le challenge s'ouvre",
-    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+    "When the challenge opens",
+    "A script opens it only if the auditor's delta is not empty. Otherwise writing follows directly. The discussion is a loop between the human and the auditor, with no maximum number of rounds: at each round, the auditor receives the delta and the messages exchanged since its last round."
    ],
    [
-    "Des repères, pas des verrous",
-    "Contrairement au cadre technique, rien n'est exécuté en CI et rien ne bloque. Le Prototype et le Besoin lisent ces entrées, et leur auditeur signale un écart dans son delta. L'humain décide."
+    "Landmarks, not locks",
+    "Unlike the technical frame, nothing is run in CI and nothing blocks. The Prototype and Need read these entries, and their auditor flags a gap in its delta. The human decides."
    ],
    [
-    "Pas de tests ici",
-    "Il n'y a rien à implémenter, donc rien à prouver : ni tests écrits d'abord, ni seconde gate."
+    "No tests here",
+    "There is nothing to implement, so nothing to prove: no tests written first, no second gate."
    ],
    [
-    "Vocabulaire de périmètres fonctionnels",
-    "Le définir ou le modifier est une décision de ce workflow, avec gate : par exemple les domaines produit."
+    "Vocabulary of functional scopes",
+    "Defining or modifying it is a decision of this workflow, with a gate: for example the product domains."
    ],
    [
-    "Pas d'exigence non fonctionnelle",
-    "Performance, sécurité et accessibilité restent dans le Cadre technique, décidées par l'humain T seul."
+    "No non-functional requirement",
+    "Performance, security and accessibility stay in the Technical frame, decided by human T alone."
    ],
    [
-    "Personas et parcours",
-    "Ils relèvent du workflow Personas et user flows : ce sont des entrées différentes, au service de la recette."
+    "Personas and flows",
+    "They belong to the Personas and user flows workflow: they are different entries, serving the Recette."
    ],
    [
-    "Comme le cadre technique",
-    "L'audit ignore le code. Alternatives écartées : rien n'est conservé pour l'instant."
+    "Like the technical frame",
+    "The audit ignores the code. Discarded alternatives: nothing is kept for now."
    ]
   ],
-  "lede": "Un humain F pose une grande ligne produit qui ne dépend d'aucun besoin : vision, guideline fonctionnelle, vocabulaire. Elle devient une entrée de wiki global acceptée. Ce sont des repères que le Prototype et le Besoin lisent pour le savoir, pas des règles bloquantes.",
-  "eyebrow": "Admin · repères fonctionnels"
+  "lede": "A human F sets a broad product line that depends on no need: vision, functional guideline, vocabulary. It becomes an accepted global wiki entry. These are landmarks that the Prototype and Need read for awareness, not blocking rules.",
+  "eyebrow": "Admin · functional landmarks"
  }
 }

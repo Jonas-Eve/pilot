@@ -1,31 +1,31 @@
 {
  "id": "report",
- "title": "Signalement",
+ "title": "Report",
  "category": "run",
  "steps": [
   {
    "id": "start",
    "n": "1",
    "kind": "human-start",
-   "title": "Signalement",
-   "actor": "Toute personne : utilisateur, support, équipe. Une IA l'aide à remplir, sans deviner ce qui manque",
+   "title": "Report",
+   "actor": "Anyone: user, support, team. An AI helps fill it in, without guessing what is missing",
    "agents": [
     {
      "persona": "qa",
-     "when": "aide à remplir, sans deviner"
+     "when": "helps fill in, without guessing"
     }
    ],
    "task": "assist-report",
    "in": [
     [
-     "TEXTE",
-     "Ce qui s'est passé, dans ses mots"
+     "TEXT",
+     "What happened, in their words"
     ]
    ],
    "out": [
     [
-     "SIGNALEMENT",
-     "Formulaire au format fixe : étapes, attendu, observé, version ou date, capture facultative, gravité ressentie"
+     "REPORT",
+     "Fixed-format form: steps, expected, observed, version or date, optional capture, perceived severity"
     ]
    ]
   },
@@ -33,19 +33,19 @@
    "id": "check",
    "n": "2",
    "kind": "check",
-   "title": "Contrôles de code",
+   "title": "Code checks",
    "actor": "Script",
    "check": "report.check",
    "in": [
     [
-     "SIGNALEMENT",
-     "Le formulaire"
+     "REPORT",
+     "The form"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Formulaire complet, version ou date existante, capture lisible si elle est présente"
+     "REPORT",
+     "Complete form, existing version or date, readable capture if present"
     ]
    ],
    "on_fail": {
@@ -58,8 +58,8 @@
    "id": "audit",
    "n": "3",
    "kind": "agent",
-   "title": "Auditeur",
-   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "title": "Auditor",
+   "actor": "AI: a single auditor, who holds the discussion with the human",
    "agents": [
     {
      "persona": "pm"
@@ -68,38 +68,38 @@
    "task": "audit",
    "in": [
     [
-     "SIGNALEMENT",
-     "Le formulaire"
+     "REPORT",
+     "The form"
     ],
     [
      "WIKI GLOBAL",
-     "Guidelines fonctionnelles, vocabulaire, personas. Sélection par script, index d'abord"
+     "Functional guidelines, vocabulary, personas. Selected by script, index first"
     ],
     [
      "WIKI",
-     "Entrées de besoin et user flows dont le périmètre recoupe celui du signalement, avec leur journal"
+     "Need entries and user flows whose scope overlaps the report's, with their log"
     ],
     [
      "ADR",
-     "ADR dont le périmètre recoupe celui du signalement"
+     "ADRs whose scope overlaps the report's"
     ],
     [
      "TICKET",
-     "Tickets de correction et signalements ouverts"
+     "Open correction tickets and reports"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Qualification proposée, avec citation : écart sur le critère ou l'étape X, ou comportement non couvert, ou conforme à la décision Y (journal ou ADR), ou défaut technique sans critère visible, ou doublon de T-n"
+     "REPORT",
+     "Proposed qualification, with citation: gap on criterion or step X, or uncovered behavior, or conforms to decision Y (log or ADR), or technical defect with no visible criterion, or duplicate of T-n"
     ],
     [
-     "RAPPORT",
-     "Gravité proposée : bloquante, majeure ou mineure"
+     "REPORT",
+     "Proposed severity: blocking, major or minor"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+     "SCOPE",
+     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
     ]
    ]
   },
@@ -107,23 +107,23 @@
    "id": "check-2",
    "n": "4",
    "kind": "check",
-   "title": "Contrôles de code",
+   "title": "Code checks",
    "actor": "Script",
    "check": "report.check-2",
    "in": [
     [
-     "RAPPORT",
-     "Qualification proposée"
+     "REPORT",
+     "Proposed qualification"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Le critère, l'étape, la décision ou le ticket cité existe, périmètre issu du vocabulaire, une qualification et une gravité présentes"
+     "REPORT",
+     "The cited criterion, step, decision or ticket exists, scope from the vocabulary, a qualification and a severity present"
     ]
    ],
    "on_fail": {
@@ -136,38 +136,38 @@
    "id": "judge",
    "n": "5",
    "kind": "judge",
-   "title": "Juge",
-   "actor": "IA, trois questions fixes, citation exigée",
+   "title": "Judge",
+   "actor": "AI, three fixed questions, citation required",
    "task": "judge",
    "judge": "report.judge",
    "questions": [
     {
-     "q": "Le critère, l'étape ou la décision cité concerne-t-il réellement le comportement signalé ?",
+     "q": "Does the cited criterion, step or decision really concern the reported behavior?",
      "fail_on": "no"
     },
     {
-     "q": "Le doublon cité en est-il un ?",
+     "q": "Is the cited duplicate really one?",
      "fail_on": "no"
     },
     {
-     "q": "L'attendu du signalement contredit-il une option écartée dans un journal ?",
+     "q": "Does the report's expectation contradict an option discarded in a log?",
      "fail_on": "yes"
     }
    ],
    "in": [
     [
-     "SIGNALEMENT",
-     "Le formulaire"
+     "REPORT",
+     "The form"
     ],
     [
-     "RAPPORT",
-     "Qualification proposée"
+     "REPORT",
+     "Proposed qualification"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Oui ou non : le critère, l'étape ou la décision cité concerne-t-il réellement le comportement signalé ? un doublon cité l'est-il réellement ? l'attendu du signalement contredit-il une option écartée dans un journal ?"
+     "REPORT",
+     "Yes or no: does the cited criterion, step or decision really concern the reported behavior? is a cited duplicate really one? does the report's expectation contradict an option discarded in a log?"
     ]
    ],
    "on_fail": {
@@ -181,37 +181,37 @@
    "n": "6",
    "kind": "human-gate",
    "title": "Gate · Qualification",
-   "actor": "Humain F, ou humain T pour un défaut technique. Obligatoire sauf si la qualification est « écart » et que le juge et les contrôles sont verts",
+   "actor": "Human F, or human T for a technical defect. Mandatory unless the qualification is \"gap\" and the judge and checks are green",
    "in": [
     [
-     "SIGNALEMENT",
-     "Le formulaire"
+     "REPORT",
+     "The form"
     ],
     [
-     "RAPPORT",
-     "Qualification et gravité proposées"
+     "REPORT",
+     "Proposed qualification and severity"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ],
     [
-     "RAPPORT",
-     "Contrôles de code et juge, tous verts"
+     "REPORT",
+     "Code checks and judge, all green"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Qualification, gravité et périmètre validés"
+     "Qualification, severity and scope validated"
     ],
     [
-     "TEXTE",
-     "Ou autre qualification : retour à l'audit, avec la raison"
+     "TEXT",
+     "Or other qualification: back to the audit, with the reason"
     ],
     [
-     "TEXTE",
-     "Ou signalement incomplet : retour à la personne qui signale"
+     "TEXT",
+     "Or incomplete report: back to the person reporting"
     ]
    ],
    "on_reject": [
@@ -225,37 +225,37 @@
    "id": "orientation",
    "n": "7",
    "kind": "end",
-   "title": "Orientation",
+   "title": "Direction",
    "in": [
     [
      "VALIDATION",
-     "Qualification validée, ou « écart » sans gate"
+     "Qualification validated, or \"gap\" without a gate"
     ]
    ],
    "out": [
     [
-     "CRITÈRES",
-     "Écart : workflow Recette à lancer. Input prêt : le référentiel (les critères ou le user flow cités), la version du signalement, le persona suggéré s'il y en a un. La Recette crée seule le ticket de correction si elle échoue"
+     "CRITERIA",
+     "Gap: Recette workflow to launch. Input ready: the reference (the cited criteria or user flow), the report's version, the suggested persona if any. The Recette alone creates the correction ticket if it fails"
     ],
     [
      "WIKI",
-     "Comportement non couvert : workflow Besoin à lancer. Input prêt : le signalement comme demande, avec son périmètre proposé"
+     "Uncovered behavior: Need workflow to launch. Input ready: the report as a request, with its proposed scope"
     ],
     [
-     "TEXTE",
-     "Défaut technique : workflow Conception technique à lancer, entrée 2. Input prêt : le signalement comme besoin technique, avec son périmètre proposé"
+     "TEXT",
+     "Technical defect: Plan workflow to launch, entry 2. Input ready: the report as a technical need, with its proposed scope"
     ],
     [
-     "TEXTE",
-     "Conforme : réponse motivée à la personne, qui cite le journal ou l'ADR, puis clôture"
+     "TEXT",
+     "Conforms: reasoned answer to the person, citing the log or the ADR, then closure"
     ],
     [
-     "TEXTE",
-     "Doublon : lien vers le ticket ou le signalement existant, puis clôture"
+     "TEXT",
+     "Duplicate: link to the existing ticket or report, then closure"
     ],
     [
-     "TEXTE",
-     "Recette sans écart : le défaut n'est pas reproduit, une demande de précision part à la personne, puis clôture selon le délai fixé par le projet"
+     "TEXT",
+     "Recette without gap: the defect is not reproduced, a request for details goes to the person, then closure after the delay set by the project"
     ]
    ]
   }
@@ -263,41 +263,41 @@
  "doc": {
   "contract": [
    [
-    "Déclenché par",
-    "Un défaut constaté en dehors d'une recette, par un utilisateur, le support ou l'équipe."
+    "Triggered by",
+    "A defect noticed outside a Recette, by a user, support or the team."
    ],
    [
-    "Produit",
-    "Une qualification validée, puis selon le cas : une recette de reproduction, une entrée à recadrer, un besoin technique, ou une clôture motivée."
+    "Produces",
+    "A validated qualification, then depending on the case: a reproduction Recette, an entry to reframe, a technical need, or a reasoned closure."
    ],
    [
-    "Humain",
-    "La personne qui signale, puis l'humain F pour trancher, ou l'humain T pour un défaut technique. Pas de gate si la qualification est « écart » et que le juge et les contrôles sont verts : la Recette qui suit a la sienne."
+    "Human",
+    "The person reporting, then human F to decide, or human T for a technical defect. No gate if the qualification is \"gap\" and the judge and checks are green: the Recette that follows has its own."
    ]
   ],
   "notes": [
    [
-    "Signalement est un aiguilleur",
-    "Il ne corrige rien et ne crée aucun ticket. Il qualifie, désigne le workflow suivant et prépare son input. L'humain lance ce workflow à la main."
+    "Report is a switch",
+    "It fixes nothing and creates no ticket. It qualifies, names the next workflow and prepares its input. The human launches that workflow by hand."
    ],
    [
-    "Un seul producteur de tickets de correction",
-    "C'est la Recette. Signalement ne les crée jamais lui-même : tout ticket de correction a ainsi un enregistrement de recette derrière lui."
+    "A single producer of correction tickets",
+    "The Recette. Report never creates them itself: every correction ticket thus has a Recette record behind it."
    ],
    [
-    "Même vocabulaire de qualification que la Recette",
-    "Écart (bug), comportement non couvert ou attente fausse (Besoin), défaut technique (Conception). Il est défini à un seul endroit."
+    "Same qualification vocabulary as the Recette",
+    "Gap (bug), uncovered behavior or wrong expectation (Need), technical defect (Plan). It is defined in one place."
    ],
    [
-    "Pas de validateur",
-    "Le juge et les contrôles de code le remplacent. La gate est obligatoire, sauf pour un « écart » que la Recette vérifie ensuite."
+    "No validator",
+    "The judge and the code checks replace it. The gate is mandatory, except for a \"gap\" that the Recette then verifies."
    ],
    [
-    "Gravité",
-    "La gravité proposée ordonne les tickets de correction. Une gravité bloquante peut motiver le recours au workflow Express."
+    "Severity",
+    "The proposed severity orders the correction tickets. A blocking severity can justify using the Express workflow."
    ]
   ],
-  "lede": "Une personne constate un comportement anormal hors recette. Le workflow le qualifie, puis l'envoie au bon endroit. Il ne crée jamais de ticket de correction : seule la Recette en crée.",
-  "eyebrow": "Run · signalement d'un défaut"
+  "lede": "A person notices abnormal behavior outside a Recette. The workflow qualifies it, then sends it to the right place. It never creates a correction ticket: only the Recette does.",
+  "eyebrow": "Run · defect report"
  }
 }

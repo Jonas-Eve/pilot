@@ -1,6 +1,6 @@
 {
  "id": "plan",
- "title": "Conception technique",
+ "title": "Plan",
  "category": "run",
  "contract": {
   "consumes": [
@@ -20,31 +20,31 @@
    "id": "eligibility",
    "n": "1",
    "kind": "check",
-   "title": "Éligibilité",
-   "actor": "Script, entrée 1 seulement",
+   "title": "Eligibility",
+   "actor": "Script, entry 1 only",
    "check": "plan.eligibility",
    "in": [
     [
      "TICKET",
-     "Entrée 1 : l'epic ou la story"
+     "Entry 1: the epic or story"
     ],
     [
      "WIKI",
-     "Les entrées de ses stories"
+     "The entries of its stories"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Epic ou story prête à concevoir (et toutes ses stories), entrées prêtes, critères valides, aucune conception en cours sur aucune"
+     "REPORT",
+     "Epic or story ready to design (and all its stories), entries ready, criteria valid, no design in progress on any"
     ],
     [
      "TICKET",
-     "Statut de l'epic ou de la story : en conception"
+     "Status of the epic or story: in design"
     ],
     [
      "WIKI",
-     "Statut de chaque entrée : en conception"
+     "Status of each entry: in design"
     ]
    ]
   },
@@ -52,26 +52,26 @@
    "id": "orientation",
    "n": "2",
    "kind": "human-start",
-   "title": "Orientation",
-   "actor": "Humain T",
+   "title": "Direction",
+   "actor": "Human T",
    "in": [
     [
      "WIKI",
-     "Entrée 1 : l'epic ou la story, ses entrées de besoin, intentions et critères"
+     "Entry 1: the epic or story, its need entries, intents and criteria"
     ],
     [
-     "TEXTE",
-     "Entrée 2 : le besoin technique, dans ses mots"
+     "TEXT",
+     "Entry 2: the technical need, in their words"
     ],
     [
-     "RAPPORT",
-     "Entrée 2, s'il y a lieu : la dérive relevée par la surveillance"
+     "REPORT",
+     "Entry 2, if applicable: the drift spotted by monitoring"
     ]
    ],
    "out": [
     [
-     "TEXTE",
-     "Orientation : contraintes, préférences, pistes, ou la déclaration explicite « aucune orientation ». L'humain T l'écrit lui-même, sans valeur par défaut. Entrée 2 : ajoute ce qui doit rester vrai après le changement"
+     "TEXT",
+     "Direction: constraints, preferences, leads, or the explicit statement \"no direction\". Human T writes it themselves, no default. Entry 2: adds what must remain true after the change"
     ]
    ]
   },
@@ -79,8 +79,8 @@
    "id": "audit",
    "n": "3",
    "kind": "agent",
-   "title": "Auditeur",
-   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "title": "Auditor",
+   "actor": "AI: a single auditor, who holds the discussion with the human",
    "agents": [
     {
      "persona": "architect"
@@ -93,29 +93,29 @@
    "in": [
     [
      "WIKI",
-     "Entrées de besoin (entrée 1)"
+     "Need entries (entry 1)"
     ],
     [
-     "TEXTE",
-     "Orientation"
+     "TEXT",
+     "Direction"
     ],
     [
-     "ARCHI GLOBAL",
-     "Overview et guidelines, plus les ADR dont le périmètre recoupe celui du besoin. Sélection par script, index d'abord"
+     "GLOBAL ARCHITECTURE",
+     "Overview and guidelines, plus the ADRs whose scope overlaps the need's. Selected by script, index first"
     ],
     [
      "CODE",
-     "Structure et zones touchées"
+     "Structure and areas touched"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Delta : recouvre, contredit, trou, zones de code touchées, surcoût estimé."
+     "REPORT",
+     "Delta: overlaps, contradicts, hole, code areas touched, estimated extra cost."
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre technique proposé pour chaque ticket (story ou tâche). Le périmètre fonctionnel vient de l'entrée de besoin"
+     "SCOPE",
+     "Proposed technical scope for each ticket (story or task). The functional scope comes from the need entry"
     ]
    ]
   },
@@ -124,33 +124,33 @@
    "n": "4",
    "kind": "human-optional",
    "title": "Challenge",
-   "actor": "Humain T, ouvert par script seulement si le delta n'est pas vide ou si le surcoût dépasse le seuil",
+   "actor": "Human T, opened by script only if the delta is not empty or the extra cost exceeds the threshold",
    "in": [
     [
-     "RAPPORT",
-     "Le delta, court et en forme fixe"
+     "REPORT",
+     "The delta, short and in fixed form"
     ],
     [
-     "TEXTE",
-     "À la demande : une question à l'auditeur sur une ligne du delta"
+     "TEXT",
+     "On request: a question to the auditor about a line of the delta"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Maintient ou modifie l'orientation"
+     "Keeps or modifies the direction"
     ],
     [
-     "TEXTE",
-     "Orientation révisée, retour à l'audit"
+     "TEXT",
+     "Revised direction, back to the audit"
     ],
     [
      "QUESTION",
-     "Si surcoût ou critère impossible : carte à options chiffrées pour l'humain F, entrée au statut à recadrer"
+     "If extra cost or impossible criterion: card with costed options for human F, entry at status to reframe"
     ],
     [
-     "RAPPORT",
-     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+     "REPORT",
+     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
     ]
    ],
    "open_if": "delta-not-empty-or-overcost",
@@ -160,61 +160,61 @@
    "id": "write",
    "n": "5",
    "kind": "agent",
-   "title": "Rédacteur",
-   "actor": "IA",
+   "title": "Writer",
+   "actor": "AI",
    "agents": [
     {
      "persona": "architect",
-     "when": "les ADR et les périmètres"
+     "when": "the ADRs and the scopes"
     },
     {
      "persona": "techlead",
-     "when": "le découpage et les tickets"
+     "when": "the split and the tickets"
     }
    ],
    "task": "write-plan",
    "in": [
     [
      "WIKI",
-     "Entrées de besoin"
+     "Need entries"
     ],
     [
-     "TEXTE",
-     "Orientation"
+     "TEXT",
+     "Direction"
     ],
     [
-     "RAPPORT",
+     "REPORT",
      "Delta"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre technique proposé"
+     "SCOPE",
+     "Proposed technical scope"
     ],
     [
-     "TEXTE",
-     "Aux tours suivants : la réponse de l'humain T, ou ses retours de la gate"
+     "TEXT",
+     "In later rounds: human T's answer, or their feedback from the gate"
     ]
    ],
    "out": [
     [
      "ADR",
-     "ADR locaux, statut proposé, avec leur périmètre. Entrée 2 : porte aussi le pourquoi du besoin, faute d'entrée de wiki"
+     "Local ADRs, status proposed, with their scope. Entry 2: also carries the why of the need, lacking a wiki entry"
     ],
     [
-     "CRITÈRES",
-     "Entrée 2 seulement : critères techniques portés par les tickets (non-régression, invariant vérifiable)"
+     "CRITERIA",
+     "Entry 2 only: technical criteria carried by the tickets (non-regression, verifiable invariant)"
     ],
     [
      "TICKET",
-     "Découpage proposé : chaque story telle quelle, ou découpée en tâches seulement si nécessaire. Pour chaque ticket : critères, décisions liées, dépendances, périmètre"
+     "Proposed split: each story as is, or split into tasks only if necessary. For each ticket: criteria, linked decisions, dependencies, scope"
     ],
     [
-     "TEXTE",
-     "Hypothèses prises : chaque point où il a choisi une valeur par défaut (un choix technique, un découpage, un périmètre), avec la question qu'il aurait posée et sa valeur par défaut. Il continue avec cette valeur"
+     "TEXT",
+     "Hypotheses made: each point where it chose a default value (a technical choice, a split, a scope), with the question it would have asked and its default value. It continues with that value"
     ],
     [
      "QUESTION",
-     "Seulement si un point le bloque : voir l'étape suivante"
+     "Only if a point blocks it: see the next step"
     ]
    ]
   },
@@ -222,18 +222,18 @@
    "id": "ask",
    "n": "6",
    "kind": "human-optional",
-   "title": "Question du rédacteur",
-   "actor": "Humain T, seulement si le rédacteur est bloqué : répond à sa question",
+   "title": "Writer's question",
+   "actor": "Human T, only if the writer is blocked: answers its question",
    "in": [
     [
      "QUESTION",
-     "Carte : le point qui bloque, les options, la recommandation du rédacteur"
+     "Card: the blocking point, the options, the writer's recommendation"
     ]
    ],
    "out": [
     [
-     "TEXTE",
-     "Réponse, retour au rédacteur : il reprend"
+     "TEXT",
+     "Answer, back to the writer: it resumes"
     ]
    ],
    "open_if": "blocked",
@@ -243,41 +243,41 @@
    "id": "validate",
    "n": "7",
    "kind": "validator",
-   "title": "Validateur",
-   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "title": "Validator",
+   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
    "agents": [
     {
      "persona": "pm",
-     "when": "entrée 1 : les critères sont couverts, le besoin n'est pas déformé"
+     "when": "entry 1: the criteria are covered, the need is not distorted"
     },
     {
      "persona": "dev",
-     "when": "entrée 2 : les ADR sont applicables, les tâches autonomes"
+     "when": "entry 2: the ADRs are applicable, the tasks autonomous"
     }
    ],
    "task": "validate",
    "in": [
     [
      "WIKI",
-     "Entrée 1 : entrées de besoin"
+     "Entry 1: need entries"
     ],
     [
-     "TEXTE",
-     "Entrée 2 : le besoin technique et son pourquoi"
+     "TEXT",
+     "Entry 2: the technical need and its why"
     ],
     [
      "ADR",
-     "ADR locaux"
+     "Local ADRs"
     ],
     [
      "TICKET",
-     "Tickets proposés"
+     "Proposed tickets"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Liste de défauts, critique libre. Entrée 1 : les critères sont-ils couverts, le besoin est-il déformé ? Entrée 2 : les ADR sont-ils applicables, les tâches autonomes ?"
+     "REPORT",
+     "List of defects, free critique. Entry 1: are the criteria covered, is the need distorted? Entry 2: are the ADRs applicable, the tasks autonomous?"
     ]
    ],
    "on_fail": {
@@ -290,31 +290,31 @@
    "id": "check",
    "n": "8",
    "kind": "check",
-   "title": "Contrôles de code",
+   "title": "Code checks",
    "actor": "Script",
    "check": "plan.check",
    "in": [
     [
      "ADR",
-     "ADR locaux"
+     "Local ADRs"
     ],
     [
      "TICKET",
-     "Tickets proposés"
+     "Proposed tickets"
     ],
     [
      "WIKI",
-     "Entrées de besoin, pour leurs critères"
+     "Need entries, for their criteria"
     ],
     [
      "CODE",
-     "Structure du code, pour mesurer la taille de lecture de chaque tâche"
+     "Code structure, to measure the reading size of each task"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Schéma valide, périmètres issus du vocabulaire, chaque critère (de chaque entrée de la story, ou porté par la tâche) dans exactement un ticket, la story ou l'une de ses tâches, dépendances sans cycle, ADR cités existants, aucun recouvrement de périmètre avec un ADR accepté sans « remplace ». Orientation présente, ou « aucune orientation » déclarée par l'humain T. Chaque critère lié à au moins une décision. Chaque tâche porte au moins un critère vérifiable. Deux tâches aux périmètres qui se recouvrent sont reliées par une dépendance. La taille de lecture de chaque tâche (périmètre, ADR, critères) tient sous le seuil du projet. Une story n'est découpée que si elle dépasse ce seuil"
+     "REPORT",
+     "Valid schema, scopes from the vocabulary, each criterion (of each entry of the story, or carried by the task) in exactly one ticket, the story or one of its tasks, dependencies without cycle, cited ADRs exist, no scope overlap with an accepted ADR without \"replaces\". Direction present, or \"no direction\" declared by human T. Each criterion linked to at least one decision. Each task carries at least one verifiable criterion. Two tasks with overlapping scopes are linked by a dependency. The reading size of each task (scope, ADR, criteria) fits under the project threshold. A story is split only if it exceeds this threshold"
     ]
    ],
    "on_fail": {
@@ -327,21 +327,21 @@
    "id": "judge",
    "n": "9",
    "kind": "judge",
-   "title": "Juge",
-   "actor": "IA, questions fixes, citation exigée",
+   "title": "Judge",
+   "actor": "AI, fixed questions, citation required",
    "task": "judge",
    "judge": "plan.judge",
    "questions": [
     {
-     "q": "Un ADR local contredit-il un critère ?",
+     "q": "Does a local ADR contradict a criterion?",
      "fail_on": "yes"
     },
     {
-     "q": "La décision liée à un critère le couvre-t-elle réellement ?",
+     "q": "Does the decision linked to a criterion really cover it?",
      "fail_on": "no"
     },
     {
-     "q": "Un comportement visible change-t-il ?",
+     "q": "Does a visible behavior change?",
      "fail_on": "yes",
      "when": "entry-2"
     }
@@ -349,7 +349,7 @@
    "in": [
     [
      "WIKI",
-     "Entrées de besoin"
+     "Need entries"
     ],
     [
      "TICKET",
@@ -357,13 +357,13 @@
     ],
     [
      "ADR",
-     "ADR locaux"
+     "Local ADRs"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Oui ou non : un ADR local contredit-il un critère ? la décision liée à un critère le couvre-t-elle réellement ? Entrée 2 : un comportement visible change-t-il ? Si oui, bascule vers le workflow Besoin"
+     "REPORT",
+     "Yes or no: does a local ADR contradict a criterion? does the decision linked to a criterion really cover it? Entry 2: does a visible behavior change? If so, switch to the Need workflow"
     ]
    ],
    "on_fail": {
@@ -376,38 +376,38 @@
    "id": "gate",
    "n": "10",
    "kind": "human-gate",
-   "title": "Gate · Relecture",
-   "actor": "Humain T",
+   "title": "Gate · Review",
+   "actor": "Human T",
    "in": [
     [
      "ADR",
-     "ADR locaux"
+     "Local ADRs"
     ],
     [
      "TICKET",
-     "Tickets proposés"
+     "Proposed tickets"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètres proposés"
+     "SCOPE",
+     "Proposed scopes"
     ],
     [
-     "TEXTE",
-     "Hypothèses prises par le rédacteur, avec leur valeur par défaut"
+     "TEXT",
+     "Hypotheses made by the writer, with their default value"
     ],
     [
-     "RAPPORT",
-     "Contrôles de code et juge, tous verts"
+     "REPORT",
+     "Code checks and judge, all green"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "ADR au statut accepté, tickets et périmètres validés, tickets créés au statut prêt"
+     "ADRs at status accepted, tickets and scopes validated, tickets created at status ready"
     ],
     [
-     "TEXTE",
-     "Ou retour au rédacteur si c'est la formulation, le découpage ou une hypothèse à corriger, ou à l'orientation si c'est le fond"
+     "TEXT",
+     "Or back to the writer if wording, split or a hypothesis must be corrected, or to the direction if the substance"
     ]
    ],
    "on_reject": [
@@ -421,29 +421,29 @@
    "id": "end",
    "n": "11",
    "kind": "end",
-   "title": "Conçue",
+   "title": "Designed",
    "in": [
     [
      "VALIDATION",
-     "Gate passée"
+     "Gate passed"
     ]
    ],
    "out": [
     [
      "ADR",
-     "ADR locaux dans architecture/"
+     "Local ADRs in architecture/"
     ],
     [
      "TICKET",
-     "Une story non découpée est réalisée telle quelle. Sinon ses tâches, sous-issues minces : critères, décisions, dépendances, périmètre"
+     "An unsplit story is built as is. Otherwise its tasks, thin sub-issues: criteria, decisions, dependencies, scope"
     ],
     [
      "TICKET",
-     "Entrée 1 seulement : une story non découpée passe à prête, pour la Réalisation. Une story découpée passe à conçue, et ses tâches sont prêtes. L'epic passe à conçue quand toutes ses stories le sont. Statuts déduits par script"
+     "Entry 1 only: an unsplit story moves to ready, for the Build. A split story moves to designed, and its tasks are ready. The epic moves to designed when all its stories are. Statuses derived by script"
     ],
     [
      "WIKI",
-     "Entrée 1 seulement : statut conçue pour chaque entrée de l'epic ou de la story"
+     "Entry 1 only: status designed for each entry of the epic or story"
     ]
    ]
   }
@@ -451,73 +451,73 @@
  "doc": {
   "contract": [
    [
-    "Déclenché par",
-    "Entrée 1 : une epic ou une story au statut « prête à concevoir » (workflow Besoin). Une story regroupe une ou plusieurs entrées de wiki qui vont ensemble ; une epic regroupe des stories. Entrée 2 : un besoin technique exprimé directement par l'humain T (dette, migration, remédiation, correction d'une dérive), un signalement qualifié « défaut technique », ou le rattrapage d'une décision provisoire d'express, sans entrée de wiki."
+    "Triggered by",
+    "Entry 1: an epic or a story at status \"ready to design\" (Need workflow). A story groups one or more wiki entries that go together; an epic groups stories. Entry 2: a technical need expressed directly by human T (debt, migration, remediation, drift fix), a report qualified \"technical defect\", or the catch-up of a provisional express decision, without a wiki entry."
    ],
    [
-    "Produit",
-    "ADR locaux acceptés et tickets prêts : chaque story telle quelle, ou ses tâches si elle a été découpée. Pour l'entrée 1, l'epic ou la story et ses entrées passent au statut conçu."
+    "Produces",
+    "Accepted local ADRs and ready tickets: each story as is, or its tasks if it was split. For entry 1, the epic or story and its entries move to status designed."
    ],
    [
-    "Humain",
-    "Humain T. L'humain F n'est consulté que si un critère est impossible ou coûte trop cher, ou si un besoin technique change un comportement visible."
+    "Human",
+    "Human T. Human F is consulted only if a criterion is impossible or too costly, or if a technical need changes a visible behavior."
    ]
   ],
   "notes": [
    [
-    "Quand le challenge s'ouvre",
-    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+    "When the challenge opens",
+    "A script opens it only if the auditor's delta is not empty. Otherwise writing follows directly. The discussion is a loop between the human and the auditor, with no maximum number of rounds: at each round, the auditor receives the delta and the messages exchanged since its last round."
    ],
    [
-    "Ce qui bloque le rédacteur",
-    "Un point est bloquant quand un choix n'est couvert par aucune décision ni guideline, et que ses options diffèrent par leur effet ou leur coût. Le rédacteur pose alors une question, avec les options et sa recommandation. Tout le reste devient une hypothèse prise, visible à la gate."
+    "What blocks the writer",
+    "A point is blocking when a choice is covered by no decision or guideline, and its options differ in effect or cost. The writer then asks a question, with the options and its recommendation. Everything else becomes a hypothesis made, visible at the gate."
    ],
    [
-    "Le rédacteur avance, l'humain tranche à la gate",
-    "Sans blocage, le rédacteur continue et les contrôles s'enchaînent. L'humain T n'est sollicité avant la gate que si un point bloque le rédacteur. À la gate, il peut tout renvoyer au rédacteur. Pas de nombre maximal de tours."
+    "The writer proceeds, the human decides at the gate",
+    "Without a block, the writer continues and the checks chain. Human T is asked before the gate only if a point blocks the writer. At the gate, they can send everything back to the writer. No maximum number of rounds."
    ],
    [
-    "Epic, story, tâche",
-    "L'humain F décide au Besoin quelles entrées partent ensemble (une story) et quelles stories se regroupent (une epic). La Conception prend une epic ou une story déjà formée, et ne la redécoupe pas fonctionnellement. Elle ne crée de tâches que si la story ne tient pas telle quelle. Une seule gate valide l'ensemble."
+    "Epic, story, task",
+    "Human F decides in Need which entries go together (a story) and which stories group (an epic). Plan takes an already-formed epic or story, and does not re-split it functionally. It creates tasks only if the story does not fit as is. A single gate validates the whole."
    ],
    [
-    "Quand découper une story en tâches",
-    "Une tâche doit être vérifiable seule, mergeable seule et tenir dans un contexte de travail. Ce n'est pas une question d'effort, et un script le mesure : un critère par tâche au moins, une dépendance entre périmètres qui se recouvrent, une taille de lecture sous le seuil. Si la story satisfait déjà ces trois conditions, elle est réalisée telle quelle. Si l'on ne peut pas la découper sans casser le sens fonctionnel, c'est une question à l'humain F, qui peut scinder la story au Besoin."
+    "When to split a story into tasks",
+    "A task must be verifiable alone, mergeable alone and fit in one working context. It is not a matter of effort, and a script measures it: at least one criterion per task, a dependency between overlapping scopes, a reading size under the threshold. If the story already meets these three conditions, it is built as is. If it cannot be split without breaking functional meaning, that is a question to human F, who can split the story in Need."
    ],
    [
-    "Orientation obligatoire, sans défaut",
-    "L'étape ne se saute pas : l'humain T donne une orientation, ou déclare lui-même qu'il n'en a pas besoin. Le silence ne vaut pas « aucune orientation »."
+    "Mandatory direction, no default",
+    "The step is not skipped: human T gives a direction, or states themselves that none is needed. Silence does not mean \"no direction\"."
    ],
    [
-    "ADR locaux seulement ici",
-    "Le cadre technique ne produit que des guidelines. Un ADR local naît dans cette conception, pour une story ou une epic, ou pour un besoin technique."
+    "Local ADRs only here",
+    "The technical frame produces only guidelines. A local ADR is born in this design, for a story or an epic, or for a technical need."
    ],
    [
-    "Un validateur par entrée",
-    "Le PM valide l'entrée 1, la seule qui a un besoin fonctionnel à protéger. Le Dev valide l'entrée 2 : les deux leads sont du même bord technique, et c'est lui qui implémentera. Ce que le code mesure (taille, autonomie, couverture des critères) n'est pas redemandé au validateur."
+    "One validator per entry",
+    "The PM validates entry 1, the only one with a functional need to protect. The Dev validates entry 2: both leads are of the same technical side, and the dev will implement. What the code measures (size, autonomy, criteria coverage) is not asked again of the validator."
    ],
    [
-    "L'audit lit le code",
-    "Contrairement au cadre technique, le découpage et les dépendances exigent de voir où le besoin touche le code."
+    "The audit reads the code",
+    "Unlike the technical frame, splitting and dependencies require seeing where the need touches the code."
    ],
    [
-    "Entrée 2 sans wiki",
-    "L'ADR local est la trace du besoin technique, avec son pourquoi. Aucune entrée de besoin n'est créée, puisque l'humain T est la source."
+    "Entry 2 without wiki",
+    "The local ADR is the trace of the technical need, with its why. No need entry is created, since human T is the source."
    ],
    [
     "Promotion",
-    "Un ADR local qui se répète devient candidat au workflow Cadre technique, détecté par sa surveillance."
+    "A repeated local ADR becomes a candidate for the Technical frame workflow, detected by its monitoring."
    ],
    [
-    "Vérification d'un ADR local",
-    "Elle est portée par les tests des critères de ses tickets, contrairement à un ADR transversal qui a sa propre règle."
+    "Verification of a local ADR",
+    "It is carried by the tests of its tickets' criteria, unlike a cross-cutting ADR that has its own rule."
    ],
    [
-    "Le seul retour vers le fonctionnel",
-    "Un surcoût ou un critère impossible renvoie l'entrée à l'humain F, avec les options chiffrées."
+    "The only way back to the functional side",
+    "An extra cost or impossible criterion sends the entry back to human F, with the costed options."
    ]
   ],
-  "lede": "Un besoin, fonctionnel ou technique, est traduit en décisions techniques locales et en tickets réalisables. Le découpage en tâches se fait ici, seulement si nécessaire, parce qu'il dépend du code.",
-  "eyebrow": "Run · conception technique, besoin fonctionnel ou technique"
+  "lede": "A need, functional or technical, is translated into local technical decisions and buildable tickets. Splitting into tasks happens here, only if necessary, because it depends on the code.",
+  "eyebrow": "Run · plan, functional or technical need"
  }
 }

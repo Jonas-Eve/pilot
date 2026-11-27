@@ -7,22 +7,22 @@
    "id": "start",
    "n": "1",
    "kind": "human-start",
-   "title": "Intention",
-   "actor": "Humain F",
+   "title": "Intent",
+   "actor": "Human F",
    "in": [
     [
-     "TEXTE",
-     "Le besoin de design, dans ses mots"
+     "TEXT",
+     "The design need, in their words"
     ],
     [
-     "RAPPORT",
-     "Si elle vient d'un prototype : la liste des éléments hors design system décidés « à intégrer »"
+     "REPORT",
+     "If it comes from a prototype: the list of elements outside the design system decided \"to integrate\""
     ]
    ],
    "out": [
     [
-     "TEXTE",
-     "Intention de design"
+     "TEXT",
+     "Design intent"
     ]
    ]
   },
@@ -30,8 +30,8 @@
    "id": "audit",
    "n": "2",
    "kind": "agent",
-   "title": "Auditeur",
-   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "title": "Auditor",
+   "actor": "AI: a single auditor, who holds the discussion with the human",
    "agents": [
     {
      "persona": "designer"
@@ -40,26 +40,26 @@
    "task": "audit",
    "in": [
     [
-     "TEXTE",
-     "Intention de design"
+     "TEXT",
+     "Design intent"
     ],
     [
      "DESIGN",
-     "Design system existant : valeurs nommées (tokens), composants, règles d'usage. Sélection par script, index d'abord"
+     "Existing design system: named values (tokens), components, usage rules. Selected by script, index first"
     ],
     [
      "WIKI GLOBAL",
-     "Vision, guidelines fonctionnelles, vocabulaire, personas dont les besoins d'accessibilité"
+     "Vision, functional guidelines, vocabulary, personas including their accessibility needs"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Delta : recouvre, contredit, doublon de composant, écart avec la vision, les principes ou le vocabulaire (signalé, jamais bloquant), trou, composants et écrans existants touchés"
+     "REPORT",
+     "Delta: overlaps, contradicts, component duplicate, gap with the vision, principles or vocabulary (flagged, never blocking), hole, existing components and screens touched"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+     "SCOPE",
+     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
     ]
    ]
   },
@@ -68,29 +68,29 @@
    "n": "3",
    "kind": "human-optional",
    "title": "Challenge",
-   "actor": "Humain F, ouvert par script seulement si le delta n'est pas vide",
+   "actor": "Human F, opened by script only if the delta is not empty",
    "in": [
     [
-     "RAPPORT",
-     "Le delta, court et en forme fixe"
+     "REPORT",
+     "The delta, short and in fixed form"
     ],
     [
-     "TEXTE",
-     "À la demande : une question à l'auditeur sur une ligne du delta"
+     "TEXT",
+     "On request: a question to the auditor about a line of the delta"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Maintient ou modifie l'intention"
+     "Keeps or modifies the intent"
     ],
     [
-     "TEXTE",
-     "Intention révisée, retour à l'audit"
+     "TEXT",
+     "Revised intent, back to the audit"
     ],
     [
-     "RAPPORT",
-     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+     "REPORT",
+     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
     ]
    ],
    "open_if": "delta-not-empty",
@@ -101,7 +101,7 @@
    "n": "4",
    "kind": "agent",
    "title": "Designer",
-   "actor": "IA, avec sa consigne d'écriture du design system",
+   "actor": "AI, with its design-system writing instruction",
    "agents": [
     {
      "persona": "designer"
@@ -110,26 +110,26 @@
    "task": "write-design-system",
    "in": [
     [
-     "TEXTE",
-     "Intention de design"
+     "TEXT",
+     "Design intent"
     ],
     [
-     "RAPPORT",
+     "REPORT",
      "Delta"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ]
    ],
    "out": [
     [
      "DESIGN",
-     "Entrée proposée au format fixe : valeurs nommées appelées tokens (couleur, typographie, espacement, rayon), composant avec ses états, ou règle d'usage, avec ce qu'elle remplace"
+     "Proposed entry in fixed format: named values called tokens (color, typography, spacing, radius), component with its states, or usage rule, with what it replaces"
     ],
     [
      "PROTO",
-     "Page de démonstration : chaque composant dans chacun de ses états"
+     "Demo page: each component in each of its states"
     ]
    ]
   },
@@ -137,8 +137,8 @@
    "id": "validate",
    "n": "5",
    "kind": "validator",
-   "title": "Validateur",
-   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "title": "Validator",
+   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
    "agents": [
     {
      "persona": "architect"
@@ -147,18 +147,18 @@
    "task": "validate",
    "in": [
     [
-     "TEXTE",
-     "Intention de design"
+     "TEXT",
+     "Design intent"
     ],
     [
      "DESIGN",
-     "Entrée proposée"
+     "Proposed entry"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Liste de défauts, critique libre"
+     "REPORT",
+     "List of defects, free critique"
     ]
    ],
    "on_fail": {
@@ -171,19 +171,19 @@
    "id": "check",
    "n": "6",
    "kind": "check",
-   "title": "Contrôles de code",
+   "title": "Code checks",
    "actor": "Script",
    "check": "design-system.check",
    "in": [
     [
      "DESIGN",
-     "Entrée proposée"
+     "Proposed entry"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Schéma valide, périmètre issu du vocabulaire, contraste AA calculé pour chaque paire de couleurs, thèmes clair et sombre complets, tokens référencés existants, chaque composant déclare tous les états requis par sa catégorie, aucun doublon de nom ou de valeur, nommage respecté"
+     "REPORT",
+     "Valid schema, scope from the vocabulary, AA contrast computed for each color pair, complete light and dark themes, referenced tokens exist, each component declares all states required by its category, no duplicate name or value, naming respected"
     ]
    ],
    "on_fail": {
@@ -196,30 +196,30 @@
    "id": "judge",
    "n": "7",
    "kind": "judge",
-   "title": "Juge",
-   "actor": "IA, question fixe, citation exigée",
+   "title": "Judge",
+   "actor": "AI, fixed question, citation required",
    "task": "judge",
    "judge": "design-system.judge",
    "questions": [
     {
-     "q": "Le composant fait-il doublon, par sa fonction, avec un existant ?",
+     "q": "Does the component duplicate, by its function, an existing one?",
      "fail_on": "yes"
     }
    ],
    "in": [
     [
-     "TEXTE",
-     "Intention de design"
+     "TEXT",
+     "Design intent"
     ],
     [
      "DESIGN",
-     "Entrée proposée"
+     "Proposed entry"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Oui ou non : le composant fait-il doublon, par sa fonction, avec un existant ?"
+     "REPORT",
+     "Yes or no: does the component duplicate, by its function, an existing one?"
     ]
    ],
    "on_fail": {
@@ -232,34 +232,34 @@
    "id": "gate",
    "n": "8",
    "kind": "human-gate",
-   "title": "Gate 1 · Relecture",
-   "actor": "Humain F",
+   "title": "Gate 1 · Review",
+   "actor": "Human F",
    "in": [
     [
      "DESIGN",
-     "Entrée proposée"
+     "Proposed entry"
     ],
     [
      "PROTO",
-     "Page de démonstration"
+     "Demo page"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ],
     [
-     "RAPPORT",
-     "Contrôles de code et juge, tous verts"
+     "REPORT",
+     "Code checks and judge, all green"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Texte, démonstration et périmètre validés. L'entrée reste proposée tant que le code et la règle ne sont pas mergés"
+     "Text, demo and scope validated. The entry stays proposed until the code and the rule are merged"
     ],
     [
-     "TEXTE",
-     "Ou modifications : retour à l'intention"
+     "TEXT",
+     "Or changes: back to the intent"
     ]
    ],
    "on_reject": [
@@ -273,20 +273,20 @@
    "id": "theme",
    "n": "9",
    "kind": "check",
-   "title": "Génération du thème",
+   "title": "Theme generation",
    "actor": "Script",
    "check": "design-system.theme",
    "action": true,
    "in": [
     [
      "DESIGN",
-     "Entrée validée"
+     "Validated entry"
     ]
    ],
    "out": [
     [
      "CODE",
-     "Fichiers de thème générés à partir de l'entrée : tokens, thèmes clair et sombre. Jamais écrits ni modifiés à la main"
+     "Theme files generated from the entry: tokens, light and dark themes. Never written or modified by hand"
     ]
    ],
    "on_fail": {
@@ -299,8 +299,8 @@
    "id": "implement",
    "n": "10",
    "kind": "agent",
-   "title": "Implémenteur",
-   "actor": "IA",
+   "title": "Implementer",
+   "actor": "AI",
    "agents": [
     {
      "persona": "dev"
@@ -310,29 +310,29 @@
    "in": [
     [
      "DESIGN",
-     "Entrée validée"
+     "Validated entry"
     ],
     [
      "CODE",
-     "Thème généré"
+     "Generated theme"
     ],
     [
-     "ARCHI GLOBAL",
-     "Guidelines et outillage de l'interface : bibliothèque de composants, format des tokens"
+     "GLOBAL ARCHITECTURE",
+     "Interface guidelines and tooling: component library, token format"
     ]
    ],
    "out": [
     [
      "CODE",
-     "Composants, selon les choix du cadre technique, qui n'utilisent que les tokens du thème généré"
+     "Components, per the technical frame's choices, using only the generated theme's tokens"
     ],
     [
-     "RÈGLE",
-     "« Tokens seulement » : aucune valeur de couleur, d'espacement ou de typographie écrite en dur dans les écrans, limitée au périmètre"
+     "RULE",
+     "\"Tokens only\": no color, spacing or typography value hard-coded in the screens, limited to the scope"
     ],
     [
      "TEST",
-     "Exemples qui doivent passer et qui doivent échouer, dont une valeur en dur détectée"
+     "Examples that must pass and that must fail, including a detected hard-coded value"
     ]
    ]
   },
@@ -340,8 +340,8 @@
    "id": "validate-2",
    "n": "11",
    "kind": "validator",
-   "title": "Validateur",
-   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "title": "Validator",
+   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
    "agents": [
     {
      "persona": "techlead"
@@ -351,25 +351,25 @@
    "in": [
     [
      "DESIGN",
-     "Entrée validée"
+     "Validated entry"
     ],
     [
      "CODE",
-     "Composants"
+     "Components"
     ],
     [
-     "RÈGLE",
-     "La règle"
+     "RULE",
+     "The rule"
     ],
     [
      "TEST",
-     "Exemples"
+     "Examples"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Liste de défauts, critique libre : les composants respectent-ils l'entrée, et la règle fait-elle ce qu'elle dit ?"
+     "REPORT",
+     "List of defects, free critique: do the components respect the entry, and does the rule do what it says?"
     ]
    ],
    "on_fail": {
@@ -382,35 +382,35 @@
    "id": "check-2",
    "n": "12",
    "kind": "check",
-   "title": "Contrôles de code et dossier",
+   "title": "Code checks and case file",
    "actor": "Script",
    "check": "design-system.check-2",
    "in": [
     [
-     "RÈGLE",
-     "La règle"
+     "RULE",
+     "The rule"
     ],
     [
      "TEST",
-     "Exemples"
+     "Examples"
     ],
     [
      "CODE",
-     "Thème, composants et écrans actuels"
+     "Current theme, components and screens"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Build vert, thème identique à celui que produit le script, accessibilité automatique, chaque règle rattachée à un énoncé, exemples ok, règle non vide"
+     "REPORT",
+     "Build green, theme identical to the one the script produces, automatic accessibility, each rule tied to a statement, examples ok, non-empty rule"
     ],
     [
-     "RAPPORT",
-     "Dossier d'une page : écrans existants qui utilisent encore des valeurs en dur, composants sans état couvert"
+     "REPORT",
+     "One-page case file: existing screens still using hard-coded values, components without a covered state"
     ],
     [
-     "PREUVE",
-     "Captures de chaque composant, dans chaque thème et chaque état"
+     "PROOF",
+     "Captures of each component, in each theme and each state"
     ]
    ],
    "on_fail": {
@@ -423,34 +423,34 @@
    "id": "judge-2",
    "n": "13",
    "kind": "judge",
-   "title": "Juge",
-   "actor": "IA, question fixe, citation exigée",
+   "title": "Judge",
+   "actor": "AI, fixed question, citation required",
    "task": "judge",
    "judge": "design-system.judge-2",
    "questions": [
     {
-     "q": "Chaque capture montre-t-elle le composant décrit dans l'état annoncé ?",
+     "q": "Does each capture show the described component in the announced state?",
      "fail_on": "no"
     }
    ],
    "in": [
     [
      "DESIGN",
-     "Entrée validée"
+     "Validated entry"
     ],
     [
-     "PREUVE",
+     "PROOF",
      "Captures"
     ],
     [
-     "RÈGLE",
-     "La règle et ses exemples"
+     "RULE",
+     "The rule and its examples"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Oui ou non : chaque capture montre-t-elle le composant décrit dans l'état annoncé ?"
+     "REPORT",
+     "Yes or no: does each capture show the described component in the announced state?"
     ]
    ],
    "on_fail": {
@@ -463,28 +463,28 @@
    "id": "pr-ci",
    "n": "14",
    "kind": "check",
-   "title": "Ouverture de la PR et CI",
+   "title": "PR opening and CI",
    "actor": "Script",
    "check": "design-system.pr-ci",
    "action": true,
    "in": [
     [
      "CODE",
-     "Thème, composants, règle et exemples"
+     "Theme, components, rule and examples"
     ],
     [
-     "RAPPORT",
-     "Contrôles de code et juge, tous verts"
+     "REPORT",
+     "Code checks and judge, all green"
     ]
    ],
    "out": [
     [
      "CODE",
-     "Pull request ouverte sans revue d'agents : le diff et les rapports en description. La CI s'y exécute"
+     "Pull request opened without agent review: the diff and the reports in the description. The CI runs on it"
     ],
     [
-     "RAPPORT",
-     "CI verte sur la PR : le script attend le résultat. Le merge n'a lieu qu'après la gate"
+     "REPORT",
+     "CI green on the PR: the script waits for the result. The merge happens only after the gate"
     ]
    ],
    "on_fail": {
@@ -497,38 +497,38 @@
    "id": "gate-2",
    "n": "15",
    "kind": "human-gate",
-   "title": "Gate 2 · Vérification",
-   "actor": "Humain F",
+   "title": "Gate 2 · Verification",
+   "actor": "Human F",
    "in": [
     [
-     "RAPPORT",
-     "CI verte sur la PR"
+     "REPORT",
+     "CI green on the PR"
     ],
     [
-     "RAPPORT",
-     "Dossier d'une page"
+     "REPORT",
+     "One-page case file"
     ],
     [
-     "PREUVE",
-     "Captures des composants"
+     "PROOF",
+     "Component captures"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Merge : l'entrée passe au statut accepté et la règle devient active"
+     "Merge: the entry moves to status accepted and the rule becomes active"
     ],
     [
      "CODE",
-     "Si écarts tolérés : liste de base figée des écrans existants en écart"
+     "If gaps are tolerated: frozen baseline list of the existing screens in gap"
     ],
     [
-     "TEXTE",
-     "Si mise en conformité : une demande entre dans le workflow Besoin"
+     "TEXT",
+     "If brought into compliance: a request enters the Need workflow"
     ],
     [
-     "TEXTE",
-     "Ou rejet : règle trop large ou trop étroite, retour à l'implémenteur. Décision fausse, retour à l'intention"
+     "TEXT",
+     "Or rejection: rule too broad or too narrow, back to the implementer. Wrong decision, back to the intent"
     ]
    ],
    "on_reject": [
@@ -546,25 +546,25 @@
    "id": "end",
    "n": "16",
    "kind": "end",
-   "title": "Accepté · merge",
+   "title": "Accepted · merge",
    "in": [
     [
      "VALIDATION",
-     "Gate 2 passée"
+     "Gate 2 passed"
     ]
    ],
    "out": [
     [
      "DESIGN",
-     "Entrée acceptée dans le design system, avec son périmètre"
+     "Entry accepted in the design system, with its scope"
     ],
     [
      "CODE",
-     "PR mergée par script, après la gate : thème et composants"
+     "PR merged by script, after the gate: theme and components"
     ],
     [
-     "RÈGLE",
-     "Active en CI"
+     "RULE",
+     "Active in CI"
     ]
    ]
   }
@@ -572,53 +572,53 @@
  "doc": {
   "contract": [
    [
-    "Déclenché par",
-    "Un besoin de design : marque à poser, composant manquant, règle d'usage, ou éléments « à intégrer » venus d'un prototype accepté à sa gate."
+    "Triggered by",
+    "A design need: brand to set, missing component, usage rule, or \"to integrate\" elements coming from a prototype accepted at its gate."
    ],
    [
-    "Produit",
-    "Une entrée de design system acceptée, son implémentation (thème et composants) et une règle active en CI."
+    "Produces",
+    "An accepted design-system entry, its implementation (theme and components) and a rule active in CI."
    ],
    [
-    "Humain",
-    "Humain F, aux deux gates. Un choix technique (bibliothèque de composants, format des tokens) reste une décision du Cadre technique."
+    "Human",
+    "Human F, at both gates. A technical choice (component library, token format) remains a Technical frame decision."
    ]
   ],
   "notes": [
    [
-    "Quand le challenge s'ouvre",
-    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+    "When the challenge opens",
+    "A script opens it only if the auditor's delta is not empty. Otherwise writing follows directly. The discussion is a loop between the human and the auditor, with no maximum number of rounds: at each round, the auditor receives the delta and the messages exchanged since its last round."
    ],
    [
-    "Une PR, sans revue d'agents",
-    "Elle ne sert qu'à faire passer la CI avant main, parce que la règle bloquera toutes les PR suivantes. Le code a déjà été relu par le validateur, et l'humain valide le dossier à la gate. Le merge a lieu après la gate."
+    "One PR, without agent review",
+    "It only serves to get the CI to run before main, because the rule will block all following PRs. The code was already reviewed by the validator, and the human validates the case file at the gate. The merge happens after the gate."
    ],
    [
-    "Un token, c'est quoi ?",
-    "Une valeur de design qui porte un nom, par exemple couleur-primaire ou espace-moyen, définie une seule fois. Les écrans y renvoient par leur nom au lieu d'écrire la valeur : on change la marque à un seul endroit, et les thèmes clair et sombre sont cohérents."
+    "What is a token?",
+    "A design value that carries a name, for example primary-color or medium-space, defined once. Screens refer to it by name instead of writing the value: the brand changes in one place, and the light and dark themes stay consistent."
    ],
    [
-    "Une seule source",
-    "Le document du design system est la source. Le thème est généré par script et jamais modifié à la main : un écart entre le document et le thème est impossible par construction. La dérive ne peut donc toucher que les composants et les écrans."
+    "A single source",
+    "The design-system document is the source. The theme is generated by script and never modified by hand: a gap between the document and the theme is impossible by construction. Drift can therefore only affect components and screens."
    ],
    [
-    "Frontière avec le cadre technique",
-    "Ce workflow décide ce que le design est. Un choix technique, comme la bibliothèque de composants ou le format des tokens, est une décision du Cadre technique."
+    "Boundary with the technical frame",
+    "This workflow decides what the design is. A technical choice, such as the component library or the token format, is a Technical frame decision."
    ],
    [
-    "Seul producteur du design system",
-    "Aucun autre workflow ne l'écrit. Le Prototype lit ses tokens et lui renvoie les éléments hors design system, que l'humain F décide d'intégrer ou de garder en exception locale."
+    "Sole producer of the design system",
+    "No other workflow writes it. The Prototype reads its tokens and sends back the elements outside the design system, which human F decides to integrate or keep as a local exception."
    ],
    [
-    "La règle « tokens seulement »",
-    "Elle impose qu'un élément « à intégrer » passe ici avant la Réalisation du besoin : la CI refuserait sinon une valeur en dur. C'est pourquoi le Prototype attend, en pause, la fin de ce workflow."
+    "The \"tokens only\" rule",
+    "It requires an \"to integrate\" element to go through here before the Build of the need: the CI would otherwise refuse a hard-coded value. This is why the Prototype waits, paused, for this workflow to end."
    ],
    [
-    "Les unités existent déjà",
-    "Le persona designer et sa consigne d'écriture du design system sont ceux que le dépôt utilise pour sa commande de design. Ce workflow les place sous le même contrôle que les autres."
+    "The units already exist",
+    "The designer persona and its design-system writing instruction are those the repo uses for its design command. This workflow puts them under the same control as the others."
    ]
   ],
-  "lede": "Un humain F décide ce que le design est : une marque, un composant, une règle d'usage. Cela devient une entrée de design system acceptée, traduite en thème et en composants dans le code, avec une règle qui interdit les valeurs en dur.",
+  "lede": "A human F decides what the design is: a brand, a component, a usage rule. This becomes an accepted design-system entry, translated into a theme and components in the code, with a rule that forbids hard-coded values.",
   "eyebrow": "Admin · design system"
  }
 }

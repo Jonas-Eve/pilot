@@ -1,24 +1,24 @@
 {
  "id": "technical-frame",
- "title": "Cadre technique",
+ "title": "Technical frame",
  "category": "admin",
  "steps": [
   {
    "id": "start",
    "n": "1",
    "kind": "human-start",
-   "title": "Intention",
-   "actor": "Humain T",
+   "title": "Intent",
+   "actor": "Human T",
    "in": [
     [
-     "TEXTE",
-     "La préoccupation, dans ses mots"
+     "TEXT",
+     "The concern, in their words"
     ]
    ],
    "out": [
     [
-     "TEXTE",
-     "Intention technique"
+     "TEXT",
+     "Technical intent"
     ]
    ]
   },
@@ -26,8 +26,8 @@
    "id": "audit",
    "n": "2",
    "kind": "agent",
-   "title": "Auditeur",
-   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "title": "Auditor",
+   "actor": "AI: a single auditor, who holds the discussion with the human",
    "agents": [
     {
      "persona": "architect"
@@ -36,22 +36,22 @@
    "task": "audit",
    "in": [
     [
-     "TEXTE",
-     "Intention technique"
+     "TEXT",
+     "Technical intent"
     ],
     [
-     "ARCHI GLOBAL",
-     "Overview et guidelines dont le périmètre recoupe celui de l'intention. Sélection par script, index d'abord. Jamais le code"
+     "GLOBAL ARCHITECTURE",
+     "Overview and guidelines whose scope overlaps the intent's. Selected by script, index first. Never the code"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Delta : recouvre, contredit, modifie, trou. Trois champs par ligne : entrée, conséquence, résolution proposée. Vide si RAS"
+     "REPORT",
+     "Delta: overlaps, contradicts, modifies, hole. Three fields per line: entry, consequence, proposed resolution. Empty if nothing to report"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+     "SCOPE",
+     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
     ]
    ]
   },
@@ -60,29 +60,29 @@
    "n": "3",
    "kind": "human-optional",
    "title": "Challenge",
-   "actor": "Humain T, ouvert par script seulement si le delta n'est pas vide",
+   "actor": "Human T, opened by script only if the delta is not empty",
    "in": [
     [
-     "RAPPORT",
-     "Le delta, court et en forme fixe"
+     "REPORT",
+     "The delta, short and in fixed form"
     ],
     [
-     "TEXTE",
-     "À la demande : une question à l'auditeur sur une ligne du delta"
+     "TEXT",
+     "On request: a question to the auditor about a line of the delta"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Maintient ou modifie l'intention"
+     "Keeps or modifies the intent"
     ],
     [
-     "TEXTE",
-     "Intention révisée, retour à l'audit"
+     "TEXT",
+     "Revised intent, back to the audit"
     ],
     [
-     "RAPPORT",
-     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+     "REPORT",
+     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
     ]
    ],
    "open_if": "delta-not-empty",
@@ -92,8 +92,8 @@
    "id": "write",
    "n": "4",
    "kind": "agent",
-   "title": "Rédacteur",
-   "actor": "IA",
+   "title": "Writer",
+   "actor": "AI",
    "agents": [
     {
      "persona": "architect"
@@ -102,22 +102,22 @@
    "task": "write-technical-frame",
    "in": [
     [
-     "TEXTE",
-     "Intention technique"
+     "TEXT",
+     "Technical intent"
     ],
     [
-     "RAPPORT",
+     "REPORT",
      "Delta"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ]
    ],
    "out": [
     [
-     "ARCHI GLOBAL",
-     "Guideline proposée, ou mise à jour de l'overview : la règle, sa raison en quelques lignes, ce qu'elle remplace, comment la vérifier (linter, test, build ou jugement), son périmètre"
+     "GLOBAL ARCHITECTURE",
+     "Proposed guideline, or overview update: the rule, its reason in a few lines, what it replaces, how to verify it (linter, test, build or judgment), its scope"
     ]
    ]
   },
@@ -125,8 +125,8 @@
    "id": "validate",
    "n": "5",
    "kind": "validator",
-   "title": "Validateur",
-   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "title": "Validator",
+   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
    "agents": [
     {
      "persona": "techlead"
@@ -135,18 +135,18 @@
    "task": "validate",
    "in": [
     [
-     "TEXTE",
-     "Intention technique"
+     "TEXT",
+     "Technical intent"
     ],
     [
-     "ARCHI GLOBAL",
-     "Guideline proposée"
+     "GLOBAL ARCHITECTURE",
+     "Proposed guideline"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Liste de défauts, critique libre"
+     "REPORT",
+     "List of defects, free critique"
     ]
    ],
    "on_fail": {
@@ -159,19 +159,19 @@
    "id": "check",
    "n": "6",
    "kind": "check",
-   "title": "Contrôles de code",
+   "title": "Code checks",
    "actor": "Script",
    "check": "technical-frame.check",
    "in": [
     [
-     "ARCHI GLOBAL",
-     "Guideline proposée"
+     "GLOBAL ARCHITECTURE",
+     "Proposed guideline"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Schéma valide, périmètre présent et issu du vocabulaire, identifiants cités existants, chaque énoncé cite sa source, mots ambigus, vérification renseignée, aucun recouvrement de périmètre avec une guideline acceptée sans « remplace »"
+     "REPORT",
+     "Valid schema, scope present and from the vocabulary, cited identifiers exist, each statement cites its source, ambiguous words, verification filled in, no scope overlap with an accepted guideline without \"replaces\""
     ]
    ],
    "on_fail": {
@@ -184,42 +184,42 @@
    "id": "judge",
    "n": "7",
    "kind": "judge",
-   "title": "Juge",
-   "actor": "IA, quatre questions fixes, citation exigée",
+   "title": "Judge",
+   "actor": "AI, four fixed questions, citation required",
    "task": "judge",
    "judge": "technical-frame.judge",
    "questions": [
     {
-     "q": "Chaque phrase de l'intention est-elle portée ?",
+     "q": "Is each sentence of the intent carried?",
      "fail_on": "no"
     },
     {
-     "q": "Un énoncé est-il non soutenu par sa source citée ?",
+     "q": "Is a statement unsupported by its cited source?",
      "fail_on": "yes"
     },
     {
-     "q": "Y a-t-il contradiction avec une guideline citée ?",
+     "q": "Is there a contradiction with a cited guideline?",
      "fail_on": "yes"
     },
     {
-     "q": "Deux énoncés se contredisent-ils ?",
+     "q": "Do two statements contradict each other?",
      "fail_on": "yes"
     }
    ],
    "in": [
     [
-     "TEXTE",
-     "Intention technique"
+     "TEXT",
+     "Technical intent"
     ],
     [
-     "ARCHI GLOBAL",
-     "Guideline proposée"
+     "GLOBAL ARCHITECTURE",
+     "Proposed guideline"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Oui ou non, avec citation : chaque phrase de l'intention est-elle portée ? un énoncé non soutenu par sa source citée ? contradiction avec une guideline citée ? deux énoncés qui se contredisent ?"
+     "REPORT",
+     "Yes or no, with citation: is each sentence of the intent carried? a statement unsupported by its cited source? contradiction with a cited guideline? two statements contradicting each other?"
     ]
    ],
    "on_fail": {
@@ -232,30 +232,30 @@
    "id": "gate",
    "n": "8",
    "kind": "human-gate",
-   "title": "Gate 1 · Relecture",
-   "actor": "Humain T",
+   "title": "Gate 1 · Review",
+   "actor": "Human T",
    "in": [
     [
-     "ARCHI GLOBAL",
-     "Guideline proposée"
+     "GLOBAL ARCHITECTURE",
+     "Proposed guideline"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ],
     [
-     "RAPPORT",
-     "Contrôles de code et juge, tous verts"
+     "REPORT",
+     "Code checks and judge, all green"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Texte et périmètre validés. La guideline reste proposée tant que la règle n'est pas mergée"
+     "Text and scope validated. The guideline stays proposed until the rule is merged"
     ],
     [
-     "TEXTE",
-     "Ou modifications : retour à l'intention"
+     "TEXT",
+     "Or changes: back to the intent"
     ]
    ],
    "on_reject": [
@@ -269,8 +269,8 @@
    "id": "implement",
    "n": "9",
    "kind": "agent",
-   "title": "Implémenteur",
-   "actor": "IA",
+   "title": "Implementer",
+   "actor": "AI",
    "agents": [
     {
      "persona": "dev"
@@ -279,22 +279,22 @@
    "task": "implement-rule",
    "in": [
     [
-     "ARCHI GLOBAL",
-     "Guideline validée, et les guidelines et outillage dont le périmètre recoupe le sien"
+     "GLOBAL ARCHITECTURE",
+     "Validated guideline, and the guidelines and tooling whose scope overlaps its own"
     ]
    ],
    "out": [
     [
-     "RÈGLE",
-     "Linter, test ou contrainte de build, limité au périmètre de la guideline"
+     "RULE",
+     "Linter, test or build constraint, limited to the guideline's scope"
     ],
     [
      "TEST",
-     "Exemples qui doivent passer et qui doivent échouer"
+     "Examples that must pass and that must fail"
     ],
     [
      "CODE",
-     "Configuration dans architecture/ et le projet"
+     "Configuration in architecture/ and the project"
     ]
    ]
   },
@@ -302,8 +302,8 @@
    "id": "validate-2",
    "n": "10",
    "kind": "validator",
-   "title": "Validateur",
-   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "title": "Validator",
+   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
    "agents": [
     {
      "persona": "techlead"
@@ -312,22 +312,22 @@
    "task": "validate",
    "in": [
     [
-     "ARCHI GLOBAL",
-     "Guideline validée"
+     "GLOBAL ARCHITECTURE",
+     "Validated guideline"
     ],
     [
-     "RÈGLE",
-     "La règle"
+     "RULE",
+     "The rule"
     ],
     [
      "TEST",
-     "Exemples"
+     "Examples"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Liste de défauts, critique libre : la règle fait-elle ce que dit la guideline ?"
+     "REPORT",
+     "List of defects, free critique: does the rule do what the guideline says?"
     ]
    ],
    "on_fail": {
@@ -340,31 +340,31 @@
    "id": "check-2",
    "n": "11",
    "kind": "check",
-   "title": "Contrôles de code et dossier",
+   "title": "Code checks and case file",
    "actor": "Script",
    "check": "technical-frame.check-2",
    "in": [
     [
-     "RÈGLE",
-     "La règle"
+     "RULE",
+     "The rule"
     ],
     [
      "TEST",
-     "Exemples"
+     "Examples"
     ],
     [
      "CODE",
-     "Historique des changements et code actuel"
+     "Change history and current code"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Chaque énoncé couvert par une règle ou marqué « jugement », chaque règle rattachée à un énoncé, exemples ok, règle non vide (violation injectée détectée)"
+     "REPORT",
+     "Each statement covered by a rule or marked \"judgment\", each rule tied to a statement, examples ok, non-empty rule (injected violation detected)"
     ],
     [
-     "RAPPORT",
-     "Dossier d'une page : rejeu sur l'historique (changements qui auraient été bloqués), violations existantes par dossier"
+     "REPORT",
+     "One-page case file: replay on history (changes that would have been blocked), existing violations per folder"
     ]
    ],
    "on_fail": {
@@ -377,30 +377,30 @@
    "id": "judge-2",
    "n": "12",
    "kind": "judge",
-   "title": "Juge",
-   "actor": "IA, question fixe, citation exigée",
+   "title": "Judge",
+   "actor": "AI, fixed question, citation required",
    "task": "judge",
    "judge": "technical-frame.judge-2",
    "questions": [
     {
-     "q": "Les exemples illustrent-ils l'énoncé ?",
+     "q": "Do the examples illustrate the statement?",
      "fail_on": "no"
     }
    ],
    "in": [
     [
-     "ARCHI GLOBAL",
-     "Guideline validée"
+     "GLOBAL ARCHITECTURE",
+     "Validated guideline"
     ],
     [
-     "RÈGLE",
-     "La règle et ses exemples"
+     "RULE",
+     "The rule and its examples"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Oui ou non : les exemples illustrent-ils l'énoncé ?"
+     "REPORT",
+     "Yes or no: do the examples illustrate the statement?"
     ]
    ],
    "on_fail": {
@@ -413,28 +413,28 @@
    "id": "pr-ci",
    "n": "13",
    "kind": "check",
-   "title": "Ouverture de la PR et CI",
+   "title": "PR opening and CI",
    "actor": "Script",
    "check": "technical-frame.pr-ci",
    "action": true,
    "in": [
     [
      "CODE",
-     "Configuration, règle et exemples"
+     "Configuration, rule and examples"
     ],
     [
-     "RAPPORT",
-     "Contrôles de code et juge, tous verts"
+     "REPORT",
+     "Code checks and judge, all green"
     ]
    ],
    "out": [
     [
      "CODE",
-     "Pull request ouverte sans revue d'agents : le diff et les rapports en description. La CI s'y exécute"
+     "Pull request opened without agent review: the diff and the reports in the description. The CI runs on it"
     ],
     [
-     "RAPPORT",
-     "CI verte sur la PR : le script attend le résultat. Le merge n'a lieu qu'après la gate"
+     "REPORT",
+     "CI green on the PR: the script waits for the result. The merge happens only after the gate"
     ]
    ],
    "on_fail": {
@@ -447,38 +447,38 @@
    "id": "gate-2",
    "n": "14",
    "kind": "human-gate",
-   "title": "Gate 2 · Vérification",
-   "actor": "Humain T",
+   "title": "Gate 2 · Verification",
+   "actor": "Human T",
    "in": [
     [
-     "RAPPORT",
-     "CI verte sur la PR"
+     "REPORT",
+     "CI green on the PR"
     ],
     [
-     "RAPPORT",
-     "Dossier d'une page"
+     "REPORT",
+     "One-page case file"
     ],
     [
-     "RAPPORT",
-     "Couverture des énoncés, y compris ceux restés en « jugement »"
+     "REPORT",
+     "Statement coverage, including those left at \"judgment\""
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Merge : la guideline passe au statut accepté et la règle devient active"
+     "Merge: the guideline moves to status accepted and the rule becomes active"
     ],
     [
      "CODE",
-     "Si violations tolérées : liste de base figée des violations existantes"
+     "If violations are tolerated: frozen baseline list of existing violations"
     ],
     [
-     "TEXTE",
-     "Si chantier de remédiation : nouveau besoin technique, workflow Conception technique (entrée 2)"
+     "TEXT",
+     "If remediation work: new technical need, Plan workflow (entry 2)"
     ],
     [
-     "TEXTE",
-     "Ou rejet : règle trop large ou trop étroite, retour à l'implémenteur. Décision fausse, retour à l'intention"
+     "TEXT",
+     "Or rejection: rule too broad or too narrow, back to the implementer. Wrong decision, back to the intent"
     ]
    ],
    "on_reject": [
@@ -496,25 +496,25 @@
    "id": "end",
    "n": "15",
    "kind": "end",
-   "title": "Accepté · merge",
+   "title": "Accepted · merge",
    "in": [
     [
      "VALIDATION",
-     "Gate 2 passée"
+     "Gate 2 passed"
     ]
    ],
    "out": [
     [
      "CODE",
-     "PR mergée par script, après la gate"
+     "PR merged by script, after the gate"
     ],
     [
-     "ARCHI GLOBAL",
-     "Guideline acceptée dans architecture/, avec son périmètre"
+     "GLOBAL ARCHITECTURE",
+     "Guideline accepted in architecture/, with its scope"
     ],
     [
-     "RÈGLE",
-     "Active en CI"
+     "RULE",
+     "Active in CI"
     ]
    ]
   }
@@ -522,57 +522,57 @@
  "doc": {
   "contract": [
    [
-    "Déclenché par",
-    "Une préoccupation technique : dette, incident, nouvelle contrainte, évolution de stack, exigence non fonctionnelle (performance, sécurité, accessibilité), nouveau périmètre à définir, ou un ADR local répété (promotion)."
+    "Triggered by",
+    "A technical concern: debt, incident, new constraint, stack evolution, non-functional requirement (performance, security, accessibility), new scope to define, or a repeated local ADR (promotion)."
    ],
    [
-    "Produit",
-    "Une guideline acceptée dans architecture/ et une règle active en CI."
+    "Produces",
+    "A guideline accepted in architecture/ and a rule active in CI."
    ],
    [
-    "Humain",
-    "Humain T, aux deux gates. Aucun humain F."
+    "Human",
+    "Human T, at both gates. No human F."
    ]
   ],
   "notes": [
    [
-    "Quand le challenge s'ouvre",
-    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+    "When the challenge opens",
+    "A script opens it only if the auditor's delta is not empty. Otherwise writing follows directly. The discussion is a loop between the human and the auditor, with no maximum number of rounds: at each round, the auditor receives the delta and the messages exchanged since its last round."
    ],
    [
-    "Une PR, sans revue d'agents",
-    "Elle ne sert qu'à faire passer la CI avant main, parce que la règle bloquera toutes les PR suivantes. Le code a déjà été relu par le validateur, et l'humain valide le dossier à la gate. Le merge a lieu après la gate."
+    "One PR, without agent review",
+    "It only serves to get the CI to run before main, because the rule will block all following PRs. The code was already reviewed by the validator, and the human validates the case file at the gate. The merge happens after the gate."
    ],
    [
-    "Vocabulaire de périmètres",
-    "Le définir ou le modifier est une décision de ce workflow, avec gate : front, back, mobile, ou toute autre découpe du projet."
+    "Vocabulary of scopes",
+    "Defining or modifying it is a decision of this workflow, with a gate: front, back, mobile, or any other split of the project."
    ],
    [
-    "Exigences non fonctionnelles",
-    "Performance, sécurité, accessibilité sont des décisions techniques : l'humain T les pose seul ici, avec une règle vérifiable (budget de performance, contrôle d'accessibilité automatique). Chaque réalisation les applique par les règles du cadre."
+    "Non-functional requirements",
+    "Performance, security, accessibility are technical decisions: human T sets them alone here, with a verifiable rule (performance budget, automatic accessibility check). Each build applies them through the frame rules."
    ],
    [
-    "Partage avec la Conception technique",
-    "Une règle durable pour tout le code futur relève de ce workflow. Mettre le code existant en conformité relève de la Conception technique, entrée 2."
+    "Shared with Plan",
+    "A durable rule for all future code belongs to this workflow. Bringing existing code into compliance belongs to Plan, entry 2."
    ],
    [
-    "Seul workflow où l'audit ignore le code",
-    "L'intention est transverse : elle se confronte aux décisions déjà prises, pas à l'état du code."
+    "Only workflow where the audit ignores the code",
+    "The intent is cross-cutting: it is confronted with decisions already made, not with the state of the code."
    ],
    [
-    "La règle est le livrable",
-    "Une décision sans vérification est refusée au format. « Jugement » est permis, mais listé à la gate 2."
+    "The rule is the deliverable",
+    "A decision without verification is refused by the format. \"Judgment\" is allowed, but listed at gate 2."
    ],
    [
-    "Le validateur de l'implémentation",
-    "Il s'ajoute aux exemples, à la règle non vide et au rejeu sur l'historique. Le protocole de contrôle, c'est-à-dire quand et combien de tours, sera défini plus tard."
+    "The implementation validator",
+    "It adds to the examples, the non-empty rule and the replay on history. The control protocol, meaning when and how many rounds, will be defined later."
    ],
    [
-    "Pas d'ADR ici",
-    "La raison d'une guideline tient dans la guideline elle-même. Les alternatives écartées ne sont pas conservées pour l'instant."
+    "No ADR here",
+    "A guideline's reason is carried by the guideline itself. Discarded alternatives are not kept for now."
    ]
   ],
-  "lede": "Un humain T pose une décision technique qui ne dépend d'aucun besoin. Elle devient une guideline et une règle vérifiable en CI.",
-  "eyebrow": "Admin · décisions techniques transverses"
+  "lede": "A human T sets a technical decision that depends on no need. It becomes a guideline and a rule verifiable in CI.",
+  "eyebrow": "Admin · cross-cutting technical decisions"
  }
 }

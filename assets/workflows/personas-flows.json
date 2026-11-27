@@ -1,28 +1,28 @@
 {
  "id": "personas-flows",
- "title": "Personas et user flows",
+ "title": "Personas and user flows",
  "category": "admin",
  "steps": [
   {
    "id": "start",
    "n": "1",
    "kind": "human-start",
-   "title": "Intention",
-   "actor": "Humain F",
+   "title": "Intent",
+   "actor": "Human F",
    "in": [
     [
-     "TEXTE",
-     "Entrée 1 : qui est cet utilisateur, dans ses mots : objectifs, compétences, contraintes, vocabulaire"
+     "TEXT",
+     "Entry 1: who this user is, in their words: goals, skills, constraints, vocabulary"
     ],
     [
-     "TEXTE",
-     "Entrée 2 : le parcours, dans ses mots : qui, pour quoi faire, résultat attendu"
+     "TEXT",
+     "Entry 2: the flow, in their words: who, to do what, expected result"
     ]
    ],
    "out": [
     [
-     "TEXTE",
-     "Intention : le persona ou le parcours à décrire"
+     "TEXT",
+     "Intent: the persona or flow to describe"
     ]
    ]
   },
@@ -30,8 +30,8 @@
    "id": "audit",
    "n": "2",
    "kind": "agent",
-   "title": "Auditeur",
-   "actor": "IA : un seul auditeur, qui tient la discussion avec l'humain",
+   "title": "Auditor",
+   "actor": "AI: a single auditor, who holds the discussion with the human",
    "agents": [
     {
      "persona": "designer",
@@ -45,26 +45,26 @@
    "task": "audit",
    "in": [
     [
-     "TEXTE",
-     "Intention"
+     "TEXT",
+     "Intent"
     ],
     [
      "WIKI GLOBAL",
-     "Vision, guidelines fonctionnelles, vocabulaire et personas existants. Sélection par script, index d'abord"
+     "Existing vision, functional guidelines, vocabulary and personas. Selected by script, index first"
     ],
     [
      "WIKI",
-     "Entrée 2 : entrées de besoin et user flows dont le périmètre recoupe celui du parcours, avec leur journal"
+     "Entry 2: need entries and user flows whose scope overlaps the flow's, with their log"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Delta : doublon, contradiction, trou, écart avec la vision, les principes ou le vocabulaire (signalé, jamais bloquant). Entrée 1 : recoupement avec un persona existant. Entrée 2 : étape sans entrée de besoin, persona manquant"
+     "REPORT",
+     "Delta: duplicate, contradiction, hole, gap with the vision, principles or vocabulary (flagged, never blocking). Entry 1: overlap with an existing persona. Entry 2: step without a need entry, missing persona"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé, tiré du vocabulaire du projet. À valider à la gate"
+     "SCOPE",
+     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
     ]
    ]
   },
@@ -73,29 +73,29 @@
    "n": "3",
    "kind": "human-optional",
    "title": "Challenge",
-   "actor": "Humain F, ouvert par script seulement si le delta n'est pas vide",
+   "actor": "Human F, opened by script only if the delta is not empty",
    "in": [
     [
-     "RAPPORT",
-     "Le delta, court et en forme fixe"
+     "REPORT",
+     "The delta, short and in fixed form"
     ],
     [
-     "TEXTE",
-     "À la demande : une question à l'auditeur sur une ligne du delta"
+     "TEXT",
+     "On request: a question to the auditor about a line of the delta"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Maintient ou modifie l'intention"
+     "Keeps or modifies the intent"
     ],
     [
-     "TEXTE",
-     "Intention révisée, retour à l'audit"
+     "TEXT",
+     "Revised intent, back to the audit"
     ],
     [
-     "RAPPORT",
-     "Réponse de l'auditeur, en lecture seule, avec citation de l'entrée concernée. Elle ne modifie aucun document : seule une intention révisée a un effet"
+     "REPORT",
+     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
     ]
    ],
    "open_if": "delta-not-empty",
@@ -105,45 +105,45 @@
    "id": "write",
    "n": "4",
    "kind": "agent",
-   "title": "Rédacteur",
-   "actor": "IA",
+   "title": "Writer",
+   "actor": "AI",
    "agents": [
     {
      "persona": "designer",
-     "when": "un persona"
+     "when": "a persona"
     },
     {
      "persona": "qa",
-     "when": "un user flow"
+     "when": "a user flow"
     }
    ],
    "task": "write-persona-flow",
    "in": [
     [
-     "TEXTE",
-     "Intention"
+     "TEXT",
+     "Intent"
     ],
     [
-     "RAPPORT",
+     "REPORT",
      "Delta"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ]
    ],
    "out": [
     [
      "WIKI GLOBAL",
-     "Entrée 1 : persona proposé au format fixe (objectifs, compétences, contraintes, vocabulaire, contexte d'usage, façon d'utiliser le produit : appareil, mode de saisie, besoins d'accessibilité), sans statut. Entrée 2, persona manquant : un persona est proposé dans le même passage"
+     "Entry 1: persona proposed in fixed format (goals, skills, constraints, vocabulary, usage context, way of using the product: device, input mode, accessibility needs), without status. Entry 2, missing persona: a persona is proposed in the same pass"
     ],
     [
      "WIKI",
-     "Entrée 2 : user flow proposé : étapes, résultat observable attendu à chaque étape, personas concernés, statut spécifié, et sa section « Demandes candidates » (une ligne par étape « à créer »)"
+     "Entry 2: proposed user flow: steps, expected observable result at each step, personas concerned, status specified, and its \"Candidates\" section (one line per step \"to create\")"
     ],
     [
-     "JOURNAL",
-     "Entrée 2, si le user flow existe déjà : une nouvelle ligne ajoutée, avec la décision, les alternatives écartées et la raison"
+     "LOG",
+     "Entry 2, if the user flow already exists: a new line added, with the decision, discarded alternatives and reason"
     ]
    ]
   },
@@ -151,8 +151,8 @@
    "id": "validate",
    "n": "5",
    "kind": "validator",
-   "title": "Validateur",
-   "actor": "Persona distinct du lead : il reçoit le livrable seul, jamais la discussion",
+   "title": "Validator",
+   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
    "agents": [
     {
      "persona": "pm"
@@ -161,22 +161,22 @@
    "task": "validate",
    "in": [
     [
-     "TEXTE",
-     "Intention"
+     "TEXT",
+     "Intent"
     ],
     [
      "WIKI GLOBAL",
-     "Persona proposé"
+     "Proposed persona"
     ],
     [
      "WIKI",
-     "User flow proposé"
+     "Proposed user flow"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Liste de défauts, critique libre"
+     "REPORT",
+     "List of defects, free critique"
     ]
    ],
    "on_fail": {
@@ -189,31 +189,31 @@
    "id": "check",
    "n": "6",
    "kind": "check",
-   "title": "Contrôles de code",
+   "title": "Code checks",
    "actor": "Script",
    "check": "personas-flows.check",
    "in": [
     [
      "WIKI GLOBAL",
-     "Persona proposé"
+     "Proposed persona"
     ],
     [
      "WIKI",
-     "User flow proposé"
+     "Proposed user flow"
     ],
     [
-     "JOURNAL",
-     "Journal de l'entrée, avant et après"
+     "LOG",
+     "The entry's log, before and after"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Schéma valide, périmètre issu du vocabulaire, mots ambigus. Entrée 1 : aucun doublon, façon d'utiliser le produit renseignée. Entrée 2 : personas cités existants, chaque étape a un résultat observable, chaque étape rattachée à une entrée de besoin ou marquée « à créer » avec sa ligne de demande candidate"
+     "REPORT",
+     "Valid schema, scope from the vocabulary, ambiguous words. Entry 1: no duplicate, way of using the product filled in. Entry 2: cited personas exist, each step has an observable result, each step tied to a need entry or marked \"to create\" with its candidate request line"
     ],
     [
-     "RAPPORT",
-     "Journal : lignes précédentes inchangées, une nouvelle ligne si le user flow existe déjà, format complet"
+     "REPORT",
+     "Log: previous lines unchanged, a new line if the user flow already exists, full format"
     ]
    ],
    "on_fail": {
@@ -226,55 +226,55 @@
    "id": "judge",
    "n": "7",
    "kind": "judge",
-   "title": "Juge",
-   "actor": "IA, deux ou trois questions fixes selon l'entrée, citation exigée",
+   "title": "Judge",
+   "actor": "AI, two or three fixed questions depending on the entry, citation required",
    "task": "judge",
    "judge": "personas-flows.judge",
    "questions": [
     {
-     "q": "Le persona est-il distinct des autres personas ?",
+     "q": "Is the persona distinct from the other personas?",
      "fail_on": "no",
      "when": "entry-1"
     },
     {
-     "q": "Le persona est-il sans comportement prescrit ?",
+     "q": "Is the persona free of prescribed behavior?",
      "fail_on": "no",
      "when": "entry-1"
     },
     {
-     "q": "Chaque étape est-elle observable ?",
+     "q": "Is each step observable?",
      "fail_on": "no",
      "when": "entry-2"
     },
     {
-     "q": "Le parcours contredit-il un critère existant ?",
+     "q": "Does the flow contradict an existing criterion?",
      "fail_on": "yes",
      "when": "entry-2"
     },
     {
-     "q": "Un persona cité est-il hors sujet pour ce parcours ?",
+     "q": "Is a cited persona irrelevant to this flow?",
      "fail_on": "yes",
      "when": "entry-2"
     }
    ],
    "in": [
     [
-     "TEXTE",
-     "Intention"
+     "TEXT",
+     "Intent"
     ],
     [
      "WIKI GLOBAL",
-     "Persona proposé"
+     "Proposed persona"
     ],
     [
      "WIKI",
-     "User flow proposé"
+     "Proposed user flow"
     ]
    ],
    "out": [
     [
-     "RAPPORT",
-     "Oui ou non. Entrée 1 : distinct des autres personas ? sans comportement prescrit ? Entrée 2 : chaque étape est-elle observable ? le parcours contredit-il un critère existant ? un persona cité est-il hors sujet pour ce parcours ?"
+     "REPORT",
+     "Yes or no. Entry 1: distinct from other personas? free of prescribed behavior? Entry 2: is each step observable? does the flow contradict an existing criterion? is a cited persona irrelevant to this flow?"
     ]
    ],
    "on_fail": {
@@ -287,38 +287,38 @@
    "id": "gate",
    "n": "8",
    "kind": "human-gate",
-   "title": "Gate · Relecture",
-   "actor": "Humain F",
+   "title": "Gate · Review",
+   "actor": "Human F",
    "in": [
     [
      "WIKI GLOBAL",
-     "Persona proposé"
+     "Proposed persona"
     ],
     [
      "WIKI",
-     "User flow proposé"
+     "Proposed user flow"
     ],
     [
-     "PÉRIMÈTRE",
-     "Périmètre proposé"
+     "SCOPE",
+     "Proposed scope"
     ],
     [
-     "JOURNAL",
-     "Nouvelle ligne de journal, s'il y en a une"
+     "LOG",
+     "New log line, if any"
     ],
     [
-     "RAPPORT",
-     "Contrôles de code et juge, tous verts"
+     "REPORT",
+     "Code checks and judge, all green"
     ]
    ],
    "out": [
     [
      "VALIDATION",
-     "Persona accepté, ou user flow au statut spécifié, périmètre et journal validés"
+     "Persona accepted, or user flow at status specified, scope and log validated"
     ],
     [
-     "TEXTE",
-     "Ou modifications : retour à l'intention"
+     "TEXT",
+     "Or changes: back to the intent"
     ]
    ],
    "on_reject": [
@@ -332,21 +332,21 @@
    "id": "end",
    "n": "9",
    "kind": "end",
-   "title": "Accepté · merge",
+   "title": "Accepted · merge",
    "in": [
     [
      "VALIDATION",
-     "Gate passée"
+     "Gate passed"
     ]
    ],
    "out": [
     [
      "WIKI GLOBAL",
-     "Persona dans le wiki, disponible pour la Recette"
+     "Persona in the wiki, available for the Recette"
     ],
     [
      "WIKI",
-     "User flow dans le wiki, statut spécifié, disponible pour la Recette. Sa section « Demandes candidates » : une ligne par étape « à créer », au format de l'intention du Besoin (source, qui, attendu, pourquoi, périmètre proposé), au statut candidate"
+     "User flow in the wiki, status specified, available for the Recette. Its \"Candidates\" section: one line per step \"to create\", in the format of the Need intent (source, who, expected, why, proposed scope), at status candidate"
     ]
    ]
   }
@@ -354,49 +354,49 @@
  "doc": {
   "contract": [
    [
-    "Déclenché par",
-    "Entrée 1 : un type d'utilisateur à décrire. Entrée 2 : un parcours à décrire, souvent à travers plusieurs fonctionnalités."
+    "Triggered by",
+    "Entry 1: a type of user to describe. Entry 2: a flow to describe, often across several features."
    ],
    [
-    "Produit",
-    "Un persona accepté, ou un user flow au statut spécifié avec, dans l'entrée du flow, une section « Demandes candidates » : une ligne par étape « à créer », que le Besoin peut reprendre. L'un comme l'autre est disponible pour la Recette."
+    "Produces",
+    "An accepted persona, or a user flow at status specified with, in the flow's entry, a \"Candidates\" section: one line per step \"to create\", that Need can pick up. Both are available for the Recette."
    ],
    [
-    "Humain",
-    "Humain F, à la gate. Aucun humain T."
+    "Human",
+    "Human F, at the gate. No human T."
    ]
   ],
   "notes": [
    [
-    "Quand le challenge s'ouvre",
-    "Un script l'ouvre seulement si le delta de l'auditeur n'est pas vide. Sinon, la rédaction suit directement. La discussion est une boucle entre l'humain et l'auditeur, sans nombre maximal de tours : à chaque tour, l'auditeur reçoit le delta et les messages échangés depuis son dernier tour."
+    "When the challenge opens",
+    "A script opens it only if the auditor's delta is not empty. Otherwise writing follows directly. The discussion is a loop between the human and the auditor, with no maximum number of rounds: at each round, the auditor receives the delta and the messages exchanged since its last round."
    ],
    [
-    "Deux entrées, un workflow",
-    "Les étapes sont identiques. Seuls changent ce que vérifient les contrôles de code et le juge, et le type de ce qui sort."
+    "Two entries, one workflow",
+    "The steps are identical. Only what the code checks and the judge verify changes, and the type of what comes out."
    ],
    [
-    "Un persona ne promet aucun comportement",
-    "Il n'a pas de statut et ne se recette pas lui-même : il oriente les recettes qui l'utilisent."
+    "A persona promises no behavior",
+    "It has no status and is not itself recetted: it steers the Recettes that use it."
    ],
    [
-    "Statut d'un user flow",
-    "Il suit celui des besoins qu'il cite. « Vérifié » est dérivé de la dernière recette réussie dont les hashes du flow et des personas correspondent."
+    "Status of a user flow",
+    "It follows that of the needs it cites. \"Verified\" is derived from the last successful Recette whose flow and persona hashes match."
    ],
    [
-    "L'IA reformule, elle n'invente pas",
-    "L'intention vient de l'humain F, avec ce qu'il sait de ses utilisateurs réels. Un persona inventé par l'IA ne serait qu'un cliché."
+    "The AI rephrases, it does not invent",
+    "The intent comes from human F, with what they know of their real users. A persona invented by the AI would only be a cliché."
    ],
    [
-    "Demandes candidates",
-    "Statut dérivé par script : candidate tant qu'aucun besoin ne cite l'étape, lancée dès qu'une entrée de besoin la cite comme source, abandonnée si l'humain l'écarte en modifiant le flow, avec sa raison au journal. Rien n'est créé automatiquement."
+    "Candidates",
+    "Status derived by script: candidate while no need cites the step, launched once a need entry cites it as source, dropped if the human discards it by modifying the flow, with its reason in the log. Nothing is created automatically."
    ],
    [
-    "Un parcours traverse plusieurs fonctionnalités",
-    "Les critères restent dans les entrées de besoin. Le user flow les enchaîne et ne les redéfinit pas."
+    "A flow crosses several features",
+    "Criteria stay in the need entries. The user flow chains them and does not redefine them."
    ]
   ],
-  "lede": "Un humain F décrit un persona ou un parcours. Le résultat est une entrée de wiki que la Recette utilise pour orienter ou définir ce qu'elle joue. L'IA reformule, elle n'invente pas.",
-  "eyebrow": "Admin · personas et user flows"
+  "lede": "A human F describes a persona or a flow. The result is a wiki entry that the Recette uses to steer or define what it plays. The AI rephrases, it does not invent.",
+  "eyebrow": "Admin · personas and user flows"
  }
 }
