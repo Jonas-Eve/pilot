@@ -180,6 +180,7 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
   <nav class="tabs sub" id="subtabs" aria-label="Sous-onglets" hidden></nav>
   <div id="banner"></div>
   <section id="idea" class="idea" aria-label="Nouvelle demande" hidden></section>
+  <section id="admin" class="idea" aria-label="Workflows d’admin" hidden></section>
   <section id="search" class="idea search" aria-label="Recherche" hidden></section>
   <section id="protoNew" class="idea" aria-label="Nouveau prototype" hidden></section>
   <section id="designEdit" class="idea" aria-label="Créer ou modifier le design system" hidden></section>
@@ -456,7 +457,7 @@ var EN={
 "À recetter":"To accept",
 "Étapes du workflow":"Workflow steps",
 "Pas encore lancé : toutes les étapes sont à venir.":"Not started yet: every step is upcoming.",
-"Étape inconnue (run ouvert, aucun événement reçu) : toutes les étapes sont à venir.":"Unknown step (open run, no event received): every step is upcoming.",
+"Étape courante inconnue : toutes les étapes sont à venir.":"Current step unknown: every step is upcoming.",
 "Attendu : ":"Awaited: ",
 "décision humaine à ce gate":"human decision at this gate",
 "réponse humaine à la question posée":"human answer to the question asked",
@@ -473,9 +474,20 @@ var EN={
 "fin":"end",
 "fait":"done",
 "à venir":"upcoming",
-"prototype · attend un humain":"prototype · waiting for a human",
-"prototype · en cours":"prototype · in progress",
 "Runs de ce module":"Runs of this module",
+"Workflows d’admin":"Admin workflows",
+"Workflow à lancer":"Workflow to start",
+"Décrivez ce que vous voulez lancer.":"Describe what you want to start.",
+"Règle technique":"Technical rule",
+"Entrée du wiki":"Wiki entry",
+"Parcours":"User flow",
+"Prototype":"Prototype",
+"Cadre technique : une règle (ou le changement d’une entrée), décidée à un gate ; une PR.":"Technical frame: a rule (or a change to an entry), decided at a gate; one PR.",
+"Cadre fonctionnel : l’identifiant de l’entrée, puis le changement ; une PR.":"Functional frame: the entry’s identifier, then the change; one PR.",
+"Design system : ce que vous voulez créer ou changer ; deux gates, une PR.":"Design system: what you want to create or change; two gates, one PR.",
+"Persona : qui est cette personne, ses contraintes ; le designer le rédige avec vous.":"Persona: who this person is, their constraints; the designer writes it with you.",
+"Parcours : l’objectif et les personas concernés ; le QA propose les étapes avec vous.":"User flow: the goal and the personas concerned; QA proposes the steps with you.",
+"Prototype : la fonction à tester ; le designer construit la maquette avec vous.":"Prototype: the feature to try; the designer builds the mockup with you.",
 "Tickets":"Tickets",
 "Agents":"Agents",
 "Modules":"Modules"
@@ -505,13 +517,13 @@ function markStatic(){
 }
 function applyStatic(){STAT.forEach(function(x){if(x[1])x[0].setAttribute(x[1],tr(x[2]));else x[0].textContent=tr(x[2]);});document.documentElement.lang=LANG;}
 function pickLang(l){return l==='fr'?'fr':'en';}
-var BUILT=false, TYPED=['ideaText','designText','searchText','protoText','protoUrl'];
+var BUILT=false, TYPED=['ideaText','adminText','designText','searchText','protoText','protoUrl'];
 function setLang(l,user){
   LANG=pickLang(l);if(user)store('cp.lang',LANG);TR_CACHE={};applyStatic();
   if(!BUILT)return;
   var keep={}; TYPED.forEach(function(i){var e=document.getElementById(i);if(e)keep[i]=e.value;}); /* the forms are built once, in the language of the moment: rebuild them, keeping what was typed */
-  ['idea','search','protoNew','designEdit'].forEach(function(i){document.getElementById(i).replaceChildren();});
-  buildIdea();buildSearch();buildDesign();buildProtoNew();
+  ['idea','admin','search','protoNew','designEdit'].forEach(function(i){document.getElementById(i).replaceChildren();});
+  buildIdea();buildAdmin();buildSearch();buildDesign();buildProtoNew();
   TYPED.forEach(function(i){var e=document.getElementById(i);if(e&&keep[i])e.value=keep[i];});
   render();
 }
@@ -579,7 +591,7 @@ var SAMPLE=[
 
 /* ---------- state ---------- */
 var S={
-  repo:'{{REPO}}',
+  repo:'{{REPO}}', adminKey:null,
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(),
   tab:'file', epic:0, view:store('cp.view')==='liste'?'liste':'board', expanded:{}, so:{produit:{},tech:{},tous:{}}, wfOpen:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaKind:null, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoImp:0, viewHelp:0, viewProto:0, sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'},
   db:null, snaps:{}, events:{}, runs:{},
@@ -696,7 +708,7 @@ function workItem(t){var since=has(t,'needs-human')&&t.nh?t.nh:enteredAt(t); ret
 function filtering(){return !!S.q.trim()||S.epic>0||[S.levels,S.types,S.states,S.flags,S.assignees].some(function(m){return Object.keys(m).some(function(k){return m[k];});});}
 function workRows(){
   var any=filtering(), ty=ROLE_TYPE[S.role];
-  return tickets().filter(function(t){var x=lab(t,'type:'); return (any||!ty||!x||x===ty)&&matches(t);}).map(workItem);
+  return tickets().filter(function(t){var x=lab(t,'type:'); return (any||!ty||!x||x===ty||has(t,'level:epic'))&&matches(t);}).map(workItem); /* an epic groups both kinds of story: every role sees it */
 }
 var WORK_GROUPS=[['human','Action humaine attendue'],['going','En cours'],['queue','À lancer'],['pause','En pause'],['idle','Sans action']];
 function runChip(t){var r=S.runs[t.n]; return r&&r.state!=='done'?h('span',{class:'chip acc',title:'run '+r.workflow+' · '+r.step},'run '+r.workflow+' · '+r.step):null;}
@@ -763,7 +775,7 @@ function wfTimeline(wid,run,t){
       h('div',{class:'sub'},sub));
   });
   return h('div',{class:'tlwrap'},
-    !done&&cur<0?h('p',{class:'note'},run&&run.state==='open'?'Étape inconnue (run ouvert, aucun événement reçu) : toutes les étapes sont à venir.':'Pas encore lancé : toutes les étapes sont à venir.'):null,
+    !done&&cur<0?h('p',{class:'note'},run?'Étape courante inconnue : toutes les étapes sont à venir.':'Pas encore lancé : toutes les étapes sont à venir.'):null,
     h('ol',{class:'tl','aria-label':'Étapes du workflow'},items));
 }
 function wfButton(key,wid){
@@ -794,14 +806,15 @@ function runRow(r){
     h('div',{class:'acts'},acts),
     S.wfOpen['r'+r.n]?wfTimeline(r.wf,r,t):null);
 }
+/* the Work tab lists the runs of the workflows that take a ticket; an admin workflow's run shows in its module's tab */
+var TICKET_WFS=['need','plan','build','accept','report','express'];
 function vRuns(){
-  var rs=runList(); if(!rs.length)return null;
+  var rs=runList().filter(function(r){return TICKET_WFS.indexOf(r.wf)>-1;}); if(!rs.length)return null;
   return h('section',{class:'list','aria-label':'Runs en cours'},h('h2',{},'Runs en cours',' · '+rs.length),rs.map(runRow));
 }
 function vWork(){
   if(S.wf)return vWorkOf(S.wf);
-  var rows=workRows(), tix=rows;
-  rows=rows.concat(protosOnBoard().map(function(e){return {proto:e,t:{n:e.n,labels:[]},group:(e.flag||e.state==='waiting-human')?'human':'going',ms:0};}));
+  var rows=workRows();
   function byGroup(g){
     var list=rows.filter(function(r){return r.group===g;});
     return g==='queue'?list.sort(function(a,b){return byUrgency(a.t,b.t);}):list.sort(function(a,b){return b.ms-a.ms;});
@@ -809,7 +822,7 @@ function vWork(){
   var blocks=WORK_GROUPS.map(function(g){
     var list=byGroup(g[0]); if(!list.length)return null;
     var open=!!S.expanded['w:'+g[0]], shown=open?list:list.slice(0,COL_LIMIT);
-    return [h('h2',{},g[1],' · '+list.length),shown.map(function(r){return r.proto?protoRow(r.proto):workRow(r);}),
+    return [h('h2',{},g[1],' · '+list.length),shown.map(function(r){return workRow(r);}),
       list.length>COL_LIMIT?h('button',{class:'btn',type:'button',onclick:function(){S.expanded['w:'+g[0]]=!open;render();}},open?'Réduire':'Afficher les '+(list.length-COL_LIMIT)+' autres'):null];
   }).filter(Boolean);
   var viewSeg=h('div',{class:'seg',role:'group','aria-label':'Affichage'},[['board','Board'],['liste','Liste']].map(function(c){
@@ -820,7 +833,7 @@ function vWork(){
     vRuns(),
     h('p',{class:'note'},'« Ouvrir » lance une session Claude Code sur '+S.repo+' avec la commande déjà écrite : appuyez sur Entrée pour l’envoyer. Vous pouvez aussi la copier dans une session déjà ouverte.'),
     S.assignees.me&&!S.me?h('p',{class:'note'},'Indiquez votre identifiant GitHub (en haut de la page) pour que « moi » désigne vos tickets.'):null,
-    S.view==='board'?vBoard(tix):(blocks.length?blocks:h('div',{class:'empty'},'Aucun ticket ne correspond.')));
+    S.view==='board'?vBoard(rows):(blocks.length?blocks:h('div',{class:'empty'},'Aucun ticket ne correspond.')));
 }
 
 /* ---------- the board: four stages (the exact status is a chip on the card), epics and prototypes under way included; the stages a role does not work on are folded ---------- */
@@ -861,20 +874,6 @@ function boardCard(r,child){
       par?h('a',Object.assign({class:'up',href:parentHref(par),title:par.title},par.missing?{target:'_blank',rel:'noopener'}:{}),'↑ #'+par.n):null),
     act?h('div',{class:'acts'},act):null);
 }
-/* a prototype under way (a run of the proto workflow with its `protos` document): product work waiting to be framed */
-function protoCard(e){
-  var wait=e.flag||e.state==='waiting-human', hasHtml=Math.floor(Number(e.meta.parts)||0)>0, info=wfInfo('proto');
-  return h('div',{class:'card proto g-'+(wait?'human':'going')+(wait?' flag':'')},
-    h('div',{class:'t'},h('a',{href:hasHtml?'#proto/'+e.n:'#prototypes'},h('span',{class:'num mono'},'#'+e.n+' '),e.title)),
-    h('div',{class:'meta2'},h('span',{class:'chip '+(wait?'warn':'acc')},wait?h('span',{class:'dot'}):null,wait?'prototype · attend un humain':'prototype · en cours')),
-    h('div',{class:'acts'},wait?ghLink({n:e.n},'Répondre sur GitHub'):openLink((info?info[1]:'/pilot-proto')+' --resume '+e.n,'Reprendre',false)));
-}
-function filtersBesidesQ(){return S.epic>0||[S.levels,S.types,S.states,S.flags,S.assignees].some(function(m){return Object.keys(m).some(function(k){return m[k];});});}
-function protosOnBoard(){
-  if(!moduleOn('prototypes')||S.role==='tech'||filtersBesidesQ())return [];
-  var words=fold(S.q).split(/\s+/).filter(Boolean);
-  return protoList().filter(function(e){var hay=fold('#'+e.n+' '+e.title); return e.group==='encours'&&words.every(function(w){return hay.indexOf(w.replace(/^#/,''))>-1;});});
-}
 /* a parent and its children are all cards: a child sits under its parent when both are in the stage, else on its own */
 function nest(list){
   var ids={}, kids={}, roots=[], out=[], seen={};
@@ -885,9 +884,9 @@ function nest(list){
   return out;
 }
 var STAGE_LIMIT=10;
-function stageCol(st,rows,protos){
-  var n=rows.length+protos.length, open=stageOpen(st[0],n), blocked=rows.filter(function(r){return r.group==='human';}).length+protos.filter(function(e){return e.flag||e.state==='waiting-human';}).length;
-  var items=nest(rows).map(function(x){return boardCard(x.r,x.child);}).concat(protos.map(protoCard));
+function stageCol(st,rows){
+  var n=rows.length, open=stageOpen(st[0],n), blocked=rows.filter(function(r){return r.group==='human';}).length;
+  var items=nest(rows).map(function(x){return boardCard(x.r,x.child);});
   var more=!!S.expanded['st:'+st[0]], shown=more?items:items.slice(0,STAGE_LIMIT);
   return h('section',{class:'col'+(open?'':' shut'),'aria-label':st[1]},
     h('button',{class:'sh',type:'button','aria-expanded':String(open),onclick:function(){setStage(st[0],!open);render();}},
@@ -900,9 +899,9 @@ function vBoard(rows){
   var by={}, other=[], done=[];
   rows.forEach(function(r){var s=r.t.status, k=stageOf(s); if(k)(by[k]=by[k]||[]).push(r); else if(s==='done'||s==='wont-do')done.push(r); else other.push(r);});
   function order(list){return list.slice().sort(function(a,b){return (+(b.group==='human')-+(a.group==='human'))||byUrgency(a.t,b.t);});}
-  var protos=protosOnBoard(), cols=STAGES.map(function(st){return stageCol(st,order(by[st[0]]||[]),st[0]==='frame'?protos:[]);});
-  if(other.length)cols.push(stageCol(['other','Autres',[]],order(other),[]));
-  var shut=!!S.expanded.done, ids=STAGES.map(function(st){return stageOpen(st[0],(by[st[0]]||[]).length+(st[0]==='frame'?protos.length:0));});
+  var cols=STAGES.map(function(st){return stageCol(st,order(by[st[0]]||[]));});
+  if(other.length)cols.push(stageCol(['other','Autres',[]],order(other)));
+  var shut=!!S.expanded.done, ids=STAGES.map(function(st){return stageOpen(st[0],(by[st[0]]||[]).length);});
   var style='--cols:'+ids.concat(other.length?[true]:[]).map(function(o){return o?'minmax(0,1fr)':'minmax(120px,170px)';}).join(' ');
   return h('div',{},h('div',{class:'board',style:style},cols),
     done.length?h('div',{class:'done-fold'},h('button',{class:'fold',type:'button','aria-expanded':String(shut),onclick:function(){S.expanded.done=!shut;render();}},
@@ -1141,6 +1140,45 @@ function updateIdea(){
   document.getElementById('ideaCopy').disabled=!text;
 }
 
+/* ---------- admin workflows: one place to start any of them (each also has its launcher in its module's tab); the command is written, not sent ---------- */
+var ADMIN=[
+  {key:'technical-frame',wf:'technical-frame',mod:'architecture',label:'Règle technique',args:' --guideline ',hint:'Cadre technique : une règle (ou le changement d’une entrée), décidée à un gate ; une PR.'},
+  {key:'functional-frame',wf:'functional-frame',mod:'wiki',label:'Entrée du wiki',args:' --edit ',hint:'Cadre fonctionnel : l’identifiant de l’entrée, puis le changement ; une PR.'},
+  {key:'design-system',wf:'design-system',mod:'design',label:'Design system',args:' ',hint:'Design system : ce que vous voulez créer ou changer ; deux gates, une PR.'},
+  {key:'persona',wf:'personas-flows',mod:'wiki',label:'Persona',args:' --new persona ',hint:'Persona : qui est cette personne, ses contraintes ; le designer le rédige avec vous.'},
+  {key:'flow',wf:'personas-flows',mod:'wiki',label:'Parcours',args:' --new flow ',hint:'Parcours : l’objectif et les personas concernés ; le QA propose les étapes avec vous.'},
+  {key:'proto',wf:'proto',mod:'proto',label:'Prototype',args:' ',hint:'Prototype : la fonction à tester ; le designer construit la maquette avec vous.'}
+];
+function adminKinds(){return ADMIN.filter(function(k){return wfOn(k.wf)&&mv(k.mod);});}
+function adminNow(){var ks=adminKinds(); return ks.filter(function(k){return k.key===S.adminKey;})[0]||ks[0]||null;}
+function adminCmd(k,t){return sk(k.wf)+k.args+(t||'');}
+function adminText(){var el=document.getElementById('adminText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
+function buildAdmin(){
+  var box=document.getElementById('admin');
+  foldCard(box,'admin','Workflows d’admin').append(
+    h('label',{for:'adminText',class:'note'},'Décrivez ce que vous voulez lancer.'),
+    h('textarea',{id:'adminText',rows:3,maxlength:1500,oninput:updateAdmin}),
+    h('div',{class:'seg',role:'group','aria-label':'Workflow à lancer',id:'adminSeg'}),
+    h('p',{class:'note',id:'adminHint'}),
+    h('div',{class:'cmd',id:'adminCmd'}),
+    h('div',{class:'refresh'},
+      h('a',{class:'btn primary',id:'adminOpen',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
+      h('button',{class:'btn ghost',type:'button',id:'adminCopy',onclick:function(e){var k=adminNow(),t=adminText();if(k&&t)copyCmd(adminCmd(k,t),e.target);}},'Copier la commande')));
+  updateAdmin();
+}
+function updateAdmin(){
+  var seg=document.getElementById('adminSeg'); if(!seg)return;
+  var k=adminNow(), text=adminText(), open=document.getElementById('adminOpen'); if(!k)return;
+  seg.replaceChildren.apply(seg,adminKinds().map(function(x){
+    return h('button',{type:'button','data-key':x.key,'aria-pressed':String(x.key===k.key),onclick:function(){S.adminKey=x.key;updateAdmin();}},x.label);}));
+  document.getElementById('adminHint').textContent=tr(k.hint+' La commande est écrite, pas envoyée.');
+  document.getElementById('adminCmd').textContent=adminCmd(k,text||'…');
+  document.getElementById('adminSum').textContent=text?tr('brouillon en cours'):'';
+  if(text){open.setAttribute('href',claudeCodeUrl(adminCmd(k,text)));open.removeAttribute('aria-disabled');}
+  else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}
+  document.getElementById('adminCopy').disabled=!text;
+}
+
 /* ---------- prototypes tab: the `protos` documents (the mockups) joined to their run (the run issue and its events) ---------- */
 /* a prototype is under way while its run is not done, finished otherwise; the run's closing result (accepted, rejected) rides on its last event */
 function protoList(){
@@ -1200,7 +1238,7 @@ function vProtos(){
   var g=S.sub.prototypes, all=protoList();
   var rows=all.filter(function(e){return e.group===g;}).sort(function(a,b){return String(b.updated).localeCompare(String(a.updated));});
   var none=all.length?'Aucun prototype dans cette vue.':'Aucun prototype pour l’instant. Utilisez « Nouveau prototype » ci-dessus pour en lancer un.';
-  return h('div',{class:'list'},h('h2',{},(g==='encours'?'Prototypes en cours':'Prototypes terminés')+' · '+rows.length),rows.length?rows.map(protoRow):h('div',{class:'empty'},none));
+  return h('div',{class:'list'},moduleRuns(['proto']),h('h2',{},(g==='encours'?'Prototypes en cours':'Prototypes terminés')+' · '+rows.length),rows.length?rows.map(protoRow):h('div',{class:'empty'},none));
 }
 function protoText(){var el=document.getElementById('protoText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
 /* an imported artifact is one of the human's own pages, addressed as claude.ai/artifact/<id> */
@@ -1524,6 +1562,7 @@ function render(){
   var H=!!S.viewHelp; /* the reference page replaces everything under the tabs */
   var hl=document.getElementById('helpLink'); if(H)hl.setAttribute('aria-current','page'); else hl.removeAttribute('aria-current');
   document.getElementById('idea').hidden=H||S.tab!=='file';updateIdea();
+  document.getElementById('admin').hidden=H||S.tab!=='file'||!adminKinds().length;updateAdmin();
   document.getElementById('search').hidden=H||S.tab!=='file'||!!S.wf;updateSearch();
   document.getElementById('designEdit').hidden=H||S.tab!=='design';updateDesign();
   document.getElementById('protoNew').hidden=H||S.tab!=='prototypes'||!!S.viewProto;updateProtoNew();
@@ -1686,6 +1725,7 @@ var sv0=store('cp.lang'); setLang(sv0==='fr'||sv0==='en'?sv0:'en',false);
 var me=document.getElementById('meInput'); me.value=S.me;
 me.addEventListener('input',function(){S.me=me.value.trim().replace(/^@/,'');store('cp.me',S.me);render();});
 buildIdea();
+buildAdmin();
 buildSearch();
 buildDesign();
 buildProtoNew();

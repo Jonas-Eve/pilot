@@ -73,6 +73,7 @@ const STUB = (opts) => `
   const trows = (page) => page.$$eval('#view > .list > .row', (r) => r.length);          // the tickets of the work list (runs are in their own section)
   const rowCmds = async (page, n) => (await page.locator('#view .row', { hasText: '#' + n + ' ' }).first().locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0]) + '|' + a.textContent.trim())));
 
+  const WFSTEPS = JSON.parse(require('child_process').execFileSync('python3', ['-c', "import sys,json;sys.path.insert(0,'" + path.resolve(__dirname) + "');import pilot;print(json.dumps(pilot.workflow_steps(pilot.load_workflows())))"], { cwd: TMP }).toString());
   const BASE = snapshot([ticket(99, ['type:tech', 'level:task', 'status:ready', 'priority:P1'], { t: 'Ticket de l instantane' })], 120);
   const ev = (o) => ({ kind: 'ticket', n: 99, title: 'Ticket de l instantane', labels: ['type:tech', 'level:task', 'status:building'], assignees: ['alice'],
                        state: 'open', action: 'set', phase: 'build', by: 'alice', at: iso(5), ...o });
@@ -151,6 +152,7 @@ const STUB = (opts) => `
     ticket(31, ['run:technical-frame', 'needs-human'], { t: 'run:technical-frame Une règle' }),
   ], 120);
   V6.workflows = ['accept', 'build', 'express', 'need', 'plan', 'proto', 'report'];
+  V6.workflowSteps = WFSTEPS;
   page = await open({ preload: [V6] });
   view = await tab(page, 'Travail');
   check('work list: the tickets, run issues left out (12 tickets)', (await trows(page)) === 12 && /Travail · 12/.test(view) && !/Mon proto/.test(view.split('Runs en cours')[0] || ''), view.slice(0, 200));
@@ -209,13 +211,33 @@ const STUB = (opts) => `
     const rr = (n) => pg.locator('#view section[aria-label="Runs en cours"] .row', { hasText: '#' + n + ' ' }).first();
     const rc = async (n) => (await rr(n).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0]) + '|' + a.textContent.trim())));
     const s = await sec();
-    check('runs: the ones not done, plus the open run issue no event spoke of (30); a done run is not there', /Runs en cours · 7/.test(s) && !/#42 /.test(s) && /#30 /.test(s), s.slice(0, 300));
-    check('runs: workflow, step and state on each row; loops counted', /Réalisation/.test(await rr(16).textContent()) && /implement/.test(await rr(16).textContent()) && /en cours/.test(await rr(16).textContent()) && /2 boucles/.test(await rr(16).textContent()) && /échoué/.test(await rr(41).textContent()) && /ouvert/.test(await rr(30).textContent()));
-    check('runs: the title is the ticket\'s, or the run issue\'s without its prefix, else the workflow\'s', /Tâche en cours/.test(await rr(16).textContent()) && /Mon proto/.test(await rr(30).textContent()) && !/run:proto/.test(await rr(30).textContent()) && /Besoin/.test(await rr(40).textContent()));
+    check('runs: only the ticket workflows, the ones not done; no admin workflow (proto, technical-frame, design-system)', /Runs en cours · 4/.test(s) && !/#42 /.test(s) && !/#30 |#31 |#43 /.test(s) && !/Prototype|Cadre technique|Design system/.test(s), s.slice(0, 300));
+    check('runs: workflow, step and state on each row; loops counted', /Réalisation/.test(await rr(16).textContent()) && /implement/.test(await rr(16).textContent()) && /en cours/.test(await rr(16).textContent()) && /2 boucles/.test(await rr(16).textContent()) && /échoué/.test(await rr(41).textContent()));
+    check('runs: the title is the ticket\'s, else the workflow\'s', /Tâche en cours/.test(await rr(16).textContent()) && /Besoin/.test(await rr(40).textContent()));
     check('runs: a run in progress is not resumed (it may be alive), unless its ticket can-resume', !(await rc(16)).some((c) => /--resume/.test(c)));
     check('runs: a waiting or failed run is resumed with --resume', (await rc(40)).some((c) => c.startsWith('/pilot-need --resume 40|')) && (await rc(41)).some((c) => c.startsWith('/pilot-accept --resume 41|')) && (await rc(13)).some((c) => c.startsWith('/pilot-plan --resume 13|')), JSON.stringify([await rc(40), await rc(41)]));
-    check('runs: an open run issue no event spoke of can be resumed; a flagged one is answered on GitHub, never resumed', (await rc(30)).some((c) => c.startsWith('/pilot-proto --resume 30|')) && /Répondre sur GitHub/.test((await rc(31)).join()) && !(await rc(31)).some((c) => /--resume/.test(c)));
-    check('runs: a workflow with no --resume mode has no resume button', !(await rc(43)).some((c) => /--resume/.test(c)));
+    // the workflow timeline of a run
+    await rr(16).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
+    const tl = pg.locator('#view section[aria-label="Runs en cours"] .row', { hasText: '#16 ' }).first().locator('.tl');
+    const lis = await tl.locator('li').evaluateAll((l) => l.map((x) => x.className.split(' ')[0]));
+    const ids = WFSTEPS.build.map((x) => x.id);
+    const at = ids.indexOf('implement');
+    check('timeline: the steps of the workflow, those before the current one done, the current marked, the rest upcoming', lis.length === ids.length && lis.slice(0, at).every((c) => c === 'done') && lis[at] === 'cur' && lis.slice(at + 1).every((c) => c === 'next') && (await tl.locator('li[aria-current=step]').count()) === 1, JSON.stringify(lis));
+    const curText = await tl.locator('li.cur').textContent();
+    check('timeline: who acts is shown (the persona of the current step, human, validator, judge, check kinds)', /dev/i.test(curText) && /Dev/.test(curText) && /humain/.test(await tl.textContent()) && /validateur/.test(await tl.textContent()) && /juge/.test(await tl.textContent()) && /contrôle/.test(await tl.textContent()));
+    check('timeline: the loops of a step are counted on it', /1 boucle\b/.test(await tl.locator('li', { hasText: 'Code checks' }).first().textContent()) && !/boucle/.test(await tl.locator('li.cur').textContent()), await tl.textContent());
+    check('timeline: a running run awaits nothing', !/Attendu/.test(await tl.textContent()));
+    await rr(16).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(100);
+    check('timeline: the button folds it again', (await pg.locator('#view .tl').count()) === 0);
+    await rr(40).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
+    const tw = pg.locator('#view section[aria-label="Runs en cours"] .row', { hasText: '#40 ' }).first();
+    check('timeline: a run waiting for a human says what is awaited at its current gate', /Attendu : décision humaine à ce gate/.test(await tw.locator('li.cur').textContent()) && (await tw.locator('li.cur.wait').count()) === 1, await tw.locator('li.cur').textContent());
+    await rr(41).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
+    check('timeline: a failed run says it failed at the current step', /échoué/.test(await rr(41).locator('li.cur').textContent()));
+    check('timeline: a step titled from the workflow data', (await tw.locator('li').first().textContent()).includes('1. ' + WFSTEPS.need[0].title));
+    { const nw = await open({ preload: [Object.assign({}, V6, { workflowSteps: undefined })], events: RUNS }); await tab(nw, 'Travail');
+      check('runs: the Workflow button is hidden when the snapshot has no workflowSteps', (await nw.locator('#view button:has-text("Workflow")').count()) === 0);
+      await nw.close(); }
     check('a ticket with a run shows it on its row', /run build · implement/.test(await pg.locator('#view > .list > .row', { hasText: '#16 ' }).first().textContent()));
     check('a run waiting for a human puts its ticket in the human group', (await pg.$$eval('#view > .list > h2', (h) => h.map((x) => x.textContent))).some((g) => /^Action humaine attendue · 2/.test(g)));
     const pgc = await open({ preload: [V6], events: [run({ n: 16, state: 'running' })] });
@@ -324,7 +346,7 @@ const STUB = (opts) => `
     await pg.close();
     pg = await open({ preload: [V6], role: 'tech' });
     await tab(pg, 'Travail');
-    check('role Tech: the tech tickets only, the Architecture tab', (await pg.locator('#view > .list > .row .chip', { hasText: /^feature$/ }).count()) === 0 && JSON.stringify(await pg.$$eval('#tabs a', (a) => a.map((x) => x.textContent.replace(/ \(\d+\)$/, '')))) === JSON.stringify(['Travail', 'Architecture']));
+    check('role Tech: the tech tickets and the epics (they group both kinds), the Architecture tab', (await pg.locator('#view > .list > .row .chip', { hasText: /^feature$/ }).count()) === 1 && /Epic planifié/.test(await text(pg, '#view')) && JSON.stringify(await pg.$$eval('#tabs a', (a) => a.map((x) => x.textContent.replace(/ \(\d+\)$/, '')))) === JSON.stringify(['Travail', 'Architecture']));
     await pg.click('#ideaToggle');
     check('role Tech: the technical request (plan) is the default', (await pg.$eval('#ideaCmd', (e) => e.textContent)) === '/pilot-plan …' && JSON.stringify(await pg.$$eval('#kindSeg button', (b) => b.map((x) => x.textContent))) === JSON.stringify(['Besoin technique', 'Signalement', 'Express']));
     await pg.fill('#searchText', 'Story'); await pg.waitForTimeout(150);
@@ -752,27 +774,27 @@ const STUB = (opts) => `
   ];
   page = await open({ preload: [PSNAP], protos: PROTOS, protoHtml: PHTML, events: PEVENTS });
   const pSubs = () => page.$$eval('#subtabs a', (as) => as.map((a) => a.textContent));
-  const pRows = () => page.$$eval('#view .row .t', (ts) => ts.map((t) => t.textContent.replace(/^#\d+ /, '')).sort());
-  const pCmds = async (n) => (await page.locator('#view .row', { hasText: '#' + n + ' ' }).first().locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0]))));
+  const pRows = () => page.$$eval('#view > .list > .row .t', (ts) => ts.map((t) => t.textContent.replace(/^#\d+ /, '')).sort());
+  const pCmds = async (n) => (await page.locator('#view > .list > .row', { hasText: '#' + n + ' ' }).first().locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0]))));
   await page.click('nav >> text=Prototypes'); await page.waitForTimeout(250);
   check('prototypes: the tab counts those under way (an open run issue or a run not done)', JSON.stringify((await page.$$eval('nav#tabs a', (as) => as.map((a) => a.textContent))).slice(0, 2)) === JSON.stringify(['Travail', 'Prototypes (3)']));
   check('prototypes: sub-tabs En cours / Terminés with their counts', JSON.stringify(await pSubs()) === JSON.stringify(['En cours (3)', 'Terminés (3)']), JSON.stringify(await pSubs()));
   check('prototypes: "En cours" lists the three, not the others nor another project\'s', JSON.stringify(await pRows()) === JSON.stringify(['Proto brouillon', 'Proto en cours', 'Proto à décider']), JSON.stringify(await pRows()));
   check('prototypes: one under way is resumed or rejected, by command', (await pCmds(707)).includes('/pilot-proto --resume 707') && (await pCmds(707)).includes('/pilot-proto 707 --reject'), JSON.stringify(await pCmds(707)));
-  check('prototypes: one flagged is answered on GitHub, never resumed', !(await pCmds(702)).some((c) => /--resume/.test(c)) && (await pCmds(702)).some((c) => /\/issues\/702$/.test(c)) && /attend un humain/.test(await page.locator('#view .row', { hasText: '#702 ' }).textContent()), JSON.stringify(await pCmds(702)));
+  check('prototypes: one flagged is answered on GitHub, never resumed', !(await pCmds(702)).some((c) => /--resume/.test(c)) && (await pCmds(702)).some((c) => /\/issues\/702$/.test(c)) && /attend un humain/.test(await page.locator('#view > .list > .row', { hasText: '#702 ' }).textContent()), JSON.stringify(await pCmds(702)));
   check('prototypes: the brief is shown', /Brief du proto 702/.test(await text(page, '#view')));
-  check('prototypes: a prototype with no mockup says so; one with a mockup does not', /Pas de maquette enregistrée/.test(await page.locator('#view .row', { hasText: '#701 ' }).textContent()) && !/Pas de maquette enregistrée/.test(await page.locator('#view .row', { hasText: '#702 ' }).textContent()));
+  check('prototypes: a prototype with no mockup says so; one with a mockup does not', /Pas de maquette enregistrée/.test(await page.locator('#view > .list > .row', { hasText: '#701 ' }).textContent()) && !/Pas de maquette enregistrée/.test(await page.locator('#view > .list > .row', { hasText: '#702 ' }).textContent()));
   await page.click('#subtabs >> text=Terminés'); await page.waitForTimeout(200);
-  check('prototypes: Terminés lists the finished ones, with their verdict when known', JSON.stringify(await pRows()) === JSON.stringify(['Proto accepté', 'Proto fini sans verdict connu', 'Proto rejeté']) && /accepté/.test(await page.locator('#view .row', { hasText: '#703 ' }).textContent()) && /rejeté/.test(await page.locator('#view .row', { hasText: '#706 ' }).textContent()));
+  check('prototypes: Terminés lists the finished ones, with their verdict when known', JSON.stringify(await pRows()) === JSON.stringify(['Proto accepté', 'Proto fini sans verdict connu', 'Proto rejeté']) && /accepté/.test(await page.locator('#view > .list > .row', { hasText: '#703 ' }).textContent()) && /rejeté/.test(await page.locator('#view > .list > .row', { hasText: '#706 ' }).textContent()));
   check('prototypes: a finished one feeds a need (/pilot-need --proto), a rejected one does not', (await pCmds(703)).includes('/pilot-need --proto 703') && (await pCmds(704)).includes('/pilot-need --proto 704') && !(await pCmds(706)).some((c) => /pilot-need/.test(c)), JSON.stringify([await pCmds(703), await pCmds(706)]));
   check('prototypes: no removed command (accept, discovery, from-proto)', !/--accept|pilot-discovery|--from-proto/.test((await page.$$eval('#view a', (as) => as.map((a) => decodeURIComponent(a.href)))).join()));
   await page.click('#subtabs >> text=En cours'); await page.waitForTimeout(200);
-  await page.locator('#view .row', { hasText: '#702 ' }).locator('button:has-text("la maquette")').click(); await page.waitForTimeout(500);
+  await page.locator('#view > .list > .row', { hasText: '#702 ' }).locator('button:has-text("la maquette")').click(); await page.waitForTimeout(500);
   const fr = await page.$('#view iframe.prev');
   check('prototypes: the mockup loads from its parts in a frame with scripts only', !!fr && (await fr.getAttribute('sandbox')) === 'allow-scripts' && /Content-Security-Policy[^>]*default-src 'none'/.test(await fr.getAttribute('srcdoc')) && /Maquette A/.test(await fr.getAttribute('srcdoc')) && /fin de la maquette/.test(await fr.getAttribute('srcdoc')));
   const mf = await fr.contentFrame(); await mf.click('#b'); 
   check('prototypes: the mockup is interactive and cannot reach the page', (await mf.$eval('#t', (e) => e.textContent)) === 'cliqué' && (await page.evaluate(() => window.__pwn)) === undefined);
-  await page.locator('#view .row', { hasText: '#702 ' }).locator('button:has-text("Plein écran")').click(); await page.waitForTimeout(500);
+  await page.locator('#view > .list > .row', { hasText: '#702 ' }).locator('button:has-text("Plein écran")').click(); await page.waitForTimeout(500);
   check('prototypes: full screen has its own address and a way back', (await page.evaluate(() => location.hash)) === '#proto/702' && (await page.locator('#view a:has-text("← Prototypes")').count()) === 1 && (await page.$$('#view iframe.prev')).length === 1);
   await page.goto(FILE + '#proto/9999'); await page.waitForTimeout(300);
   check('prototypes: an unknown prototype says so', /Prototype introuvable/.test(await text(page, '#view')));
@@ -868,6 +890,95 @@ const STUB = (opts) => `
 
 
 
+  // ---- admin workflows: their runs show in their module's tab only; each has a launcher writing its exact command ----
+  { const ADM = Object.assign({}, V6, { workflows: ['accept', 'build', 'design-system', 'express', 'functional-frame', 'need', 'personas-flows', 'plan', 'proto', 'report', 'technical-frame'],
+      modules: { wiki: true, architecture: true, design: true, proto: true, dashboard: true },
+      issues: V6.issues.concat([ticket(32, ['run:design-system'], { t: 'run:design-system Thème contraste' }), ticket(33, ['run:personas-flows', 'needs-human'], { t: 'run:personas-flows Persona Léa' }),
+        ticket(34, ['run:functional-frame'], { t: 'run:functional-frame Vocabulaire' }), ticket(35, ['run:proto'], { t: 'run:proto Mon second proto' })]) });
+    const AR = [
+      run({ n: 31, workflow: 'technical-frame', step: 'write', state: 'running' }),
+      run({ n: 32, workflow: 'design-system', step: 'build', state: 'running', loops: { check: 1 } }),
+      run({ n: 33, workflow: 'personas-flows', step: 'gate', state: 'waiting-human' }),
+      run({ n: 34, workflow: 'functional-frame', step: 'gate', state: 'failed' }),
+      run({ n: 35, workflow: 'proto', step: 'build', state: 'running' }),
+      run({ n: 36, workflow: 'technical-frame', step: 'end', state: 'done' }),
+      run({ n: 16, workflow: 'build', step: 'implement', state: 'running' }),
+    ];
+    const ARUNS = 'section[aria-label="Runs de ce module"]';
+    const o = { preload: [ADM], events: AR, design: [DESIGN], wiki: [{ kind: 'wiki', repo: REPO, at: iso(5), total: WIKI.entries.length + WIKI_FLOWS.entries.length, truncated: false, entries: WIKI.entries.concat(WIKI_FLOWS.entries) }], architecture: [ARCH], protos: PROTOS, protoHtml: PHTML };
+    let pg = await open(Object.assign({ view: 'board' }, o));
+    await tab(pg, 'Travail');
+    check('admin runs: absent from the board', !/Thème contraste|Persona Léa|Vocabulaire|Mon second proto|Cadre technique/.test(await text(pg, '#view .board')) && (await pg.locator('#view .board .card').count()) === 12);
+    await pg.click('#view .seg button:has-text("Liste")'); await pg.waitForTimeout(150);
+    const wk = await text(pg, '#view');
+    check('admin runs: absent from the Work tab (list and "Runs en cours"); the build run stays', !/Thème contraste|Persona Léa|Vocabulaire|Mon second proto/.test(wk) && /Runs en cours · 1\b/.test(wk) && (await pg.locator('#view section[aria-label="Runs en cours"] .row').count()) === 1);
+    const rowsOf = (n) => pg.locator(`#view ${ARUNS} .row`, { hasText: '#' + n + ' ' }).first();
+    const cmdsOf = async (n) => rowsOf(n).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0]) + '|' + a.textContent.trim()));
+    // Architecture
+    await tab(pg, 'Architecture');
+    check('Architecture: the technical-frame run at the top, with its Workflow button; the run of another module is not there', (await pg.locator(`#view ${ARUNS} .row`).count()) === 1 && /#31 /.test(await text(pg, `#view ${ARUNS}`)) && /Cadre technique/.test(await text(pg, `#view ${ARUNS}`)) && (await pg.locator(`#view ${ARUNS} button:has-text("Workflow")`).count()) === 1 && !/#36 /.test(await text(pg, '#view')));
+    check('Architecture: the run is the first thing under the title', await pg.evaluate(() => { const v = document.querySelector('#view > .list'); return v.children[1].matches('section[aria-label="Runs de ce module"]'); }));
+    await pg.click(`#view ${ARUNS} button:has-text("Workflow")`); await pg.waitForTimeout(150);
+    check('Architecture: its timeline marks the current step (write) with the architect', (await pg.locator('#view .tl li[aria-current=step]').count()) === 1 && /Writer|Rédacteur|Architecte/.test(await pg.locator('#view .tl li.cur').textContent()) && /Architecte|Architect/.test(await pg.locator('#view .tl li.cur').textContent()));
+    const archCmds = (await pg.$$eval('#view a.btn', (as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || '').split('&repo=')[0])))).filter(Boolean);
+    check('Architecture: launchers write /pilot-architecture (question, --guideline, --lint) and the entry actions', ['/pilot-architecture', '/pilot-architecture --guideline', '/pilot-architecture --lint'].every((c) => archCmds.includes(c)) && archCmds.some((c) => /^\/pilot-architecture --(edit|accept|remove) /.test(c)) && !archCmds.some((c) => /--(bootstrap|verify|adr|scaffold)/.test(c)), JSON.stringify(archCmds.slice(0, 8)));
+    // Design
+    await tab(pg, 'Design');
+    check('Design: the design-system run at the top, running, with its Workflow button and no resume (the workflow has none)', /#32 /.test(await text(pg, `#view ${ARUNS}`)) && /Design system/.test(await text(pg, `#view ${ARUNS}`)) && !(await cmdsOf(32)).some((c) => /--resume/.test(c)) && (await rowsOf(32).locator('button:has-text("Workflow")').count()) === 1);
+    await pg.click('#designEToggle'); await pg.fill('#designText', 'thème sombre'); await pg.waitForTimeout(100);
+    check('Design: the launcher command is /pilot-design <text>', (await text(pg, '#designCmd')) === '/pilot-design thème sombre');
+    // Wiki: functional-frame and personas-flows runs
+    await tab(pg, 'Wiki');
+    const wt = await text(pg, `#view ${ARUNS}`);
+    check('Wiki: the personas-flows run (waiting for a human, answered on GitHub) and the failed functional-frame run, at the top', (await pg.locator(`#view ${ARUNS} .row`).count()) === 2 && /#33 /.test(wt) && /#34 /.test(wt) && /Personas et user flows/.test(wt) && /Cadre fonctionnel/.test(wt) && /attend un humain/.test(await rowsOf(33).textContent()) && /échoué/.test(await rowsOf(34).textContent()) && /Répondre sur GitHub/.test((await cmdsOf(33)).join()));
+    await rowsOf(33).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
+    check('Wiki: the waiting run says what it awaits at its gate', /Attendu : décision humaine à ce gate/.test(await rowsOf(33).locator('li.cur').textContent()));
+    const wikiCmds = (await pg.$$eval('#view a.btn', (as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || '').split('&repo=')[0])))).filter(Boolean);
+    check('Wiki: launchers write /pilot-wiki (question, --lint), /pilot-wiki --edit|--remove <id> and /pilot-flow --edit|--remove <id>', ['/pilot-wiki', '/pilot-wiki --lint'].every((c) => wikiCmds.includes(c)) && wikiCmds.some((c) => /^\/pilot-wiki --edit [a-z0-9-]+ $/.test(c)) && wikiCmds.some((c) => /^\/pilot-wiki --remove [a-z0-9-]+$/.test(c)) && wikiCmds.some((c) => /^\/pilot-flow --edit [a-z0-9-]+ $/.test(c)) && wikiCmds.some((c) => /^\/pilot-flow --remove [a-z0-9-]+$/.test(c)) && !wikiCmds.some((c) => /--bootstrap/.test(c)), JSON.stringify(wikiCmds.filter((c) => /flow/.test(c))));
+    await pg.click('#view details.foldcard summary'); await pg.fill('#flowNewText', 'Léa, 16 ans'); await pg.waitForTimeout(100);
+    check('Wiki: new persona writes /pilot-flow --new persona <text>, new flow --new flow', /\/pilot-flow --new persona Léa, 16 ans/.test(await text(pg, '#view details.foldcard')));
+    await pg.click('#view details.foldcard button:has-text("Parcours")'); await pg.waitForTimeout(100);
+    check('Wiki: a flow request writes /pilot-flow --new flow <text>', /\/pilot-flow --new flow Léa, 16 ans/.test(await text(pg, '#view details.foldcard')));
+    // Prototypes
+    await tab(pg, 'Prototypes');
+    check('Prototypes: the proto run at the top, resumable, with its Workflow button', /#35 /.test(await text(pg, `#view ${ARUNS}`)) && /Prototype/.test(await text(pg, `#view ${ARUNS}`)) && (await rowsOf(35).locator('button:has-text("Workflow")').count()) === 1);
+    await pg.click('#protoNToggle'); await pg.fill('#protoText', 'choisir'); await pg.waitForTimeout(100);
+    check('Prototypes: the launcher writes /pilot-proto <idea>', (await text(pg, '#protoCmd')) === '/pilot-proto choisir');
+    check('admin runs: no page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.close();
+    // a done run, or none, leaves the tab as it was
+    pg = await open({ preload: [Object.assign({}, ADM, { issues: ADM.issues.filter((i) => i.n !== 31) })], events: [AR[5]], architecture: [ARCH] });
+    await tab(pg, 'Architecture');
+    check('Architecture: no run in progress, no runs section', (await pg.locator(`#view ${ARUNS}`).count()) === 0);
+    await pg.close();
+    // the one-place launcher
+    pg = await open({ preload: [ADM], events: AR, wiki: [WIKI] });
+    await tab(pg, 'Travail');
+    check('admin launcher: folded by default, one kind per admin workflow whose module is on', await pg.$eval('#adminBody', (e) => e.hidden));
+    await pg.click('#adminToggle');
+    const kinds = () => pg.$$eval('#adminSeg button', (b) => b.map((x) => x.textContent));
+    check('admin launcher: with the five modules on, six kinds (technical rule, wiki entry, design system, persona, flow, prototype)', JSON.stringify(await kinds()) === JSON.stringify(['Règle technique', 'Entrée du wiki', 'Design system', 'Persona', 'Parcours', 'Prototype']), JSON.stringify(await kinds()));
+    const aCmd = () => text(pg, '#adminCmd');
+    const aHref = async () => decodeURIComponent((await pg.$eval('#adminOpen', (a) => a.getAttribute('href') || '')).split('?q=')[1].split('&repo=')[0]);
+    check('admin launcher: no link while the text is empty', (await pg.$eval('#adminOpen', (a) => a.getAttribute('aria-disabled'))) === 'true' && (await aCmd()) === '/pilot-architecture --guideline …');
+    await pg.fill('#adminText', 'ma\ndemande'); await pg.waitForTimeout(100);
+    for (const [label, cmd] of [['Règle technique', '/pilot-architecture --guideline ma demande'], ['Entrée du wiki', '/pilot-wiki --edit ma demande'], ['Design system', '/pilot-design ma demande'], ['Persona', '/pilot-flow --new persona ma demande'], ['Parcours', '/pilot-flow --new flow ma demande'], ['Prototype', '/pilot-proto ma demande']]) {
+      await pg.click('#adminSeg >> text=' + label); await pg.waitForTimeout(80);
+      check('admin launcher: ' + label + ' writes ' + cmd, (await aCmd()) === cmd && (await aHref()) === cmd, await aCmd());
+    }
+    for (const [mods, wfs, expect] of [[{ wiki: true, architecture: false, design: false, proto: false }, null, ['Entrée du wiki', 'Persona', 'Parcours']], [{ wiki: false, architecture: true, design: true, proto: true }, ['technical-frame', 'proto'], ['Règle technique', 'Prototype']]]) {
+      const pn = await open({ preload: [Object.assign({}, ADM, { modules: Object.assign({ dashboard: true }, mods), workflows: wfs || ADM.workflows })] });
+      await tab(pn, 'Travail'); await pn.click('#adminToggle');
+      check('admin launcher: only the kinds whose workflow is in the snapshot and whose module is on', JSON.stringify(await pn.$$eval('#adminSeg button', (b) => b.map((x) => x.textContent))) === JSON.stringify(expect), JSON.stringify(await pn.$$eval('#adminSeg button', (b) => b.map((x) => x.textContent))));
+      await pn.close();
+    }
+    const pnone = await open({ preload: [Object.assign({}, ADM, { modules: { dashboard: true, wiki: false, architecture: false, design: false, proto: false } })] });
+    await tab(pnone, 'Travail');
+    check('admin launcher: hidden when no admin module is on', await pnone.$eval('#admin', (e) => e.hidden));
+    await pnone.close();
+    check('admin launcher: no page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.close(); }
+
   // ---- language: English shows no French left, French stays, the choice sticks and follows the project ----
   {
     const FR_WORDS = /[éèêàùçôîï]|\b(le|la|les|des|du|une|pour|avec|sur|dans|est|vous|votre|ou|ne|pas|il y a|aucun|aucune)\b/i;
@@ -885,9 +996,9 @@ const STUB = (opts) => `
       }
       return out;
     };
-    const EN6 = snapshot(V6.issues.map((i) => Object.assign({}, i, { t: (i.l.some((l) => l.startsWith('run:')) ? 'run:proto ' : '') + 'Item ' + i.n })), 120);
+    const EN6 = snapshot(V6.issues.map((i) => Object.assign({}, i, { t: (i.l.some((l) => l.startsWith('run:')) ? 'run:proto ' : '') + 'Item ' + i.n })), 120); EN6.workflowSteps = WFSTEPS;
     const full = { preload: [EN6], design: [DESIGN], wiki: [WIKI], architecture: [ARCH], protos: PROTOS, protoHtml: PHTML,
-      events: PEVENTS.concat([run({ n: 16, loops: { check: 1 } }), run({ n: 40, workflow: 'need', state: 'waiting-human' }), run({ n: 41, workflow: 'accept', state: 'failed' })]) };
+      events: PEVENTS.concat([run({ n: 16, loops: { check: 1 } }), run({ n: 40, workflow: 'need', state: 'waiting-human' }), run({ n: 41, workflow: 'accept', state: 'failed' }), run({ n: 13, workflow: 'plan', step: 'ask', state: 'waiting-human' })]) };
     let page = await open(Object.assign({ lang: 'en' }, full));
     const left = await leftovers(page, ROUTES.concat(['wiki', 'architecture', 'architecture/guidelines']));
     check('language: English shows no French in any tab', left.length === 0, left.join('\n   '));
@@ -895,6 +1006,12 @@ const STUB = (opts) => `
     page = await open(Object.assign({ lang: 'en', view: 'board' }, full));
     const lb = await leftovers(page, ['file']);
     check('language: English shows no French on the board', lb.length === 0, lb.join('\n   '));
+    await page.evaluate(() => { location.hash = 'file'; }); await page.waitForTimeout(150);
+    await page.click('#adminToggle');
+    const wfb = page.locator('#view section[aria-label="Runs under way"] button[aria-expanded=false]:has-text("Workflow")');
+    for (let guard = 0; guard < 10 && (await wfb.count()) > 0; guard++) { await wfb.first().click(); await page.waitForTimeout(80); }
+    const lt = await leftovers(page, ['file']);
+    check('language: English shows no French with a timeline and the admin launcher open', lt.length === 0 && (await page.locator('#view .tl').count()) > 0 && /To frame/.test(await text(page, '#view .board')) && /Awaited: human answer to the question asked/.test(await text(page, '#view')), lt.join('\n   ') + ' ' + (await page.locator('#view .tl').count()));
     await page.evaluate(() => { location.hash = 'aide/agents'; }); await page.waitForTimeout(150);
     check('language: English page is marked lang=en and the button says so', (await page.$eval('html', (e) => e.lang)) === 'en' && (await page.$eval('#langSeg button[aria-pressed=true]', (b) => b.textContent)) === 'EN');
     check('language: page errors', page.errors.length === 0, page.errors.join('|'));
