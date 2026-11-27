@@ -75,7 +75,7 @@ Within a skill file, reference this repo's own assets via a fresh clone of `http
 - **Version Every Change Projects Would Copy (`VERSION`, SemVer):** `VERSION` holds PILOT's
   `MAJOR.MINOR.PATCH`; `/pilot-init` and `/pilot-update` record it in the project's
   `.pilot/state.json` (`pilotVersion`) and the dashboard footer shows it. A PR that changes
-  anything a project copies (skills, agents, `assets/docs`, `scripts/pilot.py`, the
+  anything a project copies (skills, agents, `assets/docs`, `scripts/pilot.py`, `scripts/pilot_checks.py`, the
   dashboard template) bumps it once, in the PR itself: **patch** for a fix or wording that
   changes no mechanism, **minor** for a backward-compatible capability (a new skill, flag,
   command or dashboard feature), **major** for a mechanism change that makes a project act

@@ -1,131 +1,38 @@
 # PILOT
 
-PILOT is a lightweight, in-house ticket-process framework: `discovery` → `spec` →
-`dev` → `review`, each its own isolated, low-token agent context
-instead of one accumulating one — plus a mandatory fifth phase, human QA, for every
-`type:feature` story once every task (including its automated end-to-end test) has
-merged. It was built inside a single monorepo and is packaged here as a standalone,
-reusable repo any project can copy from.
+PILOT is a set of **workflows** where the human decides, through documents in a formatted
+intermediate language, agents execute, and code checks. A request becomes a need (wiki
+entries), then ADRs and tickets, then code, then a recette on the deployed main; each step
+is an isolated, low-token agent call, and a human is asked only where no document decides.
 
-This repo is **not a Claude Code plugin** — plugin installation turned out to be local
-to whichever machine/container runs it (a Codespace, a local CLI), so it never reached
-Claude Code on the web or the mobile app. PILOT is distributed the simpler way instead:
-this repo's own `.claude/skills/` and `.claude/agents/` are exactly what gets copied into
-a consuming project's — same paths, same layout — where they work identically on every
-surface, because that's exactly how any other project-local skill works.
+It is packaged as a standalone repo any project clones and copies from — **not a Claude Code
+plugin** (plugin installation stays local to one machine and never reached Claude Code on the
+web or mobile). This repo's `.claude/skills/` and `.claude/agents/` are copied as-is into a
+project's own, where they work identically on every surface.
 
-See [`assets/docs/pilot-process.md`](./assets/docs/pilot-process.md) for the full state
-machine, label taxonomy, and claim protocol — it's the canonical copy;
-`/pilot-init` copies it into your project as `.pilot/pilot-process.md`, and
-`/pilot-update` keeps it in sync.
-
-Each skill reads three layers, not just its own file: `pilot-process.md` for what every
-phase shares, a `pilot-link-<topic>.md` doc (below) for what it coordinates with a couple
-of other skills on, and its own `SKILL.md` for everything specific to that one phase. The
-actual judgment work happens in a separate `Agent` call to one of the seven personas below,
-each carrying only a small, stable identity — the skill reads a `pilot-task-<duty>.md`
-doc (below) and passes it into that call, so a persona is told what to do fresh each
-time instead of carrying every one of its duties' instructions on every invocation. Two
-phases — Discovery and Spec — pair up two different personas in a genuine back-and-forth
-dialogue rather than one handing a finished draft to the other
-(`.pilot/pilot-link-agent-dialogue.md`).
+The canonical spec is [`assets/docs/pilot-process.md`](./assets/docs/pilot-process.md): where
+objects live, statuses and flags, the run, claim and resume, isolation, events, modules.
+`/pilot-init` copies it into a project as `.pilot/pilot-process.md`; `/pilot-update` keeps it in sync.
 
 ## What this repo ships
 
-- **Skills** (`.claude/skills/`): three bootstrap/maintenance commands, the five
-  PILOT phase commands, a dispatcher, and a help command — copied verbatim into a
-  consuming project's `.claude/skills/`
-  (see "Installing in a project" below), so all of them, `pilot-init`/`pilot-update`
-  included, are ordinary project-local commands once installed.
-  - `/pilot-init` — one-time: name the project, write its vision, copy in
-    PILOT's own skills/agents/docs, generate `CLAUDE.md` / `README.md`, create the wiki's `Vision`
-    entry when the wiki module is on, and create the GitHub labels PILOT depends on.
-  - `/pilot-update` — re-sync everything PILOT-owned (skills, agents,
-    `.pilot/pilot-process.md`, its `.pilot/pilot-process-*.md` companion(s),
-    `.pilot/pilot-link-*.md` cross-skill link doc(s), `.pilot/pilot-task-*.md` per-duty task
-    doc(s), the GitHub Actions workflow, the `PILOT:INTRO` blocks in
-    `CLAUDE.md`/`README.md`, the GitHub labels) from a fresh clone of this repo into
-    your project. Overwrites, no merge — see the warning in
-    `.claude/skills/pilot-update/SKILL.md`.
-  - `/pilot-dashboard` — publish (or update) the project's team page as a private Claude
-    Artifact with its own data: tickets by phase, each role's queue, the workflow of the tickets with the time spent in each stage, the project's design system and, when the wiki module is on, a read-only Wiki tab; its tabs follow the project's modules. Run it again, or let `/pilot-update` do it, to get the latest page at
-    the same address.
-  - `/pilot-proto` — build a prototype of a feature with the PM and the designer, in a live discussion, to decide
-    whether to build it; an accepted one starts a Discovery (`/pilot-discovery --from-proto`). Shown in the
-    dashboard's "Prototypes" tab.
-  - `/pilot-flow <flow> [--as <persona,...>] [--url <URL>]` — test a user flow of the wiki (`wiki/user-flow/`) as one or several user personas (`wiki/persona/`), each in its own isolated
-    browser session and test account, on demand only; a defect becomes a `type:bug`, friction and non-bugs go in a report kept as one Artifact per flow. Claims no ticket. `--new persona|flow <description>` drafts a persona (designer) or a flow (QA) with you and opens one wiki PR; `--edit <id>` revises one and `--remove <id>` retires one. The dashboard's Wiki tab launches a run from a flow (pick the personas) or a persona (pick the flow), creates personas and flows, and shows each flow's last run, who played it and whether it must be replayed.
-  - `/pilot-wiki` — the project's wiki (`wiki/`, an optional module switched on by `/pilot-init` or by `/pilot-wiki`), the source of truth for what the product does: ask it a
-    question, `--lint` it against the code (a human arbitrates each divergence), `--edit` an entry's wording (a change of behavior goes back to `/pilot-discovery`), `--remove` one, or `--bootstrap` it from the
-    closed tickets and the code — see `.claude/skills/pilot-wiki/SKILL.md`.
-  - `/pilot-architecture` — the project's architecture (`architecture/`, an optional module that replaces the old one-time `/pilot-init-archi`): the apps, the technical
-    guidelines AIs and developers must respect, the reference of how the code is built today (stack and versions, data model, structure), and the decision records (ADR), one subfolder per app in a monorepo. Ask it a question, add a rule with `--guideline`, `--adr` a decision, `--edit`, `--accept` (puts a proposed entry in force) or `--remove` an entry, `--verify` the reference, the rules and the accepted decisions against the code,
-    `--bootstrap` it from what the project already has (apps, `docs/`, each app's own documents), `--scaffold` new apps, or `--lint` it — see
-    `.claude/skills/pilot-architecture/SKILL.md`.
-  - `/pilot-design` — create or revise the project's design system and brand charter with the
-    designer, in a live discussion; the result is shown in the "Design" tab of the dashboard.
-  - `/pilot-discovery`, `/pilot-spec`, `/pilot-dev`, `/pilot-review`,
-    `/pilot-qa` — the five phases themselves. `/pilot-discovery` (PM leading, architect
-    validating) formalizes a `type:feature` idea into one or more stories; `/pilot-spec`
-    (architect+techlead, in dialogue) splits an already-formalized story into dev-sized
-    tasks and writes each one's technical spec in the same pass, or, given no ticket at
-    all, originates a standalone technical need or a bug report first (the one shared
-    bug-creation mechanism every phase reuses).
-  - `/pilot-auto` — dispatcher: tries `/pilot-review --auto`, `/pilot-dev --auto`,
-    `/pilot-spec --auto`, in that order, stopping at the first one that finds work (an
-    optional `--merge` forwards to `/pilot-review` only, `--multi
-    <N>` forwards to whichever phase claims a ticket, running an N-instance ensemble on
-    that one ticket — a converging dialogue for spec/dev, the older skill-mediated
-    reconciliation for review — `--again` keeps sweeping until a full pass finds
-    nothing instead of stopping at the first candidate). Bare (or a
-    subset like `/pilot-auto dev spec`), each phase works its own pool. Given a single
-    issue number instead (`/pilot-auto 48`), the same three are tried against that one
-    ticket rather than a pool — each phase's own claim protocol reports nothing to do when
-    the ticket isn't currently theirs, so this command never reads the ticket's `status:`
-    itself. `--next` (alias `--continue`) keeps re-dispatching one ticket through the full
-    chain until nothing's left, `needs-human`, it closes, or it looks orphaned — given an
-    issue number, that ticket; given none, whichever candidate the first sweep pass
-    claims. Not a phase itself, and never invokes
-    `/pilot-discovery` (pair or `--human`, no `--auto`) or `/pilot-qa` (pair, or its own `--browser --url <URL>`).
-    Lets one scheduled Routine drive the whole pipeline, or several Routines split it by
-    cadence, or a human/Routine hand it one ticket without knowing which phase it's in —
-    see `.claude/skills/pilot-auto/SKILL.md`.
-  - `/pilot-help` — read-only discovery over all of the above plus the seven agents below:
-    bare, lists every installed command with a one-line summary; given a command, flag,
-    or agent name, explains it in detail (an agent name that collides with a command's,
-    `dev`/`qa`, needs a leading `agent` token — the other four don't); given free text,
-    either the exact command to run for a described goal, or which persona is
-    responsible for a kind of judgment, whichever was actually asked. Never claims a
-    ticket or invokes another skill/agent itself — see `.claude/skills/pilot-help/SKILL.md`.
-- **Agents** (`.claude/agents/`): the seven personas the phase skills delegate to —
-  `pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e` (phase 3's
-  persona for an end-to-end-test task, `type:e2e`, instead of `pilot-dev`), and
-  `pilot-qa` (phase 5's persona, a manual QA gate for every `type:feature`
-  story once its tasks are all done, paired with a human or, with `--auto`, run in a browser), and `pilot-designer` (leads `/pilot-design`, never a phase or a validation — summoned
-  into a phase's discussion, or added with `--with`, to advise on usage and accessibility). Each file is just that persona's identity — its
-  duty instructions (how it scopes, how it reviews, ...) live in `pilot-task-<duty>.md`
-  instead, below.
-- **Scripts** (`scripts/`): `setup-github-labels.sh`, idempotent creation/update of every
-  label the state machine uses — also bumps the calling project's own
-  `.pilot/state.json` (`lastLabelsSyncAt`) when run from that project's root; and
-  `pilot.py`, the deterministic ticket mechanics (pool selection, the pick's action, claim, status transitions,
-  `needs-human` flagging) that the phase skills call — copied into a project as
-  `.pilot/pilot.py` by `/pilot-init`/`/pilot-update`.
-- **Templates** (`assets/templates/`): the doc skeletons `/pilot-init` fills in.
-
-See [`assets/docs/pilot-process-companion.md`](./assets/docs/pilot-process-companion.md) for a
-sequence diagram of a `type:feature` story moving through all five phases — a purely
-human-facing companion to `pilot-process.md`, kept in sync the same way.
-
-`assets/docs/pilot-link-<topic>.md` files are the third kind: operational like
-`pilot-process.md` itself but scoped to the specific two-or-more skills/agents that need
-to coordinate on something, rather than all five phases — synced the same way, as
-`.pilot/pilot-link-<topic>.md`. See `assets/docs/` for the current set.
-
-`assets/docs/pilot-task-<duty>.md` files are the fourth: one persona's instructions for
-one specific duty, never read by the persona itself but injected into the `Agent` call's
-prompt by the one skill that owns that duty — synced the same way, as
-`.pilot/pilot-task-<duty>.md`.
+- **Workflows** (`assets/workflows/*.json`, copied as `.pilot/workflows/`): eleven, as data — steps,
+  personas, task docs, code checks, judges, where a failure goes, a contract of statuses.
+  `scripts/pilot.py` serves one step at a time and decides the next from the data;
+  `assets/formats.json` holds the document formats the checks validate.
+- **Skills** (`.claude/skills/`), one per command:
+  - Run a workflow: `/pilot-need`, `/pilot-plan`, `/pilot-build`, `/pilot-accept`, `/pilot-report`, `/pilot-express`.
+  - Frames and design: `/pilot-wiki` (functional frame), `/pilot-architecture` (technical frame),
+    `/pilot-design` (design system), `/pilot-proto` (prototype), `/pilot-flow` (personas and user flows).
+  - Bootstrap and maintenance: `/pilot-init`, `/pilot-update`, `/pilot-dashboard`, `/pilot-help`.
+- **Agents** (`.claude/agents/`): seven personas — `pilot-pm`, `pilot-architect`, `pilot-techlead`,
+  `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`. Each file is an identity only; its duties are
+  `assets/docs/pilot-task-<duty>.md`, injected by the runner into the agent call.
+- **Docs** (`assets/docs/`): `pilot-process.md` (generic), `pilot-link-<topic>.md` (read by two or more
+  skills; `agent-contract` goes into every agent call), `pilot-task-<duty>.md` (one persona, one duty).
+- **Scripts** (`scripts/`): `pilot.py` and `pilot_checks.py`, the deterministic mechanics and code checks
+  as a CLI (copied as `.pilot/pilot.py`, `.pilot/pilot_checks.py`).
+- **Templates** (`assets/templates/`) and **GitHub** (`assets/github/`: the merge workflow and PR template).
 
 ## Installing in a project
 

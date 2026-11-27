@@ -26,8 +26,8 @@ OWNED = (".pilot/", ".github/workflows/pilot-status-on-merge.yml")
 LINTED = (".claude/skills/", ".claude/agents/", "assets/docs/", "assets/templates/", "scripts/pilot.py", "CLAUDE.md")
 
 
-REVIEWED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py",
-            "scripts/setup-github-labels.sh")  # what projects copy: what a PR must have had reviewed
+REVIEWED = (".claude/skills/", ".claude/agents/", "assets/", "scripts/pilot.py", "scripts/pilot_checks.py",
+            "VERSION")  # what projects copy: what a PR must have had reviewed
 REVIEW_DOC = "docs/maintainer-review.md"
 
 
