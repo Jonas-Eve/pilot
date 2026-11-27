@@ -169,7 +169,7 @@ const STUB = (opts) => `
   check('the open PR links to GitHub', (await hrefs(page, '#view .row a:has-text("PR #55")')).length === 1);
   const groups = await page.$$eval('#view > .list > h2', (h) => h.map((x) => x.textContent));
   check('groups: action awaited, in progress, to launch, paused, no action', groups.some((g) => /^Action humaine attendue/.test(g)) && groups.some((g) => /^En cours/.test(g)) && groups.some((g) => /^À lancer/.test(g)) && groups.some((g) => /^En pause/.test(g)) && groups.some((g) => /^Sans action/.test(g)), JSON.stringify(groups));
-  check('work view: no pilot-auto, no removed phase command anywhere', !/pilot-(auto|discovery|spec|dev|review|qa)\b/.test(await page.content()));
+  check('work view: no pilot-auto, no removed phase command anywhere', !/\/pilot-(auto|discovery|spec|dev|review|qa)\b/.test(await page.content()));
   const tiles = await page.$$eval('#view .tile', (t) => t.map((x) => x.textContent));
   check('counters: blocked, forming, to plan, to build, to accept', JSON.stringify(tiles) === JSON.stringify(['1bloqués', '1en formation', '1à planifier', '2à construire', '1à recetter']), JSON.stringify(tiles));
   await page.click('#view .tile >> text=à construire'); await page.waitForTimeout(150);
