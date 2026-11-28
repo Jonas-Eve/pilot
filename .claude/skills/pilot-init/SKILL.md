@@ -84,11 +84,11 @@ session's scratch directory) — call it `$PILOT_SRC` — and use that clone for
 
 9. **Wiki** (module on). If there is no `wiki/`, `python3 .pilot/pilot.py wiki reindex`, then
    `python3 .pilot/pilot.py wiki add product/vision.md --type Vision --title Vision --description "<one sentence>"
-   --body "<the vision>"` (in the wiki's language). Project-owned afterwards; for existing work, suggest
-   `/pilot-wiki --bootstrap`.
+   --body "<the vision>"` (in the wiki's language). Project-owned afterwards; suggest `/pilot-functional-frame`
+   (vocabulary, shared rules), `/pilot-persona` and `/pilot-user-flow`.
 
 10. **Architecture** (module on). `python3 .pilot/pilot.py arch reindex`; project-owned afterwards. Suggest
-    `/pilot-architecture --scaffold` (new apps) or `--bootstrap` (existing ones).
+    `/pilot-technical-frame` (guidelines).
 
 11. **Tell the human, editing nothing of their CI:** exclude the docs-only paths (`wiki/`, `architecture/`)
     from the project's CI (`paths-ignore`), and never run the e2e tests in CI (a script runs them locally).

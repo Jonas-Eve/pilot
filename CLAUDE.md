@@ -21,11 +21,12 @@ of the step, and `pilot.py run advance` decides the next step from the data. The
 - `.pilot/`, `.github/`, `wiki/`, `architecture/` — this repo runs PILOT on itself (modules `dashboard`, `wiki`, `architecture`). `.pilot/` and `.github/workflows/pilot-status-on-merge.yml` are
   verbatim copies of `scripts/pilot.py`, `scripts/pilot_checks.py`, `assets/`, PILOT-owned like in any project: never edited here, synced from the published `main` by `/pilot-update`, so they lag a change until it
   is merged and synced. The sources stay `assets/`, `scripts/` and `.claude/`; `scripts/test_pilot.py` runs from an empty directory so the repo's own `.pilot/state.json` never changes what it sees.
-- `assets/workflows/*.json` — the eleven workflows, copied into a project as `.pilot/workflows/`. A workflow may `include` another's steps (the express runs the build's). `pilot.py workflow check` validates them.
+- `assets/workflows/*.json` — the twelve workflows, copied into a project as `.pilot/workflows/`. A workflow may `include` another's steps (the express runs the build's). `pilot.py workflow check` validates them.
 - `assets/formats.json` — the document formats the checks validate (copied as `.pilot/formats.json`).
-- `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a project's `.claude/skills/`; all fifteen carry the `pilot-` prefix a project-local skill needs. The six run workflows
-  `pilot-need`, `pilot-plan`, `pilot-build`, `pilot-accept`, `pilot-report`, `pilot-express`; the five module skills run an admin workflow and keep their other modes: `pilot-architecture` (technical frame),
-  `pilot-wiki` (functional frame), `pilot-design` (design system), `pilot-proto` (prototype), `pilot-flow` (personas and user flows); `pilot-init`, `pilot-update`, `pilot-dashboard`, `pilot-help` maintain and
+- `.claude/skills/<name>/SKILL.md` — one per slash command, copied verbatim into a project's `.claude/skills/`; all eighteen carry the `pilot-` prefix a project-local skill needs. One skill per workflow, named as the workflow's id: the six ticket workflows
+  `pilot-need`, `pilot-plan`, `pilot-build`, `pilot-accept`, `pilot-report`, `pilot-express`, and the six admin workflows `pilot-functional-frame` (what the product does in shared terms: vision, vocabulary, shared rules),
+  `pilot-technical-frame` (how the code is built: stack, structure, guidelines), `pilot-design-system`, `pilot-proto` (prototype), `pilot-persona`, `pilot-user-flow` — each also takes `--edit`/`--remove` where its entries can be changed or retired.
+  `pilot-wiki` and `pilot-architecture` only answer a question from their bundle (read-only, no flag) and point at the skill that changes it; `pilot-init`, `pilot-update`, `pilot-dashboard`, `pilot-help` maintain and
   explain the rest. `pilot-help` is read-only: it lists, explains, turns a goal into the exact command, or names the persona responsible.
 - `.claude/agents/<name>.md` — the seven personas (`pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`). Each carries only its identity; its duties are the task docs
   the workflow data gives it (`python3 scripts/lint_pilot.py` checks that its list matches). A persona is lead (it understands the need), validator (another persona that receives the deliverable alone) or reviewer, by workflow.

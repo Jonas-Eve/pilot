@@ -275,15 +275,14 @@ STATE_PATH = os.path.join(".pilot", "state.json")
 WIKI_DIR = "wiki"
 ARCH_DIR = "architecture"
 # The optional modules a project turns on in .pilot/state.json (`modules`): the skills each owns, the modules
-# it needs, the command that turns it on at first use (`use`), the one that drafts its content from what the
-# project already has (`bootstrap`, only where there is such content), and the folder (if any) `doctor` expects.
+# it needs, the command that turns it on at first use (`use`) and the folder (if any) `doctor` expects.
 MODULES = {
-    "wiki": {"skills": ["pilot-wiki", "pilot-flow"], "requires": [], "use": "/pilot-wiki", "bootstrap": "/pilot-wiki --bootstrap",
-             "dir": WIKI_DIR},
-    "architecture": {"skills": ["pilot-architecture"], "requires": [], "use": "/pilot-architecture",
-                     "bootstrap": "/pilot-architecture --bootstrap", "dir": ARCH_DIR},
+    "wiki": {"skills": ["pilot-wiki", "pilot-functional-frame", "pilot-persona", "pilot-user-flow"], "requires": [],
+             "use": "/pilot-functional-frame", "dir": WIKI_DIR},
+    "architecture": {"skills": ["pilot-architecture", "pilot-technical-frame"], "requires": [], "use": "/pilot-technical-frame",
+                     "dir": ARCH_DIR},
     "dashboard": {"skills": ["pilot-dashboard"], "requires": [], "use": "/pilot-dashboard"},
-    "design": {"skills": ["pilot-design"], "requires": ["dashboard"], "use": "/pilot-design"},
+    "design": {"skills": ["pilot-design-system"], "requires": ["dashboard"], "use": "/pilot-design-system"},
     "proto": {"skills": ["pilot-proto"], "requires": ["dashboard"], "use": "/pilot-proto"},
 }
 WIKI_SNAPSHOT_MAX_BYTES = 240_000  # a database document holds at most 256 KiB
@@ -397,9 +396,9 @@ def detect_language(text):
 
 
 def module_registry(modules):
-    """Every known module with whether it is on, what it needs, its skills, its first-use command and its bootstrap."""
+    """Every known module with whether it is on, what it needs, its skills and its first-use command."""
     return {name: {"enabled": bool(modules.get(name)), "requires": meta["requires"], "skills": meta["skills"],
-                   "use": meta["use"], "bootstrap": meta.get("bootstrap")} for name, meta in MODULES.items()}
+                   "use": meta["use"]} for name, meta in MODULES.items()}
 
 
 def state_modules(path=STATE_PATH):
@@ -1593,7 +1592,7 @@ class Bundle:
     DIR = WIKI_DIR
     TITLE = "Wiki"
     ABSENT = "wiki-absent"
-    ABSENT_HINT = "run /pilot-wiki (it turns the wiki module on and creates wiki/)"
+    ABSENT_HINT = "run /pilot-functional-frame (it turns the wiki module on and creates wiki/)"
     PATH_HINT = "<domain>/<id>.md, the id in lowercase letters, digits and dashes"
     STATUSES = WIKI_STATUSES
     OKF_STATUS = WIKI_OKF_STATUS
@@ -2303,14 +2302,13 @@ ARCH_OKF_STATUS = {"proposed": "draft", "accepted": "stable", "superseded": "dep
 
 class Architecture(Bundle):
     """The architecture module's bundle: `architecture/overview.md`, `guidelines/<id>.md` (rules to respect),
-    `reference/<id>.md` (how the code is built today: stack and versions, data model, structure; `--verify` checks it, the overview and the accepted
-    guidelines and ADRs against the code, a human arbitrating each divergence), `adr/<NNNN-title>.md` (why a choice was made) and `runbooks/<id>.md`
+    `reference/<id>.md` (how the code is built today: stack and versions, data model, structure), `adr/<NNNN-title>.md` (why a choice was made) and `runbooks/<id>.md`
     (how to operate: deploy, onboard; read on demand, never carried in a prompt).
     Same OKF files, same frontmatter writer, same indexes as the wiki; its own statuses (an ADR is accepted, then
     deprecated or superseded by a later one, and never edited in between), no ticket-driven checks."""
     TITLE = "Architecture"
     ABSENT = "architecture-absent"
-    ABSENT_HINT = "run /pilot-architecture (it turns the architecture module on and creates architecture/)"
+    ABSENT_HINT = "run /pilot-technical-frame (it turns the architecture module on and creates architecture/)"
     PATH_HINT = ("overview.md, guidelines/<id>.md, reference/<id>.md, adr/<NNNN-title>.md or runbooks/<id>.md; for one app of a monorepo, the same under "
                  "apps/<app>/ with its overview named <app>-overview.md (an id is unique across the whole bundle)")
 
@@ -2409,7 +2407,7 @@ class Architecture(Bundle):
         if entry["id"] == "overview":
             return ("overview-never-removed", "the root overview is edited, never removed")
         if entry["type"] == "ADR" and entry["status"] == "accepted":
-            return ("accepted-adr", "an accepted ADR is retired by a new one that supersedes it (`/pilot-architecture --adr`)")
+            return ("accepted-adr", "an accepted ADR is retired by a new one that supersedes it (the plan workflow writes it)")
         if entry["status"] == "superseded":
             return ("superseded-is-history", "a superseded ADR stays as the history of the decision that replaced it")
         return None
@@ -2571,7 +2569,7 @@ def build_parser():
     p.add_argument("--out", help="write the document to this file and print only a summary (with `history_failed`: the tickets whose stage history could not be read)")
     p = sub.add_parser("doctor")
     p.add_argument("--verbose", action="store_true", help="list every check, not only failures")
-    p.add_argument("--no-wiki", action="store_true", help="skip the wiki check (/pilot-wiki repairing a missing wiki/)")
+    p.add_argument("--no-wiki", action="store_true", help="skip the wiki check (a wiki skill repairing a missing wiki/)")
     p = sub.add_parser("flow")
     p.add_argument("action", choices=["doc"], help="doc: the dashboard's `flowRuns` document of a run of a user flow")
     p.add_argument("--in", dest="input", required=True, metavar="FILE", help='{"flow": ID, "personas": [each persona run], "report": the consolidation, "reportUrl": …}')

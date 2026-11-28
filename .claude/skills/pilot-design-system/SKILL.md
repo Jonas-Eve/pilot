@@ -1,11 +1,11 @@
 ---
-name: pilot-design
-description: "Creates or revises the project's design system from a human's design intention: runs the `design-system` workflow (designer leads the discussion, validator, code checks, judge, a first gate on the design, then theme and components, a second gate, one PR). Works no ticket; the runner opens a run issue. Not one of the workflows' phases: a module command, launched by a human."
+name: pilot-design-system
+description: "Creates or revises the project's design system (brand, colors, typography, components, usage rules) from a human's design intention: runs the `design-system` workflow (designer leads the discussion, validator, code checks, judge, a first gate on the design, then theme and components, a second gate, one PR). Works no ticket; the runner opens a run issue. A command launched by a human."
 argument-hint: "[what to create or change, in free text]"
 disable-model-invocation: true
 ---
 
-# PILOT design — `pilot-design`
+# PILOT design system — `pilot-design-system`
 
 Read `.pilot/pilot-process.md` and `.pilot/pilot-link-runner.md` first: the runner file says how any workflow runs (start, step loop, agents, gates, finish). This skill runs the **`design-system`** workflow and adds only what is specific to it.
 

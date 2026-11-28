@@ -1,7 +1,7 @@
 # PILOT link — the project's wiki
 
-Read by `pilot-wiki`, by the persona calls of its `functional-frame` workflow (`pilot-task-write-functional-frame.md`), and by the workflows that read or write the wiki (`pilot-need`,
-`pilot-plan`, `pilot-build`, `pilot-accept`, `pilot-express`, `pilot-flow`), when the project's `wiki` module is enabled. The wiki is the project's source of truth for what the product does and
+Read by `pilot-wiki` (consultation), by the persona calls of the `functional-frame`, `persona` and `user-flow` workflows, and by the workflows that read or write the wiki (`pilot-need`,
+`pilot-plan`, `pilot-build`, `pilot-accept`, `pilot-express`, `pilot-functional-frame`, `pilot-persona`, `pilot-user-flow`), when the project's `wiki` module is enabled. The wiki is the project's source of truth for what the product does and
 what is promised: **when the wiki and the code disagree, the wiki is right** and a human arbitrates the divergence, never silently.
 
 **Where and what.** An OKF bundle (Open Knowledge Format) under `wiki/` at the project root (project-owned, never touched by `/pilot-update`): one markdown file per entry,
@@ -34,17 +34,17 @@ recette, recetted, in gap) is derived from tickets, runs and records (`wiki stat
 it), never kept as `deprecated`.
 
 **Who changes what.** A change of behavior goes through the need workflow (`/pilot-need`), never a hand edit; a pure correction (wording, precision) of a frame entry goes through
-`/pilot-wiki --edit`. A document reaches `main` by the docs PR its workflow ends with, opened and merged by script after its gate; nothing is committed to `main` directly.
+`/pilot-functional-frame --edit`. A document reaches `main` by the docs PR its workflow ends with, opened and merged by script after its gate; nothing is committed to `main` directly.
 
 **The vision.** One entry of `type: Vision` (id `vision`, no status, no ticket: it promises no behavior; `wiki add <domain>/vision.md --type Vision …`) says what the product is, for whom and by
 which principles. It is the vision `pilot-pm` and `pilot-designer` read first, created when the wiki is initialised from the vision the human gives, and changed only with the wording the human
 confirmed.
 
 **Personas and user flows.** Two folders are not functional domains: `wiki/persona/` (`type: Persona`: who the end user is, their constraints, their test account's label) and `wiki/user-flow/`
-(`type: UserFlow`: one journey, its goal, its personas, numbered steps each with the expected outcome). They are written by a human or `/pilot-flow --new`, with no ticket unless a story creates or
+(`type: UserFlow`: one journey, its goal, its personas, numbered steps each with the expected outcome). They are written by `/pilot-persona` and `/pilot-user-flow`, with no ticket unless a story creates or
 changes a flow (then it follows that story's entries); a persona carries no status. A retired one is deleted (`wiki remove`), refused while a flow's `Personas:` line or another entry cites it.
 Running a flow as personas is the accept workflow (`/pilot-accept <user-flow id>`). Never any credential or secret in an entry.
 
 **A divergence between an entry and the code** is resolved by a human, one of: the code is wrong (a correction ticket made by a Recette, or a report); the wiki must change (a change of behavior
-goes back through `/pilot-need`, a pure correction through `/pilot-wiki --edit`); behavior present in the code and absent from the wiki (an entry is added by `/pilot-need`, or the code's
+goes back through `/pilot-need`, a pure correction through `/pilot-functional-frame --edit`); behavior present in the code and absent from the wiki (an entry is added by `/pilot-need`, or the code's
 behavior is questioned).

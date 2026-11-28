@@ -40,7 +40,7 @@ and read what turns up. Then:
 - **A new or renamed label, status, flag, command, module or skill → every place that names it:** `pilot-process.md`,
   `pilot.py` docstring and `--help`, the CLAUDE.md §2 `pilot.py` paragraph, `pilot-help`, `/pilot-init` and `/pilot-update`,
   the dashboard "i" page and its `CONTRACTS` table and `scripts/test_dashboard.js`,
-  `scripts/demo_snapshot.py`, the canonical template snippets, README, counts written in words ("fifteen skills").
+  `scripts/demo_snapshot.py`, the canonical template snippets, README, counts written in words ("eighteen skills").
 - **A behaviour change in `pilot.py`** → a test in `scripts/test_pilot.py` that fails without it, and the contract text in
   `pilot-process.md` if it no longer matches.
 - **A new skill, agent or doc** → listed where CLAUDE.md §2 lists its kind, a persona's duties paragraph updated, a

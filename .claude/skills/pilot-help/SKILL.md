@@ -21,11 +21,12 @@ If `.claude/skills/pilot-*/` is absent, PILOT is not installed: point at `/pilot
 
 **No argument → list mode.** Read every installed skill's frontmatter and report them in these categories, one line each (name, one-sentence summary in plain words, `/pilot-help <name>` for more); skip any not installed, and mention a `pilot-*` skill outside this list as project-local:
 
-1. Run workflows: `pilot-need`, `pilot-plan`, `pilot-build`, `pilot-accept`, `pilot-report`, `pilot-express`.
-2. Frames and design (modules): `pilot-architecture`, `pilot-wiki`, `pilot-design`, `pilot-proto`, `pilot-flow`.
-3. Bootstrap and maintenance: `pilot-init`, `pilot-update`, `pilot-dashboard`, `pilot-help`.
+1. Ticket workflows: `pilot-need`, `pilot-plan`, `pilot-build`, `pilot-accept`, `pilot-report`, `pilot-express`.
+2. Admin workflows (modules): `pilot-functional-frame`, `pilot-technical-frame`, `pilot-design-system`, `pilot-proto`, `pilot-persona`, `pilot-user-flow`.
+3. Ask the frames (read-only): `pilot-wiki`, `pilot-architecture`.
+4. Bootstrap and maintenance: `pilot-init`, `pilot-update`, `pilot-dashboard`, `pilot-help`.
 
-Then the optional modules: run `python3 .pilot/pilot.py module list` and give each module's name, whether it is on, its `use` command and its `bootstrap` when it has one. Close with one line naming the seven personas (`pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`) and `/pilot-help agent <name>`; they are not commands.
+Then the optional modules: run `python3 .pilot/pilot.py module list` and give each module's name, whether it is on and its `use` command. Close with one line naming the seven personas (`pilot-pm`, `pilot-architect`, `pilot-techlead`, `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`) and `/pilot-help agent <name>`; they are not commands.
 
 **A command name → detail mode.** Normalize (strip a leading `/`, add a missing `pilot-`) and match an installed skill directory. No match → say so and suggest bare `/pilot-help`. On a match read its whole `SKILL.md` and answer with:
 - what it does and when to use it, and which workflow it runs; for its steps, actors and gates, give `python3 .pilot/pilot.py workflow show <id>` rather than restating them;

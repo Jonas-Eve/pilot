@@ -160,6 +160,7 @@ a.chip:hover{text-decoration:underline}
 .tog{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 12px;min-height:30px}
 .tog[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .idea .seg{align-self:flex-start;max-width:100%;overflow-x:auto}
+.adminlist{margin:0;padding-left:18px;font-size:13px;color:var(--muted)} .adminlist li.on{color:var(--fg)}
 .sw{display:inline-block;width:18px;height:18px;border-radius:4px;border:1px solid var(--line);vertical-align:middle;margin-right:6px}
 .logo{max-height:64px;max-width:240px;align-self:flex-start}
 .pair{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center}
@@ -301,8 +302,9 @@ var EN={
 "Tester en tant que":"Test as",
 "Pas encore livré : ce parcours se teste une fois implémenté.":"Not delivered yet: this flow can be tested once it is implemented.",
 "Ce que vous créez":"What you create",
-"Créer un persona ou un parcours":"Create a persona or a user flow",
-"Parcours (user flow)":"User flow",
+"Créer une entrée du wiki":"Create a wiki entry",
+"Décrivez l’entrée du cadre fonctionnel : un principe, du vocabulaire, une règle commune à plusieurs comportements. Le PM la rédige avec vous.":"Describe the functional frame entry: a principle, vocabulary, a rule several behaviors have in common. The PM writes it with you.",
+"Ex. : un « itinéraire accessible » désigne toujours un trajet sans escalier":"E.g.: an “accessible route” always means a route without stairs",
 "Décrivez le persona : qui est cette personne, ses contraintes, comment elle utilise le produit. Le designer le rédige avec vous.":"Describe the persona: who this person is, their constraints, how they use the product. The designer writes it with you.",
 "Décrivez le parcours : l’objectif et les personas concernés. Le QA propose les étapes avec vous.":"Describe the flow: the goal and the personas concerned. QA proposes the steps with you.",
 "Ex. : Marie, 74 ans, malvoyante, utilise son téléphone avec un zoom à 200 %":"E.g. Marie, 74, low vision, uses her phone at 200 % zoom",
@@ -450,8 +452,6 @@ var EN={
 "en construction":"building",
 "en relecture":"in review",
 "recetté":"accepted (recette)",
-"Contrôler le wiki":"Lint the wiki",
-"Contrôler le fonds":"Lint the body",
 "Activez le module (python3 .pilot/pilot.py module enable wiki), puis publiez-le avec « /pilot-dashboard --refresh ».":"Enable the module (python3 .pilot/pilot.py module enable wiki), then publish it with “/pilot-dashboard --refresh”.",
 "Aucune architecture publiée pour ce projet. Activez le module (python3 .pilot/pilot.py module enable architecture), puis publiez-la avec « /pilot-dashboard --refresh ».":"No architecture published for this project. Enable the module (python3 .pilot/pilot.py module enable architecture), then publish it with “/pilot-dashboard --refresh”.",
 "Aucun wiki publié pour ce projet. Activez le module (python3 .pilot/pilot.py module enable wiki), puis publiez-le avec « /pilot-dashboard --refresh ».":"No wiki published for this project. Enable the module (python3 .pilot/pilot.py module enable wiki), then publish it with “/pilot-dashboard --refresh”.",
@@ -484,16 +484,16 @@ var EN={
 "Workflows d’admin":"Admin workflows",
 "Workflow à lancer":"Workflow to start",
 "Décrivez ce que vous voulez lancer.":"Describe what you want to start.",
-"Règle technique":"Technical rule",
-"Entrée du wiki":"Wiki entry",
-"Parcours":"User flow",
+"Cadre fonctionnel":"Functional frame",
+"Cadre technique":"Technical frame",
+"Parcours utilisateur":"User flow",
 "Prototype":"Prototype",
-"Cadre technique : une règle (ou le changement d’une entrée), décidée à un gate ; une PR.":"Technical frame: a rule (or a change to an entry), decided at a gate; one PR.",
-"Cadre fonctionnel : l’identifiant de l’entrée, puis le changement ; une PR.":"Functional frame: the entry’s identifier, then the change; one PR.",
-"Design system : ce que vous voulez créer ou changer ; deux gates, une PR.":"Design system: what you want to create or change; two gates, one PR.",
-"Persona : qui est cette personne, ses contraintes ; le designer le rédige avec vous.":"Persona: who this person is, their constraints; the designer writes it with you.",
-"Parcours : l’objectif et les personas concernés ; le QA propose les étapes avec vous.":"User flow: the goal and the personas concerned; QA proposes the steps with you.",
-"Prototype : la fonction à tester ; le designer construit la maquette avec vous.":"Prototype: the feature to try; the designer builds the mockup with you.",
+"Ce que fait le produit en termes partagés : sa vision, son vocabulaire, les règles communes à plusieurs comportements. Créer une entrée ou la modifier ; une PR.":"What the product does in shared terms: its vision, vocabulary and the rules several behaviors have in common. Create an entry or change one; one PR.",
+"Comment le code est construit : pile, structure, règles techniques. Créer une règle ou la modifier, décidée à deux gates ; une PR.":"How the code is built: stack, structure, technical rules. Create a rule or change one, decided at two gates; one PR.",
+"La charte, les couleurs, la typographie et les composants. Créer ou modifier, validé à deux gates ; une PR.":"The charter, colors, typography and components. Create or change, validated at two gates; one PR.",
+"Qui est cet utilisateur : ses objectifs, ses contraintes, sa façon d’utiliser le produit. Le designer le rédige avec vous.":"Who this user is: goals, constraints, how they use the product. The designer writes it with you.",
+"Un trajet pas à pas, avec le résultat attendu à chaque étape, joué par des personas existants. Le QA le rédige avec vous.":"A journey step by step, with the expected result at each step, played by existing personas. QA writes it with you.",
+"Une maquette cliquable pour décider avant tout besoin. Le designer la construit avec vous.":"A clickable mockup to decide before any need. The designer builds it with you.",
 "Tickets":"Tickets",
 "Agents":"Agents",
 "Modules":"Modules"
@@ -555,11 +555,13 @@ var WFS=[
   ['express','/pilot-express',1,'Express','Express','Chemin court (correctif urgent, fonction cœur) : documentation provisoire, une story sans tâches, construite dans le même workflow.','Short path (hotfix, core feature): provisional documentation, one story without tasks, built in the same workflow.'],
   ['report','/pilot-report',1,'Signalement','Report','Un comportement anormal vu hors recette est qualifié et envoyé au bon workflow ; ne crée jamais de ticket de correction.','An abnormal behavior seen outside a recette is qualified and sent to the right workflow; never creates a correction ticket.'],
   ['proto','/pilot-proto',1,'Prototype','Prototype','Une maquette cliquable pour décider avant tout besoin, acceptée ou rejetée.','A clickable mockup to decide before any need, accepted or rejected.'],
-  ['design-system','/pilot-design',0,'Design system','Design system','Crée ou révise la charte, les couleurs, la typographie et les composants.','Creates or revises the charter, colors, typography and components.'],
-  ['functional-frame','/pilot-wiki',0,'Cadre fonctionnel','Functional frame','Corrige une entrée de cadre du wiki (vocabulaire, règles partagées).','Fixes a frame entry of the wiki (vocabulary, shared rules).'],
-  ['technical-frame','/pilot-architecture',0,'Cadre technique','Technical frame','Écrit ou révise une règle technique ; elle prend force à la fusion de la PR.','Writes or revises a technical guideline; it takes force when the PR merges.'],
-  ['personas-flows','/pilot-flow',0,'Personas et user flows','Personas and user flows','Rédige ou révise un persona ou un parcours utilisateur du wiki.','Writes or revises a persona or a user flow of the wiki.']
+  ['design-system','/pilot-design-system',0,'Design system','Design system','Crée ou révise la charte, les couleurs, la typographie et les composants.','Creates or revises the charter, colors, typography and components.'],
+  ['functional-frame','/pilot-functional-frame',0,'Cadre fonctionnel','Functional frame','Crée ou modifie une entrée de ce que fait le produit en termes partagés : vision, vocabulaire, règles communes.','Creates or changes an entry of what the product does in shared terms: vision, vocabulary, common rules.'],
+  ['technical-frame','/pilot-technical-frame',0,'Cadre technique','Technical frame','Crée ou modifie une règle de la façon dont le code est construit ; elle prend force à la fusion de la PR.','Creates or changes a rule of how the code is built; it takes force when the PR merges.'],
+  ['persona','/pilot-persona',0,'Persona','Persona','Rédige ou révise un persona du wiki : qui est l’utilisateur, ses contraintes, sa façon d’utiliser le produit.','Writes or revises a persona of the wiki: who the user is, their constraints, how they use the product.'],
+  ['user-flow','/pilot-user-flow',0,'Parcours utilisateur','User flow','Rédige ou révise un parcours utilisateur du wiki : des étapes, le résultat attendu à chacune, des personas existants.','Writes or revises a user flow of the wiki: steps, the expected result at each, existing personas.']
 ];
+var CONSULT={wiki:'/pilot-wiki',architecture:'/pilot-architecture'}; /* read-only skills: they answer a question from the bundle and change nothing */
 function sk(id){var w=wfInfo(id);return w?w[1]:'';} /* a workflow's command */
 function wfInfo(id){for(var i=0;i<WFS.length;i++)if(WFS[i][0]===id)return WFS[i];return null;}
 /* the workflows the snapshot lists; a snapshot without the list means all of them */
@@ -599,7 +601,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}', adminKey:null,
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(),
-  tab:'file', epic:0, view:store('cp.view')==='liste'?'liste':'board', expanded:{}, so:{produit:{},tech:{},tous:{}}, wfOpen:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaKind:null, design:null, wiki:null, flowRuns:{}, fl:{newKind:'persona',newText:'',newOpen:0,pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoImp:0, viewHelp:0, viewProto:0, sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'},
+  tab:'file', epic:0, view:store('cp.view')==='liste'?'liste':'board', expanded:{}, so:{produit:{},tech:{},tous:{}}, wfOpen:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaKind:null, design:null, wiki:null, flowRuns:{}, fl:{newKind:'frame',newText:'',newOpen:0,pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoImp:0, viewHelp:0, viewProto:0, sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'},
   db:null, snaps:{}, events:{}, runs:{},
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -1170,16 +1172,16 @@ function updateIdea(){
 
 /* ---------- admin workflows: one place to start any of them (each also has its launcher in its module's tab); the command is written, not sent ---------- */
 var ADMIN=[
-  {key:'technical-frame',wf:'technical-frame',mod:'architecture',label:'Règle technique',args:' --guideline ',hint:'Cadre technique : une règle (ou le changement d’une entrée), décidée à un gate ; une PR.'},
-  {key:'functional-frame',wf:'functional-frame',mod:'wiki',label:'Entrée du wiki',args:' --edit ',hint:'Cadre fonctionnel : l’identifiant de l’entrée, puis le changement ; une PR.'},
-  {key:'design-system',wf:'design-system',mod:'design',label:'Design system',args:' ',hint:'Design system : ce que vous voulez créer ou changer ; deux gates, une PR.'},
-  {key:'persona',wf:'personas-flows',mod:'wiki',label:'Persona',args:' --new persona ',hint:'Persona : qui est cette personne, ses contraintes ; le designer le rédige avec vous.'},
-  {key:'flow',wf:'personas-flows',mod:'wiki',label:'Parcours',args:' --new flow ',hint:'Parcours : l’objectif et les personas concernés ; le QA propose les étapes avec vous.'},
-  {key:'proto',wf:'proto',mod:'proto',label:'Prototype',args:' ',hint:'Prototype : la fonction à tester ; le designer construit la maquette avec vous.'}
+  {key:'functional-frame',wf:'functional-frame',mod:'wiki',label:'Cadre fonctionnel',hint:'Ce que fait le produit en termes partagés : sa vision, son vocabulaire, les règles communes à plusieurs comportements. Créer une entrée ou la modifier ; une PR.'},
+  {key:'technical-frame',wf:'technical-frame',mod:'architecture',label:'Cadre technique',hint:'Comment le code est construit : pile, structure, règles techniques. Créer une règle ou la modifier, décidée à deux gates ; une PR.'},
+  {key:'design-system',wf:'design-system',mod:'design',label:'Design system',hint:'La charte, les couleurs, la typographie et les composants. Créer ou modifier, validé à deux gates ; une PR.'},
+  {key:'persona',wf:'persona',mod:'wiki',label:'Persona',hint:'Qui est cet utilisateur : ses objectifs, ses contraintes, sa façon d’utiliser le produit. Le designer le rédige avec vous.'},
+  {key:'user-flow',wf:'user-flow',mod:'wiki',label:'Parcours utilisateur',hint:'Un trajet pas à pas, avec le résultat attendu à chaque étape, joué par des personas existants. Le QA le rédige avec vous.'},
+  {key:'proto',wf:'proto',mod:'proto',label:'Prototype',hint:'Une maquette cliquable pour décider avant tout besoin. Le designer la construit avec vous.'}
 ];
 function adminKinds(){return ADMIN.filter(function(k){return wfOn(k.wf)&&mv(k.mod);});}
 function adminNow(){var ks=adminKinds(); return ks.filter(function(k){return k.key===S.adminKey;})[0]||ks[0]||null;}
-function adminCmd(k,t){return sk(k.wf)+k.args+(t||'');}
+function adminCmd(k,t){return sk(k.wf)+' '+(t||'');}
 function adminText(){var el=document.getElementById('adminText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
 function buildAdmin(){
   var box=document.getElementById('admin');
@@ -1187,6 +1189,7 @@ function buildAdmin(){
     h('label',{for:'adminText',class:'note'},'Décrivez ce que vous voulez lancer.'),
     h('textarea',{id:'adminText',rows:3,maxlength:1500,oninput:updateAdmin}),
     h('div',{class:'seg',role:'group','aria-label':'Workflow à lancer',id:'adminSeg'}),
+    h('ul',{class:'adminlist',id:'adminList'}),
     h('p',{class:'note',id:'adminHint'}),
     h('div',{class:'cmd',id:'adminCmd'}),
     h('div',{class:'refresh'},
@@ -1199,7 +1202,9 @@ function updateAdmin(){
   var k=adminNow(), text=adminText(), open=document.getElementById('adminOpen'); if(!k)return;
   seg.replaceChildren.apply(seg,adminKinds().map(function(x){
     return h('button',{type:'button','data-key':x.key,'aria-pressed':String(x.key===k.key),onclick:function(){S.adminKey=x.key;updateAdmin();}},x.label);}));
-  document.getElementById('adminHint').textContent=tr(k.hint+' La commande est écrite, pas envoyée.');
+  var list=document.getElementById('adminList');
+  list.replaceChildren.apply(list,adminKinds().map(function(x){return h('li',{class:x.key===k.key?'on':null},h('strong',{},x.label),' ',h('code',{},sk(x.wf)),' : ',x.hint);}));
+  document.getElementById('adminHint').textContent=tr('La commande est écrite, pas envoyée.');
   document.getElementById('adminCmd').textContent=adminCmd(k,text||'…');
   document.getElementById('adminSum').textContent=text?tr('brouillon en cours'):'';
   if(text){open.setAttribute('href',claudeCodeUrl(adminCmd(k,text)));open.removeAttribute('aria-disabled');}
@@ -1304,7 +1309,7 @@ function updateProtoNew(){
   document.getElementById('protoNSum').textContent=(imp?protoUrl():protoText())?tr('brouillon en cours'):'';
 }
 
-/* ---------- design tab: shows the project's `design` document, edited through a /pilot-design session ---------- */
+/* ---------- design tab: shows the project's `design` document, edited through a /pilot-design-system session ---------- */
 function designText(){var el=document.getElementById('designText');return el?el.value.replace(/\s*\n\s*/g,' ').trim():'';}
 function designCmd(){var t=designText();return sk('design-system')+(t?' '+t:'');}
 function buildDesign(){
@@ -1392,7 +1397,7 @@ function wikiDomains(){
   wikiEntries().forEach(function(e){var d=wikiDomain(e); if(n[d]==null){n[d]=0;order.push(d);} n[d]++;});
   return order.sort().map(function(d){return [d,d,n[d]];});
 }
-/* persona / user-flow entries: a launcher that writes the /pilot-flow command (written, not sent) */
+/* persona / user-flow entries: launchers that write the /pilot-persona and /pilot-user-flow commands (written, not sent) */
 var FLOW_ID=/^[a-z0-9-]+$/, FLOW_KIND={persona:'Persona','user-flow':'UserFlow'};
 function wikiKind(e){return e.type||FLOW_KIND[wikiDomain(e)]||'';}
 function wikiByKind(k){return wikiEntries().filter(function(e){return wikiKind(e)===k&&FLOW_ID.test(str(e.id,80));});}
@@ -1443,7 +1448,7 @@ function flowLastRun(e){
 function wikiActions(e){
   var id=str(e.id,80); if(!FLOW_ID.test(id))return null;
   var k=wikiKind(e), pf=(k==='Persona'||k==='UserFlow'), acts=[];
-  if(pf){acts.push(openLink(sk('personas-flows')+' --edit '+id+' ','Modifier'),openLink(sk('personas-flows')+' --remove '+id,'Retirer'));}
+  if(pf){var pk=sk(k==='Persona'?'persona':'user-flow'); acts.push(openLink(pk+' --edit '+id+' ','Modifier'),openLink(pk+' --remove '+id,'Retirer'));}
   else if(k!=='Behavior'&&k!=='Vision'){acts.push(openLink(sk('functional-frame')+' --edit '+id+' ','Modifier'),openLink(sk('functional-frame')+' --remove '+id,'Retirer'));} /* a behavior changes through /pilot-need */
   return acts.length?h('div',{class:'refresh'},acts):null;
 }
@@ -1461,38 +1466,41 @@ function wikiEntry(e){
     wikiActions(e),
     flowLauncher(e));
 }
-/* creating a persona or a user flow: the command is written, then run in Claude Code (only a PR changes the wiki) */
-function flowNewCard(){
+/* creating an entry of the functional frame, a persona or a user flow: the command is written, then run in Claude Code (only a PR changes the wiki) */
+var NEW_KINDS=[
+  {key:'frame',wf:'functional-frame',label:'Cadre fonctionnel',lbl:'Décrivez l’entrée du cadre fonctionnel : un principe, du vocabulaire, une règle commune à plusieurs comportements. Le PM la rédige avec vous.',ph:'Ex. : un « itinéraire accessible » désigne toujours un trajet sans escalier'},
+  {key:'persona',wf:'persona',label:'Persona',lbl:'Décrivez le persona : qui est cette personne, ses contraintes, comment elle utilise le produit. Le designer le rédige avec vous.',ph:'Ex. : Marie, 74 ans, malvoyante, utilise son téléphone avec un zoom à 200 %'},
+  {key:'flow',wf:'user-flow',label:'Parcours utilisateur',lbl:'Décrivez le parcours : l’objectif et les personas concernés. Le QA propose les étapes avec vous.',ph:'Ex. : trouver un lieu accessible de plain-pied près de soi'}
+];
+function wikiNewCard(){
   var kind=S.fl.newKind, ta=h('textarea',{id:'flowNewText',rows:3,maxlength:1500}), cmd=h('div',{class:'cmd'}),
-      go=h('a',{class:'btn primary',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'), bp=h('button',{type:'button'},'Persona'), bf=h('button',{type:'button'},'Parcours (user flow)'),
-      lbl=h('label',{for:'flowNewText',class:'note'});
+      go=h('a',{class:'btn primary',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'), lbl=h('label',{for:'flowNewText',class:'note'}),
+      btns=NEW_KINDS.map(function(k){return h('button',{type:'button','data-key':k.key,onclick:function(){kind=S.fl.newKind=k.key;update();}},k.label);});
   function text(){return ta.value.replace(/\s*\n\s*/g,' ').trim();}
   function update(){
-    var t=text(), c=sk('personas-flows')+' --new '+kind+(t?' '+t:'');
-    bp.setAttribute('aria-pressed',String(kind==='persona')); bf.setAttribute('aria-pressed',String(kind==='flow'));
-    lbl.textContent=tr(kind==='persona'?'Décrivez le persona : qui est cette personne, ses contraintes, comment elle utilise le produit. Le designer le rédige avec vous.':'Décrivez le parcours : l’objectif et les personas concernés. Le QA propose les étapes avec vous.');
-    ta.setAttribute('placeholder',tr(kind==='persona'?'Ex. : Marie, 74 ans, malvoyante, utilise son téléphone avec un zoom à 200 %':'Ex. : trouver un lieu accessible de plain-pied près de soi'));
-    cmd.textContent=c;
+    var k=NEW_KINDS.filter(function(x){return x.key===kind;})[0]||NEW_KINDS[0], t=text(), c=sk(k.wf)+(t?' '+t:'');
+    btns.forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-key')===k.key));});
+    lbl.textContent=tr(k.lbl); ta.setAttribute('placeholder',tr(k.ph)); cmd.textContent=c;
     if(t){go.setAttribute('href',claudeCodeUrl(c));go.removeAttribute('aria-disabled');}else{go.removeAttribute('href');go.setAttribute('aria-disabled','true');}
   }
   ta.value=S.fl.newText;
-  bp.addEventListener('click',function(){kind=S.fl.newKind='persona';update();}); bf.addEventListener('click',function(){kind=S.fl.newKind='flow';update();}); ta.addEventListener('input',function(){S.fl.newText=ta.value;update();});
-  var card=h('details',{class:'foldcard',open:S.fl.newOpen?true:null},h('summary',{},'Créer un persona ou un parcours'),
-    h('div',{class:'seg',role:'group','aria-label':'Ce que vous créez'},bp,bf),lbl,ta,
+  ta.addEventListener('input',function(){S.fl.newText=ta.value;update();});
+  var card=h('details',{class:'foldcard',open:S.fl.newOpen?true:null},h('summary',{},'Créer une entrée du wiki'),
+    h('div',{class:'seg',role:'group','aria-label':'Ce que vous créez'},btns),lbl,ta,
     h('p',{class:'note'},'La commande est écrite, pas envoyée.'),cmd,
     h('div',{class:'refresh'},go,h('button',{class:'btn ghost',type:'button',onclick:function(e){if(text())copyCmd(cmd.textContent,e.target);}},'Copier la commande')));
   card.addEventListener('toggle',function(){S.fl.newOpen=card.open?1:0;});
   update(); return card;
 }
 function vWiki(){
-  var w=S.wiki, mr=moduleRuns(['functional-frame','personas-flows']);
+  var w=S.wiki, mr=moduleRuns(['functional-frame','persona','user-flow']);
   if(!w)return h('div',{class:'list'},h('h2',{},'Wiki'),mr,h('div',{class:'empty'},S.db?'Aucun wiki publié pour ce projet. Activez le module (python3 .pilot/pilot.py module enable wiki), puis publiez-le avec « /pilot-dashboard --refresh ».':'La base partagée n’est pas disponible.'));
   var cur=S.sub.wiki, shown=wikiEntries().filter(function(e){return cur==='tous'||wikiDomain(e)===cur;}), counts={}, pages=[], by={};
   shown.forEach(function(e){counts[e.status]=(counts[e.status]||0)+1; var k=wikiDomain(e); if(!by[k]){by[k]=[];pages.push(k);} by[k].push(e);});
   var sum=Object.keys(WIKI_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+WIKI_CLS[k]},counts[k]+' '+WIKI_FR[k]);});
   return h('div',{class:'list'},h('h2',{},'Wiki · mis à jour '+ago(w.at)+(w.truncated?' · textes raccourcis':'')),mr,
-    h('div',{class:'refresh'},openLink(sk('functional-frame'),'Interroger le wiki',true),openLink(sk('functional-frame')+' --lint','Contrôler le wiki')),
-    flowNewCard(),
+    h('div',{class:'refresh'},openLink(CONSULT.wiki,'Interroger le wiki',true)),
+    wikiNewCard(),
     sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
     pages.length?pages.map(function(k){return h('section',{class:'list','aria-label':k},h('h2',{},k),by[k].map(wikiEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
 }
@@ -1536,7 +1544,7 @@ function vArch(){
   shown.forEach(function(e){counts[e.status]=(counts[e.status]||0)+1; var k=archGroup(e); if(!by[k]){by[k]=[];pages.push(k);} by[k].push(e);});
   var sum=Object.keys(ARCH_FR).filter(function(k){return counts[k];}).map(function(k){return h('span',{class:'chip '+ARCH_CLS[k]},counts[k]+' '+ARCH_FR[k]);});
   return h('div',{class:'list'},h('h2',{},'Architecture · mis à jour '+ago(a.at)+(a.truncated?' · textes raccourcis':'')),mr,
-    h('div',{class:'refresh'},openLink(sk('technical-frame'),'Interroger l’architecture',true),openLink(sk('technical-frame')+' --guideline','Ajouter une règle'),openLink(sk('technical-frame')+' --lint','Contrôler le fonds')),
+    h('div',{class:'refresh'},openLink(CONSULT.architecture,'Interroger l’architecture',true),openLink(sk('technical-frame')+' --guideline','Ajouter une règle')),
     sum.length?h('div',{class:'chips','aria-label':'Statuts'},sum):null,
     pages.length?archGroups().map(function(g){return g[0];}).filter(function(k){return by[k];}).map(function(k){return h('section',{class:'list','aria-label':archLabel(k)},h('h2',{},archLabel(k)),by[k].map(archEntry));}):h('div',{class:'empty'},'Aucune entrée.'));
 }
@@ -1613,7 +1621,7 @@ var AGENTS=[
   ['designer','Designer','Comprend l’usage : design system, prototypes, personas ; relit l’usage et l’accessibilité d’une interface.','Understands usage: design system, prototypes, personas; reviews an interface’s usage and accessibility.']
 ];
 /* persona -> workflow -> role (lead writes, validator checks the deliverable alone, reviewer reads the local diff): a copy of the workflow data, checked by test_pilot.py */
-var ROLES_IN={"architect":{"build":["reviewer"],"design-system":["validator"],"express":["lead","reviewer"],"functional-frame":["validator"],"need":["validator"],"plan":["lead"],"technical-frame":["lead"]},"designer":{"build":["reviewer"],"design-system":["lead"],"express":["reviewer"],"personas-flows":["lead"],"proto":["lead"]},"dev":{"build":["lead"],"design-system":["lead"],"express":["lead"],"plan":["validator"],"technical-frame":["lead"]},"e2e":{"build":["lead"]},"pm":{"build":["reviewer"],"express":["lead","reviewer"],"functional-frame":["lead"],"need":["lead"],"personas-flows":["validator"],"plan":["validator"],"proto":["validator"],"report":["lead"]},"qa":{"accept":["lead"],"personas-flows":["lead"],"report":["lead"]},"techlead":{"build":["validator"],"design-system":["validator"],"express":["lead","validator"],"plan":["lead"],"technical-frame":["validator"]}};
+var ROLES_IN={"architect":{"build":["reviewer"],"design-system":["validator"],"express":["lead","reviewer"],"functional-frame":["validator"],"need":["validator"],"plan":["lead"],"technical-frame":["lead"]},"designer":{"build":["reviewer"],"design-system":["lead"],"express":["reviewer"],"persona":["lead"],"proto":["lead"]},"dev":{"build":["lead"],"design-system":["lead"],"express":["lead"],"plan":["validator"],"technical-frame":["lead"]},"e2e":{"build":["lead"]},"pm":{"build":["reviewer"],"express":["lead","reviewer"],"functional-frame":["lead"],"need":["lead"],"persona":["validator"],"plan":["validator"],"proto":["validator"],"report":["lead"],"user-flow":["validator"]},"qa":{"accept":["lead"],"report":["lead"],"user-flow":["lead"]},"techlead":{"build":["validator"],"design-system":["validator"],"express":["lead","validator"],"plan":["lead"],"technical-frame":["validator"]}};
 var ROLE_WORD={lead:['rédige','leads'],validator:['valide','validates'],reviewer:['relit','reviews']};
 function L(fr,en){return LANG==='fr'?fr:en;}
 function agentIn(key){var d=ROLES_IN[key]||{};return Object.keys(d).filter(wfOn).map(function(wf){return wf+' ('+d[wf].map(function(r){return L(ROLE_WORD[r][0],ROLE_WORD[r][1]);}).join(', ')+')';}).join(' · ');}
@@ -1651,8 +1659,11 @@ function vHowPrinciples(){
     wfOn('express')?[L('aller vite (correctif urgent, fonction cœur)','go fast (hotfix, core feature)'),code('/pilot-express "…"')]:null,
     mv('proto')?[L('tester une fonction avec un prototype','try a feature with a prototype'),code('/pilot-proto')]:null,
     mv('wiki')||mv('architecture')?[L('savoir ce que fait le produit ou pourquoi','know what the product does or why'),code([mv('wiki')?'/pilot-wiki':null,mv('architecture')?'/pilot-architecture':null].filter(Boolean).join(' · '))]:null,
-    mv('wiki')?[L('créer ou réviser un persona ou un parcours','create or revise a persona or a flow'),code('/pilot-flow --new persona|flow "…"')]:null,
-    mv('design')?[L('créer ou changer le design system','create or change the design system'),code('/pilot-design')]:null,
+    mv('wiki')?[L('créer ou changer une entrée du cadre fonctionnel (vision, vocabulaire, règles communes)','create or change a functional frame entry (vision, vocabulary, common rules)'),code('/pilot-functional-frame "…"')]:null,
+    mv('wiki')?[L('créer ou réviser un persona','create or revise a persona'),code('/pilot-persona "…"')]:null,
+    mv('wiki')?[L('créer ou réviser un parcours utilisateur','create or revise a user flow'),code('/pilot-user-flow "…"')]:null,
+    mv('architecture')?[L('créer ou changer une règle technique','create or change a technical rule'),code('/pilot-technical-frame "…"')]:null,
+    mv('design')?[L('créer ou changer le design system','create or change the design system'),code('/pilot-design-system')]:null,
     [L('adopter PILOT sur un projet, ou le mettre à jour','adopt PILOT on a project, or update it'),code('/pilot-init · /pilot-update'),'tech'],
     [L('rafraîchir le cockpit','refresh the cockpit'),code('/pilot-dashboard --refresh'),'tech'],
     [L('trouver la bonne commande','find the right command'),code('/pilot-help …')]
@@ -1703,14 +1714,14 @@ var HOW_TABS=[
     fr:{title:"Prototypes",what:"Des maquettes cliquables de fonctions à tester, avec l’état de leur run : en cours, ou terminé (accepté ou rejeté).",how:"Décrivez la fonction dans l’onglet ; reprenez ou rejetez un prototype en cours ; un prototype accepté nourrit un besoin (/pilot-need --proto).",why:"On décide sur du concret avant d’écrire un besoin."},
     en:{title:"Prototypes",what:"Clickable mockups of features to try, with their run’s state: under way, or finished (accepted or rejected).",how:"Describe the feature in the tab; resume or reject a prototype under way; an accepted prototype feeds a need (/pilot-need --proto).",why:"You decide on something concrete before writing a need."}},
   {id:"design",mod:"design",
-    fr:{title:"Design",what:"La charte, les couleurs, la typographie, les espacements, les composants et l’accessibilité du produit.",how:"Lisez-la pour rester cohérent ; faites-la évoluer avec /pilot-design.",why:"Les prototypes et les interfaces restent cohérents d’une fonction à l’autre."},
-    en:{title:"Design",what:"The product’s charter, colors, typography, spacing, components and accessibility.",how:"Read it to stay consistent; evolve it with /pilot-design.",why:"Prototypes and interfaces stay consistent from one feature to the next."}},
+    fr:{title:"Design",what:"La charte, les couleurs, la typographie, les espacements, les composants et l’accessibilité du produit.",how:"Lisez-la pour rester cohérent ; faites-la évoluer avec /pilot-design-system.",why:"Les prototypes et les interfaces restent cohérents d’une fonction à l’autre."},
+    en:{title:"Design",what:"The product’s charter, colors, typography, spacing, components and accessibility.",how:"Read it to stay consistent; evolve it with /pilot-design-system.",why:"Prototypes and interfaces stay consistent from one feature to the next."}},
   {id:"wiki",mod:"wiki",
-    fr:{title:"Wiki",what:"Ce que fait le produit : vision, personas, comportements, parcours utilisateur, par domaine ; chaque entrée dit si elle est en place ou seulement prévue. Quand le wiki et le code divergent, le wiki a raison.",how:"Parcourez par domaine ; posez une question ou contrôlez le wiki avec /pilot-wiki ; créez un persona ou un parcours avec /pilot-flow ; testez un parcours avec /pilot-accept. Un changement de comportement passe par /pilot-need.",why:"Un référentiel fonctionnel unique que les agents lisent avant d’agir."},
-    en:{title:"Wiki",what:"What the product does: vision, personas, behaviors, user flows, by domain; each entry says whether it is in place or only planned. When the wiki and the code disagree, the wiki is right.",how:"Browse by domain; ask a question or lint the wiki with /pilot-wiki; create a persona or a flow with /pilot-flow; test a flow with /pilot-accept. A behavior change goes through /pilot-need.",why:"A single functional reference that agents read before acting."}},
+    fr:{title:"Wiki",what:"Ce que fait le produit : vision, personas, comportements, parcours utilisateur, par domaine ; chaque entrée dit si elle est en place ou seulement prévue. Quand le wiki et le code divergent, le wiki a raison.",how:"Parcourez par domaine ; posez une question avec /pilot-wiki ; créez ou changez une entrée du cadre fonctionnel avec /pilot-functional-frame, un persona avec /pilot-persona, un parcours avec /pilot-user-flow ; testez un parcours avec /pilot-accept. Un changement de comportement passe par /pilot-need.",why:"Un référentiel fonctionnel unique que les agents lisent avant d’agir."},
+    en:{title:"Wiki",what:"What the product does: vision, personas, behaviors, user flows, by domain; each entry says whether it is in place or only planned. When the wiki and the code disagree, the wiki is right.",how:"Browse by domain; ask a question with /pilot-wiki; create or change a functional frame entry with /pilot-functional-frame, a persona with /pilot-persona, a user flow with /pilot-user-flow; test a flow with /pilot-accept. A behavior change goes through /pilot-need.",why:"A single functional reference that agents read before acting."}},
   {id:"architecture",mod:"architecture",
-    fr:{title:"Architecture",what:"Comment le produit est construit : vue d’ensemble, règles techniques et référence du code.",how:"Consultez avant une décision technique ; posez une question, ajoutez une règle ou contrôlez le fonds avec /pilot-architecture. Les ADR sont locaux, écrits par /pilot-plan.",why:"Les règles et leurs raisons survivent aux personnes ; ce qui les enfreint est signalé."},
-    en:{title:"Architecture",what:"How the product is built: overview, technical rules and code reference.",how:"Check it before a technical decision; ask a question, add a rule or lint the body with /pilot-architecture. ADRs are local, written by /pilot-plan.",why:"Rules and their reasons outlive people; what breaks them is flagged."}}
+    fr:{title:"Architecture",what:"Comment le produit est construit : vue d’ensemble, règles techniques et référence du code.",how:"Consultez avant une décision technique ; posez une question avec /pilot-architecture ; ajoutez ou changez une règle avec /pilot-technical-frame. Les ADR sont locaux, écrits par /pilot-plan.",why:"Les règles et leurs raisons survivent aux personnes ; ce qui les enfreint est signalé."},
+    en:{title:"Architecture",what:"How the product is built: overview, technical rules and code reference.",how:"Check it before a technical decision; ask a question with /pilot-architecture; add or change a rule with /pilot-technical-frame. ADRs are local, written by /pilot-plan.",why:"Rules and their reasons outlive people; what breaks them is flagged."}}
 ];
 function vHowModules(){
   return h('div',{class:'list'},

@@ -1486,12 +1486,12 @@ class DemoSnapshotTests(unittest.TestCase):
         labels = {l for r in rows.values() for l in r["l"]}
         self.assertTrue({f"status:{s}" for s in pilot.STATUSES if s not in ("done", "wont-do")} <= labels)  # open tickets only
         self.assertTrue({"needs-human", "on-hold", "can-resume", "express", "fix", "gap", "run:proto"} <= labels)
-        self.assertTrue(labels <= set(pilot.LABELS) | {f"status:{s}" for s in pilot.STATUSES} | {"needs-human", "on-hold", "can-resume", "express", "fix", "gap", "run:proto", "run:technical-frame", "run:design-system", "run:personas-flows"})
+        self.assertTrue(labels <= set(pilot.LABELS) | {f"status:{s}" for s in pilot.STATUSES} | {"needs-human", "on-hold", "can-resume", "express", "fix", "gap", "run:proto", "run:technical-frame", "run:design-system", "run:persona", "run:user-flow"})
         self.assertTrue(any("level:epic" in r["l"] and "k" in r for r in rows.values()))
         self.assertTrue(any("r" in r for r in rows.values()) and any("a" in r for r in rows.values()))
         self.assertEqual(self.doc["workflows"], sorted(self.demo.WORKFLOWS))
         self.assertEqual(self.doc["workflowSteps"], pilot.workflow_steps(pilot.load_workflows()))
-        admin = {"technical-frame", "design-system", "personas-flows", "functional-frame"}
+        admin = {"technical-frame", "design-system", "persona", "user-flow", "functional-frame"}
         runs = self.demo.live_documents().values()
         for state in ("running", "waiting-human"):
             self.assertTrue(any(d["kind"] == "run" and d["workflow"] in admin and d["state"] == state for d in runs), state)
@@ -1506,10 +1506,10 @@ class DemoSnapshotTests(unittest.TestCase):
 
 
 class WorkflowDataTests(unittest.TestCase):
-    def test_the_eleven_workflows_load_and_check_out(self):
+    def test_the_twelve_workflows_load_and_check_out(self):
         wfs = pilot.load_workflows()
         self.assertEqual(sorted(wfs), ["accept", "build", "design-system", "express", "functional-frame", "need",
-                                       "personas-flows", "plan", "proto", "report", "technical-frame"])
+                                       "persona", "plan", "proto", "report", "technical-frame", "user-flow"])
         self.assertEqual(pilot.workflow_problems(wfs), [])
 
     def test_express_includes_the_build_steps_it_runs_after_its_own(self):
@@ -1909,7 +1909,7 @@ class LabelsTests(unittest.TestCase):
         self.assertEqual(patched, ["needs-human"])
         self.assertEqual(out["labels"], len(created) + 1)
         self.assertIn("run:need", created)
-        self.assertEqual(len(pilot.required_labels(m.wfs)), len(pilot.LABELS) + 11)
+        self.assertEqual(len(pilot.required_labels(m.wfs)), len(pilot.LABELS) + 12)
 
     def test_every_status_has_a_label_and_no_old_one_remains(self):
         for status in pilot.STATUSES:
@@ -2186,6 +2186,22 @@ class ChecksTests(unittest.TestCase):
         self.assertEqual(self.run_check("functional-frame.check", entry="wiki/search/fr.md", accepted=accepted), ["overlaps-accepted"])
         self.write("wiki/search/fr.md", text.replace("pilot:", "replaces: [old]\npilot:"))
         self.assertEqual(self.run_check("functional-frame.check", entry="wiki/search/fr.md", accepted=accepted), [])
+
+    def test_a_persona_needs_its_usage_lines(self):
+        self.write("wiki/persona/marie.md", "## Usage\n- U1 | text: zoom at 200 percent on a phone\n")
+        self.assertEqual(self.run_check("persona.check", entry="wiki/persona/marie.md"), [])
+        self.write("wiki/persona/marie.md", "Low vision.\n")
+        self.assertNotEqual(self.run_check("persona.check", entry="wiki/persona/marie.md"), [])
+
+    def test_a_user_flow_cites_existing_personas_and_covers_each_to_create_step(self):
+        flow = ("---\npilot:\n  scope: [search]\n  personas: [marie]\n  status: specified\n---\n\n## Steps\n"
+                "- P1 | step: opens the search | result: the field is focused | source: to-create\n")
+        self.write("wiki/user-flow/find.md", flow)
+        self.assertEqual(sorted(self.run_check("user-flow.check", entry="wiki/user-flow/find.md")),
+                         ["to-create-without-candidate", "unknown-persona"])
+        self.write("wiki/persona/marie.md", "## Usage\n- U1 | text: zoom\n")
+        self.write("wiki/user-flow/find.md", flow + "\n## Candidates\n- K1 | from: P1 | request: focus the search field | state: candidate\n")
+        self.assertEqual(self.run_check("user-flow.check", entry="wiki/user-flow/find.md"), [])
 
     def test_every_check_a_workflow_names_is_implemented_or_an_action(self):
         wfs = pilot.load_workflows()

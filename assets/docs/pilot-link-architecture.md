@@ -1,6 +1,6 @@
 # PILOT link — the project's architecture
 
-Read by `pilot-architecture`, by the persona calls of its `technical-frame` workflow (`pilot-task-write-technical-frame.md`) and by the plan workflow that writes local ADRs, when the project's
+Read by `pilot-architecture` (consultation), by the persona calls of the `technical-frame` workflow (`pilot-task-write-technical-frame.md`) and by the plan workflow that writes local ADRs, when the project's
 `architecture` module is enabled. It is the project's source of truth for how the product is built and why: **when an entry and the code disagree, a human arbitrates, never silently**,
 whichever of the two is wrong.
 

@@ -56,10 +56,10 @@ Never touched: the project's own skills and agents (no match upstream), `wiki/`,
 5. **Modules and config.** `python3 .pilot/pilot.py module list`. A `state.json` with no `modules` predates them:
    in step 8 set `dashboard` on when it has a `dashboardUrl` (with `design` and `proto`), `wiki` off. Say which
    modules exist (`.pilot/pilot-process.md` §7) and that each is turned on by its own skill; enable nothing here,
-   never change `wiki/` or `architecture/`. With `wiki` on and `wiki/` missing, `doctor` fails until `/pilot-wiki`
+   never change `wiki/` or `architecture/`. With `wiki` on and `wiki/` missing, `doctor` fails until `/pilot-functional-frame`
    repairs it; with entries in the earlier format (`wiki lint` reporting `no-frontmatter`), offer
    `python3 .pilot/pilot.py wiki migrate`. A project with `archInitialized`, `apps` or real content in its
-   `PILOT:ARCHITECTURE` block keeps it working; offer `/pilot-architecture --bootstrap`. If `commands` has no
+   `PILOT:ARCHITECTURE` block keeps it working. If `commands` has no
    entry for the project's test, rules, e2e, build, a11y, render or version commands, ask for them and set each with
    `python3 .pilot/pilot.py config set commands.<key> "<cmd>"` (same for `threshold`).
 

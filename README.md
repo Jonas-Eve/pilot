@@ -16,14 +16,15 @@ objects live, statuses and flags, the run, claim and resume, isolation, events, 
 
 ## What this repo ships
 
-- **Workflows** (`assets/workflows/*.json`, copied as `.pilot/workflows/`): eleven, as data — steps,
+- **Workflows** (`assets/workflows/*.json`, copied as `.pilot/workflows/`): twelve, as data — steps,
   personas, task docs, code checks, judges, where a failure goes, a contract of statuses.
   `scripts/pilot.py` serves one step at a time and decides the next from the data;
   `assets/formats.json` holds the document formats the checks validate.
 - **Skills** (`.claude/skills/`), one per command:
-  - Run a workflow: `/pilot-need`, `/pilot-plan`, `/pilot-build`, `/pilot-accept`, `/pilot-report`, `/pilot-express`.
-  - Frames and design: `/pilot-wiki` (functional frame), `/pilot-architecture` (technical frame),
-    `/pilot-design` (design system), `/pilot-proto` (prototype), `/pilot-flow` (personas and user flows).
+  - Run a ticket workflow: `/pilot-need`, `/pilot-plan`, `/pilot-build`, `/pilot-accept`, `/pilot-report`, `/pilot-express`.
+  - Run an admin workflow: `/pilot-functional-frame` (what the product does in shared terms), `/pilot-technical-frame` (how the code is built),
+    `/pilot-design-system`, `/pilot-proto` (prototype), `/pilot-persona`, `/pilot-user-flow`.
+  - Ask the frames (read-only): `/pilot-wiki`, `/pilot-architecture`.
   - Bootstrap and maintenance: `/pilot-init`, `/pilot-update`, `/pilot-dashboard`, `/pilot-help`.
 - **Agents** (`.claude/agents/`): seven personas — `pilot-pm`, `pilot-architect`, `pilot-techlead`,
   `pilot-dev`, `pilot-e2e`, `pilot-qa`, `pilot-designer`. Each file is an identity only; its duties are

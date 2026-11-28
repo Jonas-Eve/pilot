@@ -61,7 +61,8 @@ def tickets():
     add(702, "run:proto Alerte ascenseur en panne sur le trajet", ["run:proto", "needs-human"], 5)
     add(710, "run:technical-frame Règle de nommage des modules", ["run:technical-frame"], 1, None, None, "carol")
     add(711, "run:design-system Thème à fort contraste", ["run:design-system"], 1, None, None, "bob")
-    add(712, "run:personas-flows Persona : Léa, 16 ans, daltonienne", ["run:personas-flows", "needs-human"], 3)
+    add(712, "run:persona Persona : Léa, 16 ans, daltonienne", ["run:persona", "needs-human"], 3)
+    add(713, "run:user-flow Parcours : réserver une assistance en gare", ["run:user-flow"], 2, None, None, "alice")
     for i in range(24):
         status = ["ready", "reviewing", "merged", "ready"][i % 4]
         labels = ["type:tech", "level:task", f"status:{status}", f"priority:P{(i % 3)}"]
@@ -110,7 +111,7 @@ def snapshot():
             "language": "fr", "workflows": WORKFLOWS, "workflowSteps": pilot.workflow_steps(pilot.load_workflows())}
 
 
-WORKFLOWS = ["accept", "build", "design-system", "express", "functional-frame", "need", "personas-flows", "plan", "proto", "report", "technical-frame"]
+WORKFLOWS = ["accept", "build", "design-system", "express", "functional-frame", "need", "persona", "plan", "proto", "report", "technical-frame", "user-flow"]
 
 
 def live_documents():
@@ -141,7 +142,8 @@ def live_documents():
         "run-706": run(706, "proto", "proto-accepte", "done", 260, "end", result="rejected"),
         "run-710": run(710, "technical-frame", "gate", "waiting-human", 1.0),
         "run-711": run(711, "design-system", "build", "running", 0.6, loops={"check": 1}),
-        "run-712": run(712, "personas-flows", "challenge", "waiting-human", 2.0),
+        "run-712": run(712, "persona", "challenge", "waiting-human", 2.0),
+        "run-713": run(713, "user-flow", "write", "running", 0.5),
     }
 
 

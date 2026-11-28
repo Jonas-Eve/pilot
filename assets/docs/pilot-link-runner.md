@@ -1,7 +1,7 @@
 # PILOT link — running a workflow
 
-Read by the skill of every workflow (`pilot-need`, `pilot-plan`, `pilot-build`, `pilot-accept`, `pilot-report`, `pilot-express`) and by the module skills that run one
-(`pilot-architecture`, `pilot-wiki`, `pilot-design`, `pilot-proto`, `pilot-flow`). A skill names its workflow; this file says how any workflow runs. Never read the whole
+Read by the skill of every workflow, named as the workflow's id (`pilot-need`, `pilot-plan`, `pilot-build`, `pilot-accept`, `pilot-report`, `pilot-express`, `pilot-functional-frame`,
+`pilot-technical-frame`, `pilot-design-system`, `pilot-proto`, `pilot-persona`, `pilot-user-flow`). A skill names its workflow; this file says how any workflow runs. Never read the whole
 JSON: `pilot.py` serves one step at a time.
 
 ## Start (once per run)

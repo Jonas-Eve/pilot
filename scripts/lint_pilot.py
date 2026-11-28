@@ -138,14 +138,14 @@ class Linter:
             if listed != duties.get(persona, set()):
                 self.add("error", "agent-duties", p, f"lists {sorted(listed - duties.get(persona, set())) or 'nothing extra'} not given to it by a workflow and misses "
                          f"{sorted(duties.get(persona, set()) - listed) or 'nothing'}")
-        runners = {"need", "plan", "build", "accept", "report", "express"}
-        module = {"functional-frame": "pilot-wiki", "technical-frame": "pilot-architecture", "design-system": "pilot-design",
-                  "proto": "pilot-proto", "personas-flows": "pilot-flow"}
         have = {p.parent.name for p in skills}
         for wid in wfs:
-            skill = f"pilot-{wid}" if wid in runners else module.get(wid)
-            if skill not in have:
-                self.add("error", "workflow", f"assets/workflows/{wid}.json", f"no skill runs it ({skill})")
+            if f"pilot-{wid}" not in have:
+                self.add("error", "workflow", f"assets/workflows/{wid}.json", f"no skill runs it (pilot-{wid})")
+        for name, meta in mod.MODULES.items():
+            for skill in meta["skills"]:
+                if skill not in have:
+                    self.add("error", "module", "scripts/pilot.py", f"module {name} lists skill {skill}, which does not exist")
         try:
             json.loads((self.root / "assets/formats.json").read_text())
         except (OSError, ValueError) as err:

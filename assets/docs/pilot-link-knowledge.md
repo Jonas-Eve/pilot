@@ -1,6 +1,6 @@
 # PILOT link — reading the project's knowledge
 
-Read by every agent a workflow step gives a knowledge bundle to, and by `pilot-wiki` and `pilot-architecture`, when the
+Read by every agent a workflow step gives a knowledge bundle to, and by `pilot-wiki` and `pilot-architecture` (consultation), when the
 `wiki` or the `architecture` module is enabled. The bundles are `wiki/` (what the product does) and
 `architecture/` (how it is built and why); the commands are the same for both, `python3 .pilot/pilot.py wiki …` or
 `python3 .pilot/pilot.py arch …` (`<b>` below). Their format and rules are `.pilot/pilot-link-wiki.md` and
@@ -29,7 +29,7 @@ to follow `supersededBy`. When the bundle and the code disagree, the bundle is r
 when needed and only what bears on the work: the module is on, the work touches something documented, and the entries come from `search`, `describe` or `index --ticket` on the work's own words — never a scan of the bundle.
 Stop when no entry bears on it, and say nothing about the ones you did not need. A **contradiction** — a ticket, a plan, an approach or code that would break a binding entry — is never decided by an agent:
 put it to the human when one is live, else flag `needs-human` quoting the entry and the contradicting point. Never a silent deviation, never one an agent justifies alone. A deviation the human
-authorizes changes the document in the same flow (an ADR that supersedes, `/pilot-architecture --edit`, `/pilot-wiki --edit`, `/pilot-need`), so nothing is left contradicting.
+authorizes changes the document in the same flow (an ADR that supersedes, `/pilot-technical-frame --edit`, `/pilot-functional-frame --edit`, `/pilot-need`), so nothing is left contradicting.
 
 **Language.** The text of an entry (title, description, prose) is in the project's language: `language` in `.pilot/state.json`, English when absent (`python3
 .pilot/pilot.py module list` prints it). Translate what you write rather than mixing; keys, statuses, ids, file and folder names stay English whatever the language. `lint` warns about an
