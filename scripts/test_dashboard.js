@@ -1010,7 +1010,8 @@ const STUB = (opts) => `
     const infos = (pg, sel) => pg.$$eval(sel + ' a.wfdoc', (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel, label: a.getAttribute('aria-label'), text: a.textContent })));
     const wellFormed = (list) => list.length > 0 && list.every((a) => a.target === '_blank' && /\bnoopener\b/.test(a.rel) && a.text === 'i' && /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9]+$/.test(a.href));
     let pg = await open(xo('fr'));
-    const docs = await pg.evaluate(() => WF_DOCS);
+    const pageSrc = fs.readFileSync(path.join(TMP, 'page.html'), 'utf8');
+    const docs = {}; pageSrc.replace(/var WF_DOCS=\{([\s\S]*?)\n\};/, (_m, body) => body.replace(/'?([a-z-]+)'?:'([^']*)'/g, (_x, k, u) => { docs[k] = u; }));
     check('workflow links: every one of the 12 workflows has an https://claude.ai/artifact/ URL in WF_DOCS, and the overview too', WF_IDS.concat(['overview']).every((k) => /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9]+$/.test(docs[k] || '')) && Object.keys(docs).length === 13, JSON.stringify(Object.keys(docs)));
     await go(pg, 'aide/workflows');
     const hw = await infos(pg, '#view');
@@ -1029,9 +1030,14 @@ const STUB = (opts) => `
     await tab(pg, 'Wiki');
     const hm = await infos(pg, '#view section[aria-label="Runs de ce module"]');
     check('workflow links: a run row of a module tab has the "i" of its workflow', hm.length === 1 && wellFormed(hm) && hm[0].href === docs.persona, JSON.stringify(hm));
-    await pg.evaluate(() => { delete WF_DOCS.persona; render(); }); await pg.waitForTimeout(150);
-    check('workflow links: a workflow with no URL in WF_DOCS gets no "i", the others keep theirs', (await infos(pg, '#view section[aria-label="Runs de ce module"]')).length === 0 && (await infos(pg, '#adminList')).length === 5, 'module ' + (await infos(pg, '#view section[aria-label="Runs de ce module"]')).length);
     check('workflow links: page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.close();
+    const bare = path.join(TMP, 'page-nodoc.html'); fs.writeFileSync(bare, pageSrc.replace(/\n\s*persona:'[^']*',/, ''));
+    pg = await open(xo('fr'), 'file://' + bare);
+    await go(pg, 'file'); await pg.click('#adminToggle'); await tab(pg, 'Wiki');
+    const nm = (await infos(pg, '#view section[aria-label="Runs de ce module"]')).length;
+    await go(pg, 'file'); const na = (await infos(pg, '#adminList')).length;
+    check('workflow links: a workflow with no URL in WF_DOCS gets no "i", the others keep theirs', pageSrc !== fs.readFileSync(bare, 'utf8') && nm === 0 && na === 5 && pg.errors.length === 0, 'module ' + nm + ' admin ' + na);
     await pg.close();
     pg = await open(xo('en'));
     await go(pg, 'aide/workflows');
