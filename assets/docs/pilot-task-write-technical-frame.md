@@ -27,4 +27,4 @@ Never:
 - Write a statement without its source sentence, or with `by: rule` when you cannot say how a program would check it.
 - Write an example that does not match its statement.
 - Rewrite an existing guideline to fit: write yours and signal the divergence.
-- Add a dependency or a tool the project does not have without a `QUESTION:` giving options, cost and your recommendation.
+- Add a dependency or a tool the project does not have without an `ASSUMPTION:` giving the options, their cost and your recommendation (the gate shows it).

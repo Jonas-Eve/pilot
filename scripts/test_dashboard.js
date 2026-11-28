@@ -976,7 +976,7 @@ const STUB = (opts) => `
     const kinds = () => pg.$$eval('#adminSeg button', (b) => b.map((x) => x.textContent));
     const NAMES = ['Cadre fonctionnel', 'Cadre technique', 'Design system', 'Persona', 'Parcours utilisateur', 'Prototype'];
     check('admin launcher: with the five modules on, six explicit entries (functional frame, technical frame, design system, persona, user flow, prototype)', JSON.stringify(await kinds()) === JSON.stringify(NAMES), JSON.stringify(await kinds()));
-    const listed = await pg.$$eval('#adminList li', (l) => l.map((x) => x.textContent));
+    const listed = await pg.$$eval('#adminList li', (l) => l.map((x) => { const c = x.cloneNode(true); c.querySelectorAll('.wfdoc').forEach((e) => e.remove()); return c.textContent; }));
     check('admin launcher: each entry is listed with its command and a one-line explanation', listed.length === 6 && ['/pilot-functional-frame', '/pilot-technical-frame', '/pilot-design-system', '/pilot-persona', '/pilot-user-flow', '/pilot-proto'].every((c, i) => listed[i].startsWith(NAMES[i] + ' ' + c + ' : ') && listed[i].length > NAMES[i].length + c.length + 20 && !listed[i].includes('\n')), JSON.stringify(listed));
     const aCmd = () => text(pg, '#adminCmd');
     const aHref = async () => decodeURIComponent((await pg.$eval('#adminOpen', (a) => a.getAttribute('href') || '')).split('?q=')[1].split('&repo=')[0]);
@@ -998,6 +998,49 @@ const STUB = (opts) => `
     await pnone.close();
     check('admin launcher: no page errors', pg.errors.length === 0, pg.errors.join('|'));
     await pg.close(); }
+
+  // ---- the "i" next to a workflow's name opens its diagram (private artifacts, one table WF_DOCS); nothing where a key has no URL ----
+  {
+    const WF_IDS = ['need', 'plan', 'build', 'accept', 'report', 'express', 'proto', 'design-system', 'functional-frame', 'technical-frame', 'persona', 'user-flow'];
+    const X = Object.assign({}, V6, { workflows: WF_IDS, modules: { wiki: true, architecture: true, design: true, proto: true, dashboard: true },
+      issues: V6.issues.concat([ticket(33, ['run:persona'], { t: 'run:persona Persona Léa' })]) });
+    const XR = [run({ n: 16, workflow: 'build', step: 'implement', state: 'running' }), run({ n: 40, workflow: 'need', step: 'gate', state: 'waiting-human' }), run({ n: 33, workflow: 'persona', step: 'gate', state: 'waiting-human' })];
+    const xo = (lang) => ({ lang, preload: [X], events: XR, design: [DESIGN], wiki: [{ kind: 'wiki', repo: REPO, at: iso(5), total: WIKI.entries.length + WIKI_FLOWS.entries.length, truncated: false, entries: WIKI.entries.concat(WIKI_FLOWS.entries) }], architecture: [ARCH], protos: PROTOS, protoHtml: PHTML });
+    const go = async (pg, h) => { await pg.evaluate((x) => { location.hash = x; }, h); await pg.waitForTimeout(150); };
+    const infos = (pg, sel) => pg.$$eval(sel + ' a.wfdoc', (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel, label: a.getAttribute('aria-label'), text: a.textContent })));
+    const wellFormed = (list) => list.length > 0 && list.every((a) => a.target === '_blank' && /\bnoopener\b/.test(a.rel) && a.text === 'i' && /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9]+$/.test(a.href));
+    let pg = await open(xo('fr'));
+    const docs = await pg.evaluate(() => WF_DOCS);
+    check('workflow links: every one of the 12 workflows has an https://claude.ai/artifact/ URL in WF_DOCS, and the overview too', WF_IDS.concat(['overview']).every((k) => /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9]+$/.test(docs[k] || '')) && Object.keys(docs).length === 13, JSON.stringify(Object.keys(docs)));
+    await go(pg, 'aide/workflows');
+    const hw = await infos(pg, '#view');
+    check('workflow links: the help Workflows page has an "i" on each card and one for the overview, opening in a new tab (noopener)', hw.length === 13 && wellFormed(hw) && hw.filter((a) => a.href === docs.overview).length === 1 && /^Voir la vue d’ensemble/.test(hw.find((a) => a.href === docs.overview).label), JSON.stringify(hw.slice(0, 2)));
+    check('workflow links: each help card links its own workflow, labelled "Voir le schéma du workflow <name>"', WF_IDS.every((id) => hw.some((a) => a.href === docs[id])) && hw.some((a) => a.label === 'Voir le schéma du workflow Besoin') && hw.some((a) => a.label === 'Voir le schéma du workflow Cadre technique'), JSON.stringify(hw.map((a) => a.label)));
+    await go(pg, 'file');
+    const runsSel = '#view section[aria-label="Runs en cours"]';
+    const hr = await infos(pg, runsSel);
+    check('workflow links: each row of "Runs en cours" has the "i" of its workflow', (await pg.locator(runsSel + ' .row').count()) === 2 && hr.length === 2 && wellFormed(hr) && hr.some((a) => a.href === docs.build) && hr.some((a) => a.href === docs.need), JSON.stringify(hr));
+    await pg.locator(runsSel + ' .row', { hasText: '#16 ' }).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(120);
+    const th = await infos(pg, '#view .tlhead');
+    check('workflow links: the timeline header names the workflow with its "i"', th.length === 1 && wellFormed(th) && th[0].href === docs.build && /Réalisation/.test(await pg.locator('#view .tlhead').textContent()), JSON.stringify(th));
+    await pg.click('#adminToggle');
+    const ha = await infos(pg, '#adminList');
+    check('workflow links: each entry of the admin launcher has the "i" of its workflow', ha.length === 6 && wellFormed(ha) && ['functional-frame', 'technical-frame', 'design-system', 'persona', 'user-flow', 'proto'].every((id) => ha.some((a) => a.href === docs[id])), JSON.stringify(ha.map((a) => a.label)));
+    await tab(pg, 'Wiki');
+    const hm = await infos(pg, '#view section[aria-label="Runs de ce module"]');
+    check('workflow links: a run row of a module tab has the "i" of its workflow', hm.length === 1 && wellFormed(hm) && hm[0].href === docs.persona, JSON.stringify(hm));
+    await pg.evaluate(() => { delete WF_DOCS.persona; render(); }); await pg.waitForTimeout(150);
+    check('workflow links: a workflow with no URL in WF_DOCS gets no "i", the others keep theirs', (await infos(pg, '#view section[aria-label="Runs de ce module"]')).length === 0 && (await infos(pg, '#adminList')).length === 5, 'module ' + (await infos(pg, '#view section[aria-label="Runs de ce module"]')).length);
+    check('workflow links: page errors', pg.errors.length === 0, pg.errors.join('|'));
+    await pg.close();
+    pg = await open(xo('en'));
+    await go(pg, 'aide/workflows');
+    const ew = await infos(pg, '#view');
+    await go(pg, 'file'); await pg.click('#adminToggle');
+    const ea = await infos(pg, '#adminList');
+    check('workflow links: in English the labels are English ("See the diagram of the … workflow", "See the overview …"), no French', ew.length === 13 && ea.length === 6 && ew.concat(ea).every((a) => !/[éèêàùçôîï]|\b(Voir|schéma|workflow du|vue)\b/.test(a.label)) && ew.some((a) => a.label === 'See the diagram of the Need workflow') && ea.some((a) => a.label === 'See the diagram of the Functional frame workflow') && ew.some((a) => /^See the overview/.test(a.label)), JSON.stringify(ew.map((a) => a.label)));
+    await pg.close();
+  }
 
   // ---- language: English shows no French left, French stays, the choice sticks and follows the project ----
   {

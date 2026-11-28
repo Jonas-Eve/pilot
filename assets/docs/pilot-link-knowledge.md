@@ -28,7 +28,7 @@ to follow `supersededBy`. When the bundle and the code disagree, the bundle is r
 **What binds, and what to check.** Binding: the `accepted` entries of `architecture/` and the wiki entries that describe a behavior (need entries and user flows; the vision and the personas state no behavior); a `proposed` or `superseded` architecture entry never binds. Check only
 when needed and only what bears on the work: the module is on, the work touches something documented, and the entries come from `search`, `describe` or `index --ticket` on the work's own words — never a scan of the bundle.
 Stop when no entry bears on it, and say nothing about the ones you did not need. A **contradiction** — a ticket, a plan, an approach or code that would break a binding entry — is never decided by an agent:
-put it to the human when one is live, else flag `needs-human` quoting the entry and the contradicting point. Never a silent deviation, never one an agent justifies alone. A deviation the human
+put it to the human when one is live, else where the step can ask return a `QUESTION:`, otherwise record an `ASSUMPTION:`, quoting the entry and the contradicting point. Never a silent deviation, never one an agent justifies alone. A deviation the human
 authorizes changes the document in the same flow (an ADR that supersedes, `/pilot-technical-frame --edit`, `/pilot-functional-frame --edit`, `/pilot-need`), so nothing is left contradicting.
 
 **Language.** The text of an entry (title, description, prose) is in the project's language: `language` in `.pilot/state.json`, English when absent (`python3

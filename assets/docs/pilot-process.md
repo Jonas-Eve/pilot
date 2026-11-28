@@ -32,7 +32,7 @@ Nobody needs GitHub's UI: `pilot.py` is the only reader and writer of tickets an
 | task | `ready` → `building` → `reviewing` → `merged` → `done` |
 
   `forming`: still takes entries until a human closes it. `merged`: awaits the Recette (a split story is `merged` when all its tasks are). `done`: the Recette passed. `wont-do`: a human dropped an epic or story from `forming` or `to-plan`; a task has none.
-- Flags, beside the status: `needs-human` (a blocking question, always with a comment saying why and what is needed; a human removes it), `on-hold` (paused for something larger), `can-resume` (a human's signal that an interrupted run is safe to continue), `express`, `fix` (a correction ticket made by a Recette), `gap` (depends on a ticket whose Recette is in gap).
+- Flags, beside the status: `needs-human` (a signal that a run waits on an open question, with a comment saying what is asked; `run answer` removes it, a human removes any other), `on-hold` (paused for something larger), `can-resume` (a human's signal that an interrupted run is safe to continue), `express`, `fix` (a correction ticket made by a Recette), `gap` (depends on a ticket whose Recette is in gap).
 - `priority:P0|P1|P2` orders the pool; never on an epic.
 - A ticket carrying `needs-human` or `on-hold`, or with an open "Depends on #N" (one per line, one number), is in no pool; the gate is `pilot.py`'s, never an agent's.
 
@@ -45,7 +45,8 @@ inputs and outputs, the agent and its task doc, the check or judge id and where 
 - **Code before judgment.** Whatever a check can decide is a check; a judge only asks what code cannot.
 - **Loops.** A loop through code, a validator or a judge runs twice at most, then escalates (a gate opens with the failures; without a gate, a question goes to the human concerned). A loop through a human has no limit.
 - **Challenge.** The script opens it only when the auditor's delta is not empty. It is a loop between the human and the auditor; each turn receives the delta and the messages since the auditor's last turn.
-- **Blocking and assumptions.** A choice no decision or guideline covers, whose options differ in effect or cost, is a question to the human (`needs-human`). Every other choice becomes a recorded assumption with its default, shown at the gate.
+- **Blocking and assumptions.** On an agent step that carries `ask`, a choice no decision or guideline covers, whose options differ in effect or cost, is a question: the run records it and waits at the step's human-optional `ask` step (`waiting-human`); the human's answer is recorded in the run (`run answer`) and the step re-runs with it. `needs-human` only signals it. Every other choice, and every choice on a step without `ask`, becomes a recorded assumption with its default, shown at the next gate.
+- **Work saved.** A run that waits (a question or a failure) or ends a session saves its working tree first: `run park` commits it on `pilot-run/<n>` and pushes it; `run restore` brings it back.
 - **Rework.** A workflow that finds a criterion impossible or an entry wrong does not edit it: it opens a need run carrying the question card; the entry is `rework` while that run is open.
 - **Provisional.** An express writes provisional documents; `pilot.py` creates the catch-up item with its deadline.
 - **Hierarchy.** The need workflow groups entries into stories and stories into an epic; the plan workflow splits a story into tasks only when the code checks say it does not fit. Documents and tickets are never copied into each other: a story points to its entries.
@@ -54,7 +55,7 @@ inputs and outputs, the agent and its task doc, the check or judge id and where 
 
 - A workflow that works a ticket **claims** it first: `pilot.py claim <workflow> <issue> --mode …` sets the assignee and the in-progress status in one write, then re-reads; a different assignee afterwards means another run won, so stand down. Optimistic, not a lock.
 - `pilot.py pool <workflow>` lists claimable tickets: fresh (the workflow's pre-claim status, unassigned) and resumable (in-progress with `can-resume`); highest priority, then blocks, then oldest.
-- **Resume.** `pilot.py run resume <issue>` reads the run comment and continues at the recorded step, with its loop counters and assumptions. An orphaned claim (assigned, in progress, no `needs-human`) resumes only by an explicit `--resume` or `can-resume`, because only a human can tell it is dead. A cleared `needs-human` resumes with the question's answer. A run waiting on a condition (a wait step) is paused: `run resume` re-evaluates it and refuses with the exact reason. A workflow with no ticket creates its `run` issue assigned to the current user.
+- **Resume.** `pilot.py run resume <issue>` reads the run comment and continues at the recorded step, with its loop counters and assumptions. An orphaned claim (assigned, in progress, no `needs-human`) resumes only by an explicit `--resume` or `can-resume`, because only a human can tell it is dead. A run with an open question refuses to resume until it is answered; the answer, in the run, is given back to the step that asked, and the parked branch is returned to restore. A run waiting on a condition (a wait step) is paused: `run resume` re-evaluates it and refuses with the exact reason. A workflow with no ticket creates its `run` issue assigned to the current user.
 
 ## 5. Isolation
 

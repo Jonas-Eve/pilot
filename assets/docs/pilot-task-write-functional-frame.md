@@ -26,4 +26,4 @@ Never:
 - Write a criterion, a feature, a ticket, a screen or a technology.
 - Write a statement no one could ever see violated ("be user-friendly"); no word from the format's `ambiguous` list.
 - Edit another entry: you write one, and signal the rest.
-- Ask a question about wording or order; take a default. Ask (`QUESTION:`) only when two readings of the intention lead to opposite statements.
+- Ask a question about wording or order; take a default. When two readings of the intention lead to opposite statements, take one and record the other in an `ASSUMPTION:` (the gate shows it).

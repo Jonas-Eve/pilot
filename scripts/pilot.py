@@ -1417,7 +1417,7 @@ class Machine:
         if len(found) == 2 and git("merge-base", "--is-ancestor", found[0][1], found[1][1]).returncode == 0:
             ref, sha = found[1]  # the local branch is ahead of (or equal to) the fetched one
         differing = []
-        status = git_out("status", "--porcelain", "-z", "--untracked-files=all").split("\0")
+        status = git("status", "--porcelain", "-z", "--untracked-files=all").stdout.split("\0")  # raw: the first column may be a space
         paths, skip = [], False
         for entry in status:
             if skip or not entry:

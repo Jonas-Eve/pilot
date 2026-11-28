@@ -9,9 +9,9 @@ You receive the design intention, the audit's delta and the proposed scope. You 
 3. **Components.** One line per component, with a `category` of the format and every state its category requires (`required_states`), plus the tokens it uses. A component needs no state the category does not list, but never fewer. Interactive targets are at least 44 px; meaning never rests on color alone.
 4. **Scope.** `pilot.scope` takes the terms of the project's vocabulary the audit proposed, no other.
 5. **Stay at design-system level.** Tokens and components shared by every screen; no page layout, no product scope, no code.
-6. **Never write the theme** (CSS variables, token files): it is generated from the entry. Never edit another entry; an overlap with one is resolved by what the delta says, else a `QUESTION:`.
+6. **Never write the theme** (CSS variables, token files): it is generated from the entry. Never edit another entry; an overlap with one is resolved by what the delta says, else an `ASSUMPTION:` taking the reading that changes least.
 7. **Demonstration page.** Also one self-contained HTML file (inline CSS and JS, no external resource) showing every component in every one of its states, in light and dark, with the entry's tokens as literal values.
 
-A choice that changes an existing component's behavior for the screens that use it is a `QUESTION:`; every other choice is an `ASSUMPTION:`.
+Every choice no document covers is an `ASSUMPTION:`; one that changes an existing component's behavior for the screens that use it says so in its question, so the gate sees it.
 
 Return the entry's path, the demonstration page's path, and what the entry replaces (or `nothing`).

@@ -1294,6 +1294,17 @@ class DocsMatchTheEngineTests(unittest.TestCase):
         self.assertGreater(found, 80, "the scan found too few commands: the pattern no longer matches the docs")
         self.assertEqual(bad, [], "\n".join(bad))
 
+    def test_the_runner_routes_a_question_through_the_run_never_through_a_flag(self):
+        runner = (self.ROOT / "assets/docs/pilot-link-runner.md").read_text(encoding="utf-8")
+        for needle in ("run advance <run> --result blocked --question", "run answer", "run park", "run restore"):
+            self.assertIn(needle, runner)
+        self.assertNotIn("pilot.py flag", runner)
+        args = pilot.build_parser().parse_args(["run", "advance", "1", "--result", "blocked", "--question", "Q?"])
+        self.assertEqual((args.result, args.question), ("blocked", "Q?"))
+        self.assertEqual(pilot.build_parser().parse_args(["run", "answer", "1", "--text", "A"]).text, "A")
+        self.assertEqual(pilot.build_parser().parse_args(["run", "park", "1"]).run_cmd, "park")
+        self.assertEqual(pilot.build_parser().parse_args(["run", "restore", "1"]).run_cmd, "restore")
+
     def test_the_check_catches_a_removed_flag_a_wrong_command_and_a_gone_status(self):
         parser = pilot.build_parser()
         self.assertEqual(self.problems("python3 .pilot/pilot.py wiki set <id> --status implemented --stamp <commit>", parser), [])
@@ -1800,6 +1811,421 @@ class RunTests(unittest.TestCase):
         self.assertEqual(shown["data"]["executant"], "ai")
 
 
+class AskDataTests(unittest.TestCase):
+    """`ask`: the agent steps that may stop to ask a human, and the human-optional step that takes the question."""
+
+    ASKING = {("build", "implement"), ("need", "write"), ("plan", "write"), ("express", "write"), ("express", "build-implement"),
+              ("proto", "build"), ("technical-frame", "implement"), ("design-system", "implement"), ("accept", "run-ai")}
+
+    def test_the_agent_steps_that_may_ask_are_exactly_the_validated_list(self):
+        wfs = pilot.load_workflows()
+        found = {(wid, s["id"]) for wid, wf in wfs.items() for s in wf["steps"] if s.get("ask")}
+        self.assertEqual(found, self.ASKING)
+        for wid, sid in found:
+            step = next(s for s in wfs[wid]["steps"] if s["id"] == sid)
+            ask = next(s for s in wfs[wid]["steps"] if s["id"] == step["ask"])
+            self.assertEqual((step["kind"], ask["kind"], ask["open_if"]), ("agent", "human-optional", "blocked"))
+        express = {s["id"]: s for s in wfs["express"]["steps"]}
+        self.assertEqual((express["build-implement"]["ask"], express["write"]["ask"]), ("build-ask", "ask"))  # an include follows its prefix
+
+    def test_every_blocked_step_is_named_by_an_ask_and_loops_back(self):
+        for wid, wf in pilot.load_workflows().items():
+            asked = {s.get("ask") for s in wf["steps"]}
+            for s in wf["steps"]:
+                if s.get("open_if") == "blocked":
+                    self.assertIn(s["id"], asked, (wid, s["id"]))
+                    self.assertTrue(s.get("loop_to"))
+
+    def test_the_accept_question_hands_over_to_the_human_executant(self):
+        steps = {s["id"]: s for s in pilot.load_workflows()["accept"]["steps"]}
+        self.assertEqual((steps["run-ai"]["ask"], steps["ask"]["loop_to"], steps["run-human"]["alt_of"]), ("ask", "run-human", "run-ai"))
+
+    def test_no_step_id_is_left_in_french(self):
+        ids = {s["id"] for wf in pilot.load_workflows().values() for s in wf["steps"]}
+        self.assertEqual(ids & {"idee", "attente-du-design-system", "proto-accepte", "question-du-designer"}, set())
+        self.assertEqual([s["id"] for s in pilot.load_workflows()["proto"]["steps"]][-2:], ["wait-design-system", "end"])
+
+    def codes(self, mutate):
+        wfs = pilot.load_workflows()
+        mutate(wfs)
+        return {p["code"] for p in pilot.workflow_problems(wfs)}
+
+    def test_workflow_check_reports_an_ask_that_names_nothing(self):
+        def unknown(w):
+            w["build"]["steps"][1]["ask"] = "nowhere"
+        self.assertIn("unknown-ask", self.codes(unknown))
+
+    def test_workflow_check_reports_an_ask_that_names_a_step_not_opened_by_blocked(self):
+        def wrong(w):
+            w["build"]["steps"][1]["ask"] = "validate"
+        self.assertIn("ask-not-blocked-step", self.codes(wrong))
+
+        def other_open_if(w):
+            next(s for s in w["need"]["steps"] if s["id"] == "ask")["open_if"] = "delta-not-empty"
+        self.assertIn("ask-not-blocked-step", self.codes(other_open_if))
+
+    def test_workflow_check_reports_ask_on_a_step_that_is_not_an_agent(self):
+        def not_agent(w):
+            next(s for s in w["need"]["steps"] if s["id"] == "check")["ask"] = "ask"
+        self.assertIn("ask-on-non-agent", self.codes(not_agent))
+
+    def test_workflow_check_reports_a_blocked_step_no_ask_names(self):
+        def drop(w):
+            del next(s for s in w["plan"]["steps"] if s["id"] == "write")["ask"]
+        self.assertIn("unasked-step", self.codes(drop))
+
+    def test_workflow_check_reports_a_blocked_step_that_loops_nowhere(self):
+        def no_loop(w):
+            del next(s for s in w["plan"]["steps"] if s["id"] == "ask")["loop_to"]
+        self.assertIn("blocked-step-without-loop", self.codes(no_loop))
+
+
+class RunQuestionTests(unittest.TestCase):
+    """A question is a gate of the run: recorded, answered through the run, never an agent stop."""
+
+    def build_run(self, to="implement"):
+        m, gh = machine([ticket(1, status="building", assignees=["bot"])])
+        n = m.run_start("build", 1)["run"]
+        out = m.run_advance(n, "ok")
+        self.assertEqual(out["step"]["id"], to)
+        return m, gh, n
+
+    def test_blocked_records_the_question_waits_and_signals(self):
+        m, gh, n = self.build_run()
+        out = m.run_advance(n, "blocked", question="Which currency rounding?")
+        self.assertEqual((out["state"], out["step"]["id"], out["signal"], out["park"]), ("waiting-human", "ask", True, True))
+        self.assertEqual(out["waiting"], {"kind": "question", "step": "ask", "from": "implement", "text": "Which currency rounding?"})
+        shown = m.run_show(n)
+        self.assertEqual((shown["state"], shown["step"]), ("waiting-human", "ask"))
+        self.assertEqual({k: shown["question"][k] for k in ("step", "text")}, {"step": "implement", "text": "Which currency rounding?"})
+        self.assertIn("at", shown["question"])
+        self.assertIn("needs-human", names(gh.store[1]))
+        self.assertTrue(any("Which currency rounding?" in text for _n, text in gh.posted if "pilot:run" not in text))  # the visible comment
+        self.assertEqual(out["event"]["question"], "Which currency rounding?")
+
+    def test_blocked_is_refused_where_the_step_cannot_ask(self):
+        m, gh, n = self.build_run()
+        m.run_advance(n, "ok")  # validate
+        with self.assertRaises(pilot.Refused) as caught:
+            m.run_advance(n, "blocked", question="?")
+        self.assertEqual(caught.exception.payload["reason"], "no-ask-here")
+        self.assertIn("--assumption", caught.exception.payload["hint"])
+        self.assertEqual(m.run_show(n)["state"], "running")
+        self.assertNotIn("needs-human", names(gh.store[1]))
+
+    def test_blocked_needs_its_question(self):
+        m, gh, n = self.build_run()
+        with self.assertRaises(pilot.Refused) as caught:
+            m.run_advance(n, "blocked", question="  ")
+        self.assertEqual(caught.exception.payload["reason"], "question-required")
+
+    def test_a_failure_to_label_does_not_fail_the_call(self):
+        m, gh, n = self.build_run()
+
+        def broken(*_a, **_k):
+            raise pilot.GhError("gh: label denied")
+        gh.patch_issue = broken
+        out = m.run_advance(n, "blocked", question="Which rounding?")
+        self.assertEqual((out["state"], out["signal"]), ("waiting-human", False))
+        self.assertEqual(m.run_show(n)["question"]["text"], "Which rounding?")
+
+    def test_nothing_advances_while_a_question_is_open(self):
+        m, gh, n = self.build_run()
+        m.run_advance(n, "blocked", question="Which rounding?")
+        with self.assertRaises(pilot.Refused) as caught:
+            m.run_advance(n, "ok")
+        self.assertEqual(caught.exception.payload["reason"], "question-open")
+
+    def test_resume_is_refused_while_the_question_is_open_label_or_not(self):
+        m, gh, n = self.build_run()
+        m.run_advance(n, "blocked", question="Which rounding?")
+        with self.assertRaises(pilot.Refused) as caught:
+            m.run_resume(n)
+        self.assertEqual(caught.exception.payload["reason"], "question-open")
+        gh.store[1]["labels"] = [l for l in gh.store[1]["labels"] if l["name"] != "needs-human"]  # a human removed the label by hand
+        with self.assertRaises(pilot.Refused) as caught:
+            m.run_resume(n)
+        self.assertEqual(caught.exception.payload["reason"], "question-open")
+        self.assertEqual(m.run_show(n)["state"], "waiting-human")
+
+    def test_a_flag_that_is_not_a_run_question_still_stops_a_resume(self):
+        m, gh, n = self.build_run()
+        m.flag(1, "paused by a human for another reason")
+        with self.assertRaises(pilot.Refused) as caught:
+            m.run_resume(1)
+        self.assertEqual(caught.exception.payload["reason"], "needs-human")
+        m.unflag(1, "fine")
+        self.assertEqual(m.run_resume(1)["state"], "running")
+
+    def test_the_answer_lives_in_the_run_and_the_producer_reruns_with_it(self):
+        m, gh, n = self.build_run()
+        m.run_advance(n, "blocked", question="Which rounding?")
+        out = m.run_answer(n, "Round half up")
+        self.assertEqual((out["state"], out["step"]["id"], out["signal"]), ("running", "implement", True))
+        self.assertEqual([(a["step"], a["question"], a["answer"]) for a in out["step"]["answers"]], [("implement", "Which rounding?", "Round half up")])
+        self.assertNotIn("needs-human", names(gh.store[1]))
+        self.assertTrue(any("Round half up" in text for _n, text in gh.posted if "pilot:run" not in text))  # the resolution comment
+        shown = m.run_show(n)
+        self.assertNotIn("question", shown)
+        self.assertEqual(shown["current"]["answers"][0]["answer"], "Round half up")
+        self.assertIn("at", shown["answers"][0])
+        resumed = m.run_resume(n)  # a session loss loses nothing: the record has the answer
+        self.assertEqual((resumed["state"], resumed["current"]["answers"][0]["answer"]), ("running", "Round half up"))
+        self.assertEqual(m.run_advance(n, "ok")["step"]["id"], "validate")
+        self.assertNotIn("answers", m.run_show(n)["current"])  # only the step that asked receives them
+
+    def test_an_answer_needs_a_question_and_a_text(self):
+        m, gh, n = self.build_run()
+        with self.assertRaises(pilot.Refused) as caught:
+            m.run_answer(n, "anything")
+        self.assertEqual(caught.exception.payload["reason"], "no-question")
+        m.run_advance(n, "blocked", question="Which rounding?")
+        with self.assertRaises(pilot.Refused) as caught:
+            m.run_answer(n, " ")
+        self.assertEqual(caught.exception.payload["reason"], "text-required")
+
+    def test_the_answer_survives_a_failure_to_unlabel(self):
+        m, gh, n = self.build_run()
+        m.run_advance(n, "blocked", question="Which rounding?")
+
+        def broken(*_a, **_k):
+            raise pilot.GhError("gh: denied")
+        gh.patch_issue = broken
+        out = m.run_answer(n, "Half up")
+        self.assertEqual((out["state"], out["signal"]), ("running", False))
+        self.assertEqual(m.run_show(n)["answers"][0]["answer"], "Half up")
+
+    def test_a_run_without_a_ticket_signals_on_its_own_issue(self):
+        m, gh = machine([])
+        n = m.run_start("need", title="x")["run"]
+        for result in ("ok", "ok", "skip"):
+            m.run_advance(n, result)
+        self.assertEqual(m.run_show(n)["step"], "write")
+        m.run_advance(n, "blocked", question="Which audience?")
+        self.assertIn("needs-human", names(gh.store[n]))
+        self.assertEqual(m.run_show(n)["step"], "ask")
+        self.assertEqual(m.run_answer(n, "Adults")["step"]["id"], "write")
+        self.assertNotIn("needs-human", names(gh.store[n]))
+
+    def test_the_engine_skips_a_step_only_blocked_opens(self):
+        m, gh, n = self.build_run()
+        self.assertEqual(m.run_advance(n, "ok")["step"]["id"], "validate")  # implement -> ask is skipped
+        m2, gh2 = machine([])
+        n2 = m2.run_start("express", title="x")["run"]
+        for result in ("ok", "ok", "skip"):
+            m2.run_advance(n2, result)
+        self.assertEqual(m2.run_advance(n2, "ok")["step"]["id"], "validate")  # write -> ask is skipped
+
+    def test_an_included_step_asks_its_own_prefixed_step(self):
+        m, gh = machine([ticket(1, status="building", assignees=["bot"])])
+        n = m.run_start("express", 1)["run"]
+        # reach build-implement by data: jump the record there, then ask
+        cid, record = m._run_comment(n)
+        record["step"] = "build-implement"
+        m._run_write(n, cid, record)
+        out = m.run_advance(n, "blocked", question="Which one?")
+        self.assertEqual(out["step"]["id"], "build-ask")
+        self.assertEqual(m.run_answer(n, "that one")["step"]["id"], "build-implement")
+
+    def test_each_asking_workflow_routes_the_question_and_the_answer(self):
+        cases = (("plan", "write", "ask"), ("proto", "build", "ask"), ("technical-frame", "implement", "ask"),
+                 ("design-system", "implement", "ask"))
+        for wid, producer, ask in cases:
+            m, gh = machine([])
+            n = m.run_start(wid, title="x")["run"]
+            cid, record = m._run_comment(n)
+            record["step"] = producer
+            m._run_write(n, cid, record)
+            self.assertEqual(m.run_advance(n, "blocked", question="Q?")["step"]["id"], ask, wid)
+            self.assertEqual(m.run_answer(n, "A")["step"]["id"], producer, wid)
+
+    def test_a_question_on_the_ai_recette_hands_the_run_to_the_human_executant(self):
+        m, gh = machine([ticket(1, status="merged")])
+        n = m.run_start("accept", 1, data={"executant": "ai"})["run"]
+        for _ in range(4):
+            m.run_advance(n, "ok")  # eligibility, plan, checks of the plan, judge
+        self.assertEqual(m.run_show(n)["step"], "run-ai")
+        out = m.run_advance(n, "blocked", question="Which persona logs in?")
+        self.assertEqual((out["state"], out["step"]["id"]), ("waiting-human", "ask"))
+        out = m.run_answer(n, "The persona with a wheelchair")
+        self.assertEqual((out["state"], out["step"]["id"]), ("running", "run-human"))
+        self.assertEqual(out["step"]["answers"][0]["answer"], "The persona with a wheelchair")
+        self.assertEqual(m.run_show(n)["data"]["executant"], "human")
+        self.assertEqual(m.run_advance(n, "ok")["step"]["id"], "dossier")  # the question step is skipped after the human executant
+
+    def test_an_accept_run_that_starts_human_never_meets_the_question_step(self):
+        m, gh = machine([ticket(1, status="merged")])
+        n = m.run_start("accept", 1, data={"executant": "human"})["run"]
+        for _ in range(5):
+            out = m.run_advance(n, "ok")
+        self.assertEqual(out["step"]["id"], "dossier")
+
+
+class ParkTests(unittest.TestCase):
+    """`run park` saves the work of a run on `pilot-run/<n>`; `run restore` brings it back: real git, a local bare remote."""
+
+    def sh(self, cwd, *args):
+        done = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True,
+                              env={**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout.strip()
+
+    def write(self, cwd, name, text):
+        path = os.path.join(cwd, name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+
+    @staticmethod
+    def read(cwd, name):
+        with open(os.path.join(cwd, name), encoding="utf-8") as handle:
+            return handle.read()
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.remote = os.path.join(self.tmp.name, "remote.git")
+        self.work = os.path.join(self.tmp.name, "work")
+        os.makedirs(self.work)
+        self.sh(self.tmp.name, "init", "-q", "--bare", self.remote)
+        self.sh(self.remote, "symbolic-ref", "HEAD", "refs/heads/main")
+        self.sh(self.work, "init", "-q")
+        self.sh(self.work, "symbolic-ref", "HEAD", "refs/heads/main")
+        self.write(self.work, "a.txt", "one\n")
+        self.write(self.work, ".gitignore", "ignored.txt\n")
+        self.sh(self.work, "add", "-A")
+        self.sh(self.work, "commit", "-q", "-m", "init")
+        self.sh(self.work, "remote", "add", "origin", self.remote)
+        self.sh(self.work, "push", "-q", "-u", "origin", "main")
+        self.here = os.getcwd()
+        self.addCleanup(os.chdir, self.here)
+        os.chdir(self.work)
+        self.m, self.gh = machine([ticket(1, status="building", assignees=["bot"])])
+        self.n = self.m.run_start("build", 1)["run"]
+        self.m.run_advance(self.n, "ok")
+
+    def clone(self):
+        other = os.path.join(self.tmp.name, "other")
+        self.sh(self.tmp.name, "clone", "-q", self.remote, other)
+        return other
+
+    def test_park_commits_what_is_not_ignored_on_the_run_branch_and_pushes_it(self):
+        self.write(self.work, "a.txt", "two\n")
+        self.write(self.work, "src/b.txt", "new\n")
+        self.write(self.work, "ignored.txt", "secret\n")
+        out = self.m.run_park(self.n)
+        self.assertEqual((out["parked"], out["branch"], out["committed"], out["pushed"]), (True, f"pilot-run/{self.n}", True, True))
+        self.assertEqual(self.sh(self.work, "log", "-1", "--format=%s", out["branch"]), f"wip(run {self.n}): build implement")
+        files = self.sh(self.work, "ls-tree", "-r", "--name-only", out["branch"]).split()
+        self.assertIn("src/b.txt", files)
+        self.assertNotIn("ignored.txt", files)
+        self.assertEqual(self.sh(self.work, "show", f"{out['branch']}:a.txt"), "two")
+        self.assertEqual(self.sh(self.remote, "rev-parse", out["branch"]), out["commit"])  # pushed
+        # the current branch, its index and the working tree are untouched
+        self.assertEqual(self.sh(self.work, "rev-parse", "--abbrev-ref", "HEAD"), "main")
+        self.assertEqual(self.sh(self.work, "diff", "--cached", "--name-only"), "")
+        self.assertEqual(self.read(self.work, "a.txt"), "two\n")
+        shown = self.m.run_show(self.n)
+        self.assertEqual((shown["branch"], shown["commit"], shown["parked"]["pushed"]), (out["branch"], out["commit"], True))
+
+    def test_parking_twice_without_a_change_adds_no_commit_and_a_clean_tree_parks_nothing(self):
+        nothing = self.m.run_park(self.n)
+        self.assertEqual((nothing["parked"], nothing["reason"]), (False, "nothing-to-park"))
+        self.assertEqual(self.sh(self.work, "branch", "--list", f"pilot-run/{self.n}"), "")
+        self.write(self.work, "a.txt", "two\n")
+        first = self.m.run_park(self.n)
+        second = self.m.run_park(self.n)
+        self.assertEqual((second["committed"], second["commit"]), (False, first["commit"]))
+        self.write(self.work, "a.txt", "three\n")
+        third = self.m.run_park(self.n)
+        self.assertEqual(self.sh(self.work, "rev-parse", f"{third['commit']}^"), first["commit"])  # history stacks
+
+    def test_a_clean_tree_never_overwrites_work_already_parked(self):
+        self.write(self.work, "a.txt", "two\n")
+        first = self.m.run_park(self.n)
+        self.sh(self.work, "checkout", "-q", "a.txt")  # a new session starts clean, before restoring
+        again = self.m.run_park(self.n)
+        self.assertEqual((again["committed"], again["commit"]), (False, first["commit"]))
+
+    def test_without_a_remote_the_work_is_still_committed_and_the_push_says_why(self):
+        self.sh(self.work, "remote", "remove", "origin")
+        self.write(self.work, "a.txt", "two\n")
+        out = self.m.run_park(self.n)
+        self.assertEqual((out["parked"], out["pushed"], out["push_error"]), (True, False, "no-remote"))
+        self.assertEqual(self.sh(self.work, "show", f"{out['branch']}:a.txt"), "two")
+
+    def test_a_refused_push_is_reported_not_raised(self):
+        self.sh(self.work, "remote", "set-url", "origin", os.path.join(self.tmp.name, "missing.git"))
+        self.write(self.work, "a.txt", "two\n")
+        out = self.m.run_park(self.n)
+        self.assertEqual((out["parked"], out["pushed"]), (True, False))
+        self.assertTrue(out["push_error"])
+
+    def test_a_question_then_a_session_loss_loses_neither_the_answer_nor_the_work(self):
+        self.write(self.work, "a.txt", "half done\n")
+        out = self.m.run_advance(self.n, "blocked", question="Which rounding?")
+        self.assertTrue(out["park"])
+        parked = self.m.run_park(self.n)
+        self.m.run_answer(self.n, "Half up")
+        other = self.clone()  # a new container: a fresh clone of main
+        os.chdir(other)
+        resumed = self.m.run_resume(self.n)
+        self.assertEqual((resumed["branch"], resumed["restore"]), (parked["branch"], f"python3 .pilot/pilot.py run restore {self.n}"))
+        self.assertEqual(resumed["current"]["answers"][0]["answer"], "Half up")
+        restored = self.m.run_restore(self.n)
+        self.assertEqual((restored["merged"], restored["commit"]), ("fast-forward", parked["commit"]))
+        self.assertEqual(self.read(other, "a.txt"), "half done\n")
+
+    def test_restore_refuses_a_working_tree_that_differs_and_accepts_one_that_matches(self):
+        self.write(self.work, "a.txt", "two\n")
+        self.write(self.work, "b.txt", "new\n")
+        self.m.run_park(self.n)
+        other = self.clone()
+        os.chdir(other)
+        self.write(other, "a.txt", "mine\n")
+        with self.assertRaises(pilot.Refused) as caught:
+            self.m.run_restore(self.n)
+        self.assertEqual((caught.exception.payload["reason"], caught.exception.payload["paths"]), ("dirty-worktree", ["a.txt"]))
+        self.assertEqual(self.read(other, "a.txt"), "mine\n")  # nothing was touched
+        self.write(other, "a.txt", "two\n")  # the same content as the parked one
+        self.write(other, "b.txt", "new\n")
+        out = self.m.run_restore(self.n)
+        self.assertEqual(out["merged"], "fast-forward")
+        self.assertEqual(self.read(other, "b.txt"), "new\n")
+        self.assertEqual(self.sh(other, "status", "--porcelain"), "")
+
+    def test_restore_merges_when_the_branch_moved_on_and_keeps_both(self):
+        self.write(self.work, "b.txt", "parked\n")
+        self.m.run_park(self.n)
+        other = self.clone()
+        self.write(other, "c.txt", "main moved\n")
+        self.sh(other, "add", "-A")
+        self.sh(other, "commit", "-q", "-m", "main moved")
+        os.chdir(other)
+        out = self.m.run_restore(self.n)
+        self.assertEqual(out["merged"], "merge")
+        self.assertTrue(os.path.exists(os.path.join(other, "b.txt")) and os.path.exists(os.path.join(other, "c.txt")))
+        self.assertEqual(self.m.run_restore(self.n)["merged"], "already")
+
+    def test_restore_without_a_park_or_a_branch_is_refused(self):
+        with self.assertRaises(pilot.Refused) as caught:
+            self.m.run_restore(self.n)
+        self.assertEqual(caught.exception.payload["reason"], "no-branch")
+        cid, record = self.m._run_comment(self.n)
+        record["branch"] = "pilot-run/999"
+        self.m._run_write(self.n, cid, record)
+        with self.assertRaises(pilot.Refused) as caught:
+            self.m.run_restore(self.n)
+        self.assertEqual(caught.exception.payload["reason"], "branch-missing")
+
+    def test_run_end_deletes_nothing(self):
+        self.write(self.work, "a.txt", "two\n")
+        parked = self.m.run_park(self.n)
+        self.m.run_end(self.n, "ok")
+        self.assertEqual(self.sh(self.work, "rev-parse", parked["branch"]), parked["commit"])
+        self.assertEqual(self.sh(self.remote, "rev-parse", parked["branch"]), parked["commit"])
+
+
 class TicketTests(unittest.TestCase):
     def test_a_ticket_is_created_at_a_status_its_level_has_and_linked_under_its_parent(self):
         m, gh = machine([issue(1, ["level:epic", "status:forming"])])
@@ -1985,6 +2411,16 @@ class DashboardRolesTests(unittest.TestCase):
                     if role not in roles:
                         roles.append(role)
         self.assertEqual(table, want)
+
+    def test_the_diagram_links_are_the_workflow_ids_plus_the_overview(self):
+        """The template's WF_DOCS table (workflow id -> the URL of its diagram, plus `overview`) has exactly the workflow data's ids."""
+        page = (pathlib.Path(__file__).resolve().parent.parent / "assets" / "templates" / "pilot-dashboard.html.tmpl").read_text(encoding="utf-8")
+        body = re.search(r"var WF_DOCS=\{(.*?)\n\};", page, re.S).group(1)
+        pairs = re.findall(r"""^\s*'?([a-z-]+)'?:\s*'([^']*)'""", body, re.M)
+        self.assertEqual(len(pairs), len(dict(pairs)), "a key twice")
+        self.assertEqual(set(dict(pairs)), set(pilot.load_workflows()) | {"overview"})
+        for key, url in pairs:
+            self.assertRegex(url, r"^https://claude\.ai/artifact/[A-Za-z0-9]+$", key)
 
 
 class JudgeTests(unittest.TestCase):

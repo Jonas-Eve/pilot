@@ -8,22 +8,22 @@ JSON: `pilot.py` serves one step at a time.
 
 1. `python3 .pilot/pilot.py doctor` once per session; stop on a failure and say which.
 2. A workflow that works a ticket takes the number given, else `pilot.py pool <workflow>` and its `pick`; `pilot.py resolve <workflow> <issue>` says what to do with it
-   (`claim-fresh`, `resume-cleared`, `ask-resume`, `descend`, or a `stop` reason: report it). `pilot.py claim <workflow> <issue> --mode …` before any work.
-3. `pilot.py run start <workflow> [--issue N] [--data '{"executant":"ai"}']` — or `pilot.py run resume <issue>` for a run that stopped. Both return the step to run.
+   (`claim-fresh`, `resume-cleared`, `ask-resume`, `descend`, or a `stop` reason: report it; a ticket `flagged` by an open question of its run is answered with `pilot.py run answer`). `pilot.py claim <workflow> <issue> --mode …` before any work.
+3. `pilot.py run start <workflow> [--issue N] [--data '{"executant":"ai"}']` — or `pilot.py run resume <issue>` for a run that stopped. Both return the step to run; a resume of parked work returns `restore`: run it (`pilot.py run restore <run>`) before the step.
 
 ## The loop
 
 For the step returned: `pilot.py workflow show <workflow> --step <id>` if you need it again. Run it by its `kind`, then `pilot.py run advance <run> --result …`, which returns the next
-step (or `waiting-human` with what failed, or `done`). Push every `event` a `pilot.py` call returns to the cockpit (`.pilot/pilot-link-dashboard.md`).
+step (or `waiting-human` with its `waiting` reason, or `done`). Whenever it returns `waiting-human`, and at the end of a session, `pilot.py run park <run>` before anything else. Push every `event` a `pilot.py` call returns to the cockpit (`.pilot/pilot-link-dashboard.md`).
 
 | kind | what you do | result to advance with |
 |---|---|---|
 | `human-start` | ask the human for the step's `in` (or take it from the call), write what `out` says | `ok` |
-| `agent` | one `Agent` call per persona of `agents`, in order: persona `pilot-<persona>`, the task doc `.pilot/pilot-task-<task>.md`, `.pilot/pilot-link-agent-contract.md`, and the documents of `in` — nothing else | `ok` |
+| `agent` | one `Agent` call per persona of `agents`, in order: persona `pilot-<persona>`, the task doc `.pilot/pilot-task-<task>.md`, `.pilot/pilot-link-agent-contract.md`, the documents of `in`, the step's `answers` when it has some, and the line "you may ask" when the step carries `ask` — nothing else | `ok`, or `blocked` with `--question TEXT` (only a step that carries `ask`) |
 | `validator` | as an agent, given the deliverable alone (never the discussion or the producer's reasoning) | `ok` if it lists no defect, else `fail` |
 | `judge` | two `Agent` calls without a persona: `.pilot/pilot-task-judge.md`, the contract, the step's `questions` and the documents; then `pilot.py judge <judge> --input FILE` | `ok` if `passed`, else `fail` |
 | `check` | `pilot.py check <check> --arg key=value …` (the arguments are in the check's docstring, `pilot_checks.py`); a step flagged `action` is a script: run what its `out` says with `pilot.py` (claim, ticket, `pr open|ci|merge`, labels) | `ok` if `ok`, else `fail` |
-| `human-optional` | open it only when its `open_if` holds (`delta-not-empty`: the audit's delta is not empty; `blocked`: the agent returned a QUESTION), else `skip` | `ok` (continue), `loop` (the human revised: back to `loop_to`) or `skip` |
+| `human-optional` | `delta-not-empty` (the audit's delta is not empty): open it, else `skip`. `blocked`: never yours to open or skip, `run advance` skips it and `blocked` opens it: show the human the QUESTION card (`run show`), then `pilot.py run answer <run> --text …` | `ok` (continue), `loop` (the human revised: back to `loop_to`) or `skip` |
 | `human-gate` | show the documents of `in`, the recorded assumptions (`pilot.py run show`) and the checks and judges' reports; the human validates or sends back | `ok` or `reject:<label>` among the step's `on_reject` |
 | `wait` | evaluate the condition; if false, stop (`run resume` re-evaluates it) | `ok` |
 | `end` | write what `out` says; `pilot.py run end <run> --result …` | — |
@@ -33,7 +33,7 @@ An alternative (`alt_of`) is chosen by the run's `executant`; the other is skipp
 ## What an agent returns, and what you do with it
 
 - **Assumptions** (`ASSUMPTION:` lines): `pilot.py run note <run> --assumption TEXT`; the gate shows them.
-- **A QUESTION**: ask the human now. Nobody answers → `pilot.py flag <issue> --comment …` (why, and what is needed) and stop; the run waits (`waiting-human`).
+- **A QUESTION**: `pilot.py run advance <run> --result blocked --question TEXT` (the card: point, options with effect and cost, recommendation), then `run park`. Ask the human now when one is live: `run answer` records the answer and the step re-runs with it. Nobody answers → stop; `needs-human` signals the question, and a later session resumes once `run answer` was given. A refusal `no-ask-here`: the step cannot ask, record the choice as an assumption.
 - **A defect list or a verdict**: a validator's or reviewer's defects go back to the producer (`fail`); the producer corrects or contests with arguments, and a contested defect goes to the gate (or to the human where there is none).
 - Outputs are files in the working tree; a document workflow ends by one docs PR (`pilot.py pr open`, then `pr merge` once the gate has passed; a docs-only PR has no CI).
 

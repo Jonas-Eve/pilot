@@ -23,7 +23,7 @@ commands of `.pilot/pilot-link-knowledge.md` (`python3 .pilot/pilot.py arch …`
 fact: it goes in a reference entry, the ADR gives only the reason. A guideline names its ADR in one line and carries no reasoning. A rule a tool can enforce is enforced there and the guideline
 points to it. An ADR forced by a product rule cites the wiki entry; a wiki entry never carries the reasoning.
 
-**A divergence between an entry and the code** is never settled by an agent: put it to the human when one is live, else flag `needs-human` quoting both. The human decides that the code is wrong
+**A divergence between an entry and the code** is never settled by an agent: put it to the human when one is live, else where the step can ask return a `QUESTION:`, otherwise record an `ASSUMPTION:`, quoting both. The human decides that the code is wrong
 (a correction ticket), the entry is out of date (corrected through the `technical-frame` workflow), or the code must change on purpose (a technical need stated to the plan workflow). A divergence on
 a guideline is first read as a violation by the code; on an accepted ADR, a decision that no longer holds is replaced by a new ADR that supersedes it, never edited.
 

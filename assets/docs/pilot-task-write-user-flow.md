@@ -12,6 +12,6 @@ Do:
 - Never write an expected result that is not visible to the persona, nor a step that depends on an implementation detail.
 - A new flow is a file created at `user-flow/<id>.md` (`wiki add`); if the flow exists (`--edit <id>`), edit only what the intention changes, keep its id, and add a Journal line J<n>
   (date, origin, decision, alternatives discarded, reason); never edit an existing line, step id or candidate id.
-- Cite only existing personas. When no existing persona could play the flow, say so in a `QUESTION:` (the Persona workflow creates it first).
+- Cite only existing personas. When no existing persona could play the flow, say so in an `ASSUMPTION:` (the Persona workflow creates it first).
 
 Never: write a criterion, a test script or a ticket; ask about wording or order (take a default and record an `ASSUMPTION:`).

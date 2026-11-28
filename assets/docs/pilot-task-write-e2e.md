@@ -8,9 +8,9 @@ You receive the criteria whose `by` is `e2e`, the diff approved by review, and t
 3. A red test is classified before anything else:
    - code defect: the behavior contradicts the criterion. Do not touch the code; return a DEFECT line with `class=code` naming the criterion and the observed behavior.
    - test defect: the test misreads the criterion or the setup is wrong. Fix the test and run it again.
-   When you cannot tell which, QUESTION with both readings.
+   When you cannot tell which, return a DEFECT with `class=criterion` giving both readings.
 4. A criterion you cannot test as written (no observable result, data it cannot create): DEFECT with `class=criterion`; never rewrite the criterion.
 5. Add the tests to the diff; touch no code and no unit test. No criterion's `by` other than `e2e` gets a test from you.
 6. Before using a framework method you are not certain about, check its current signature in the documentation.
 
-Return the test paths, one line per criterion (`<id>: green|red-code|red-test-fixed`), then DEFECT lines, ASSUMPTION lines and a QUESTION if any.
+Return the test paths, one line per criterion (`<id>: green|red-code|red-test-fixed`), then DEFECT lines and ASSUMPTION lines.
