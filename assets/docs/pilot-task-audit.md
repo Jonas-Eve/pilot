@@ -1,6 +1,6 @@
 # PILOT task — Audit
 
-Injected by the `audit` step of every workflow into its lead persona (pm, architect, techlead or designer; several in turn for a plan or an express), with the step's documents.
+Injected by the `audit` step of every workflow into its lead persona (pm, architect, techlead, designer or qa; several in turn for a plan or an express), with the step's documents.
 
 You read what already exists and tell the human exactly where the intention meets it. You propose nothing to build and write no document.
 

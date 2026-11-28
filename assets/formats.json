@@ -200,7 +200,7 @@
    }
   },
   "persona": {
-   "where": "wiki/personas/<id>.md, type Persona",
+   "where": "wiki/persona/<id>.md, type Persona",
    "sections": {
     "Usage": {
      "required": true,
@@ -213,7 +213,7 @@
    "frontmatter": {}
   },
   "user-flow": {
-   "where": "wiki/flows/<id>.md, type UserFlow",
+   "where": "wiki/user-flow/<id>.md, type UserFlow",
    "frontmatter": {
     "pilot.scope": "list:scope",
     "pilot.personas": "list:text",

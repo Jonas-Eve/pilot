@@ -569,19 +569,23 @@ def express_check(ctx):
     return problems
 
 
-@check("personas-flows.check")
-def persona_flow_check(ctx):
-    """--arg entry=<path> --arg kind=persona|flow"""
-    doc, kind = ctx.doc("entry"), ctx.need("kind")
-    if kind == "persona":
-        return validate_markdown("persona", doc, ctx)
+@check("persona.check")
+def persona_check(ctx):
+    """--arg entry=<path>"""
+    return validate_markdown("persona", ctx.doc("entry"), ctx)
+
+
+@check("user-flow.check")
+def user_flow_check(ctx):
+    """--arg entry=<path>"""
+    doc = ctx.doc("entry")
     problems = validate_markdown("user-flow", doc, ctx)
     problems += journal_problems(doc, ctx.previous("entry"))
     steps = {s["id"]: s for s in doc["sections"].get("Steps", [])}
     created = {c["fields"].get("from") for c in doc["sections"].get("Candidates", [])}
     problems += [problem("to-create-without-candidate", step=i) for i, s in steps.items() if s["fields"].get("source") == "to-create" and i not in created]
     for p in (front_value(doc["front"], "pilot.personas") or "").strip("[]").split(","):
-        if p.strip() and not os.path.exists(os.path.join(ctx.root, "wiki", "personas", f"{p.strip()}.md")):
+        if p.strip() and not os.path.exists(os.path.join(ctx.root, "wiki", "persona", f"{p.strip()}.md")):
             problems.append(problem("unknown-persona", persona=p.strip()))
     return problems
 
@@ -625,7 +629,7 @@ def accept_eligibility(ctx):
     if not dep.get("healthy", True):
         problems.append(problem("environment-unhealthy"))
     persona = ctx.args.get("persona")
-    if persona and persona != "none" and not os.path.exists(os.path.join(ctx.root, "wiki", "personas", f"{persona}.md")):
+    if persona and persona != "none" and not os.path.exists(os.path.join(ctx.root, "wiki", "persona", f"{persona}.md")):
         problems.append(problem("unknown-persona", persona=persona))
     if ctx.args.get("executant") == "ai" and {"human", "judgment"} & set(jsonarg(ctx, "criteria_by", [])):
         problems.append(problem("human-required"))

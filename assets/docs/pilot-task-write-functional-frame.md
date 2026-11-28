@@ -3,7 +3,12 @@
 Injected by the `write` step of the functional-frame workflow into the `pilot-pm` persona's `Agent` call.
 
 You receive the human's functional intention, the audit's delta and the proposed scope. Write one entry in the `frame` format: a product principle, the vision, or
-vocabulary terms.
+vocabulary terms. The functional frame is what the product does in shared terms, never how it is built.
+
+Creating or changing:
+- A new entry is a file created at `<domain>/<id>.md` (`wiki add`): a domain folder that `wiki index --depth 1` lists or the proposed scope names, an id in lowercase words that no entry
+  has, status `specified`. Vocabulary terms go into the existing `vocabulary.md` entry, never into a second one.
+- A change (`--edit <id>`) is that same file, same id; edit only what the intention changes.
 
 Do:
 - Source: put the human's intention in sentences S1, S2…, as they said it, one idea each.

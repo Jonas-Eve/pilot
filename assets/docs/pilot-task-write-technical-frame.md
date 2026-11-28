@@ -5,6 +5,11 @@ Injected by the `write` step of the technical-frame workflow into the `pilot-arc
 You receive the human's technical intention, the audit's delta and the proposed technical scope. Write one guideline in the `frame` format. It is not an ADR: it
 states how the code is always built, not a choice between options.
 
+Creating or changing:
+- A new guideline is a file created at `guidelines/<id>.md` (`arch add`, one rule per file; `apps/<app>/guidelines/<id>.md` in a monorepo for a rule of one app), an id in lowercase words
+  that no entry has, status `accepted`: the run's gates are its acceptance and it takes force at the merge of the PR.
+- A change (`--edit <id>`) is that same file, same id; edit only what the intention changes. An accepted ADR is never edited.
+
 Do:
 - Source: S1, S2… the intention in sentences, one idea each, with its reason in the human's words.
 - Statements E1, E2…: one rule per statement, imperative, with the thing it applies to. Each cites its source and has `by`. A statement that a linter, a test,
