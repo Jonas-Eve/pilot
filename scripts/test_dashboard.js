@@ -441,7 +441,7 @@ const STUB = (opts) => `
   check('"moi" without an identity: a hint', /Indiquez votre identifiant GitHub/.test(await text(page, '#view')));
   check('search: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
-  // ---- design tab: the project's design document, edited through a /pilot-design session ----
+  // ---- design tab: the project's design document, edited through a /pilot-design-system session ----
   const DESIGN = { kind: 'design', repo: REPO, at: iso(30),
     charter: { name: 'myAVI <img src=x onerror=window.__pwn=1>', summary: 'Voyager sans obstacle', logo: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>',
       colors: [{ name: 'Bleu', hex: '#1747C9', use: 'actions' }, { name: 'Piège', hex: 'red;background:url(//evil)', use: 'x' }], voice: 'Clair et bienveillant', rules: 'Pas de blanc sur jaune' },
@@ -459,9 +459,9 @@ const STUB = (opts) => `
   await page.click('#designEToggle'); await page.waitForTimeout(100);
   const dCmd = () => text(page, '#designCmd');
   const dHref = async () => decodeURIComponent((await page.$eval('#designOpen', (a) => a.getAttribute('href'))).split('?q=')[1].split('&repo=')[0]);
-  check('design: bare command, link carries it', (await dCmd()) === '/pilot-design' && (await dHref()) === '/pilot-design', await dCmd());
+  check('design: bare command, link carries it', (await dCmd()) === '/pilot-design-system' && (await dHref()) === '/pilot-design-system', await dCmd());
   await page.fill('#designText', 'ajouter un thème\nà fort contraste'); await page.waitForTimeout(100);
-  check('design: with no document yet, the request alone (it creates the whole document)', (await dCmd()) === '/pilot-design ajouter un thème à fort contraste' && (await dHref()) === (await dCmd()), await dCmd());
+  check('design: with no document yet, the request alone (it creates the whole document)', (await dCmd()) === '/pilot-design-system ajouter un thème à fort contraste' && (await dHref()) === (await dCmd()), await dCmd());
   await page.evaluate((d) => window.__push('design', 'd0', d), DESIGN); await page.waitForTimeout(200);
   let dv = '';
   for (const lab of ['Charte', 'Couleurs', 'Typographie', 'Espacements', 'Composants', 'Accessibilité']) {
@@ -471,7 +471,7 @@ const STUB = (opts) => `
   check('design: a live document fills every section', /Voyager sans obstacle/.test(dv) && /clair #FFFFFF/.test(dv) && /sombre #0E141B/.test(dv) && /IBM Plex Sans/.test(dv) && /22 px · 600/.test(dv) && /Espacement m/.test(dv) && /Rayon s/.test(dv) && /Cible de 44 px/.test(dv) && /Contraste AA minimum/.test(dv) && /Clair et bienveillant/.test(dv), dv);
   check('design: the edit card now says "Modifier", the typed request is kept', /^Modifier/.test(await text(page, '#designHint')) && (await page.inputValue('#designText')).includes('fort contraste'));
   await page.click('#subtabs >> text=Couleurs'); await page.waitForTimeout(150);
-  check('design: the command is the request, whatever the section', (await dCmd()) === '/pilot-design ajouter un thème à fort contraste' && (await dHref()) === (await dCmd()), await dCmd());
+  check('design: the command is the request, whatever the section', (await dCmd()) === '/pilot-design-system ajouter un thème à fort contraste' && (await dHref()) === (await dCmd()), await dCmd());
   await page.click('#subtabs >> text=Charte'); await page.waitForTimeout(150);
   check('design: HTML in a value stays text, an invalid hex gets no swatch', (await page.$('#view [onerror]')) === null && (await page.evaluate(() => window.__pwn)) === undefined && /myAVI <img src=x/.test(dv) && !(await page.$('#view [style*="evil"]')), dv);
   check('design: a valid logo renders as an image', (await page.$$('#view img.logo')).length === 1 && (await page.$eval('#view img.logo', (i) => i.src.startsWith('data:image/svg+xml'))));
@@ -531,7 +531,7 @@ const STUB = (opts) => `
   check('design sub-tabs: a section shows only itself, the address follows',
         /clair #FFFFFF/.test(await text(page, '#view')) && !/Voyager sans obstacle/.test(await text(page, '#view')) && (await page.evaluate(() => location.hash)) === '#design/colors');
   await page.screenshot({ path: path.join(TMP, 'design-subtabs.png') });
-  check('design sub-tabs: the command has no section flag', (await text(page, '#designCmd')) === '/pilot-design', await text(page, '#designCmd'));
+  check('design sub-tabs: the command has no section flag', (await text(page, '#designCmd')) === '/pilot-design-system', await text(page, '#designCmd'));
   await page.click('#subtabs >> text=Accessibilité'); await page.waitForTimeout(200);
   check('design sub-tabs: moving on shows the section', /Contraste AA minimum/.test(await text(page, '#view')));
   await page.close();
@@ -653,18 +653,21 @@ const STUB = (opts) => `
   await en.close(); }
   check('persona and flow rows are never flagged "non vérifié"', !(await chipsOf()).includes('non vérifié'), (await chipsOf()).join('|'));
   await page.goto(FILE + '#wiki'); await page.waitForTimeout(300);
-  check('creation card: it writes the command for a persona, then for a flow, and is disabled while the text is empty',
-        (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona'
+  check('creation card: it starts on the functional frame, writes the bare command, and is disabled while the text is empty',
+        (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-functional-frame'
+        && (await page.$$eval('#view .foldcard .seg button', (b) => b.map((x) => x.textContent))).join('|') === 'Cadre fonctionnel|Persona|Parcours utilisateur'
         && (await page.$eval('#view .foldcard a.btn.primary', (a) => a.getAttribute('aria-disabled') === 'true' && !a.hasAttribute('href'))));
   await page.click('#view .foldcard summary'); await page.fill('#flowNewText', 'Marie, 74 ans,\n malvoyante'); await page.waitForTimeout(100);
-  check('creation card: the text becomes one line of the command, the link opens it', (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona Marie, 74 ans, malvoyante'
-        && decodeURIComponent(await page.$eval('#view .foldcard a.btn.primary', (a) => a.getAttribute('href'))).includes('/pilot-flow --new persona Marie, 74 ans, malvoyante'));
+  check('creation card: the text becomes one line of the command, the link opens it', (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-functional-frame Marie, 74 ans, malvoyante'
+        && decodeURIComponent(await page.$eval('#view .foldcard a.btn.primary', (a) => a.getAttribute('href'))).includes('/pilot-functional-frame Marie, 74 ans, malvoyante'));
   await page.click('#view .foldcard .seg button:nth-of-type(2)'); await page.waitForTimeout(100);
-  check('creation card: choosing the flow changes the command', (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)).startsWith('/pilot-flow --new flow '));
-  await page.fill('#flowNewText', 'Une description'); await page.click('#view .foldcard .seg button:nth-of-type(1)');
+  check('creation card: choosing the persona writes /pilot-persona', (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-persona Marie, 74 ans, malvoyante');
+  await page.click('#view .foldcard .seg button:nth-of-type(3)'); await page.waitForTimeout(100);
+  check('creation card: choosing the user flow writes /pilot-user-flow', (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-user-flow Marie, 74 ans, malvoyante');
+  await page.fill('#flowNewText', 'Une description'); await page.click('#view .foldcard .seg button:nth-of-type(2)');
   await page.evaluate((d) => window.__push('flowRuns', 'f5', d), run({ flow: 'other-flow' })); await page.waitForTimeout(300);
   check('creation card: a re-render (a new document arrives) keeps the text, the kind and the open card',
-        (await page.$eval('#flowNewText', (e) => e.value)) === 'Une description' && (await page.$eval('#view .foldcard', (d) => d.open)) && (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-flow --new persona Une description');
+        (await page.$eval('#flowNewText', (e) => e.value)) === 'Une description' && (await page.$eval('#view .foldcard', (d) => d.open)) && (await page.$eval('#view .foldcard .cmd', (e) => e.textContent)) === '/pilot-persona Une description');
   check('flow status and creation card: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
   }
@@ -682,10 +685,10 @@ const STUB = (opts) => `
     check('last run: closed when it passed, and says no ticket was created', !(await pg.$eval('#view .lastrun', (d) => d.open)) && /Aucun ticket créé/.test(await pg.$eval('#view .lastrun', (d) => d.textContent)));
     const cmdsHere = async () => (await hrefs(pg, '#view .row a.btn')).map((l) => decodeURIComponent(l.href.split('?q=')[1].split('&repo=')[0]).trim());
     let c = await cmdsHere();
-    check('wiki: a flow can be edited and removed through /pilot-flow', c.includes('/pilot-flow --edit find-a-place') && c.includes('/pilot-flow --remove find-a-place'), JSON.stringify(c));
+    check('wiki: a flow can be edited and removed through /pilot-user-flow', c.includes('/pilot-user-flow --edit find-a-place') && c.includes('/pilot-user-flow --remove find-a-place'), JSON.stringify(c));
     await pg.goto(FILE + '#wiki/persona'); await pg.waitForTimeout(300);
     c = await cmdsHere();
-    check('wiki: a persona is edited and removed through /pilot-flow, never checked against the code', c.includes('/pilot-flow --edit marie-senior') && c.includes('/pilot-flow --remove marie-senior') && !c.some((x) => /--lint marie-senior/.test(x)), JSON.stringify(c));
+    check('wiki: a persona is edited and removed through /pilot-persona', c.includes('/pilot-persona --edit marie-senior') && c.includes('/pilot-persona --remove marie-senior') && !c.some((x) => /pilot-flow|pilot-user-flow/.test(x)), JSON.stringify(c));
     check('wiki entries: no page errors', pg.errors.length === 0, pg.errors.join('|'));
     await pg.close(); }
   { const DOC = { kind: 'wiki', repo: REPO, at: iso(20), total: 4, truncated: false, entries: [
@@ -698,8 +701,8 @@ const STUB = (opts) => `
     const c = (await hrefs(pg, '#view a.btn')).map((l) => decodeURIComponent((l.href.split('?q=')[1] || l.href).split('&repo=')[0]).trim());
     const wv = await text(pg, '#view');
     check('wiki: a behavior is never edited or removed from here (a change of behavior goes through /pilot-need); the vision neither', !c.some((x) => /filter-a11y|saved-places|vision/.test(x)), JSON.stringify(c));
-    check('wiki: a frame entry is edited or removed through /pilot-wiki', c.includes('/pilot-wiki --edit words') && c.includes('/pilot-wiki --remove words'), JSON.stringify(c));
-    check('wiki: the whole wiki is asked or linted', c.includes('/pilot-wiki') && c.includes('/pilot-wiki --lint') && !c.some((x) => /--lint \w/.test(x)), JSON.stringify(c));
+    check('wiki: a frame entry is edited or removed through /pilot-functional-frame', c.includes('/pilot-functional-frame --edit words') && c.includes('/pilot-functional-frame --remove words'), JSON.stringify(c));
+    check('wiki: the whole wiki is asked (read-only /pilot-wiki), never linted, and /pilot-wiki takes no flag', c.includes('/pilot-wiki') && !c.some((x) => /--lint|--verify|\/pilot-wiki --/.test(x)), JSON.stringify(c));
     check('wiki: provisional status and the derived states in v6 words', /provisoire/.test(wv) && /recetté/.test(wv) && /à recetter/.test(wv) && /en construction/.test(wv) && !/en review|en QA|en dev\b/.test(wv), wv);
     await pg.close(); }
 
@@ -731,8 +734,8 @@ const STUB = (opts) => `
   await page.evaluate((d) => window.__push('architecture', 'r1', Object.assign({}, d, { repo: 'o/other', entries: [{ id: 'x', title: 'Autre projet', path: 'overview.md', status: 'proposed', tickets: [], text: '' }] })), ARCH); await page.waitForTimeout(150);
   await page.click('#subtabs >> text=Tous'); await page.waitForTimeout(150);
   { const cm = (await hrefs(page, '#view a.btn')).map((l) => decodeURIComponent((l.href.split('?q=')[1] || l.href).split('&repo=')[0]).trim());
-    check('architecture: the whole body is asked, a rule added or the body linted; no --adr, --verify or --bootstrap', cm.includes('/pilot-architecture') && cm.includes('/pilot-architecture --guideline') && cm.includes('/pilot-architecture --lint') && !cm.some((x) => /--(adr|verify|bootstrap)/.test(x)), JSON.stringify(cm.slice(0, 5)));
-    check('architecture: a rule is edited or removed, an accepted ADR neither, the root overview is not removed', cm.includes('/pilot-architecture --edit layering') && cm.includes('/pilot-architecture --remove layering') && !cm.some((x) => /--(edit|remove) 0002-store/.test(x)) && cm.includes('/pilot-architecture --edit overview') && !cm.includes('/pilot-architecture --remove overview'), JSON.stringify(cm)); }
+    check('architecture: the whole body is asked (read-only /pilot-architecture), a rule added through /pilot-technical-frame; no --lint, --adr, --verify or --bootstrap', cm.includes('/pilot-architecture') && cm.includes('/pilot-technical-frame --guideline') && !cm.some((x) => /--(lint|adr|verify|bootstrap)|\/pilot-architecture --/.test(x)), JSON.stringify(cm.slice(0, 5)));
+    check('architecture: a rule is edited or removed, an accepted ADR neither, the root overview is not removed', cm.includes('/pilot-technical-frame --edit layering') && cm.includes('/pilot-technical-frame --remove layering') && !cm.some((x) => /--(edit|remove) 0002-store/.test(x)) && cm.includes('/pilot-technical-frame --edit overview') && !cm.includes('/pilot-technical-frame --remove overview'), JSON.stringify(cm)); }
   check('architecture: another repo\'s document is not shown', !/Autre projet/.test(await text(page, '#view')));
   check('architecture tab: no page errors', page.errors.length === 0, page.errors.join('|'));
   await page.close();
@@ -835,7 +838,7 @@ const STUB = (opts) => `
     check('help: the "i" opens it, five sub-tabs', JSON.stringify(await subs()) === JSON.stringify(['Principes', 'Workflows', 'Tickets', 'Modules', 'Agents']) && (await pg.$eval('#helpLink', (a) => a.getAttribute('aria-current'))) === 'page', JSON.stringify(await subs()));
     check('help: principles name the six commands and the cockpit refresh', ['/pilot-need', '/pilot-plan', '/pilot-build', '/pilot-accept', '/pilot-report', '/pilot-express', '/pilot-dashboard --refresh'].every((c) => pr.includes(c)), pr.slice(0, 300));
     const wf = await get('workflows');
-    check('help: workflows lists those the snapshot lists, with their command and the statuses they take and produce', /\/pilot-build/.test(wf) && /Prend :\s*building, ready, reviewing/.test(wf) && /Produit :\s*merged, reviewing/.test(wf) && !/\/pilot-design/.test(wf), wf.slice(0, 400));
+    check('help: workflows lists those the snapshot lists, with their command and the statuses they take and produce', /\/pilot-build/.test(wf) && /Prend :\s*building, ready, reviewing/.test(wf) && /Produit :\s*merged, reviewing/.test(wf) && !/\/pilot-design-system/.test(wf), wf.slice(0, 400));
     const tk = await get('tickets');
     check('help: tickets give the statuses per level and the command of each status', /epic : forming → to-plan → planning → planned → done → wont-do/.test(tk) && /task : ready → building → reviewing → merged → done/.test(tk) && /merged\s+\/pilot-accept <n°>/.test(tk) && /ready\s+\/pilot-build <n°>/.test(tk) && /reviewing\s+\/pilot-build --resume <n°>/.test(tk), tk.slice(0, 600));
     check('help: the flags are explained', ['needs-human', 'on-hold', 'can-resume', 'express', 'fix', 'gap'].every((f) => tk.includes(f)));
@@ -888,7 +891,7 @@ const STUB = (opts) => `
       const get = async (sub) => { await p2.goto(FILE + '#aide/' + sub); await p2.waitForTimeout(250); return p2.$eval('#view', (e) => e.innerText); };
       const md = await get('modules'), pr2 = await get('principes');
       check('modules off: the modules page says so and how to enable them', /désactivé/.test(md) && /module enable wiki/.test(md) && /module enable architecture/.test(md), md.slice(0, 300));
-      check('modules off: the starting points do not suggest the commands of a module that is off', !/\/pilot-wiki|\/pilot-architecture|\/pilot-proto|\/pilot-design|\/pilot-flow/.test(pr2), pr2.slice(0, 200));
+      check('modules off: the starting points do not suggest the commands of a module that is off', !/\/pilot-wiki|\/pilot-architecture|\/pilot-proto|\/pilot-design-system|\/pilot-functional-frame|\/pilot-technical-frame|\/pilot-persona|\/pilot-user-flow/.test(pr2), pr2.slice(0, 200));
       await p2.close();
     }
     check('modules: no page errors', page.errors.length === 0, page.errors.join('|'));
@@ -902,14 +905,15 @@ const STUB = (opts) => `
 
 
   // ---- admin workflows: their runs show in their module's tab only; each has a launcher writing its exact command ----
-  { const ADM = Object.assign({}, V6, { workflows: ['accept', 'build', 'design-system', 'express', 'functional-frame', 'need', 'personas-flows', 'plan', 'proto', 'report', 'technical-frame'],
+  { const ADM = Object.assign({}, V6, { workflows: ['accept', 'build', 'design-system', 'express', 'functional-frame', 'need', 'persona', 'plan', 'proto', 'report', 'technical-frame', 'user-flow'],
       modules: { wiki: true, architecture: true, design: true, proto: true, dashboard: true },
-      issues: V6.issues.concat([ticket(32, ['run:design-system'], { t: 'run:design-system Thème contraste' }), ticket(33, ['run:personas-flows', 'needs-human'], { t: 'run:personas-flows Persona Léa' }),
+      issues: V6.issues.concat([ticket(32, ['run:design-system'], { t: 'run:design-system Thème contraste' }), ticket(33, ['run:persona', 'needs-human'], { t: 'run:persona Persona Léa' }), ticket(37, ['run:user-flow'], { t: 'run:user-flow Parcours Léa' }),
         ticket(34, ['run:functional-frame'], { t: 'run:functional-frame Vocabulaire' }), ticket(35, ['run:proto'], { t: 'run:proto Mon second proto' })]) });
     const AR = [
       run({ n: 31, workflow: 'technical-frame', step: 'write', state: 'running' }),
       run({ n: 32, workflow: 'design-system', step: 'build', state: 'running', loops: { check: 1 } }),
-      run({ n: 33, workflow: 'personas-flows', step: 'gate', state: 'waiting-human' }),
+      run({ n: 33, workflow: 'persona', step: 'gate', state: 'waiting-human' }),
+      run({ n: 37, workflow: 'user-flow', step: 'write', state: 'running' }),
       run({ n: 34, workflow: 'functional-frame', step: 'gate', state: 'failed' }),
       run({ n: 35, workflow: 'proto', step: 'build', state: 'running' }),
       run({ n: 36, workflow: 'technical-frame', step: 'end', state: 'done' }),
@@ -919,7 +923,7 @@ const STUB = (opts) => `
     const o = { preload: [ADM], events: AR, design: [DESIGN], wiki: [{ kind: 'wiki', repo: REPO, at: iso(5), total: WIKI.entries.length + WIKI_FLOWS.entries.length, truncated: false, entries: WIKI.entries.concat(WIKI_FLOWS.entries) }], architecture: [ARCH], protos: PROTOS, protoHtml: PHTML };
     let pg = await open(Object.assign({ view: 'board' }, o));
     await tab(pg, 'Travail');
-    check('admin runs: absent from the board', !/Thème contraste|Persona Léa|Vocabulaire|Mon second proto|Cadre technique/.test(await text(pg, '#view .board')) && (await pg.locator('#view .board .card').count()) === 12);
+    check('admin runs: absent from the board', !/Thème contraste|Persona Léa|Parcours Léa|Vocabulaire|Mon second proto|Cadre technique/.test(await text(pg, '#view .board')) && (await pg.locator('#view .board .card').count()) === 12);
     await pg.click('#view .seg button:has-text("Liste")'); await pg.waitForTimeout(150);
     const wk = await text(pg, '#view');
     check('admin runs: absent from the Work tab (list and "Runs en cours"); the build run stays', !/Thème contraste|Persona Léa|Vocabulaire|Mon second proto/.test(wk) && /Runs en cours · 1\b/.test(wk) && (await pg.locator('#view section[aria-label="Runs en cours"] .row').count()) === 1);
@@ -932,24 +936,26 @@ const STUB = (opts) => `
     await pg.click(`#view ${ARUNS} button:has-text("Workflow")`); await pg.waitForTimeout(150);
     check('Architecture: its timeline marks the current step (write) with the architect', (await pg.locator('#view .tl li[aria-current=step]').count()) === 1 && /Writer|Rédacteur|Architecte/.test(await pg.locator('#view .tl li.cur').textContent()) && /Architecte|Architect/.test(await pg.locator('#view .tl li.cur').textContent()));
     const archCmds = (await pg.$$eval('#view a.btn', (as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || '').split('&repo=')[0])))).filter(Boolean);
-    check('Architecture: launchers write /pilot-architecture (question, --guideline, --lint) and the entry actions', ['/pilot-architecture', '/pilot-architecture --guideline', '/pilot-architecture --lint'].every((c) => archCmds.includes(c)) && archCmds.some((c) => /^\/pilot-architecture --(edit|accept|remove) /.test(c)) && !archCmds.some((c) => /--(bootstrap|verify|adr|scaffold)/.test(c)), JSON.stringify(archCmds.slice(0, 8)));
+    check('Architecture: launchers write /pilot-architecture (question, read-only), /pilot-technical-frame --guideline and the entry actions, no --lint', ['/pilot-architecture', '/pilot-technical-frame --guideline'].every((c) => archCmds.includes(c)) && archCmds.some((c) => /^\/pilot-technical-frame --(edit|accept|remove) /.test(c)) && !archCmds.some((c) => /--(lint|bootstrap|verify|adr|scaffold)|\/pilot-architecture --/.test(c)), JSON.stringify(archCmds.slice(0, 8)));
     // Design
     await tab(pg, 'Design');
     check('Design: the design-system run at the top, running, with its Workflow button and no resume (the workflow has none)', /#32 /.test(await text(pg, `#view ${ARUNS}`)) && /Design system/.test(await text(pg, `#view ${ARUNS}`)) && !(await cmdsOf(32)).some((c) => /--resume/.test(c)) && (await rowsOf(32).locator('button:has-text("Workflow")').count()) === 1);
     await pg.click('#designEToggle'); await pg.fill('#designText', 'thème sombre'); await pg.waitForTimeout(100);
-    check('Design: the launcher command is /pilot-design <text>', (await text(pg, '#designCmd')) === '/pilot-design thème sombre');
-    // Wiki: functional-frame and personas-flows runs
+    check('Design: the launcher command is /pilot-design-system <text>', (await text(pg, '#designCmd')) === '/pilot-design-system thème sombre');
+    // Wiki: functional-frame, persona and user-flow runs
     await tab(pg, 'Wiki');
     const wt = await text(pg, `#view ${ARUNS}`);
-    check('Wiki: the personas-flows run (waiting for a human, answered on GitHub) and the failed functional-frame run, at the top', (await pg.locator(`#view ${ARUNS} .row`).count()) === 2 && /#33 /.test(wt) && /#34 /.test(wt) && /Personas et user flows/.test(wt) && /Cadre fonctionnel/.test(wt) && /attend un humain/.test(await rowsOf(33).textContent()) && /échoué/.test(await rowsOf(34).textContent()) && /Répondre sur GitHub/.test((await cmdsOf(33)).join()));
+    check('Wiki: the persona run (waiting for a human, answered on GitHub), the user-flow run and the failed functional-frame run, at the top', (await pg.locator(`#view ${ARUNS} .row`).count()) === 3 && /#33 /.test(wt) && /#34 /.test(wt) && /#37 /.test(wt) && /Persona/.test(wt) && /Parcours utilisateur/.test(wt) && /Cadre fonctionnel/.test(wt) && /attend un humain/.test(await rowsOf(33).textContent()) && /échoué/.test(await rowsOf(34).textContent()) && /Répondre sur GitHub/.test((await cmdsOf(33)).join()));
     await rowsOf(33).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
     check('Wiki: the waiting run says what it awaits at its gate', /Attendu : décision humaine à ce gate/.test(await rowsOf(33).locator('li.cur').textContent()));
     const wikiCmds = (await pg.$$eval('#view a.btn', (as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || '').split('&repo=')[0])))).filter(Boolean);
-    check('Wiki: launchers write /pilot-wiki (question, --lint), /pilot-wiki --edit|--remove <id> and /pilot-flow --edit|--remove <id>', ['/pilot-wiki', '/pilot-wiki --lint'].every((c) => wikiCmds.includes(c)) && wikiCmds.some((c) => /^\/pilot-wiki --edit [a-z0-9-]+ $/.test(c)) && wikiCmds.some((c) => /^\/pilot-wiki --remove [a-z0-9-]+$/.test(c)) && wikiCmds.some((c) => /^\/pilot-flow --edit [a-z0-9-]+ $/.test(c)) && wikiCmds.some((c) => /^\/pilot-flow --remove [a-z0-9-]+$/.test(c)) && !wikiCmds.some((c) => /--bootstrap/.test(c)), JSON.stringify(wikiCmds.filter((c) => /flow/.test(c))));
+    check('Wiki: launchers write /pilot-wiki (question, read-only, no flag), /pilot-functional-frame --edit|--remove <id>, /pilot-persona and /pilot-user-flow --edit|--remove <id>', wikiCmds.includes('/pilot-wiki') && !wikiCmds.some((c) => /^\/pilot-wiki /.test(c) || /--(lint|verify|bootstrap)/.test(c)) && wikiCmds.some((c) => /^\/pilot-functional-frame --edit [a-z0-9-]+ $/.test(c)) && wikiCmds.some((c) => /^\/pilot-functional-frame --remove [a-z0-9-]+$/.test(c)) && wikiCmds.some((c) => /^\/pilot-persona --edit [a-z0-9-]+ $/.test(c)) && wikiCmds.some((c) => /^\/pilot-persona --remove [a-z0-9-]+$/.test(c)) && wikiCmds.some((c) => /^\/pilot-user-flow --edit [a-z0-9-]+ $/.test(c)) && wikiCmds.some((c) => /^\/pilot-user-flow --remove [a-z0-9-]+$/.test(c)), JSON.stringify(wikiCmds.filter((c) => /flow|persona|frame/.test(c))));
     await pg.click('#view details.foldcard summary'); await pg.fill('#flowNewText', 'Léa, 16 ans'); await pg.waitForTimeout(100);
-    check('Wiki: new persona writes /pilot-flow --new persona <text>, new flow --new flow', /\/pilot-flow --new persona Léa, 16 ans/.test(await text(pg, '#view details.foldcard')));
-    await pg.click('#view details.foldcard button:has-text("Parcours")'); await pg.waitForTimeout(100);
-    check('Wiki: a flow request writes /pilot-flow --new flow <text>', /\/pilot-flow --new flow Léa, 16 ans/.test(await text(pg, '#view details.foldcard')));
+    check('Wiki: a new entry writes /pilot-functional-frame <text> by default', /\/pilot-functional-frame Léa, 16 ans/.test(await text(pg, '#view details.foldcard')));
+    await pg.click('#view details.foldcard button:has-text("Persona")'); await pg.waitForTimeout(100);
+    check('Wiki: a persona request writes /pilot-persona <text>', /\/pilot-persona Léa, 16 ans/.test(await text(pg, '#view details.foldcard')));
+    await pg.click('#view details.foldcard button:has-text("Parcours utilisateur")'); await pg.waitForTimeout(100);
+    check('Wiki: a flow request writes /pilot-user-flow <text>', /\/pilot-user-flow Léa, 16 ans/.test(await text(pg, '#view details.foldcard')));
     // Prototypes
     await tab(pg, 'Prototypes');
     check('Prototypes: the proto run at the top, resumable, with its Workflow button', /#35 /.test(await text(pg, `#view ${ARUNS}`)) && /Prototype/.test(await text(pg, `#view ${ARUNS}`)) && (await rowsOf(35).locator('button:has-text("Workflow")').count()) === 1);
@@ -968,16 +974,19 @@ const STUB = (opts) => `
     check('admin launcher: folded by default, one kind per admin workflow whose module is on', await pg.$eval('#adminBody', (e) => e.hidden));
     await pg.click('#adminToggle');
     const kinds = () => pg.$$eval('#adminSeg button', (b) => b.map((x) => x.textContent));
-    check('admin launcher: with the five modules on, six kinds (technical rule, wiki entry, design system, persona, flow, prototype)', JSON.stringify(await kinds()) === JSON.stringify(['Règle technique', 'Entrée du wiki', 'Design system', 'Persona', 'Parcours', 'Prototype']), JSON.stringify(await kinds()));
+    const NAMES = ['Cadre fonctionnel', 'Cadre technique', 'Design system', 'Persona', 'Parcours utilisateur', 'Prototype'];
+    check('admin launcher: with the five modules on, six explicit entries (functional frame, technical frame, design system, persona, user flow, prototype)', JSON.stringify(await kinds()) === JSON.stringify(NAMES), JSON.stringify(await kinds()));
+    const listed = await pg.$$eval('#adminList li', (l) => l.map((x) => x.textContent));
+    check('admin launcher: each entry is listed with its command and a one-line explanation', listed.length === 6 && ['/pilot-functional-frame', '/pilot-technical-frame', '/pilot-design-system', '/pilot-persona', '/pilot-user-flow', '/pilot-proto'].every((c, i) => listed[i].startsWith(NAMES[i] + ' ' + c + ' : ') && listed[i].length > NAMES[i].length + c.length + 20 && !listed[i].includes('\n')), JSON.stringify(listed));
     const aCmd = () => text(pg, '#adminCmd');
     const aHref = async () => decodeURIComponent((await pg.$eval('#adminOpen', (a) => a.getAttribute('href') || '')).split('?q=')[1].split('&repo=')[0]);
-    check('admin launcher: no link while the text is empty', (await pg.$eval('#adminOpen', (a) => a.getAttribute('aria-disabled'))) === 'true' && (await aCmd()) === '/pilot-architecture --guideline …');
+    check('admin launcher: no link while the text is empty', (await pg.$eval('#adminOpen', (a) => a.getAttribute('aria-disabled'))) === 'true' && (await aCmd()) === '/pilot-functional-frame …');
     await pg.fill('#adminText', 'ma\ndemande'); await pg.waitForTimeout(100);
-    for (const [label, cmd] of [['Règle technique', '/pilot-architecture --guideline ma demande'], ['Entrée du wiki', '/pilot-wiki --edit ma demande'], ['Design system', '/pilot-design ma demande'], ['Persona', '/pilot-flow --new persona ma demande'], ['Parcours', '/pilot-flow --new flow ma demande'], ['Prototype', '/pilot-proto ma demande']]) {
+    for (const [label, cmd] of [['Cadre fonctionnel', '/pilot-functional-frame ma demande'], ['Cadre technique', '/pilot-technical-frame ma demande'], ['Design system', '/pilot-design-system ma demande'], ['Persona', '/pilot-persona ma demande'], ['Parcours utilisateur', '/pilot-user-flow ma demande'], ['Prototype', '/pilot-proto ma demande']]) {
       await pg.click('#adminSeg >> text=' + label); await pg.waitForTimeout(80);
       check('admin launcher: ' + label + ' writes ' + cmd, (await aCmd()) === cmd && (await aHref()) === cmd, await aCmd());
     }
-    for (const [mods, wfs, expect] of [[{ wiki: true, architecture: false, design: false, proto: false }, null, ['Entrée du wiki', 'Persona', 'Parcours']], [{ wiki: false, architecture: true, design: true, proto: true }, ['technical-frame', 'proto'], ['Règle technique', 'Prototype']]]) {
+    for (const [mods, wfs, expect] of [[{ wiki: true, architecture: false, design: false, proto: false }, null, ['Cadre fonctionnel', 'Persona', 'Parcours utilisateur']], [{ wiki: false, architecture: true, design: true, proto: true }, ['technical-frame', 'proto'], ['Cadre technique', 'Prototype']]]) {
       const pn = await open({ preload: [Object.assign({}, ADM, { modules: Object.assign({ dashboard: true }, mods), workflows: wfs || ADM.workflows })] });
       await tab(pn, 'Travail'); await pn.click('#adminToggle');
       check('admin launcher: only the kinds whose workflow is in the snapshot and whose module is on', JSON.stringify(await pn.$$eval('#adminSeg button', (b) => b.map((x) => x.textContent))) === JSON.stringify(expect), JSON.stringify(await pn.$$eval('#adminSeg button', (b) => b.map((x) => x.textContent))));
