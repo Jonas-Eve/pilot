@@ -189,8 +189,12 @@ def expand(raw, wid, patterns=None):
 def workflow_steps(wfs, title_max=36):
     """What the dashboard's timeline needs of each workflow, from the expanded steps: {id: [{id, kind, agents, title}]}."""
     short = lambda text: text if len(text) <= title_max else text[:title_max - 1].rstrip() + "…"
-    return {wid: [{"id": s["id"], "kind": s["kind"], "agents": [a["persona"] for a in s.get("agents", [])], "title": short(s.get("title", ""))}
-                  for s in wfs[wid]["steps"]] for wid in sorted(wfs)}
+    def row(s):
+        out = {"id": s["id"], "kind": s["kind"], "agents": [a["persona"] for a in s.get("agents", [])], "title": short(s.get("title", ""))}
+        if s.get("ask"):
+            out["ask"] = s["ask"]  # the step that may ask a question, and the gate it opens
+        return out
+    return {wid: [row(s) for s in wfs[wid]["steps"]] for wid in sorted(wfs)}
 
 
 def load_raw(directory=None):
@@ -1259,6 +1263,10 @@ class Machine:
                  "loops": record["loops"], "action": action, "by": self.gh.me(), "at": now_iso()}
         if record.get("question"):
             event["question"] = record["question"]["text"]  # the open question the run waits on, shown by the dashboard
+        if record.get("branch"):
+            event["branch"] = record["branch"]  # where the run's work in progress is parked
+        if (record.get("data") or {}).get("escalated"):
+            event["escalated"] = record["data"]["escalated"]  # a check, judge or validator out of loops: the run waits for a human
         if record.get("result"):
             event["result"] = record["result"]  # a finished run's outcome (a prototype's accepted or rejected), shown by the dashboard
         return event

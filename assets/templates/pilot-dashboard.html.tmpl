@@ -1767,12 +1767,12 @@ function vHowWorkflows(){
 }
 
 /* ---- Tickets: levels, types, statuses and the command that takes each, priority, claim, flags ---- */
-/* the steps that can ask: those whose workflow data carries `ask` (else the agent step followed by a human-optional step named ask) */
+/* the steps that can ask: those whose workflow data carries `ask` (else the agent step followed, through human steps, by one named ask) */
 function askers(){
   var w=(S.gh&&S.gh.workflowSteps)||{}, out=[];
   Object.keys(w).sort().forEach(function(id){(w[id]||[]).forEach(function(x,i,a){
     var ok=!!x.ask, j; if(x.kind!=='agent')return;
-    for(j=i+1;!ok&&a[j]&&a[j].kind==='human-optional';j++)ok=/(^|-)ask$/.test(a[j].id);
+    for(j=i+1;!ok&&a[j]&&/^human-(optional|start)$/.test(a[j].kind);j++)ok=/(^|-)ask$/.test(a[j].id);
     if(ok)out.push(id+'.'+x.id);});});
   return out;
 }

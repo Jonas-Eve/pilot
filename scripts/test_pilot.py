@@ -599,7 +599,8 @@ class SnapshotModulesTests(unittest.TestCase):
         self.assertEqual(steps["plan"][2], {"id": "audit", "kind": "agent", "agents": ["architect", "techlead"], "title": "Auditor"})
         for rows in steps.values():
             for x in rows:
-                self.assertEqual(set(x), {"id", "kind", "agents", "title"})
+                self.assertLessEqual({"id", "kind", "agents", "title"}, set(x))
+                self.assertLessEqual(set(x), {"id", "kind", "agents", "title", "ask"})
                 self.assertLessEqual(len(x["title"]), 36)
         self.assertLess(len(json.dumps(steps, ensure_ascii=False).encode()), pilot.SNAPSHOT_MAX_BYTES // 8)
 
@@ -2455,6 +2456,17 @@ class DashboardPayloadTests(unittest.TestCase):
         for wf, row in table.items():
             got = pilot.workflow_contract(m.wfs, wf)
             self.assertEqual((set(row["c"]), row["k"], set(row["p"])), (set(got["consumes"]), got["claims"], set(got["produces"])), wf)
+
+
+class RunEventFieldsTests(unittest.TestCase):
+    def test_a_parked_branch_and_an_escalation_ride_on_the_event(self):
+        m, _gh = machine([ticket(1)])
+        event = m._run_event(1, {"workflow": "build", "step": "check", "state": "waiting-human", "loops": {}, "branch": "pilot-run/1",
+                                 "data": {"escalated": {"from": "check", "failures": 3}}}, "advance:fail")
+        self.assertEqual((event["branch"], event["escalated"]["failures"]), ("pilot-run/1", 3))
+        plain = m._run_event(1, {"workflow": "build", "step": "check", "state": "running", "loops": {}, "data": {}}, "advance:ok")
+        self.assertNotIn("branch", plain)
+        self.assertNotIn("escalated", plain)
 
 
 class DashboardRolesTests(unittest.TestCase):

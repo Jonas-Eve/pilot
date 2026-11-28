@@ -47,7 +47,7 @@ def tickets():
     add(212, "Écran d'acceptation d'invitation", ["type:feature", "level:task", "status:building", "priority:P1"], 3, 201, None, "bob", 59)
     add(202, "Renommer son organisation", ["type:feature", "level:story", "status:merged", "priority:P2"], 50, 200)
     add(203, "Supprimer son organisation", ["type:feature", "level:story", "status:to-plan", "priority:P2", "needs-human"], 90, 200)
-    add(301, "Cache des états d'équipements", ["type:tech", "level:story", "status:planning", "priority:P1"], 7, None, None, "alice")
+    add(301, "Cache des états d'équipements", ["type:tech", "level:story", "status:planning", "priority:P1", "needs-human"], 7, None, None, "alice")
     add(302, "Migration du stockage des profils", ["type:tech", "level:story", "status:ready", "priority:P2"], 1)
     add(303, "Tier-2 : source de credential déléguée", ["type:tech", "level:story", "status:to-plan", "priority:P2", "on-hold"], 200)
     add(304, "Purge planifiée des comptes jamais confirmés", ["type:tech", "level:story", "status:ready", "priority:P2"], 26)
@@ -133,14 +133,19 @@ def live_documents():
                       "assignees": ["alice"], "state": "open", "action": "claim:fresh", "phase": "build",
                       "by": "alice", "at": iso(0.4)},
         "run-111": run(111, "build", "implement", "running", 0.4, "start"),
-        "run-301": run(301, "plan", "ask", "waiting-human", 0.8, loops={"check": 1}),
+        "run-301": run(301, "plan", "ask", "waiting-human", 0.8, "advance:blocked", loops={"check": 1},
+                       question="Découper l'epic par parcours (réserver, annuler) ou par écran ? Le découpage par parcours livre plus tôt, par écran évite les doublons.",
+                       branch="pilot-run/301"),
+        "run-302": run(302, "build", "check", "waiting-human", 0.5, "advance:fail", loops={"check": 2},
+                       escalated={"from": "check", "failures": 3}),
         "run-701": run(701, "proto", "build", "running", 0.3),
-        "run-702": run(702, "proto", "gate", "waiting-human", 1.5),
-        "run-703": run(703, "proto", "proto-accepte", "done", 29, "end", result="accepted"),
-        "run-704": run(704, "proto", "proto-accepte", "done", 40, "end", result="accepted"),
-        "run-705": run(705, "proto", "proto-accepte", "done", 150, "end", result="accepted"),
-        "run-706": run(706, "proto", "proto-accepte", "done", 260, "end", result="rejected"),
-        "run-710": run(710, "technical-frame", "gate", "waiting-human", 1.0),
+        "run-702": run(702, "proto", "ask", "waiting-human", 1.5, "advance:blocked",
+                       question="Faut-il un écran de confirmation avant d'envoyer l'alerte d'ascenseur en panne ?", branch="pilot-run/702"),
+        "run-703": run(703, "proto", "end", "done", 29, "end", result="accepted"),
+        "run-704": run(704, "proto", "end", "done", 40, "end", result="accepted"),
+        "run-705": run(705, "proto", "end", "done", 150, "end", result="accepted"),
+        "run-706": run(706, "proto", "end", "done", 260, "end", result="rejected"),
+        "run-710": run(710, "technical-frame", "check", "waiting-human", 1.0, "advance:fail", escalated={"from": "check", "failures": 3}),
         "run-711": run(711, "design-system", "build", "running", 0.6, loops={"check": 1}),
         "run-712": run(712, "persona", "challenge", "waiting-human", 2.0),
         "run-713": run(713, "user-flow", "write", "running", 0.5),

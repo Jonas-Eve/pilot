@@ -8,7 +8,7 @@ Best-effort only: GitHub and the run records stay the source of truth; a push th
 **What to push** (to the dashboard at `dashboardUrl`):
 - Every `event` returned by `.pilot/pilot.py claim|set|flag|unflag`, and by `run start|advance|answer|park|resume|end` (`kind: "run"`), and every entry of the `events`
   list of `event` (several tickets: one `ArtifactData` `batch`): a new document in the `events` collection, id `<epoch milliseconds>-<issue
-  number>`, body = the event as returned, unchanged. Always a new document. A `run` event carries the workflow, step, state, the open question's text while the run waits on one and, once the run ended, its result: the cockpit's runs and prototypes read them.
+  number>`, body = the event as returned, unchanged. Always a new document. A `run` event carries the workflow, step, state, `action` (`start`, `advance:<result>`, `answer`, `park`, `resume`, `end`), the open question's text (`question`) while the run waits on one, `branch` once its work is parked and, once the run ended, its result: the cockpit's runs and prototypes read them. A `waiting-human` run with a `question` is a question to answer; without one it is an escalation to resume.
 - At the end of a run, one snapshot (`.pilot/pilot.py snapshot`), pushed as `pilot-dashboard` says.
 
 Never read the dashboard back or retry; mention a failure only in the final report.
