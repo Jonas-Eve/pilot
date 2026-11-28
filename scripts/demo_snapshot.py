@@ -166,7 +166,7 @@ def flow_run_document():
 
 
 def design_document():
-    """The `design/Jonas-Eve__pilot` document a /pilot-design session would have written."""
+    """The `design/Jonas-Eve__pilot` document a /pilot-design-system session would have written."""
     return {
         "kind": "design", "repo": REPO, "at": iso(5),
         "charter": {

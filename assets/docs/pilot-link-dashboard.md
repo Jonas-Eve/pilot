@@ -1,6 +1,6 @@
 # PILOT link — pushing live events to the project's dashboard
 
-Read by the skills that run a workflow (`pilot-need|plan|build|accept|report|express|architecture|wiki|design|proto|flow`) and by `pilot-dashboard`.
+Read by the skills that run a workflow (`pilot-need|plan|build|accept|report|express|functional-frame|technical-frame|design-system|proto|persona|user-flow`) and by `pilot-dashboard`.
 Best-effort only: GitHub and the run records stay the source of truth; a push that fails or is skipped never blocks or changes a run.
 
 **When.** `.pilot/state.json` has `dashboardUrl`, does not turn the `dashboard` module off (`modules.dashboard` set to `false`), and the dashboard's database tool is available. Else skip everything below, silently. Once.
