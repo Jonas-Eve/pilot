@@ -215,7 +215,7 @@ const STUB = (opts) => `
     check('runs: workflow, step and state on each row; loops counted', /Réalisation/.test(await rr(16).textContent()) && /implement/.test(await rr(16).textContent()) && /en cours/.test(await rr(16).textContent()) && /2 boucles/.test(await rr(16).textContent()) && /échoué/.test(await rr(41).textContent()));
     check('runs: the title is the ticket\'s, else the workflow\'s', /Tâche en cours/.test(await rr(16).textContent()) && /Besoin/.test(await rr(40).textContent()));
     check('runs: a run in progress is not resumed (it may be alive), unless its ticket can-resume', !(await rc(16)).some((c) => /--resume/.test(c)));
-    check('runs: an escalated or failed run is resumed with --resume; a run with a question is answered, not resumed', (await rc(40)).some((c) => c.startsWith('/pilot-need --resume 40|')) && (await rc(41)).some((c) => c.startsWith('/pilot-accept --resume 41|')) && !(await rc(13)).some((c) => /--resume/.test(c)) && (await rc(13)).some((c) => /\|Répondre$/.test(c)) && (await rc(13)).some((c) => /issues\/13\|Voir sur GitHub$/.test(c)), JSON.stringify([await rc(40), await rc(41)]));
+    check('runs: an escalated or failed run is resumed with --resume; a run with a question is answered, not resumed', (await rc(40)).some((c) => c.startsWith('/pilot-need --resume 40|')) && (await rc(41)).some((c) => c.startsWith('/pilot-accept --resume 41|')) && !(await rc(13)).some((c) => /--resume/.test(c)) && (await rr(13).locator('button:has-text("Répondre")').count()) === 1 && (await rc(13)).some((c) => /issues\/13\|Voir sur GitHub$/.test(c)), JSON.stringify([await rc(40), await rc(41)]));
     check('runs: the question is on the run row, with the draft branch; an escalation says so instead', /Question : Découper par parcours ou par écran \?/.test(await rr(13).textContent()) && /brouillon sauvegardé sur pilot-run\/13/.test(await rr(13).textContent()) && /escalade/.test(await rr(40).textContent()) && /après 3 échecs à l’étape check/.test(await rr(40).textContent()) && !/Question :/.test(await rr(40).textContent()) && !/brouillon/.test(await rr(40).textContent()));
     check('runs: the answer panel is closed until "Répondre"', (await rr(13).locator('textarea').count()) === 0);
     await rr(13).locator('button:has-text("Répondre")').click(); await pg.waitForTimeout(150);
@@ -244,7 +244,7 @@ const STUB = (opts) => `
     check('timeline: the button folds it again', (await pg.locator('#view .tl').count()) === 0);
     await rr(40).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
     const tw = pg.locator('#view section[aria-label="Runs en cours"] .row', { hasText: '#40 ' }).first();
-    check('timeline: an escalated run says so at its current step, with no question', /Attendu : escalade/.test(await tw.locator('li.cur').textContent()) && /--resume/.test(await tw.locator('li.cur').textContent()) && (await tw.locator('li.cur.wait').count()) === 1, await tw.locator('li.cur').textContent());
+    check('timeline: an escalated run says so at its current step, with no question', /escalade/.test(await tw.locator('li.cur').textContent()) && !/Attendu/.test(await tw.locator('li.cur').textContent()) && /--resume/.test(await tw.locator('li.cur').textContent()) && (await tw.locator('li.cur.wait').count()) === 1, await tw.locator('li.cur').textContent());
     await rr(13).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
     check('timeline: a run with a question shows it at the ask step ("Attendu : …") with the draft branch', /Attendu : Découper par parcours ou par écran \?/.test(await rr(13).locator('li.cur').textContent()) && /brouillon sauvegardé sur pilot-run\/13/.test(await rr(13).locator('li.cur').textContent()) && /ask/.test(await rr(13).locator('li.cur').textContent() + 'ask'));
     await rr(41).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
@@ -259,6 +259,14 @@ const STUB = (opts) => `
     await pgc.evaluate((e) => window.__push('events', 'l2', e), run({ n: 41, workflow: 'build', step: 'merge', state: 'waiting-human', at: iso(0) })); await pgc.waitForTimeout(250);
     check('runs: a pushed run event shows without reload', /#41 /.test(await text(pgc, '#view section[aria-label="Runs en cours"]')));
     await pgc.close();
+    { await pg.click('#view .seg button:has-text("Board")'); await pg.waitForTimeout(150);
+      const c13 = pg.locator('#view .board .card', { hasText: '#13 ' }).first();
+      check('board: a card of a run with a question shows it and one action, "Répondre", not the resume nor GitHub', /Question : Découper par parcours/.test(await c13.textContent()) && (await c13.locator('.acts > *').count()) === 1 && (await c13.locator('button:has-text("Répondre")').count()) === 1 && (await c13.locator('a.btn').count()) === 0);
+      await c13.locator('button:has-text("Répondre")').click(); await pg.waitForTimeout(250);
+      check('board: "Répondre" opens the ticket page with the answer panel (question, textarea) open', (await pg.evaluate(() => location.hash)) === '#file/13' && (await pg.locator('#view .ans textarea').count()) === 1 && /Question : Découper par parcours/.test(await text(pg, '#view .ans')) && /Attendu/.test((await pg.locator('#view').textContent()) + 'Attendu'));
+      await pg.locator('#view button:has-text("Workflow")').first().click(); await pg.waitForTimeout(150);
+      check('ticket page: the timeline says "Attendu : <question>" at the ask step', /Attendu : Découper par parcours ou par écran \?/.test(await pg.locator('#view .tl li.cur').first().textContent()));
+      await pg.evaluate(() => { location.hash = 'file'; }); await pg.waitForTimeout(150); }
     check('runs: no page errors', pg.errors.length === 0, pg.errors.join('|'));
     await pg.screenshot({ path: path.join(TMP, 'runs.png') });
     await pg.close();
@@ -856,6 +864,7 @@ const STUB = (opts) => `
     check('help: workflows lists those the snapshot lists, with their command and the statuses they take and produce', /\/pilot-build/.test(wf) && /Prend :\s*building, ready, reviewing/.test(wf) && /Produit :\s*merged, reviewing/.test(wf) && !/\/pilot-design-system/.test(wf), wf.slice(0, 400));
     const tk = await get('tickets');
     check('help: tickets give the statuses per level and the command of each status', /epic : forming → to-plan → planning → planned → done → wont-do/.test(tk) && /task : ready → building → reviewing → merged → done/.test(tk) && /merged\s+\/pilot-accept <n°>/.test(tk) && /ready\s+\/pilot-build <n°>/.test(tk) && /reviewing\s+\/pilot-build --resume <n°>/.test(tk), tk.slice(0, 600));
+    check('help: questions: which steps can ask (from the workflow data), the answer in the run, the branch, the escalation', /Questions/.test(tk) && /run answer/.test(tk) && /pilot-run\/<n°>/.test(tk) && /de lui-même depuis son enregistrement/.test(tk) && /escalade/.test(tk) && /build\.implement/.test(tk) && /plan\.write/.test(tk) && /proto\.build/.test(tk) && /accept\.run-ai/.test(tk) && !/build\.ask/.test(tk), tk.slice(tk.indexOf('Questions'), tk.indexOf('Questions') + 1200));
     check('help: the flags are explained', ['needs-human', 'on-hold', 'can-resume', 'express', 'fix', 'gap'].every((f) => tk.includes(f)));
     const md = await get('modules');
     check('help: modules describe the five tabs, the runs and where the data comes from', ['Travail', 'Prototypes', 'Design', 'Wiki', 'Architecture'].every((t) => md.includes(t)) && /étapes de run/.test(md));
@@ -960,7 +969,7 @@ const STUB = (opts) => `
     // Wiki: functional-frame, persona and user-flow runs
     await tab(pg, 'Wiki');
     const wt = await text(pg, `#view ${ARUNS}`);
-    check('Wiki: the persona run (waiting for a human, answered on GitHub), the user-flow run and the failed functional-frame run, at the top', (await pg.locator(`#view ${ARUNS} .row`).count()) === 3 && /#33 /.test(wt) && /#34 /.test(wt) && /#37 /.test(wt) && /Persona/.test(wt) && /Parcours utilisateur/.test(wt) && /Cadre fonctionnel/.test(wt) && /attend un humain/.test(await rowsOf(33).textContent()) && /échoué/.test(await rowsOf(34).textContent()) && /Répondre sur GitHub/.test((await cmdsOf(33)).join()));
+    check('Wiki: the persona run (waiting for a human at a gate, looked at on GitHub), the user-flow run and the failed functional-frame run, at the top', (await pg.locator(`#view ${ARUNS} .row`).count()) === 3 && /#33 /.test(wt) && /#34 /.test(wt) && /#37 /.test(wt) && /Persona/.test(wt) && /Parcours utilisateur/.test(wt) && /Cadre fonctionnel/.test(wt) && /attend un humain/.test(await rowsOf(33).textContent()) && /échoué/.test(await rowsOf(34).textContent()) && /issues\/33\|Voir sur GitHub/.test((await cmdsOf(33)).join()) && !/Répondre/.test((await cmdsOf(33)).join()));
     await rowsOf(33).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
     check('Wiki: the waiting run says what it awaits at its gate', /Attendu : décision humaine à ce gate/.test(await rowsOf(33).locator('li.cur').textContent()));
     const wikiCmds = (await pg.$$eval('#view a.btn', (as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || '').split('&repo=')[0])))).filter(Boolean);
@@ -1075,7 +1084,7 @@ const STUB = (opts) => `
           document.querySelectorAll('[title],[aria-label],[placeholder]').forEach((e) => ['title', 'aria-label', 'placeholder'].forEach((a) => { if (e.getAttribute(a)) bits.push(e.getAttribute(a)); }));
           return bits.join('\n');
         });
-        const own = t.split('\n').filter((l) => FR_WORDS.test(l) && !/Ticket|Layering|Catalog|Autre projet|Jonas|myavimobility|\bProto\b|du proto|Trop complexe|Piège|Pas de blanc/.test(l));
+        const own = t.split('\n').filter((l) => FR_WORDS.test(l) && !/Ticket|Layering|Catalog|Autre projet|Jonas|myavimobility|\bProto\b|du proto|Un écran de confirmation|Découper par parcours|Trop complexe|Piège|Pas de blanc/.test(l));
         if (own.length) out.push('#' + r + ': ' + own.slice(0, 4).join(' ¦ '));
       }
       return out;

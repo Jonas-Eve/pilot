@@ -477,7 +477,6 @@ var EN={
 "réponse humaine à la question posée":"human answer to the question asked",
 "direction donnée par l’humain":"direction given by the human",
 "un humain doit lever la condition d’attente":"a human must lift the waiting condition",
-"un humain doit lever le blocage (voir le commentaire sur GitHub)":"a human must lift the blocker (see the comment on GitHub)",
 "run échoué à cette étape":"run failed at this step",
 "humain (gate)":"human (gate)",
 "humain (si besoin)":"human (if needed)",
@@ -918,8 +917,9 @@ function flagChips(t){
 }
 function actButtons(t,a,full){
   var acts=[];
-  if(a.kind==='run'){acts.push(openLink(a.cmd,a.label,full)); if(full)acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd,e.target);}},'Copier'));}
-  else{if(a.kind==='human'&&runQ(t.n))acts.push(answerToggle(t.n)); acts.push(ghLink(t,'Voir sur GitHub'));}
+  if(runQ(t.n)){acts.push(answerToggle(t.n),ghLink(t,'Voir sur GitHub'));}
+  else if(a.kind==='run'){acts.push(openLink(a.cmd,a.label,full)); if(full)acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd,e.target);}},'Copier'));}
+  else acts.push(ghLink(t,'Voir sur GitHub'));
   if(t.r)acts.push(h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r));
   return acts;
 }
@@ -935,10 +935,9 @@ function setStage(k,v){(S.so[S.role]=S.so[S.role]||{})[k]=v;}
 /* a card is a number, a title (the link to the ticket's page), at most one chip, and at most one action; the rest is on the ticket's page. The status is the column. */
 function cardAction(t){
   var a=actionFor(t);
-  if(a.kind==='run')return openLink(a.cmd,a.label,false);
-  if(a.kind!=='human')return null;
   if(runQ(t.n))return h('button',{class:'btn primary',type:'button',onclick:function(){(S.ans[t.n]=S.ans[t.n]||{open:false,text:''}).open=true;location.hash='#file/'+t.n;}},'Répondre');
-  return ghLink(t,'Voir sur GitHub');
+  if(a.kind==='run')return openLink(a.cmd,a.label,false);
+  return a.kind==='human'?ghLink(t,'Voir sur GitHub'):null;
 }
 function boardCard(r,child){
   var t=r.t, flag=has(t,'needs-human'), epic=has(t,'level:epic'), on=S.epic===t.n, par=parentsOf(t)[0], d=t.k&&t.k[1]?Math.round(100*t.k[0]/t.k[1]):0, act;
@@ -1061,7 +1060,7 @@ function ticketRow(t,withLevel,depth,extra){
         t.assignee?h('span',{class:'chip'+(S.me&&t.assignee===S.me?' acc':'')},'@'+t.assignee):null,
         t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
         h('span',{class:'note'},ago(t.updated)),
-        a.kind==='run'?h('span',{class:'cmd'},a.cmd):null),
+        a.kind==='run'&&!runQ(t.n)?h('span',{class:'cmd'},a.cmd):null),
       runQ(t.n)?h('p',{class:'note'},h('strong',{},'Question : '),runQ(t.n)):null,
       branchNote(runBranch(t.n)),
       extra||null),
@@ -1317,7 +1316,7 @@ function protoRow(e){
   var m=e.meta, n=e.n, open=!!S.protoOpen[n], hasHtml=Math.floor(Number(m.parts)||0)>0, acts=[];
   if(e.group==='encours'){
     if(runQ(n))acts.push(answerToggle(n));
-    else if(e.state!=='running')acts.push(openLink('/pilot-proto --resume '+n,'Reprendre',true));
+    else acts.push(openLink('/pilot-proto --resume '+n,'Reprendre',true));
     acts.push(ghLink({n:n},'Voir sur GitHub'));
     acts.push(openLink('/pilot-proto '+n+' --reject','Rejeter'));
   }else if(e.result!=='rejected')acts.push(openLink('/pilot-need --proto '+n,'Lancer le besoin',true));
@@ -1768,11 +1767,13 @@ function vHowWorkflows(){
 }
 
 /* ---- Tickets: levels, types, statuses and the command that takes each, priority, claim, flags ---- */
-/* the steps that can ask: those whose workflow data carries `ask` (else the agent step right before a human-optional ask step) */
+/* the steps that can ask: those whose workflow data carries `ask` (else the agent step followed by a human-optional step named ask) */
 function askers(){
   var w=(S.gh&&S.gh.workflowSteps)||{}, out=[];
   Object.keys(w).sort().forEach(function(id){(w[id]||[]).forEach(function(x,i,a){
-    var nx=a[i+1]; if(x.kind==='agent'&&(x.ask||(nx&&nx.kind==='human-optional'&&/(^|-)ask$/.test(nx.id))))out.push(id+'.'+x.id);});});
+    var ok=!!x.ask, j; if(x.kind!=='agent')return;
+    for(j=i+1;!ok&&a[j]&&a[j].kind==='human-optional';j++)ok=/(^|-)ask$/.test(a[j].id);
+    if(ok)out.push(id+'.'+x.id);});});
   return out;
 }
 function vQuestionsHelp(){
