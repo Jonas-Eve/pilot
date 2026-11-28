@@ -74,6 +74,7 @@ const STUB = (opts) => `
   const rowCmds = async (page, n) => (await page.locator('#view .row', { hasText: '#' + n + ' ' }).first().locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0]) + '|' + a.textContent.trim())));
 
   const WFSTEPS = JSON.parse(require('child_process').execFileSync('python3', ['-c', "import sys,json;sys.path.insert(0,'" + path.resolve(__dirname) + "');import pilot;print(json.dumps(pilot.workflow_steps(pilot.load_workflows())))"], { cwd: TMP }).toString());
+  const WFPATS = JSON.parse(require('child_process').execFileSync('python3', ['-c', "import sys,json;sys.path.insert(0,'" + path.resolve(__dirname) + "');import pilot;print(json.dumps(pilot.workflow_patterns(pilot.load_workflows())))"], { cwd: TMP }).toString());
   const BASE = snapshot([ticket(99, ['type:tech', 'level:task', 'status:ready', 'priority:P1'], { t: 'Ticket de l instantane' })], 120);
   const ev = (o) => ({ kind: 'ticket', n: 99, title: 'Ticket de l instantane', labels: ['type:tech', 'level:task', 'status:building'], assignees: ['alice'],
                        state: 'open', action: 'set', phase: 'build', by: 'alice', at: iso(5), ...o });
@@ -152,7 +153,7 @@ const STUB = (opts) => `
     ticket(31, ['run:technical-frame', 'needs-human'], { t: 'run:technical-frame Une règle' }),
   ], 120);
   V6.workflows = ['accept', 'build', 'express', 'need', 'plan', 'proto', 'report'];
-  V6.workflowSteps = WFSTEPS;
+  V6.workflowSteps = WFSTEPS; V6.workflowPatterns = WFPATS;
   page = await open({ preload: [V6] });
   view = await tab(page, 'Travail');
   check('work list: the tickets, run issues left out (12 tickets)', (await trows(page)) === 12 && /Travail · 12/.test(view) && !/Mon proto/.test(view.split('Runs en cours')[0] || ''), view.slice(0, 200));
@@ -1036,11 +1037,16 @@ const STUB = (opts) => `
     let pg = await open(xo('fr'));
     const pageSrc = fs.readFileSync(path.join(TMP, 'page.html'), 'utf8');
     const docs = {}; pageSrc.replace(/var WF_DOCS=\{([\s\S]*?)\n\};/, (_m, body) => body.replace(/'?([a-z-]+)'?:'([^']*)'/g, (_x, k, u) => { docs[k] = u; }));
-    check('workflow links: every one of the 12 workflows has an https://claude.ai/artifact/ URL in WF_DOCS, and the overview too', WF_IDS.concat(['overview']).every((k) => /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9]+$/.test(docs[k] || '')) && Object.keys(docs).length === 13, JSON.stringify(Object.keys(docs)));
+    check('workflow links: every one of the 12 workflows has an https://claude.ai/artifact/ URL in WF_DOCS, and the overview and the `document` pattern too', WF_IDS.concat(['overview']).every((k) => /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9]+$/.test(docs[k] || '')) && /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9]+$/.test(docs.document || '') && Object.keys(docs).length === 14, JSON.stringify(Object.keys(docs)));
     await go(pg, 'aide/workflows');
     const hw = await infos(pg, '#view');
     check('workflow links: the help Workflows page has an "i" on each card and one for the overview, opening in a new tab (noopener)', hw.length === 13 && wellFormed(hw) && hw.filter((a) => a.href === docs.overview).length === 1 && /^Voir la vue d’ensemble/.test(hw.find((a) => a.href === docs.overview).label), JSON.stringify(hw.slice(0, 2)));
     check('workflow links: each help card links its own workflow, labelled "Voir le schéma du workflow <name>"', WF_IDS.every((id) => hw.some((a) => a.href === docs[id])) && hw.some((a) => a.label === 'Voir le schéma du workflow Besoin') && hw.some((a) => a.label === 'Voir le schéma du workflow Cadre technique'), JSON.stringify(hw.map((a) => a.label)));
+    const PAT_IDS = ['need', 'proto', 'express', 'functional-frame', 'technical-frame', 'design-system', 'persona', 'user-flow'];
+    const chipsOf = (sel) => pg.$$eval(sel + ' a.chip.pat', (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel, text: a.textContent, row: (a.closest('.row') || {}).textContent || '' })));
+    const hc = await chipsOf('#view');
+    check('pattern chip: the help Workflows page shows "motif : document" on the 8 workflows built on the pattern, linking its page in a new tab (noopener)', hc.length === 8 && hc.every((c) => c.href === docs.document && c.target === '_blank' && /\bnoopener\b/.test(c.rel) && c.text === 'motif : document') && PAT_IDS.every((id) => hc.some((c) => c.row.indexOf('/pilot-' + id) > -1)) && !hc.some((c) => /\/pilot-(plan|build|accept|report)\b/.test(c.row)), JSON.stringify(hc.map((c) => c.row.slice(0, 30))));
+    check('pattern chip: the snapshot data lists exactly those 8 workflows', JSON.stringify(Object.keys(WFPATS).sort()) === JSON.stringify(PAT_IDS.slice().sort()) && Object.values(WFPATS).every((v) => v === 'document'), JSON.stringify(WFPATS));
     await go(pg, 'file');
     const runsSel = '#view section[aria-label="Runs en cours"]';
     const hr = await infos(pg, runsSel);
@@ -1048,6 +1054,10 @@ const STUB = (opts) => `
     await pg.locator(runsSel + ' .row', { hasText: '#16 ' }).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(120);
     const th = await infos(pg, '#view .tlhead');
     check('workflow links: the timeline header names the workflow with its "i"', th.length === 1 && wellFormed(th) && th[0].href === docs.build && /Réalisation/.test(await pg.locator('#view .tlhead').textContent()), JSON.stringify(th));
+    check('pattern chip: the timeline header of a workflow outside the pattern (build) has none', (await chipsOf('#view .tlhead')).length === 0);
+    await pg.locator(runsSel + ' .row', { hasText: '#40 ' }).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(120);
+    const tc = await chipsOf('#view .tlhead');
+    check('pattern chip: the timeline header of a workflow built on the pattern (need) shows it, linking the generic page', tc.length === 1 && tc[0].href === docs.document && tc[0].text === 'motif : document' && tc[0].target === '_blank', JSON.stringify(tc));
     await pg.click('#adminToggle');
     const ha = await infos(pg, '#adminList');
     check('workflow links: each entry of the admin launcher has the "i" of its workflow', ha.length === 6 && wellFormed(ha) && ['functional-frame', 'technical-frame', 'design-system', 'persona', 'user-flow', 'proto'].every((id) => ha.some((a) => a.href === docs[id])), JSON.stringify(ha.map((a) => a.label)));

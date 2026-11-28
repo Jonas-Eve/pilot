@@ -142,7 +142,7 @@ def pattern_steps(definition, wid, params, patch, problems):
 def expand(raw, wid, patterns=None):
     """A workflow as the runner sees it. Its own `steps` have their `include` entries replaced by the steps of the workflow they
     name (prefixed ids, patched fields). With a `pattern`, those steps are added to the pattern's, each run after its `after` step
-    (default: after the one before it, the first at the end). `pattern`, `params` and `patch` are consumed; errors go in `_problems`."""
+    (default: after the one before it, the first at the end). `pattern`, `params` and `patch` are consumed (the pattern's name stays as `built_on`); errors go in `_problems`."""
     wf, own, problems = copy.deepcopy(raw[wid]), [], []
     pattern, params, patch = wf.pop("pattern", None), wf.pop("params", {}), wf.pop("patch", {})
     for step in wf["steps"]:
@@ -181,6 +181,8 @@ def expand(raw, wid, patterns=None):
                 steps.insert(at + 1, step)
                 anchor = step["id"]
     wf["steps"] = renumber(steps)
+    if pattern is not None:
+        wf["built_on"] = pattern  # the pattern's name, so a reader of the expanded form knows which skeleton it was built on
     if problems:
         wf["_problems"] = problems
     return wf
@@ -195,6 +197,11 @@ def workflow_steps(wfs, title_max=36):
             out["ask"] = s["ask"]  # the step that may ask a question, and the gate it opens
         return out
     return {wid: [row(s) for s in wfs[wid]["steps"]] for wid in sorted(wfs)}
+
+
+def workflow_patterns(wfs):
+    """The workflows built on a pattern: {id: pattern name} (the dashboard flags them, and links the pattern's page)."""
+    return {wid: wfs[wid]["built_on"] for wid in sorted(wfs) if wfs[wid].get("built_on")}
 
 
 def load_raw(directory=None):
@@ -1066,6 +1073,7 @@ class Machine:
         doc["language"] = read_language()  # the dashboard opens in it (a reader can switch)
         doc["workflows"] = sorted(self.wfs)  # the dashboard shows the workflows this project runs
         doc["workflowSteps"] = workflow_steps(self.wfs)  # and, per workflow, the steps its timeline walks through
+        doc["workflowPatterns"] = workflow_patterns(self.wfs)  # and which of them are built on a pattern
         while len(json.dumps(doc, ensure_ascii=False).encode()) > SNAPSHOT_MAX_BYTES and rows:
             del rows[max(1, len(rows) * 9 // 10):]
             doc["truncated"] = True

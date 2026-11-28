@@ -108,7 +108,8 @@ def snapshot():
     rows.sort(key=lambda r: r["u"], reverse=True)
     return {"repo": REPO, "at": iso(0.5), "source": "demo", "total": len(rows), "truncated": False, "issues": rows,
             "modules": {"wiki": True, "architecture": True, "dashboard": True, "design": True, "proto": True},
-            "language": "fr", "workflows": WORKFLOWS, "workflowSteps": pilot.workflow_steps(pilot.load_workflows())}
+            "language": "fr", "workflows": WORKFLOWS, "workflowSteps": pilot.workflow_steps(pilot.load_workflows()),
+            "workflowPatterns": pilot.workflow_patterns(pilot.load_workflows())}
 
 
 WORKFLOWS = ["accept", "build", "design-system", "express", "functional-frame", "need", "persona", "plan", "proto", "report", "technical-frame", "user-flow"]

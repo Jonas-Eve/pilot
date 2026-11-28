@@ -134,7 +134,8 @@ a.chip:hover{text-decoration:underline}
 .info{flex:none;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font:italic 600 14px/1 Georgia,serif;align-self:center}
 .info:hover,.info[aria-current="page"]{color:var(--fg);border-color:var(--muted)}
 .wfdoc{width:18px;height:18px;font-size:11px;margin-left:6px;vertical-align:middle}
-.tlhead{display:flex;align-items:center;gap:2px;margin:0 0 6px}
+.tlhead{display:flex;align-items:center;flex-wrap:wrap;gap:2px 6px;margin:0 0 6px}
+a.chip.pat{background:var(--accent-soft);color:var(--accent);margin-left:6px}
 .ref{overflow-x:auto}
 .ref table{border-collapse:collapse;width:100%;font-size:13px}
 .ref th,.ref td{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
@@ -568,7 +569,7 @@ var WFS=[
   ['persona','/pilot-persona',0,'Persona','Persona','Rédige ou révise un persona du wiki : qui est l’utilisateur, ses contraintes, sa façon d’utiliser le produit.','Writes or revises a persona of the wiki: who the user is, their constraints, how they use the product.'],
   ['user-flow','/pilot-user-flow',0,'Parcours utilisateur','User flow','Rédige ou révise un parcours utilisateur du wiki : des étapes, le résultat attendu à chacune, des personas existants.','Writes or revises a user flow of the wiki: steps, the expected result at each, existing personas.']
 ];
-/* where each workflow's diagram lives: private claude.ai Artifacts (a page, its steps and typed documents), plus the overview. An id with no URL gets no "i". Kept equal to the workflow data's ids by test_pilot.py */
+/* where each workflow's diagram lives: private claude.ai Artifacts (a page, its steps and typed documents), plus the overview and the generic page of the `document` pattern. An id with no URL gets no "i". Kept equal to the workflow data's ids (+ overview, + the patterns) by test_pilot.py */
 var WF_DOCS={
   need:'https://claude.ai/artifact/X7s3i1zsQU6JQb3zPSh8gy',
   plan:'https://claude.ai/artifact/BVpxvhzwxZwvyCKFSGWgSD',
@@ -582,12 +583,19 @@ var WF_DOCS={
   'technical-frame':'https://claude.ai/artifact/PvqTQ49GJrMvwjvg4yfHpm',
   persona:'https://claude.ai/artifact/UgKKqmp8htmmRRzFWtubkC',
   'user-flow':'https://claude.ai/artifact/Frdgz5irPBv2bua4GX5P1G',
-  overview:'https://claude.ai/artifact/LKNQk6QzYRe6JCx39DkQxY'
+  overview:'https://claude.ai/artifact/LKNQk6QzYRe6JCx39DkQxY',
+  document:'https://claude.ai/artifact/2EAJnruoQDuuwNrzbP7evF'
 };
 /* the small "i" that opens a diagram in a new tab; nothing when the table has no URL for the key */
 function docI(key,fr,en){
   var u=WF_DOCS[key]; if(typeof u!=='string'||u.indexOf('https://claude.ai/artifact/')!==0)return null;
   return h('a',{class:'info wfdoc',href:u,target:'_blank',rel:'noopener','aria-label':L(fr,en),title:L(fr,en)},'i');
+}
+/* the small "pattern: document" chip, for a workflow the snapshot lists as built on that pattern: a link to the generic page (new tab); nothing without a URL */
+function patChip(wid){
+  var p=S.gh&&S.gh.workflowPatterns, name=p&&typeof p[wid]==='string'?p[wid]:'', u=name?WF_DOCS[name]:null;
+  if(!name||typeof u!=='string'||u.indexOf('https://claude.ai/artifact/')!==0)return null;
+  return h('a',{class:'chip pat',href:u,target:'_blank',rel:'noopener noreferrer',title:L('Construit sur le workflow générique « '+name+' » : voir sa page','Built on the generic “'+name+'” workflow: see its page')},L('motif : '+name,'pattern: '+name));
 }
 function wfI(id){var w=wfInfo(id), n=w?null:id; return docI(id,'Voir le schéma du workflow '+(w?w[3]:n),'See the diagram of the '+(w?w[4]:n)+' workflow');}
 var CONSULT={wiki:'/pilot-wiki',architecture:'/pilot-architecture'}; /* read-only skills: they answer a question from the bundle and change nothing */
@@ -659,7 +667,7 @@ function normSnap(i){var t={n:i.n,title:i.t||'(sans titre)',labels:i.l||[],updat
 function pickSnapshot(){
   var s=S.snaps[snapId(S.repo)];
   if(!s){S.gh={state:'empty',msg:'Aucun instantané pour '+S.repo+'.',live:[],at:null};return;}
-  S.gh={state:'live',msg:'',live:(s.issues||[]).map(normSnap),at:s.at,total:s.total,truncated:!!s.truncated,modules:(s.modules&&typeof s.modules==='object'&&!Array.isArray(s.modules))?s.modules:null,workflows:Array.isArray(s.workflows)?s.workflows.map(String):null,workflowSteps:(s.workflowSteps&&typeof s.workflowSteps==='object'&&!Array.isArray(s.workflowSteps))?s.workflowSteps:null};
+  S.gh={state:'live',msg:'',live:(s.issues||[]).map(normSnap),at:s.at,total:s.total,truncated:!!s.truncated,modules:(s.modules&&typeof s.modules==='object'&&!Array.isArray(s.modules))?s.modules:null,workflows:Array.isArray(s.workflows)?s.workflows.map(String):null,workflowSteps:(s.workflowSteps&&typeof s.workflowSteps==='object'&&!Array.isArray(s.workflowSteps))?s.workflowSteps:null,workflowPatterns:(s.workflowPatterns&&typeof s.workflowPatterns==='object'&&!Array.isArray(s.workflowPatterns))?s.workflowPatterns:null};
   var sv=store('cp.lang'); if(sv!=='fr'&&sv!=='en'&&s.language&&pickLang(s.language)!==LANG)setLang(s.language,false); /* a reader's own choice wins over the project's language */
 }
 function watchSnapshots(){
@@ -843,7 +851,7 @@ function wfTimeline(wid,run,t){
   });
   var info=wfInfo(wid);
   return h('div',{class:'tlwrap'},
-    h('div',{class:'tlhead'},h('strong',{},info?L(info[3],info[4]):wid),wfI(wid)),
+    h('div',{class:'tlhead'},h('strong',{},info?L(info[3],info[4]):wid),wfI(wid),patChip(wid)),
     !done&&cur<0?h('p',{class:'note'},run?'Étape courante inconnue : toutes les étapes sont à venir.':'Pas encore lancé : toutes les étapes sont à venir.'):null,
     h('ol',{class:'tl','aria-label':'Étapes du workflow'},items));
 }
@@ -1762,7 +1770,7 @@ function vHowWorkflows(){
     ov?h('p',{class:'note'},ov,L(' Vue d’ensemble des workflows',' Overview of the workflows')):null,
     h('div',{class:'agents'},ids.map(function(w){
       var c=CONTRACTS[w[0]], st=function(l){return l.map(function(x){return x.replace('status:','');}).join(', ');};
-      return helpCard(L(w[3],w[4]),w[0],[[L('Rôle :','What:'),L(w[5],w[6])],[L('Commande :','Command:'),code(w[1])]].concat(c?[[L('Prend :','Takes:'),c.c.length?st(c.c):'—'],[L('Produit :','Produces:'),st(c.p)]]:[]),wfI(w[0]));
+      return helpCard(L(w[3],w[4]),w[0],[[L('Rôle :','What:'),L(w[5],w[6])],[L('Commande :','Command:'),code(w[1])]].concat(c?[[L('Prend :','Takes:'),c.c.length?st(c.c):'—'],[L('Produit :','Produces:'),st(c.p)]]:[]),[wfI(w[0]),patChip(w[0])]);
     })));
 }
 

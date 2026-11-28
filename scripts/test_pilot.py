@@ -604,6 +604,18 @@ class SnapshotModulesTests(unittest.TestCase):
                 self.assertLessEqual(len(x["title"]), 36)
         self.assertLess(len(json.dumps(steps, ensure_ascii=False).encode()), pilot.SNAPSHOT_MAX_BYTES // 8)
 
+    def test_the_snapshot_flags_the_workflows_built_on_a_pattern(self):
+        doc = self.snapshot_in({"projectName": "p"})
+        raw, patterns = pilot.load_raw()
+        want = {wid: data["pattern"] for wid, data in raw.items() if data.get("pattern")}
+        self.assertEqual(doc["workflowPatterns"], want)
+        self.assertEqual(sorted(want), ["design-system", "express", "functional-frame", "need", "persona", "proto", "technical-frame", "user-flow"])
+        self.assertEqual(set(want.values()), set(patterns))
+        for wid in ("plan", "build", "accept", "report"):
+            self.assertNotIn(wid, doc["workflowPatterns"])
+        self.assertEqual(pilot.load_workflows()["need"]["built_on"], "document")  # the expanded form keeps the pattern's name
+        self.assertNotIn("built_on", pilot.load_workflows()["build"])
+
     def test_a_state_without_the_field_or_without_a_state_adds_nothing(self):
         self.assertNotIn("modules", self.snapshot_in({"projectName": "p"}))
         self.assertNotIn("modules", self.snapshot_in(None))
@@ -2485,12 +2497,13 @@ class DashboardRolesTests(unittest.TestCase):
         self.assertEqual(table, want)
 
     def test_the_diagram_links_are_the_workflow_ids_plus_the_overview(self):
-        """The template's WF_DOCS table (workflow id -> the URL of its diagram, plus `overview`) has exactly the workflow data's ids."""
+        """The template's WF_DOCS table (workflow id -> the URL of its diagram, plus `overview` and one page per pattern) has exactly the workflow data's ids and patterns."""
         page = (pathlib.Path(__file__).resolve().parent.parent / "assets" / "templates" / "pilot-dashboard.html.tmpl").read_text(encoding="utf-8")
         body = re.search(r"var WF_DOCS=\{(.*?)\n\};", page, re.S).group(1)
         pairs = re.findall(r"""^\s*'?([a-z-]+)'?:\s*'([^']*)'""", body, re.M)
         self.assertEqual(len(pairs), len(dict(pairs)), "a key twice")
-        self.assertEqual(set(dict(pairs)), set(pilot.load_workflows()) | {"overview"})
+        raw, patterns = pilot.load_raw()
+        self.assertEqual(set(dict(pairs)), set(pilot.load_workflows()) | {"overview"} | set(patterns))
         for key, url in pairs:
             self.assertRegex(url, r"^https://claude\.ai/artifact/[A-Za-z0-9]+$", key)
 
