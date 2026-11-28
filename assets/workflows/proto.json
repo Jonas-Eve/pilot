@@ -4,7 +4,7 @@
  "category": "run",
  "steps": [
   {
-   "id": "idee",
+   "id": "start",
    "n": "1",
    "kind": "human-start",
    "title": "Idea",
@@ -138,7 +138,7 @@
    ]
   },
   {
-   "id": "question-du-designer",
+   "id": "ask",
    "n": "5",
    "kind": "human-optional",
    "title": "Designer's question",
@@ -322,7 +322,7 @@
    "on_reject": [
     {
      "label": "fond",
-     "to": "idee"
+     "to": "start"
     },
     {
      "label": "formulation",
@@ -331,7 +331,7 @@
    ]
   },
   {
-   "id": "attente-du-design-system",
+   "id": "wait-design-system",
    "n": "10",
    "kind": "wait",
    "title": "Waiting for the design system",
@@ -362,7 +362,7 @@
    ]
   },
   {
-   "id": "proto-accepte",
+   "id": "end",
    "n": "11",
    "kind": "end",
    "title": "Proto accepted",
