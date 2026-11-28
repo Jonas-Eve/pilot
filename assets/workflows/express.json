@@ -136,6 +136,7 @@
     }
    ],
    "task": "write-provisional",
+   "ask": "ask",
    "in": [
     [
      "TEXT",
@@ -432,7 +433,7 @@
    "prefix": "build-",
    "patch": {
     "ask": {
-     "actor": "Human who requested the express, only if a choice is covered by nothing, or after two failures in a row: answers right away",
+     "actor": "Human who requested the express, only if a choice is covered by nothing: answers right away",
      "out": [
       [
        "TEXT",

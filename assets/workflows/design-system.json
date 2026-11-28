@@ -307,6 +307,7 @@
     }
    ],
    "task": "implement-design-system",
+   "ask": "ask",
    "in": [
     [
      "DESIGN",
@@ -337,8 +338,29 @@
    ]
   },
   {
-   "id": "validate-2",
+   "id": "ask",
    "n": "11",
+   "kind": "human-optional",
+   "title": "Implementer's question",
+   "actor": "Human F or T, only if the implementer is blocked: answers its question",
+   "in": [
+    [
+     "QUESTION",
+     "Card: the blocking point, the options with their effect and cost, the recommendation"
+    ]
+   ],
+   "out": [
+    [
+     "TEXT",
+     "Answer, recorded in the design system's documents. Implementation resumes"
+    ]
+   ],
+   "open_if": "blocked",
+   "loop_to": "implement"
+  },
+  {
+   "id": "validate-2",
+   "n": "12",
    "kind": "validator",
    "title": "Validator",
    "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
@@ -380,7 +402,7 @@
   },
   {
    "id": "check-2",
-   "n": "12",
+   "n": "13",
    "kind": "check",
    "title": "Code checks and case file",
    "actor": "Script",
@@ -421,7 +443,7 @@
   },
   {
    "id": "judge-2",
-   "n": "13",
+   "n": "14",
    "kind": "judge",
    "title": "Judge",
    "actor": "AI, fixed question, citation required",
@@ -461,7 +483,7 @@
   },
   {
    "id": "pr-ci",
-   "n": "14",
+   "n": "15",
    "kind": "check",
    "title": "PR opening and CI",
    "actor": "Script",
@@ -495,7 +517,7 @@
   },
   {
    "id": "gate-2",
-   "n": "15",
+   "n": "16",
    "kind": "human-gate",
    "title": "Gate 2 · Verification",
    "actor": "Human F",
@@ -544,7 +566,7 @@
   },
   {
    "id": "end",
-   "n": "16",
+   "n": "17",
    "kind": "end",
    "title": "Accepted · merge",
    "in": [

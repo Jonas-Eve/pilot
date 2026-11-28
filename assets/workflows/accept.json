@@ -171,6 +171,7 @@
     }
    ],
    "task": "recipe-run",
+   "ask": "ask",
    "in": [
     [
      "TEST",
@@ -240,8 +241,29 @@
    "alt_of": "run-ai"
   },
   {
-   "id": "dossier",
+   "id": "ask",
    "n": "6",
+   "kind": "human-optional",
+   "title": "AI executant's question",
+   "actor": "The human running the Recette, only if the AI executant is blocked: they take over from this step with the answer",
+   "in": [
+    [
+     "QUESTION",
+     "Card: the blocking point, the options with their effect and cost, the recommendation"
+    ]
+   ],
+   "out": [
+    [
+     "TEXT",
+     "Answer, kept in the run. The human executant continues at the next step, on the cases already planned"
+    ]
+   ],
+   "open_if": "blocked",
+   "loop_to": "run-human"
+  },
+  {
+   "id": "dossier",
+   "n": "7",
    "kind": "check",
    "title": "Case file",
    "actor": "Script",
@@ -270,7 +292,7 @@
   },
   {
    "id": "judge-2",
-   "n": "7",
+   "n": "8",
    "kind": "judge",
    "title": "Judge",
    "actor": "AI executor only. AI, fixed question, citation required",
@@ -306,7 +328,7 @@
   },
   {
    "id": "gate",
-   "n": "8",
+   "n": "9",
    "kind": "human-gate",
    "title": "Gate · Validation",
    "actor": "AI executor only. Human F (functional ticket, user flow) or human T (technical ticket)",
@@ -347,7 +369,7 @@
   },
   {
    "id": "record",
-   "n": "9",
+   "n": "10",
    "kind": "end",
    "title": "Record",
    "in": [

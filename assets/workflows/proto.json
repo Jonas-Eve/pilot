@@ -104,6 +104,7 @@
     }
    ],
    "task": "build-proto",
+   "ask": "ask",
    "in": [
     [
      "TEXT",

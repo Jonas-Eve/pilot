@@ -70,6 +70,7 @@
     }
    ],
    "task": "implement",
+   "ask": "ask",
    "in": [
     [
      "TICKET",
@@ -120,11 +121,11 @@
    "n": "3",
    "kind": "human-optional",
    "title": "Routed question",
-   "actor": "Human F or T, only if a choice is covered by nothing, or after two failures in a row",
+   "actor": "Human F or T, only if a choice is covered by nothing",
    "in": [
     [
      "QUESTION",
-     "Card: options, effect, cost, recommendation. After two failures: the list of failing checks"
+     "Card: options, effect, cost, recommendation"
     ]
    ],
    "out": [
@@ -565,7 +566,7 @@
    ],
    [
     "After two failures",
-    "The ticket is blocked and a question goes to the human concerned. There is no gate left to open it."
+    "The run waits for the human concerned, who resumes it once the cause is settled. There is no gate left to open it."
    ],
    [
     "No technical plan here",
