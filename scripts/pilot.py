@@ -6,7 +6,7 @@
   pilot.py pool    <workflow> [--limit N]              # tickets a workflow may take
   pilot.py resolve <workflow> <issue> [--resume]
   pilot.py claim   <workflow> <issue> --mode fresh|resume-orphaned|resume-cleared
-  pilot.py run     start|show|note|advance|resume|end   # a run: its state is one JSON comment on its issue; `advance` decides the next step by data
+  pilot.py run     start|show|note|advance|answer|park|restore|resume|end   # a run: its state is one JSON comment on its issue; `advance` decides the next step by data
   pilot.py check   <id> [--arg K=V] [--run N]           # one code check of a workflow step
   pilot.py judge   <id> --input FILE                    # validates a judge's answers
   pilot.py set     <issue> [--status S] [--assign-me|--unassign] [--add L]... [--remove L]... [--close] [--pr N]
@@ -46,6 +46,7 @@ import posixpath
 import re
 import subprocess
 import sys
+import tempfile
 import unicodedata
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -103,7 +104,7 @@ def expand(raw, wid):
             s.update(changes)
             old = s["id"]
             s["id"] = prefix + old
-            for key in ("loop_to", "alt_of"):
+            for key in ("loop_to", "alt_of", "ask"):
                 if s.get(key) in wanted:
                     s[key] = prefix + s[key]
             if s.get("on_fail", {}).get("to") in wanted:
@@ -161,12 +162,27 @@ def workflow_problems(wfs):
                     bad("unknown-persona", step, persona=agent["persona"])
             if step.get("open_if") and step["open_if"] not in OPEN_IF:
                 bad("unknown-open-if", step, open_if=step["open_if"])
+            if step.get("ask"):
+                asked = next((s for s in wf["steps"] if s["id"] == step["ask"]), None)
+                if step["kind"] != "agent":
+                    bad("ask-on-non-agent", step, kind=step["kind"])
+                if asked is None:
+                    bad("unknown-ask", step, target=step["ask"])
+                elif asked["kind"] != "human-optional" or asked.get("open_if") != "blocked":
+                    bad("ask-not-blocked-step", step, target=step["ask"])
             if step["kind"] == "check" and not step.get("check"):
                 bad("check-without-id", step)
             if step["kind"] == "judge" and not step.get("questions"):
                 bad("judge-without-questions", step)
             if step.get("check") and not step.get("action") and step["check"] not in CHECKS:
                 bad("unimplemented-check", step, check=step["check"])
+        asked = {s.get("ask") for s in wf["steps"]}
+        for step in wf["steps"]:
+            if step["kind"] == "human-optional" and step.get("open_if") == "blocked":
+                if step["id"] not in asked:
+                    bad("unasked-step", step)
+                if not step.get("loop_to"):
+                    bad("blocked-step-without-loop", step)
         if not any(s["kind"] == "end" for s in wf["steps"]):
             bad("no-end-step")
     return problems + composition_problems(wfs)
@@ -254,7 +270,7 @@ LABELS = {
     "status:merged": ("0E8A16", "PILOT: merged on main, waits for the Recette"),
     "status:done": ("0E8A16", "PILOT: the Recette passed"),
     "status:wont-do": ("E4E669", "PILOT: decided not to build it"),
-    "needs-human": ("B60205", "PILOT: a blocking question for a human; status: stays where it was"),
+    "needs-human": ("B60205", "PILOT: an open question for a human (a signal: the answer goes through `run answer`); status: stays where it was"),
     "on-hold": ("C2C2C2", "PILOT: deliberately paused; in no pool"),
     "can-resume": ("0E8A16", "PILOT: a human's signal that an interrupted run is safe to continue"),
     "express": ("D93F0B", "PILOT: made by the express workflow; provisional documents await their catch-up"),
@@ -650,6 +666,25 @@ class Refused(Exception):
     def __init__(self, payload):
         super().__init__(payload.get("reason", "refused"))
         self.payload = payload
+
+
+def git(*args, env=None, check=False):
+    """One git call in the working directory; `check` raises a Refused naming the failed command."""
+    done = subprocess.run(["git", *args], capture_output=True, text=True, env={**os.environ, **(env or {})})
+    if check and done.returncode:
+        raise Refused({"ok": False, "reason": "git-failed", "command": "git " + " ".join(args[:2]), "error": done.stderr.strip()[-300:]})
+    return done
+
+
+def git_out(*args, env=None, check=False):
+    return git(*args, env=env, check=check).stdout.strip()
+
+
+def git_identity():
+    """An author for a commit PILOT makes, only when the project has none configured."""
+    if git_out("config", "user.email"):
+        return {}
+    return {"GIT_AUTHOR_NAME": "pilot", "GIT_AUTHOR_EMAIL": "pilot@localhost", "GIT_COMMITTER_NAME": "pilot", "GIT_COMMITTER_EMAIL": "pilot@localhost"}
 
 
 class Machine:
@@ -1129,6 +1164,8 @@ class Machine:
     def _run_event(self, number, record, action):
         event = {"kind": "run", "n": number, "workflow": record["workflow"], "step": record["step"], "state": record["state"],
                  "loops": record["loops"], "action": action, "by": self.gh.me(), "at": now_iso()}
+        if record.get("question"):
+            event["question"] = record["question"]["text"]  # the open question the run waits on, shown by the dashboard
         if record.get("result"):
             event["result"] = record["result"]  # a finished run's outcome (a prototype's accepted or rejected), shown by the dashboard
         return event
@@ -1136,9 +1173,18 @@ class Machine:
     @staticmethod
     def step_view(step):
         """What a runner needs to run one step: no prose, only the fields that decide what to do."""
-        keep = ("id", "n", "kind", "title", "actor", "agents", "task", "check", "judge", "questions", "open_if", "loop_to",
+        keep = ("id", "n", "kind", "title", "actor", "agents", "task", "ask", "check", "judge", "questions", "open_if", "loop_to",
                 "alt_of", "on_fail", "on_reject", "in", "out")
         return {k: step[k] for k in keep if k in step}
+
+    @classmethod
+    def step_out(cls, record, step):
+        """`step_view` plus the human's answers the step must receive: those to a question it asked, or that were routed to it."""
+        view = cls.step_view(step)
+        answers = [a for a in record.get("answers", []) if step["id"] in (a["step"], a.get("to"))]
+        if answers:
+            view["answers"] = answers
+        return view
 
     def run_start(self, workflow, issue=None, title=None, data=None):
         wf = self._wf(workflow)
@@ -1167,7 +1213,7 @@ class Machine:
     def run_show(self, number):
         _cid, record = self._run_comment(number)
         step = next((s for s in self._wf(record["workflow"])["steps"] if s["id"] == record["step"]), None)
-        return {"ok": True, "run": number, **record, "current": self.step_view(step) if step else None}
+        return {"ok": True, "run": number, **record, "current": self.step_out(record, step) if step else None}
 
     def run_note(self, number, assumption=None, data=None):
         """Record an assumption (with its default, shown at the gate) or a value the later steps need (e.g. the executant)."""
@@ -1178,10 +1224,11 @@ class Machine:
         self._run_write(number, cid, record)
         return {"ok": True, "run": number, "assumptions": len(record["assumptions"]), "data": record["data"]}
 
-    def run_advance(self, number, result, note=None):
+    def run_advance(self, number, result, note=None, question=None):
         """The next step after the current one, decided by the workflow's data: ok, skip, loop (a human revised: back to the
-        step that audits), fail (a check, judge or validator: back to the producer, twice at most, then the gate or a question)
-        or reject:<label> (a gate sends the work back where its label says)."""
+        step that audits), fail (a check, judge or validator: back to the producer, twice at most, then the gate or a wait),
+        reject:<label> (a gate sends the work back where its label says) or blocked (the agent step's `ask` is open: the run
+        waits for `run answer`; only a step that carries `ask`). A human-optional step opened only by `blocked` is skipped here."""
         cid, record = self._run_comment(number)
         wf = self._wf(record["workflow"])
         steps = wf["steps"]
@@ -1189,6 +1236,15 @@ class Machine:
         cur = steps[index]
         if record["state"] == "done":
             raise Refused({"ok": False, "reason": "run-done", "run": number})
+        if record.get("question"):
+            raise Refused({"ok": False, "reason": "question-open", "run": number, "question": record["question"],
+                           "hint": "`pilot.py run answer` records the human's answer first"})
+        if result == "blocked":
+            if not cur.get("ask"):
+                raise Refused({"ok": False, "reason": "no-ask-here", "step": cur["id"],
+                               "hint": "this step cannot ask: record an assumption with `run note --assumption` and go on"})
+            if not (question or "").strip():
+                raise Refused({"ok": False, "reason": "question-required", "step": cur["id"]})
         record["history"].append({"step": cur["id"], "result": result, "at": now_iso(), **({"note": note} if note else {})})
 
         def jump(step_id):
@@ -1202,13 +1258,22 @@ class Machine:
                 return j + 1
             return j
 
+        def opened_by_blocked(i):
+            return i < len(steps) and steps[i]["kind"] == "human-optional" and steps[i].get("open_if") == "blocked"
+
         record["state"] = "running"
         target = None
         if result in ("ok", "skip"):
             target = following(index)
+            while opened_by_blocked(target):
+                target = following(target)
             if cur["kind"] == "end":
                 record["state"] = "done"
                 target = None
+        elif result == "blocked":
+            record["question"] = {"step": cur["id"], "text": question.strip(), "at": now_iso()}
+            record["state"] = "waiting-human"
+            target = jump(cur["ask"])
         elif result == "loop":
             if not cur.get("loop_to"):
                 raise Refused({"ok": False, "reason": "no-loop", "step": cur["id"]})
@@ -1237,7 +1302,7 @@ class Machine:
                                "expected": [r["label"] for r in cur.get("on_reject", [])]})
             target = jump(rule["to"])
         else:
-            raise Refused({"ok": False, "reason": "unknown-result", "expected": ["ok", "skip", "loop", "fail", "reject:<label>"]})
+            raise Refused({"ok": False, "reason": "unknown-result", "expected": ["ok", "skip", "loop", "fail", "blocked", "reject:<label>"]})
         if target is not None and target >= len(steps):
             record["state"], target = "done", None
         if target is not None:
@@ -1246,25 +1311,170 @@ class Machine:
         out = {"ok": True, "run": number, "from": cur["id"], "state": record["state"], "loops": record["loops"],
                "event": self._run_event(number, record, "advance:" + result)}
         if record["state"] == "running" and target is not None:
-            out["step"] = self.step_view(steps[target])
+            out["step"] = self.step_out(record, steps[target])
         if record["state"] == "waiting-human":
-            out["escalated"] = record["data"].get("escalated")
+            if record.get("question"):
+                out["question"] = record["question"]
+                out["step"] = self.step_view(steps[target])
+                out["waiting"] = {"kind": "question", "step": record["step"], "from": cur["id"], "text": record["question"]["text"]}
+                out["signal"] = self._signal(number, record, True)
+            else:
+                out["escalated"] = record["data"].get("escalated")
+                out["waiting"] = {"kind": "escalation", "from": cur["id"], **(record["data"].get("escalated") or {})}
+            out["park"] = True  # the runner saves the work: `run park`
         return out
 
+    def _signal(self, number, record, raised, answer=None):
+        """The `needs-human` label with its comment, as a visible signal of an open question (or its removal once answered).
+        Best effort: the record is the truth, so a failure to label never fails the call. True when it went through."""
+        try:
+            if raised:
+                q = record["question"]
+                self.flag(number, f"PILOT run {record['workflow']} waits at `{q['step']}`: {q['text']}\n\n"
+                                  f"Answer with `python3 .pilot/pilot.py run answer {number} --text \"…\"`; the run resumes from its record.")
+            else:
+                self.unflag(number, f"Answered, the run continues: {answer}")
+            return True
+        except (Refused, GhError):
+            return False
+
+    def run_answer(self, number, text):
+        """The human's answer to the open question: kept in the run's `answers`, the question cleared and its signal removed,
+        the run back to `running` at the step the ask step loops to (the one that asked), which receives the answers."""
+        cid, record = self._run_comment(number)
+        question = record.get("question")
+        if not question:
+            raise Refused({"ok": False, "reason": "no-question", "run": number})
+        if not (text or "").strip():
+            raise Refused({"ok": False, "reason": "text-required"})
+        steps = self._wf(record["workflow"])["steps"]
+        ask = next(s for s in steps if s["id"] == record["step"])
+        target = next(s for s in steps if s["id"] == (ask.get("loop_to") or question["step"]))
+        record["answers"] = record.get("answers", []) + [{"step": question["step"], "to": target["id"], "question": question["text"],
+                                                           "answer": text.strip(), "at": now_iso()}]
+        record["history"].append({"step": ask["id"], "result": "answer", "at": now_iso()})
+        del record["question"]
+        if target.get("alt_of"):
+            record["data"]["executant"] = "human"  # the AI executant asked: the human takes over
+        record["state"], record["step"] = "running", target["id"]
+        self._run_write(number, cid, record)
+        return {"ok": True, "run": number, "state": "running", "step": self.step_out(record, target),
+                "signal": self._signal(number, record, False, text.strip()), "event": self._run_event(number, record, "answer")}
+
+    def run_park(self, number):
+        """Save the working tree of a run that waits or ends the session: one commit on `pilot-run/<n>` (built from the whole
+        working tree without touching the current branch or index), pushed when a remote exists. Recorded in the run."""
+        cid, record = self._run_comment(number)
+        branch = f"pilot-run/{number}"
+        if git("rev-parse", "--is-inside-work-tree").returncode:
+            raise Refused({"ok": False, "reason": "not-a-git-repo"})
+        head = git_out("rev-parse", "--verify", "-q", "HEAD")
+        if not head:
+            raise Refused({"ok": False, "reason": "no-commit", "hint": "the repository has no commit to park the work on"})
+        tip = git_out("rev-parse", "--verify", "-q", f"refs/heads/{branch}")
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {"GIT_INDEX_FILE": os.path.join(tmp, "index")}
+            git("read-tree", "HEAD", env=env, check=True)
+            git("add", "-A", env=env, check=True)
+            tree = git_out("write-tree", env=env)
+        base = tip or head
+        committed = False
+        if tree != git_out("rev-parse", f"{head}^{{tree}}") and tree != git_out("rev-parse", f"{base}^{{tree}}"):
+            message = f"wip(run {number}): {record['workflow']} {record['step']}"
+            commit = git_out("commit-tree", tree, "-p", base, "-m", message, env=git_identity(), check=True)
+            git("update-ref", f"refs/heads/{branch}", commit, check=True)
+            tip, committed = commit, True
+        if not tip:
+            return {"ok": True, "run": number, "parked": False, "reason": "nothing-to-park"}
+        pushed, error = False, None
+        if git("remote", "get-url", "origin").returncode:
+            error = "no-remote"
+        else:
+            done = git("push", "-u", "origin", branch)
+            pushed, error = done.returncode == 0, (done.stderr.strip()[-300:] if done.returncode else None)
+        record.update({"branch": branch, "commit": tip, "parked": {"at": now_iso(), "step": record["step"], "pushed": pushed}})
+        self._run_write(number, cid, record)
+        out = {"ok": True, "run": number, "parked": True, "branch": branch, "commit": tip, "committed": committed, "pushed": pushed,
+               "event": self._run_event(number, record, "park")}
+        if error:
+            out["push_error"] = error
+        return out
+
+    def run_restore(self, number):
+        """Bring the parked work back onto the current branch (fetch, then fast-forward or merge) without losing local changes:
+        refused when the working tree holds changes that differ from the parked ones."""
+        _cid, record = self._run_comment(number)
+        branch = record.get("branch")
+        if not branch:
+            raise Refused({"ok": False, "reason": "no-branch", "run": number, "hint": "nothing was parked: `pilot.py run park` first"})
+        remote, local = f"refs/remotes/origin/{branch}", f"refs/heads/{branch}"
+        fetched = git("remote", "get-url", "origin").returncode == 0 and git("fetch", "-q", "origin", f"+{local}:{remote}").returncode == 0
+        found = [(r, git_out("rev-parse", "--verify", "-q", r)) for r in (remote, local)]
+        found = [(r, sha) for r, sha in found if sha]
+        if not found:
+            raise Refused({"ok": False, "reason": "branch-missing", "branch": branch})
+        ref, sha = found[0]
+        if len(found) == 2 and git("merge-base", "--is-ancestor", found[0][1], found[1][1]).returncode == 0:
+            ref, sha = found[1]  # the local branch is ahead of (or equal to) the fetched one
+        differing = []
+        status = git_out("status", "--porcelain", "-z", "--untracked-files=all").split("\0")
+        paths, skip = [], False
+        for entry in status:
+            if skip or not entry:
+                skip = False
+                continue
+            paths.append(entry[3:])
+            skip = entry[0] in "RC" or entry[1] in "RC"  # the next entry is the source of a rename
+        for path in paths:
+            mine = git_out("hash-object", path) if os.path.isfile(path) else None
+            parked = git_out("rev-parse", "-q", "--verify", f"{sha}:{path}") or None
+            if mine != parked:
+                differing.append(path)
+        if differing:
+            raise Refused({"ok": False, "reason": "dirty-worktree", "paths": differing,
+                           "hint": "commit, stash or move these changes first: they differ from the parked work"})
+        if paths:  # identical to the parked content: nothing is lost by clearing them before the merge
+            git("stash", "push", "-q", "-u", check=True)
+            git("stash", "drop", "-q", check=True)
+        head = git_out("rev-parse", "HEAD")
+        if head == sha or git("merge-base", "--is-ancestor", sha, head).returncode == 0:
+            how = "already"
+        elif git("merge-base", "--is-ancestor", head, sha).returncode == 0:
+            git("merge", "-q", "--ff-only", sha, check=True)
+            how = "fast-forward"
+        else:
+            if git("merge", "-q", "--no-edit", sha, env=git_identity()).returncode:
+                git("merge", "--abort")
+                raise Refused({"ok": False, "reason": "merge-conflict", "branch": branch,
+                               "hint": f"merge {ref} by hand, then continue the run"})
+            how = "merge"
+        return {"ok": True, "run": number, "branch": branch, "commit": sha, "merged": how, "fetched": fetched}
+
     def run_resume(self, number):
-        """Where a run stopped: its step, loop counters and assumptions. Refused while a human question is open."""
+        """Where a run stopped: its step, loop counters, assumptions and answers, and the parked branch to restore. Refused while
+        a question of the run is open (`run answer` closes it), or while a ticket carries a `needs-human` that is not one."""
         raw = self.gh.get_issue(number)
         if raw is None:
             raise Refused({"ok": False, "reason": "not-found", "issue": number})
         issue = normalize(raw)
-        if "needs-human" in issue["labels"]:
+        try:
+            cid, record = self._run_comment(number)
+        except Refused as err:
+            if err.payload.get("reason") != "no-run" or "needs-human" not in issue["labels"]:
+                raise
             raise Refused({"ok": False, "reason": "needs-human", "issue": number, "hint": "a human removes the flag first"})
-        cid, record = self._run_comment(number)
+        if record.get("question"):
+            raise Refused({"ok": False, "reason": "question-open", "issue": number, "question": record["question"],
+                           "hint": "`pilot.py run answer` records the human's answer first"})
+        if "needs-human" in issue["labels"]:  # a flag that is not a run's question: only a human removes it
+            raise Refused({"ok": False, "reason": "needs-human", "issue": number, "hint": "a human removes the flag first"})
         if record["state"] == "done":
             raise Refused({"ok": False, "reason": "run-done", "run": number})
         record["state"] = "running"
         self._run_write(number, cid, record)
         shown = self.run_show(number)
+        if record.get("branch"):
+            shown["restore"] = f"python3 .pilot/pilot.py run restore {number}"
         return {**shown, "event": self._run_event(number, record, "resume")}
 
     def run_end(self, number, result=None, data=None):
@@ -2619,8 +2829,16 @@ def build_parser():
     w.add_argument("--data", help="JSON object merged into the run's data")
     w = rs.add_parser("advance", parents=[common], help="the next step, decided by the workflow's data")
     w.add_argument("issue", type=int)
-    w.add_argument("--result", required=True, help="ok | skip | loop | fail | reject:<label>")
+    w.add_argument("--result", required=True, help="ok | skip | loop | fail | blocked | reject:<label>")
     w.add_argument("--note")
+    w.add_argument("--question", help="with --result blocked: the question (only a step that carries `ask`)")
+    w = rs.add_parser("answer", parents=[common], help="the human's answer to the run's open question; the run continues")
+    w.add_argument("issue", type=int)
+    w.add_argument("--text", required=True)
+    w = rs.add_parser("park", parents=[common], help="commit the run's working tree on pilot-run/<n> and push it")
+    w.add_argument("issue", type=int)
+    w = rs.add_parser("restore", parents=[common], help="bring the parked branch back onto the current branch")
+    w.add_argument("issue", type=int)
     w = rs.add_parser("resume", parents=[common])
     w.add_argument("issue", type=int)
     w = rs.add_parser("end", parents=[common])
@@ -2881,7 +3099,13 @@ def run_runs(args, gh):
     if cmd == "note":
         return machine.run_note(args.issue, args.assumption, json.loads(args.data) if args.data else None)
     if cmd == "advance":
-        return machine.run_advance(args.issue, args.result, args.note)
+        return machine.run_advance(args.issue, args.result, args.note, args.question)
+    if cmd == "answer":
+        return machine.run_answer(args.issue, args.text)
+    if cmd == "park":
+        return machine.run_park(args.issue)
+    if cmd == "restore":
+        return machine.run_restore(args.issue)
     if cmd == "resume":
         return machine.run_resume(args.issue)
     record = None

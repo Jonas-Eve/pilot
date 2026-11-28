@@ -1728,12 +1728,11 @@ class RunTests(unittest.TestCase):
     def test_a_failing_validator_returns_twice_then_opens_the_gate(self):
         m, gh, out = self.start()
         n = out["run"]
-        self.advance_to(m, n, "validate", ["ok", "ok", "skip", "skip", "skip"])
+        self.advance_to(m, n, "validate", ["ok", "ok", "skip", "ok"])  # the question step is skipped by the engine
         for expected in (1, 2):
             out = m.run_advance(n, "fail")
             self.assertEqual((out["step"]["id"], out["loops"]["validate"]), ("write", expected))
             m.run_advance(n, "ok")
-            m.run_advance(n, "skip")  # the question step, not opened
         out = m.run_advance(n, "fail")
         self.assertEqual(out["step"]["id"], "gate")
         self.assertEqual(out["state"], "running")
@@ -1741,11 +1740,10 @@ class RunTests(unittest.TestCase):
     def test_without_a_gate_the_escalation_waits_for_a_human(self):
         m, gh = machine([ticket(1)])
         n = m.run_start("build", 1)["run"]
-        self.advance_to(m, n, "validate", ["ok", "ok", "skip"])
+        self.advance_to(m, n, "validate", ["ok", "ok"])
         for _ in range(2):
             m.run_advance(n, "fail")
             m.run_advance(n, "ok")
-            m.run_advance(n, "skip")
         out = m.run_advance(n, "fail")
         self.assertEqual(out["state"], "waiting-human")
         self.assertEqual(out["escalated"]["from"], "validate")
@@ -1754,9 +1752,9 @@ class RunTests(unittest.TestCase):
     def test_a_gate_sends_the_work_where_its_label_says(self):
         m, gh, out = self.start()
         n = out["run"]
-        self.advance_to(m, n, "gate", ["ok", "ok", "skip", "skip", "skip", "ok", "ok", "ok"])
+        self.advance_to(m, n, "gate", ["ok", "ok", "skip", "ok", "ok", "ok", "ok"])
         self.assertEqual(m.run_advance(n, "reject:formulation")["step"]["id"], "write")
-        self.advance_to(m, n, "gate", ["ok", "skip", "ok", "ok", "ok"])
+        self.advance_to(m, n, "gate", ["ok", "ok", "ok", "ok"])
         self.assertEqual(m.run_advance(n, "reject:fond")["step"]["id"], "start")
         with self.assertRaises(pilot.Refused):
             m.run_advance(n, "reject:nonsense")

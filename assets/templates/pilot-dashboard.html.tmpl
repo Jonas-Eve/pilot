@@ -132,6 +132,8 @@ a.chip:hover{text-decoration:underline}
 .ttl{display:flex;align-items:center;gap:10px}
 .info{flex:none;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font:italic 600 14px/1 Georgia,serif;align-self:center}
 .info:hover,.info[aria-current="page"]{color:var(--fg);border-color:var(--muted)}
+.wfdoc{width:18px;height:18px;font-size:11px;margin-left:6px;vertical-align:middle}
+.tlhead{display:flex;align-items:center;gap:2px;margin:0 0 6px}
 .ref{overflow-x:auto}
 .ref table{border-collapse:collapse;width:100%;font-size:13px}
 .ref th,.ref td{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
@@ -561,6 +563,28 @@ var WFS=[
   ['persona','/pilot-persona',0,'Persona','Persona','Rédige ou révise un persona du wiki : qui est l’utilisateur, ses contraintes, sa façon d’utiliser le produit.','Writes or revises a persona of the wiki: who the user is, their constraints, how they use the product.'],
   ['user-flow','/pilot-user-flow',0,'Parcours utilisateur','User flow','Rédige ou révise un parcours utilisateur du wiki : des étapes, le résultat attendu à chacune, des personas existants.','Writes or revises a user flow of the wiki: steps, the expected result at each, existing personas.']
 ];
+/* where each workflow's diagram lives: private claude.ai Artifacts (a page, its steps and typed documents), plus the overview. An id with no URL gets no "i". Kept equal to the workflow data's ids by test_pilot.py */
+var WF_DOCS={
+  need:'https://claude.ai/artifact/X7s3i1zsQU6JQb3zPSh8gy',
+  plan:'https://claude.ai/artifact/BVpxvhzwxZwvyCKFSGWgSD',
+  build:'https://claude.ai/artifact/4RaK2MZCvWTNxSdTLn5j7v',
+  accept:'https://claude.ai/artifact/4nVdqhUbsdDSgiWbdN2sct',
+  report:'https://claude.ai/artifact/AxS2mNpEkizR7djbJXsBbV',
+  express:'https://claude.ai/artifact/Nqzz1STshJHFEJ16YNyD85',
+  proto:'https://claude.ai/artifact/P7hVttzq4g3w3QZomC3dcK',
+  'design-system':'https://claude.ai/artifact/XeBKFW9apsjDcxM4MhznCc',
+  'functional-frame':'https://claude.ai/artifact/9yMP8oEUcEW8dGtmG4X23T',
+  'technical-frame':'https://claude.ai/artifact/PvqTQ49GJrMvwjvg4yfHpm',
+  persona:'https://claude.ai/artifact/UgKKqmp8htmmRRzFWtubkC',
+  'user-flow':'https://claude.ai/artifact/Frdgz5irPBv2bua4GX5P1G',
+  overview:'https://claude.ai/artifact/LKNQk6QzYRe6JCx39DkQxY'
+};
+/* the small "i" that opens a diagram in a new tab; nothing when the table has no URL for the key */
+function docI(key,fr,en){
+  var u=WF_DOCS[key]; if(typeof u!=='string'||u.indexOf('https://claude.ai/artifact/')!==0)return null;
+  return h('a',{class:'info wfdoc',href:u,target:'_blank',rel:'noopener','aria-label':L(fr,en),title:L(fr,en)},'i');
+}
+function wfI(id){var w=wfInfo(id), n=w?null:id; return docI(id,'Voir le schéma du workflow '+(w?w[3]:n),'See the diagram of the '+(w?w[4]:n)+' workflow');}
 var CONSULT={wiki:'/pilot-wiki',architecture:'/pilot-architecture'}; /* read-only skills: they answer a question from the bundle and change nothing */
 function sk(id){var w=wfInfo(id);return w?w[1]:'';} /* a workflow's command */
 function wfInfo(id){for(var i=0;i<WFS.length;i++)if(WFS[i][0]===id)return WFS[i];return null;}
@@ -782,7 +806,9 @@ function wfTimeline(wid,run,t){
       h('div',{},h('span',{class:'ti'},(i+1)+'. '+str(x.title,60)),' ',h('span',{class:'note'},st==='done'?'fait':st==='cur'?(failed?'échoué':wait?'attend un humain':'en cours'):'à venir')),
       h('div',{class:'sub'},sub));
   });
+  var info=wfInfo(wid);
   return h('div',{class:'tlwrap'},
+    h('div',{class:'tlhead'},h('strong',{},info?L(info[3],info[4]):wid),wfI(wid)),
     !done&&cur<0?h('p',{class:'note'},run?'Étape courante inconnue : toutes les étapes sont à venir.':'Pas encore lancé : toutes les étapes sont à venir.'):null,
     h('ol',{class:'tl','aria-label':'Étapes du workflow'},items));
 }
@@ -808,7 +834,7 @@ function runRow(r){
   return h('div',{class:'row'+(waiting?' flag':'')},
     h('div',{class:'main'},
       h('div',{class:'t'},h('span',{class:'num'},'#'+r.n+' '),title||(info?L(info[3],info[4]):r.wf)),
-      h('div',{class:'meta'},h('span',{class:'chip acc'},info?L(info[3],info[4]):r.wf),h('span',{class:'chip '+st[0]},st[0]==='warn'?h('span',{class:'dot'}):null,st[1]),
+      h('div',{class:'meta'},h('span',{class:'chip acc'},info?L(info[3],info[4]):r.wf),wfI(r.wf),h('span',{class:'chip '+st[0]},st[0]==='warn'?h('span',{class:'dot'}):null,st[1]),
         r.step?h('span',{class:'chip'},r.step):null,loops?h('span',{class:'chip'},loops+' boucle'+(loops>1?'s':'')):null,
         t&&has(t,'can-resume')?h('span',{class:'chip'},FLAG_FR['can-resume']):null,h('span',{class:'note'},ago(r.at)))),
     h('div',{class:'acts'},acts),
@@ -1203,7 +1229,7 @@ function updateAdmin(){
   seg.replaceChildren.apply(seg,adminKinds().map(function(x){
     return h('button',{type:'button','data-key':x.key,'aria-pressed':String(x.key===k.key),onclick:function(){S.adminKey=x.key;updateAdmin();}},x.label);}));
   var list=document.getElementById('adminList');
-  list.replaceChildren.apply(list,adminKinds().map(function(x){return h('li',{class:x.key===k.key?'on':null},h('strong',{},x.label),' ',h('code',{},sk(x.wf)),' : ',x.hint);}));
+  list.replaceChildren.apply(list,adminKinds().map(function(x){return h('li',{class:x.key===k.key?'on':null},h('strong',{},x.label),wfI(x.wf),' ',h('code',{},sk(x.wf)),' : ',x.hint);}));
   document.getElementById('adminHint').textContent=tr('La commande est écrite, pas envoyée.');
   document.getElementById('adminCmd').textContent=adminCmd(k,text||'…');
   document.getElementById('adminSum').textContent=text?tr('brouillon en cours'):'';
@@ -1625,9 +1651,9 @@ var ROLES_IN={"architect":{"build":["reviewer"],"design-system":["validator"],"e
 var ROLE_WORD={lead:['rédige','leads'],validator:['valide','validates'],reviewer:['relit','reviews']};
 function L(fr,en){return LANG==='fr'?fr:en;}
 function agentIn(key){var d=ROLES_IN[key]||{};return Object.keys(d).filter(wfOn).map(function(wf){return wf+' ('+d[wf].map(function(r){return L(ROLE_WORD[r][0],ROLE_WORD[r][1]);}).join(', ')+')';}).join(' · ');}
-function helpCard(title,badge,rows){
+function helpCard(title,badge,rows,info){
   return h('div',{class:'row'},h('div',{class:'main'},
-    h('div',{class:'t'},title,badge?h('span',{class:'chip'},badge):null),
+    h('div',{class:'t'},title,badge?h('span',{class:'chip'},badge):null,info||null),
     rows.map(function(r){return h('p',{class:'note'},h('strong',{},r[0]+' '),r[1]);})));
 }
 function simpleTable(head,rows){
@@ -1678,12 +1704,13 @@ function vHowPrinciples(){
 
 /* ---- Workflows: the ones the snapshot lists ---- */
 function vHowWorkflows(){
-  var ids=WFS.filter(function(w){return wfOn(w[0]);});
+  var ids=WFS.filter(function(w){return wfOn(w[0]);}), ov=docI('overview','Voir la vue d’ensemble des workflows','See the overview of the workflows');
   return h('div',{class:'list'},
     para('Les workflows que ce projet peut lancer, chacun par sa commande. Un workflow est une suite d’étapes (humain, agent, validateur, juge, contrôle par le code) décrite par des données ; il consomme des statuts de ticket et en produit d’autres. Une étape qui attend un humain met le run en pause : relancez-le avec --resume.','The workflows this project can run, each through its command. A workflow is a sequence of steps (human, agent, validator, judge, code check) described by data; it consumes ticket statuses and produces others. A step waiting on a human pauses the run: restart it with --resume.'),
+    ov?h('p',{class:'note'},ov,L(' Vue d’ensemble des workflows',' Overview of the workflows')):null,
     h('div',{class:'agents'},ids.map(function(w){
       var c=CONTRACTS[w[0]], st=function(l){return l.map(function(x){return x.replace('status:','');}).join(', ');};
-      return helpCard(L(w[3],w[4]),w[0],[[L('Rôle :','What:'),L(w[5],w[6])],[L('Commande :','Command:'),code(w[1])]].concat(c?[[L('Prend :','Takes:'),c.c.length?st(c.c):'—'],[L('Produit :','Produces:'),st(c.p)]]:[]));
+      return helpCard(L(w[3],w[4]),w[0],[[L('Rôle :','What:'),L(w[5],w[6])],[L('Commande :','Command:'),code(w[1])]].concat(c?[[L('Prend :','Takes:'),c.c.length?st(c.c):'—'],[L('Produit :','Produces:'),st(c.p)]]:[]),wfI(w[0]));
     })));
 }
 
