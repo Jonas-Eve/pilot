@@ -2,182 +2,261 @@
  "id": "need",
  "title": "Need",
  "category": "run",
- "contract": {
-  "consumes": [
-   "forming"
+ "pattern": "document",
+ "params": {
+  "start_title": "Request",
+  "start_in": [
+   [
+    "TEXT",
+    "The raw request"
+   ],
+   [
+    "WIKI",
+    "Accepted proto, if any"
+   ],
+   [
+    "QUESTION",
+    "If reframing: the question card, with its costed options, and the entry at status to reframe"
+   ],
+   [
+    "TEXT",
+    "If it starts from a candidate user flow request: its source, the flow and the step"
+   ]
   ],
-  "produces": [
-   "forming",
-   "to-plan"
+  "start_out": [
+   [
+    "TEXT",
+    "Need: who, problem, why, non-goals"
+   ]
+  ],
+  "lead": "pm",
+  "audit_in": [
+   [
+    "TEXT",
+    "Need"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Vision, functional guidelines and vocabulary"
+   ],
+   [
+    "WIKI",
+    "Need entries and flows, implemented or recetted, whose scope overlaps the need's, with their log. Selected by script, index first"
+   ]
+  ],
+  "audit_out": [
+   [
+    "REPORT",
+    "Delta: duplicate, contradiction, impact on an existing flow, option already discarded in a log, gap with the vision, principles or vocabulary (flagged, never blocking), hole"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope, drawn from the project vocabulary. To validate at the gate"
+   ],
+   [
+    "REPORT",
+    "Proposal: new need entry, or modification of an existing entry, with which"
+   ]
+  ],
+  "challenge_out": [
+   [
+    "VALIDATION",
+    "Keeps or modifies the need"
+   ],
+   [
+    "TEXT",
+    "Revised need, back to the audit"
+   ],
+   [
+    "REPORT",
+    "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
+   ]
+  ],
+  "write_task": "write-need",
+  "ask": "ask",
+  "write_in": [
+   [
+    "TEXT",
+    "Need"
+   ],
+   [
+    "REPORT",
+    "Delta"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "PROTO",
+    "Accepted proto, if any"
+   ],
+   [
+    "TEXT",
+    "In later rounds: the human's answer, or their feedback from the gate"
+   ]
+  ],
+  "write_out": [
+   [
+    "WIKI",
+    "Proposed entry (new, or modification of an existing entry), status framing: intent, non-goals, scope, and its source if the request comes from a candidate request (which then moves to \"launched\")"
+   ],
+   [
+    "CRITERIA",
+    "\"When X, I see Y\", each with its by"
+   ],
+   [
+    "LOG",
+    "If the entry already exists: a new line added, with the decision, discarded alternatives and reason"
+   ],
+   [
+    "TEXT",
+    "Hypotheses made: each point where it chose a default value (a wording, a criterion, a scope), with the question it would have asked and its default value. It continues with that value"
+   ],
+   [
+    "QUESTION",
+    "Only if a point blocks it: see the next step"
+   ]
+  ],
+  "validator": "architect",
+  "validate_in": [
+   [
+    "TEXT",
+    "Need"
+   ],
+   [
+    "WIKI",
+    "Proposed entry"
+   ]
+  ],
+  "check_in": [
+   [
+    "WIKI",
+    "Proposed entry"
+   ],
+   [
+    "CRITERIA",
+    "Criteria"
+   ],
+   [
+    "LOG",
+    "The entry's log, before and after"
+   ]
+  ],
+  "check_out": [
+   [
+    "REPORT",
+    "Schema, cited source exists, scope from the vocabulary, when / then / by, ambiguous words, each criterion tied to a sentence of the need, each proto parcours covered"
+   ],
+   [
+    "REPORT",
+    "Log: previous lines unchanged, a new line if an existing entry is modified, full format (date, originating need, decision, discarded alternative, reason)"
+   ]
+  ],
+  "judge_actor": "AI, four fixed questions, plus two if an existing entry is modified, citation required",
+  "judge_questions": [
+   {
+    "q": "Is a sentence of the need uncarried?",
+    "fail_on": "yes"
+   },
+   {
+    "q": "Is a criterion unsupported by the need sentence it cites?",
+    "fail_on": "yes"
+   },
+   {
+    "q": "Is a criterion non-observable?",
+    "fail_on": "yes"
+   },
+   {
+    "q": "Do two criteria contradict each other?",
+    "fail_on": "yes"
+   },
+   {
+    "q": "Is the reason distinct from the decision?",
+    "fail_on": "no",
+    "when": "existing-entry-modified"
+   },
+   {
+    "q": "Is a discarded alternative really different?",
+    "fail_on": "no",
+    "when": "existing-entry-modified"
+   }
+  ],
+  "judge_in": [
+   [
+    "TEXT",
+    "Need"
+   ],
+   [
+    "WIKI",
+    "Proposed entry"
+   ],
+   [
+    "LOG",
+    "New log line, if any"
+   ]
+  ],
+  "judge_out": [
+   [
+    "REPORT",
+    "Yes or no: a sentence of the need uncarried? a criterion unsupported by the need sentence it cites? a non-observable criterion? two criteria contradicting each other?"
+   ],
+   [
+    "REPORT",
+    "If an existing entry is modified: is the reason distinct from the decision? is a discarded alternative really different?"
+   ]
+  ],
+  "gate_title": "Gate · Criteria",
+  "gate_in": [
+   [
+    "WIKI",
+    "Proposed entry"
+   ],
+   [
+    "CRITERIA",
+    "Criteria"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "LOG",
+    "New log line, if any"
+   ],
+   [
+    "TEXT",
+    "Hypotheses made by the writer, with their default value"
+   ],
+   [
+    "REPORT",
+    "Code checks and judge, all green"
+   ]
+  ],
+  "gate_out": [
+   [
+    "VALIDATION",
+    "Entry at status ready, scope, log, \"new entry or modification\" choice validated"
+   ],
+   [
+    "TEXT",
+    "Or back to the writer if wording or a hypothesis must be corrected, or to the request if the substance of the need"
+   ]
+  ],
+  "reject": [
+   {
+    "label": "fond",
+    "to": "start"
+   },
+   {
+    "label": "formulation",
+    "to": "write"
+   }
   ]
  },
  "steps": [
   {
-   "id": "start",
-   "n": "1",
-   "kind": "human-start",
-   "title": "Request",
-   "actor": "Human F",
-   "in": [
-    [
-     "TEXT",
-     "The raw request"
-    ],
-    [
-     "WIKI",
-     "Accepted proto, if any"
-    ],
-    [
-     "QUESTION",
-     "If reframing: the question card, with its costed options, and the entry at status to reframe"
-    ],
-    [
-     "TEXT",
-     "If it starts from a candidate user flow request: its source, the flow and the step"
-    ]
-   ],
-   "out": [
-    [
-     "TEXT",
-     "Need: who, problem, why, non-goals"
-    ]
-   ]
-  },
-  {
-   "id": "audit",
-   "n": "2",
-   "kind": "agent",
-   "title": "Auditor",
-   "actor": "AI: a single auditor, who holds the discussion with the human",
-   "agents": [
-    {
-     "persona": "pm"
-    }
-   ],
-   "task": "audit",
-   "in": [
-    [
-     "TEXT",
-     "Need"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Vision, functional guidelines and vocabulary"
-    ],
-    [
-     "WIKI",
-     "Need entries and flows, implemented or recetted, whose scope overlaps the need's, with their log. Selected by script, index first"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Delta: duplicate, contradiction, impact on an existing flow, option already discarded in a log, gap with the vision, principles or vocabulary (flagged, never blocking), hole"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
-    ],
-    [
-     "REPORT",
-     "Proposal: new need entry, or modification of an existing entry, with which"
-    ]
-   ]
-  },
-  {
-   "id": "challenge",
-   "n": "3",
-   "kind": "human-optional",
-   "title": "Challenge",
-   "actor": "Human F, opened by script only if the delta is not empty",
-   "in": [
-    [
-     "REPORT",
-     "The delta, short and in fixed form"
-    ],
-    [
-     "TEXT",
-     "On request: a question to the auditor about a line of the delta"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Keeps or modifies the need"
-    ],
-    [
-     "TEXT",
-     "Revised need, back to the audit"
-    ],
-    [
-     "REPORT",
-     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
-    ]
-   ],
-   "open_if": "delta-not-empty",
-   "loop_to": "audit"
-  },
-  {
-   "id": "write",
-   "n": "4",
-   "kind": "agent",
-   "title": "Writer",
-   "actor": "AI",
-   "agents": [
-    {
-     "persona": "pm"
-    }
-   ],
-   "task": "write-need",
-   "ask": "ask",
-   "in": [
-    [
-     "TEXT",
-     "Need"
-    ],
-    [
-     "REPORT",
-     "Delta"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "PROTO",
-     "Accepted proto, if any"
-    ],
-    [
-     "TEXT",
-     "In later rounds: the human's answer, or their feedback from the gate"
-    ]
-   ],
-   "out": [
-    [
-     "WIKI",
-     "Proposed entry (new, or modification of an existing entry), status framing: intent, non-goals, scope, and its source if the request comes from a candidate request (which then moves to \"launched\")"
-    ],
-    [
-     "CRITERIA",
-     "\"When X, I see Y\", each with its by"
-    ],
-    [
-     "LOG",
-     "If the entry already exists: a new line added, with the decision, discarded alternatives and reason"
-    ],
-    [
-     "TEXT",
-     "Hypotheses made: each point where it chose a default value (a wording, a criterion, a scope), with the question it would have asked and its default value. It continues with that value"
-    ],
-    [
-     "QUESTION",
-     "Only if a point blocks it: see the next step"
-    ]
-   ]
-  },
-  {
    "id": "ask",
-   "n": "5",
    "kind": "human-optional",
    "title": "Writer's question",
    "actor": "Human F, only if the writer is blocked: answers its question",
@@ -194,201 +273,11 @@
     ]
    ],
    "open_if": "blocked",
-   "loop_to": "write"
-  },
-  {
-   "id": "validate",
-   "n": "6",
-   "kind": "validator",
-   "title": "Validator",
-   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
-   "agents": [
-    {
-     "persona": "architect"
-    }
-   ],
-   "task": "validate",
-   "in": [
-    [
-     "TEXT",
-     "Need"
-    ],
-    [
-     "WIKI",
-     "Proposed entry"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "List of defects, free critique"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "check",
-   "n": "7",
-   "kind": "check",
-   "title": "Code checks",
-   "actor": "Script",
-   "check": "need.check",
-   "in": [
-    [
-     "WIKI",
-     "Proposed entry"
-    ],
-    [
-     "CRITERIA",
-     "Criteria"
-    ],
-    [
-     "LOG",
-     "The entry's log, before and after"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Schema, cited source exists, scope from the vocabulary, when / then / by, ambiguous words, each criterion tied to a sentence of the need, each proto parcours covered"
-    ],
-    [
-     "REPORT",
-     "Log: previous lines unchanged, a new line if an existing entry is modified, full format (date, originating need, decision, discarded alternative, reason)"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "judge",
-   "n": "8",
-   "kind": "judge",
-   "title": "Judge",
-   "actor": "AI, four fixed questions, plus two if an existing entry is modified, citation required",
-   "task": "judge",
-   "judge": "need.judge",
-   "questions": [
-    {
-     "q": "Is a sentence of the need uncarried?",
-     "fail_on": "yes"
-    },
-    {
-     "q": "Is a criterion unsupported by the need sentence it cites?",
-     "fail_on": "yes"
-    },
-    {
-     "q": "Is a criterion non-observable?",
-     "fail_on": "yes"
-    },
-    {
-     "q": "Do two criteria contradict each other?",
-     "fail_on": "yes"
-    },
-    {
-     "q": "Is the reason distinct from the decision?",
-     "fail_on": "no",
-     "when": "existing-entry-modified"
-    },
-    {
-     "q": "Is a discarded alternative really different?",
-     "fail_on": "no",
-     "when": "existing-entry-modified"
-    }
-   ],
-   "in": [
-    [
-     "TEXT",
-     "Need"
-    ],
-    [
-     "WIKI",
-     "Proposed entry"
-    ],
-    [
-     "LOG",
-     "New log line, if any"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Yes or no: a sentence of the need uncarried? a criterion unsupported by the need sentence it cites? a non-observable criterion? two criteria contradicting each other?"
-    ],
-    [
-     "REPORT",
-     "If an existing entry is modified: is the reason distinct from the decision? is a discarded alternative really different?"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "gate",
-   "n": "9",
-   "kind": "human-gate",
-   "title": "Gate · Criteria",
-   "actor": "Human F",
-   "in": [
-    [
-     "WIKI",
-     "Proposed entry"
-    ],
-    [
-     "CRITERIA",
-     "Criteria"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "LOG",
-     "New log line, if any"
-    ],
-    [
-     "TEXT",
-     "Hypotheses made by the writer, with their default value"
-    ],
-    [
-     "REPORT",
-     "Code checks and judge, all green"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Entry at status ready, scope, log, \"new entry or modification\" choice validated"
-    ],
-    [
-     "TEXT",
-     "Or back to the writer if wording or a hypothesis must be corrected, or to the request if the substance of the need"
-    ]
-   ],
-   "on_reject": [
-    {
-     "label": "fond",
-     "to": "start"
-    },
-    {
-     "label": "formulation",
-     "to": "write"
-    }
-   ]
+   "loop_to": "write",
+   "after": "write"
   },
   {
    "id": "group",
-   "n": "10",
    "kind": "agent",
    "title": "Grouping",
    "actor": "AI",
@@ -421,11 +310,11 @@
      "TEXT",
      "Short explanation: why these entries go together, in three sentences at most"
     ]
-   ]
+   ],
+   "after": "gate"
   },
   {
    "id": "check-2",
-   "n": "11",
    "kind": "check",
    "title": "Code checks",
    "actor": "Script",
@@ -450,7 +339,6 @@
   },
   {
    "id": "gate-2",
-   "n": "12",
    "kind": "human-gate",
    "title": "Gate · Grouping",
    "actor": "Human F",
@@ -487,7 +375,6 @@
   },
   {
    "id": "end",
-   "n": "13",
    "kind": "end",
    "title": "Need ready",
    "in": [
@@ -508,6 +395,15 @@
    ]
   }
  ],
+ "contract": {
+  "consumes": [
+   "forming"
+  ],
+  "produces": [
+   "forming",
+   "to-plan"
+  ]
+ },
  "doc": {
   "contract": [
    [

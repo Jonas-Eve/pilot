@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PILOT's deterministic mechanics (assets/docs/pilot-process.md), as a CLI.
 
-  pilot.py workflow list|show [ID] [--step S]|check   # the workflows as data, one step at a time; check validates them all
+  pilot.py workflow list|show [ID] [--step S|--raw]|check   # the workflows as data, one step at a time; check validates them all
   pilot.py contract [WORKFLOW]                         # statuses a workflow consumes / claims / produces; bare: all, and whether they compose
   pilot.py pool    <workflow> [--limit N]              # tickets a workflow may take
   pilot.py resolve <workflow> <issue> [--resume]
@@ -87,21 +87,73 @@ def renumber(steps):
     return steps
 
 
-def expand(raw, wid):
-    """A workflow's steps with its `include` entries replaced by the steps of the workflow they name (prefixed ids, patched fields)."""
-    wf, steps = copy.deepcopy(raw[wid]), []
+def patched(step, changes):
+    """A step with `changes` applied: a field replaces, `on_fail` merges."""
+    changes = copy.deepcopy(changes)
+    if "on_fail" in changes:
+        step["on_fail"] = {**step.get("on_fail", {}), **changes.pop("on_fail")}
+    step.update(changes)
+    return step
+
+
+def fill(node, values, missing):
+    """`node` with every `${name}` replaced by values[name]: a whole-string placeholder keeps the value's type, and a dict field
+    whose placeholder is None disappears. A name with no value is added to `missing`."""
+    if isinstance(node, str):
+        whole = re.fullmatch(r"\$\{(\w+)\}", node)
+        if whole:
+            if whole[1] not in values:
+                missing.add(whole[1])
+            return copy.deepcopy(values.get(whole[1]))
+        for name in re.findall(r"\$\{(\w+)\}", node):
+            if name not in values:
+                missing.add(name)
+        return re.sub(r"\$\{(\w+)\}", lambda m: str(values.get(m[1], m[0])), node)
+    if isinstance(node, list):
+        return [fill(item, values, missing) for item in node]
+    if isinstance(node, dict):
+        out = {}
+        for key, item in node.items():
+            value = fill(item, values, missing)
+            if value is not None or not (isinstance(item, str) and re.fullmatch(r"\$\{\w+\}", item)):
+                out[key] = value
+        return out
+    return node
+
+
+def pattern_steps(definition, wid, params, patch, problems):
+    """The steps of a pattern with the workflow's params filled in (`id` is the workflow's) and its `patch` applied by step id."""
+    declared = definition.get("params", {})
+    for name in sorted(set(params) - set(declared)):
+        problems.append({"code": "unknown-parameter", "parameter": name})
+    for name in sorted(n for n, d in declared.items() if "default" not in d and n not in params):
+        problems.append({"code": "missing-parameter", "parameter": name})
+    values = {"id": wid, **{n: d["default"] for n, d in declared.items() if "default" in d}, **params}
+    steps = fill(copy.deepcopy(definition["steps"]), values, set())
+    for sid, changes in patch.items():
+        step = next((s for s in steps if s["id"] == sid), None)
+        if step is None:
+            problems.append({"code": "unknown-anchor", "anchor": sid, "field": "patch"})
+        else:
+            patched(step, changes)
+    return steps
+
+
+def expand(raw, wid, patterns=None):
+    """A workflow as the runner sees it. Its own `steps` have their `include` entries replaced by the steps of the workflow they
+    name (prefixed ids, patched fields). With a `pattern`, those steps are added to the pattern's, each run after its `after` step
+    (default: after the one before it, the first at the end). `pattern`, `params` and `patch` are consumed; errors go in `_problems`."""
+    wf, own, problems = copy.deepcopy(raw[wid]), [], []
+    pattern, params, patch = wf.pop("pattern", None), wf.pop("params", {}), wf.pop("patch", {})
     for step in wf["steps"]:
         if "include" not in step:
-            steps.append(step)
+            own.append(step)
             continue
         source = raw[step["include"]]["steps"]
         wanted = step.get("ids") or [s["id"] for s in source]
-        prefix, patch = step.get("prefix", ""), step.get("patch", {})
+        prefix, changes = step.get("prefix", ""), step.get("patch", {})
         for s in (copy.deepcopy(s) for s in source if s["id"] in wanted):
-            changes = patch.get(s["id"], {})
-            if "on_fail" in changes:
-                s["on_fail"] = {**s.get("on_fail", {}), **changes.pop("on_fail")}
-            s.update(changes)
+            patched(s, changes.get(s["id"], {}))
             old = s["id"]
             s["id"] = prefix + old
             for key in ("loop_to", "alt_of", "ask"):
@@ -112,8 +164,25 @@ def expand(raw, wid):
             for rej in s.get("on_reject", []):
                 if rej["to"] in wanted:
                     rej["to"] = prefix + rej["to"]
-            steps.append(s)
+            own.append(s)
+    steps = own
+    if pattern is not None:
+        definition = (patterns or {}).get(pattern)
+        if definition is None:
+            problems.append({"code": "unknown-pattern", "pattern": pattern})
+        else:
+            steps, anchor = pattern_steps(definition, wid, params, patch, problems), None
+            for step in own:
+                anchor = step.pop("after", anchor if anchor is not None else steps[-1]["id"])
+                at = next((i for i, s in enumerate(steps) if s["id"] == anchor), None)
+                if at is None:
+                    problems.append({"code": "unknown-anchor", "anchor": anchor, "step": step["id"]})
+                    at = len(steps) - 1
+                steps.insert(at + 1, step)
+                anchor = step["id"]
     wf["steps"] = renumber(steps)
+    if problems:
+        wf["_problems"] = problems
     return wf
 
 
@@ -124,16 +193,38 @@ def workflow_steps(wfs, title_max=36):
                   for s in wfs[wid]["steps"]] for wid in sorted(wfs)}
 
 
-def load_workflows(directory=None):
-    """Every workflow of the project, expanded: {id: workflow}."""
+def load_raw(directory=None):
+    """The workflows as written ({id: data}) and the patterns they may use ({name: definition}, from `_patterns.json`)."""
     directory = directory or workflow_dir()
-    raw = {}
+    raw, patterns = {}, {}
     for name in sorted(os.listdir(directory)):
         if name.endswith(".json"):
             with open(os.path.join(directory, name), encoding="utf-8") as handle:
                 data = json.load(handle)
-            raw[data["id"]] = data
-    return {wid: expand(raw, wid) for wid in raw}
+            if name == "_patterns.json":
+                patterns = data
+            else:
+                raw[data["id"]] = data
+    return raw, patterns
+
+
+def load_workflows(directory=None):
+    """Every workflow of the project, expanded: {id: workflow}."""
+    raw, patterns = load_raw(directory)
+    return {wid: expand(raw, wid, patterns) for wid in raw}
+
+
+def pattern_problems(raw, patterns):
+    """What is wrong with the patterns themselves: a placeholder no parameter declares, a parameter nothing uses, a pattern no workflow uses."""
+    problems = []
+    for name, definition in patterns.items():
+        used = set(re.findall(r"\$\{(\w+)\}", json.dumps(definition["steps"])))
+        declared = set(definition.get("params", {}))
+        problems += [{"pattern": name, "code": "undeclared-placeholder", "parameter": p} for p in sorted(used - declared - {"id"})]
+        problems += [{"pattern": name, "code": "unused-parameter", "parameter": p} for p in sorted(declared - used)]
+        if not any(wf.get("pattern") == name for wf in raw.values()):
+            problems.append({"pattern": name, "code": "unused-pattern"})
+    return problems
 
 
 def workflow_problems(wfs):
@@ -145,6 +236,8 @@ def workflow_problems(wfs):
         def bad(code, step=None, **extra):
             problems.append({"workflow": wid, **({"step": step["id"]} if step else {}), "code": code, **extra})
 
+        for prob in wf.get("_problems", []):
+            problems.append({"workflow": wid, **prob})
         for dup in sorted({i for i in ids if ids.count(i) > 1}):
             bad("duplicate-step-id", id=dup)
         for step in wf["steps"]:
@@ -158,8 +251,8 @@ def workflow_problems(wfs):
             if bad_targets:
                 bad("unknown-target", step, target=bad_targets[0])
             for agent in step.get("agents", []):
-                if agent["persona"] not in PERSONAS:
-                    bad("unknown-persona", step, persona=agent["persona"])
+                if agent.get("persona") not in PERSONAS:
+                    bad("unknown-persona", step, persona=agent.get("persona"))
             if step.get("open_if") and step["open_if"] not in OPEN_IF:
                 bad("unknown-open-if", step, open_if=step["open_if"])
             if step.get("ask"):
@@ -2814,6 +2907,7 @@ def build_parser():
     p.add_argument("action", choices=["list", "show", "check"])
     p.add_argument("id", nargs="?")
     p.add_argument("--step", help="show: one step, in the form a runner needs (id or number)")
+    p.add_argument("--raw", action="store_true", help="show: the source (pattern, params, own steps) instead of the expanded workflow")
     p = sub.add_parser("run", help="a run of a workflow: its state is one JSON comment on its issue")
     rs = p.add_subparsers(dest="run_cmd", required=True)
     w = rs.add_parser("start", parents=[common])
@@ -3025,11 +3119,13 @@ def run_workflow(args):
         return {"ok": True, "workflows": [{"id": w, "title": wf["title"], "category": wf["category"], "steps": len(wf["steps"])}
                                           for w, wf in sorted(wfs.items())]}
     if args.action == "check":
-        problems = workflow_problems(wfs)
+        problems = workflow_problems(wfs) + pattern_problems(*load_raw())
         return {"ok": not problems, "workflows": len(wfs), "problems": problems}
     if args.id not in wfs:
         raise Refused({"ok": False, "reason": "unknown-workflow", "expected": sorted(wfs)})
     wf = wfs[args.id]
+    if getattr(args, "raw", False):
+        return {"ok": True, "workflow": args.id, "raw": load_raw()[0][args.id]}
     if args.step:
         step = next((s for s in wf["steps"] if args.step in (s["id"], s["n"])), None)
         if step is None:

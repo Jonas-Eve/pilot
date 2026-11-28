@@ -2,264 +2,139 @@
  "id": "persona",
  "title": "Persona",
  "category": "admin",
+ "pattern": "document",
+ "params": {
+  "start_in": [
+   [
+    "TEXT",
+    "Who this user is, in their words: goals, skills, constraints, vocabulary"
+   ]
+  ],
+  "start_out": [
+   [
+    "TEXT",
+    "Intent: the persona to describe"
+   ]
+  ],
+  "lead": "designer",
+  "audit_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Existing vision, functional guidelines, vocabulary and personas. Selected by script, index first"
+   ]
+  ],
+  "audit_out": [
+   [
+    "REPORT",
+    "Delta: duplicate, contradiction, hole, gap with the vision, principles or vocabulary (flagged, never blocking), overlap with an existing persona"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope, drawn from the project vocabulary. To validate at the gate"
+   ]
+  ],
+  "write_task": "write-persona",
+  "write_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "REPORT",
+    "Delta"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ]
+  ],
+  "write_out": [
+   [
+    "WIKI GLOBAL",
+    "Persona proposed in fixed format (goals, skills, constraints, vocabulary, usage context, way of using the product: device, input mode, accessibility needs), without status"
+   ]
+  ],
+  "validator": "pm",
+  "validate_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Proposed persona"
+   ]
+  ],
+  "check_in": [
+   [
+    "WIKI GLOBAL",
+    "Proposed persona"
+   ]
+  ],
+  "check_out": [
+   [
+    "REPORT",
+    "Valid schema, scope from the vocabulary, ambiguous words, no duplicate of an existing persona, way of using the product filled in"
+   ]
+  ],
+  "judge_questions": [
+   {
+    "q": "Is the persona distinct from the other personas?",
+    "fail_on": "no"
+   },
+   {
+    "q": "Is the persona free of prescribed behavior?",
+    "fail_on": "no"
+   }
+  ],
+  "judge_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Proposed persona"
+   ]
+  ],
+  "judge_out": [
+   [
+    "REPORT",
+    "Yes or no: is the persona distinct from the other personas? is the persona free of prescribed behavior?"
+   ]
+  ],
+  "gate_in": [
+   [
+    "WIKI GLOBAL",
+    "Proposed persona"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "REPORT",
+    "Code checks and judge, all green"
+   ]
+  ],
+  "gate_out": [
+   [
+    "VALIDATION",
+    "Persona accepted, scope validated"
+   ],
+   [
+    "TEXT",
+    "Or changes: back to the intent"
+   ]
+  ]
+ },
  "steps": [
   {
-   "id": "start",
-   "n": "1",
-   "kind": "human-start",
-   "title": "Intent",
-   "actor": "Human F",
-   "in": [
-    [
-     "TEXT",
-     "Who this user is, in their words: goals, skills, constraints, vocabulary"
-    ]
-   ],
-   "out": [
-    [
-     "TEXT",
-     "Intent: the persona to describe"
-    ]
-   ]
-  },
-  {
-   "id": "audit",
-   "n": "2",
-   "kind": "agent",
-   "title": "Auditor",
-   "actor": "AI: a single auditor, who holds the discussion with the human",
-   "agents": [
-    {
-     "persona": "designer"
-    }
-   ],
-   "task": "audit",
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Existing vision, functional guidelines, vocabulary and personas. Selected by script, index first"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Delta: duplicate, contradiction, hole, gap with the vision, principles or vocabulary (flagged, never blocking), overlap with an existing persona"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
-    ]
-   ]
-  },
-  {
-   "id": "challenge",
-   "n": "3",
-   "kind": "human-optional",
-   "title": "Challenge",
-   "actor": "Human F, opened by script only if the delta is not empty",
-   "in": [
-    [
-     "REPORT",
-     "The delta, short and in fixed form"
-    ],
-    [
-     "TEXT",
-     "On request: a question to the auditor about a line of the delta"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Keeps or modifies the intent"
-    ],
-    [
-     "TEXT",
-     "Revised intent, back to the audit"
-    ],
-    [
-     "REPORT",
-     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
-    ]
-   ],
-   "open_if": "delta-not-empty",
-   "loop_to": "audit"
-  },
-  {
-   "id": "write",
-   "n": "4",
-   "kind": "agent",
-   "title": "Writer",
-   "actor": "AI",
-   "agents": [
-    {
-     "persona": "designer"
-    }
-   ],
-   "task": "write-persona",
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "REPORT",
-     "Delta"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ]
-   ],
-   "out": [
-    [
-     "WIKI GLOBAL",
-     "Persona proposed in fixed format (goals, skills, constraints, vocabulary, usage context, way of using the product: device, input mode, accessibility needs), without status"
-    ]
-   ]
-  },
-  {
-   "id": "validate",
-   "n": "5",
-   "kind": "validator",
-   "title": "Validator",
-   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
-   "agents": [
-    {
-     "persona": "pm"
-    }
-   ],
-   "task": "validate",
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Proposed persona"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "List of defects, free critique"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "check",
-   "n": "6",
-   "kind": "check",
-   "title": "Code checks",
-   "actor": "Script",
-   "check": "persona.check",
-   "in": [
-    [
-     "WIKI GLOBAL",
-     "Proposed persona"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Valid schema, scope from the vocabulary, ambiguous words, no duplicate of an existing persona, way of using the product filled in"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "judge",
-   "n": "7",
-   "kind": "judge",
-   "title": "Judge",
-   "actor": "AI, two fixed questions, citation required",
-   "task": "judge",
-   "judge": "persona.judge",
-   "questions": [
-    {
-     "q": "Is the persona distinct from the other personas?",
-     "fail_on": "no"
-    },
-    {
-     "q": "Is the persona free of prescribed behavior?",
-     "fail_on": "no"
-    }
-   ],
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Proposed persona"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Yes or no: is the persona distinct from the other personas? is the persona free of prescribed behavior?"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "gate",
-   "n": "8",
-   "kind": "human-gate",
-   "title": "Gate · Review",
-   "actor": "Human F",
-   "in": [
-    [
-     "WIKI GLOBAL",
-     "Proposed persona"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "REPORT",
-     "Code checks and judge, all green"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Persona accepted, scope validated"
-    ],
-    [
-     "TEXT",
-     "Or changes: back to the intent"
-    ]
-   ],
-   "on_reject": [
-    {
-     "label": "fond",
-     "to": "start"
-    }
-   ]
-  },
-  {
    "id": "end",
-   "n": "9",
    "kind": "end",
    "title": "Accepted · merge",
    "in": [
@@ -273,7 +148,8 @@
      "WIKI GLOBAL",
      "Persona in the wiki, available for the Recette"
     ]
-   ]
+   ],
+   "after": "gate"
   }
  ],
  "doc": {

@@ -2,43 +2,255 @@
  "id": "express",
  "title": "Express",
  "category": "run",
- "contract": {
-  "produces": [
-   "building",
-   "reviewing",
-   "merged"
+ "pattern": "document",
+ "params": {
+  "human": "Human F or T who requested the express",
+  "start_title": "Express request",
+  "start_in": [
+   [
+    "TEXT",
+    "The need or fix to handle fast (fix, core feature…), in their words, whatever its size"
+   ],
+   [
+    "REPORT",
+    "If the request comes from a report of blocking severity: its validated qualification"
+   ]
+  ],
+  "start_out": [
+   [
+    "TEXT",
+    "Express intent and reason for using express"
+   ]
+  ],
+  "lead": "pm",
+  "audit_in": [
+   [
+    "TEXT",
+    "Express intent"
+   ],
+   [
+    "GLOBAL ARCHITECTURE",
+    "Overview and guidelines, plus the ADRs whose scope overlaps the intent's. Selected by script, index first"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Functional guidelines and vocabulary"
+   ],
+   [
+    "WIKI",
+    "Need entries concerned, with their log"
+   ],
+   [
+    "CODE",
+    "Areas touched"
+   ]
+  ],
+  "audit_out": [
+   [
+    "REPORT",
+    "Delta: criteria concerned, restoring an already-described behavior or changing behavior, contradiction with an accepted ADR or technical guideline. Such a contradiction refuses the express; a gap with the functional frame is only flagged"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope, drawn from the project vocabulary. To validate at the gate"
+   ]
+  ],
+  "challenge_out": [
+   [
+    "VALIDATION",
+    "Keeps or modifies the express intent"
+   ],
+   [
+    "TEXT",
+    "Revised intent, back to the audit"
+   ],
+   [
+    "REPORT",
+    "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
+   ]
+  ],
+  "write_title": "Provisional documentation writer",
+  "write_task": "write-provisional",
+  "ask": "ask",
+  "write_in": [
+   [
+    "TEXT",
+    "Express intent"
+   ],
+   [
+    "REPORT",
+    "Delta"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "TEXT",
+    "In later rounds: the human's answer"
+   ]
+  ],
+  "write_out": [
+   [
+    "CRITERIA",
+    "New or modified criteria, in the need entry concerned (created if absent), at status provisional. Nothing if the fix restores an already-described behavior"
+   ],
+   [
+    "LOG",
+    "Provisional log line: decision, discarded alternatives, reason"
+   ],
+   [
+    "ADR",
+    "Local ADR at status provisional, only if a technical decision is made"
+   ],
+   [
+    "TEXT",
+    "Hypotheses made: each point where it chose a default value, with the question it would have asked. Recorded on the ticket for the Recette"
+   ],
+   [
+    "QUESTION",
+    "Only if a point blocks it: see the next step"
+   ]
+  ],
+  "validator": "techlead",
+  "validate_in": [
+   [
+    "CRITERIA",
+    "Provisional criteria"
+   ],
+   [
+    "LOG",
+    "Log line"
+   ],
+   [
+    "ADR",
+    "Provisional ADR, if any"
+   ],
+   [
+    "TEXT",
+    "Express intent"
+   ]
+  ],
+  "validate_out": [
+   [
+    "REPORT",
+    "List of defects, free critique: do the criteria carry the intent, are they achievable in the code, is the ADR applicable?"
+   ]
+  ],
+  "check_in": [
+   [
+    "CRITERIA",
+    "Provisional criteria"
+   ],
+   [
+    "LOG",
+    "Log line"
+   ],
+   [
+    "ADR",
+    "Provisional ADR"
+   ],
+   [
+    "TICKET",
+    "Open tickets"
+   ]
+  ],
+  "check_out": [
+   [
+    "REPORT",
+    "Schema, scope from the vocabulary, provisional status set, ambiguous words, log format, each modified existing criterion has its log line, no accepted ADR contradicted, no frame (Admin) modified, no open ticket on the criteria concerned"
+   ],
+   [
+    "TICKET",
+    "Express ticket draft, assembled by script: criteria, ADR, scope, lock. A single story, without tasks"
+   ]
+  ],
+  "judge_questions": [
+   {
+    "q": "Is each provisional criterion observable?",
+    "fail_on": "no"
+   },
+   {
+    "q": "Is the log's reason distinct from the decision?",
+    "fail_on": "no"
+   }
+  ],
+  "judge_in": [
+   [
+    "TEXT",
+    "Express intent"
+   ],
+   [
+    "CRITERIA",
+    "Provisional criteria"
+   ],
+   [
+    "LOG",
+    "Log line"
+   ]
+  ],
+  "judge_out": [
+   [
+    "REPORT",
+    "Yes or no: is each provisional criterion observable? is the log's reason distinct from the decision?"
+   ]
+  ],
+  "gate_in": [
+   [
+    "TICKET",
+    "Express ticket draft"
+   ],
+   [
+    "WIKI",
+    "Need entry touched, with its provisional criteria"
+   ],
+   [
+    "ADR",
+    "Provisional ADR, if any"
+   ],
+   [
+    "LOG",
+    "Provisional log line"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "TEXT",
+    "Hypotheses made by the writer, with their default value"
+   ],
+   [
+    "REPORT",
+    "Code checks and judge, all green"
+   ]
+  ],
+  "gate_out": [
+   [
+    "VALIDATION",
+    "Provisional documentation, scope and ticket validated"
+   ],
+   [
+    "TEXT",
+    "Or back to the writer if wording or a hypothesis must be corrected, or to the request if the substance"
+   ]
+  ],
+  "reject": [
+   {
+    "label": "fond",
+    "to": "start"
+   },
+   {
+    "label": "formulation",
+    "to": "write"
+   }
   ]
  },
- "steps": [
-  {
-   "id": "start",
-   "n": "1",
-   "kind": "human-start",
-   "title": "Express request",
-   "actor": "Human F or T with the express right",
-   "in": [
-    [
-     "TEXT",
-     "The need or fix to handle fast (fix, core feature…), in their words, whatever its size"
-    ],
-    [
-     "REPORT",
-     "If the request comes from a report of blocking severity: its validated qualification"
-    ]
-   ],
-   "out": [
-    [
-     "TEXT",
-     "Express intent and reason for using express"
-    ]
-   ]
+ "patch": {
+  "start": {
+   "actor": "Human F or T with the express right"
   },
-  {
-   "id": "audit",
-   "n": "2",
-   "kind": "agent",
-   "title": "Auditor",
-   "actor": "AI: a single auditor, who holds the discussion with the human",
+  "audit": {
    "agents": [
     {
      "persona": "pm"
@@ -51,80 +263,9 @@
      "persona": "techlead",
      "when": "code areas touched"
     }
-   ],
-   "task": "audit",
-   "in": [
-    [
-     "TEXT",
-     "Express intent"
-    ],
-    [
-     "GLOBAL ARCHITECTURE",
-     "Overview and guidelines, plus the ADRs whose scope overlaps the intent's. Selected by script, index first"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Functional guidelines and vocabulary"
-    ],
-    [
-     "WIKI",
-     "Need entries concerned, with their log"
-    ],
-    [
-     "CODE",
-     "Areas touched"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Delta: criteria concerned, restoring an already-described behavior or changing behavior, contradiction with an accepted ADR or technical guideline. Such a contradiction refuses the express; a gap with the functional frame is only flagged"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
-    ]
    ]
   },
-  {
-   "id": "challenge",
-   "n": "3",
-   "kind": "human-optional",
-   "title": "Challenge",
-   "actor": "Human F or T who requested the express, opened by script only if the delta is not empty",
-   "in": [
-    [
-     "REPORT",
-     "The delta, short and in fixed form"
-    ],
-    [
-     "TEXT",
-     "On request: a question to the auditor about a line of the delta"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Keeps or modifies the express intent"
-    ],
-    [
-     "TEXT",
-     "Revised intent, back to the audit"
-    ],
-    [
-     "REPORT",
-     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
-    ]
-   ],
-   "open_if": "delta-not-empty",
-   "loop_to": "audit"
-  },
-  {
-   "id": "write",
-   "n": "4",
-   "kind": "agent",
-   "title": "Provisional documentation writer",
-   "actor": "AI",
+  "write": {
    "agents": [
     {
      "persona": "pm",
@@ -134,53 +275,26 @@
      "persona": "architect",
      "when": "the provisional ADR, if a technical decision is made"
     }
-   ],
-   "task": "write-provisional",
-   "ask": "ask",
-   "in": [
-    [
-     "TEXT",
-     "Express intent"
-    ],
-    [
-     "REPORT",
-     "Delta"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "TEXT",
-     "In later rounds: the human's answer"
-    ]
-   ],
-   "out": [
-    [
-     "CRITERIA",
-     "New or modified criteria, in the need entry concerned (created if absent), at status provisional. Nothing if the fix restores an already-described behavior"
-    ],
-    [
-     "LOG",
-     "Provisional log line: decision, discarded alternatives, reason"
-    ],
-    [
-     "ADR",
-     "Local ADR at status provisional, only if a technical decision is made"
-    ],
-    [
-     "TEXT",
-     "Hypotheses made: each point where it chose a default value, with the question it would have asked. Recorded on the ticket for the Recette"
-    ],
-    [
-     "QUESTION",
-     "Only if a point blocks it: see the next step"
-    ]
    ]
   },
+  "check": {
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "ask"
+   }
+  },
+  "judge": {
+   "on_fail": {
+    "to": "write",
+    "max": 2,
+    "then": "ask"
+   }
+  }
+ },
+ "steps": [
   {
    "id": "ask",
-   "n": "5",
    "kind": "human-optional",
    "title": "Writer's question",
    "actor": "Human who requested the express, only if the writer is blocked: answers its question",
@@ -197,195 +311,11 @@
     ]
    ],
    "open_if": "blocked",
-   "loop_to": "write"
-  },
-  {
-   "id": "validate",
-   "n": "6",
-   "kind": "validator",
-   "title": "Validator",
-   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
-   "agents": [
-    {
-     "persona": "techlead"
-    }
-   ],
-   "task": "validate",
-   "in": [
-    [
-     "CRITERIA",
-     "Provisional criteria"
-    ],
-    [
-     "LOG",
-     "Log line"
-    ],
-    [
-     "ADR",
-     "Provisional ADR, if any"
-    ],
-    [
-     "TEXT",
-     "Express intent"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "List of defects, free critique: do the criteria carry the intent, are they achievable in the code, is the ADR applicable?"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "check",
-   "n": "7",
-   "kind": "check",
-   "title": "Code checks",
-   "actor": "Script",
-   "check": "express.check",
-   "in": [
-    [
-     "CRITERIA",
-     "Provisional criteria"
-    ],
-    [
-     "LOG",
-     "Log line"
-    ],
-    [
-     "ADR",
-     "Provisional ADR"
-    ],
-    [
-     "TICKET",
-     "Open tickets"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Schema, scope from the vocabulary, provisional status set, ambiguous words, log format, each modified existing criterion has its log line, no accepted ADR contradicted, no frame (Admin) modified, no open ticket on the criteria concerned"
-    ],
-    [
-     "TICKET",
-     "Express ticket draft, assembled by script: criteria, ADR, scope, lock. A single story, without tasks"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "ask"
-   }
-  },
-  {
-   "id": "judge",
-   "n": "8",
-   "kind": "judge",
-   "title": "Judge",
-   "actor": "AI, two fixed questions, citation required",
-   "task": "judge",
-   "judge": "express.judge",
-   "questions": [
-    {
-     "q": "Is each provisional criterion observable?",
-     "fail_on": "no"
-    },
-    {
-     "q": "Is the log's reason distinct from the decision?",
-     "fail_on": "no"
-    }
-   ],
-   "in": [
-    [
-     "TEXT",
-     "Express intent"
-    ],
-    [
-     "CRITERIA",
-     "Provisional criteria"
-    ],
-    [
-     "LOG",
-     "Log line"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Yes or no: is each provisional criterion observable? is the log's reason distinct from the decision?"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "ask"
-   }
-  },
-  {
-   "id": "gate",
-   "n": "9",
-   "kind": "human-gate",
-   "title": "Gate · Review",
-   "actor": "Human F or T who requested the express",
-   "in": [
-    [
-     "TICKET",
-     "Express ticket draft"
-    ],
-    [
-     "WIKI",
-     "Need entry touched, with its provisional criteria"
-    ],
-    [
-     "ADR",
-     "Provisional ADR, if any"
-    ],
-    [
-     "LOG",
-     "Provisional log line"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "TEXT",
-     "Hypotheses made by the writer, with their default value"
-    ],
-    [
-     "REPORT",
-     "Code checks and judge, all green"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Provisional documentation, scope and ticket validated"
-    ],
-    [
-     "TEXT",
-     "Or back to the writer if wording or a hypothesis must be corrected, or to the request if the substance"
-    ]
-   ],
-   "on_reject": [
-    {
-     "label": "fond",
-     "to": "start"
-    },
-    {
-     "label": "formulation",
-     "to": "write"
-    }
-   ]
+   "loop_to": "write",
+   "after": "write"
   },
   {
    "id": "lock",
-   "n": "10",
    "kind": "check",
    "title": "Ticket and lock",
    "actor": "Script",
@@ -415,7 +345,8 @@
     "to": "write",
     "max": 2,
     "then": "ask"
-   }
+   },
+   "after": "gate"
   },
   {
    "include": "build",
@@ -460,6 +391,13 @@
    }
   }
  ],
+ "contract": {
+  "produces": [
+   "building",
+   "reviewing",
+   "merged"
+  ]
+ },
  "doc": {
   "contract": [
    [

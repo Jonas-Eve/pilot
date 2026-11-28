@@ -2,288 +2,164 @@
  "id": "user-flow",
  "title": "User flow",
  "category": "admin",
+ "pattern": "document",
+ "params": {
+  "start_in": [
+   [
+    "TEXT",
+    "The flow, in their words: who, to do what, expected result"
+   ]
+  ],
+  "start_out": [
+   [
+    "TEXT",
+    "Intent: the user flow to describe"
+   ]
+  ],
+  "lead": "qa",
+  "audit_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Existing vision, functional guidelines, vocabulary and personas. Selected by script, index first"
+   ],
+   [
+    "WIKI",
+    "Need entries and user flows whose scope overlaps the flow's, with their log"
+   ]
+  ],
+  "audit_out": [
+   [
+    "REPORT",
+    "Delta: duplicate, contradiction, hole, gap with the vision, principles or vocabulary (flagged, never blocking), step without a need entry, missing persona"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope, drawn from the project vocabulary. To validate at the gate"
+   ]
+  ],
+  "write_task": "write-user-flow",
+  "write_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "REPORT",
+    "Delta"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ]
+  ],
+  "write_out": [
+   [
+    "WIKI",
+    "Proposed user flow: steps, expected observable result at each step, personas concerned (existing ones only), status specified, and its \"Candidates\" section (one line per step \"to create\")"
+   ],
+   [
+    "LOG",
+    "If the user flow already exists: a new line added, with the decision, discarded alternatives and reason"
+   ]
+  ],
+  "validator": "pm",
+  "validate_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "WIKI",
+    "Proposed user flow"
+   ]
+  ],
+  "check_in": [
+   [
+    "WIKI",
+    "Proposed user flow"
+   ],
+   [
+    "LOG",
+    "The entry's log, before and after"
+   ]
+  ],
+  "check_out": [
+   [
+    "REPORT",
+    "Valid schema, scope from the vocabulary, ambiguous words, cited personas exist, each step has an observable result, each step tied to a need entry or marked \"to create\" with its candidate request line"
+   ],
+   [
+    "REPORT",
+    "Log: previous lines unchanged, a new line if the user flow already exists, full format"
+   ]
+  ],
+  "judge_actor": "AI, three fixed questions, citation required",
+  "judge_questions": [
+   {
+    "q": "Is each step observable?",
+    "fail_on": "no"
+   },
+   {
+    "q": "Does the flow contradict an existing criterion?",
+    "fail_on": "yes"
+   },
+   {
+    "q": "Is a cited persona irrelevant to this flow?",
+    "fail_on": "yes"
+   }
+  ],
+  "judge_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "WIKI",
+    "Proposed user flow"
+   ]
+  ],
+  "judge_out": [
+   [
+    "REPORT",
+    "Yes or no: is each step observable? does the flow contradict an existing criterion? is a cited persona irrelevant to this flow?"
+   ]
+  ],
+  "gate_in": [
+   [
+    "WIKI",
+    "Proposed user flow"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "LOG",
+    "New log line, if any"
+   ],
+   [
+    "REPORT",
+    "Code checks and judge, all green"
+   ]
+  ],
+  "gate_out": [
+   [
+    "VALIDATION",
+    "User flow at status specified, scope and log validated"
+   ],
+   [
+    "TEXT",
+    "Or changes: back to the intent"
+   ]
+  ]
+ },
  "steps": [
   {
-   "id": "start",
-   "n": "1",
-   "kind": "human-start",
-   "title": "Intent",
-   "actor": "Human F",
-   "in": [
-    [
-     "TEXT",
-     "The flow, in their words: who, to do what, expected result"
-    ]
-   ],
-   "out": [
-    [
-     "TEXT",
-     "Intent: the user flow to describe"
-    ]
-   ]
-  },
-  {
-   "id": "audit",
-   "n": "2",
-   "kind": "agent",
-   "title": "Auditor",
-   "actor": "AI: a single auditor, who holds the discussion with the human",
-   "agents": [
-    {
-     "persona": "qa"
-    }
-   ],
-   "task": "audit",
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Existing vision, functional guidelines, vocabulary and personas. Selected by script, index first"
-    ],
-    [
-     "WIKI",
-     "Need entries and user flows whose scope overlaps the flow's, with their log"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Delta: duplicate, contradiction, hole, gap with the vision, principles or vocabulary (flagged, never blocking), step without a need entry, missing persona"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
-    ]
-   ]
-  },
-  {
-   "id": "challenge",
-   "n": "3",
-   "kind": "human-optional",
-   "title": "Challenge",
-   "actor": "Human F, opened by script only if the delta is not empty",
-   "in": [
-    [
-     "REPORT",
-     "The delta, short and in fixed form"
-    ],
-    [
-     "TEXT",
-     "On request: a question to the auditor about a line of the delta"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Keeps or modifies the intent"
-    ],
-    [
-     "TEXT",
-     "Revised intent, back to the audit"
-    ],
-    [
-     "REPORT",
-     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
-    ]
-   ],
-   "open_if": "delta-not-empty",
-   "loop_to": "audit"
-  },
-  {
-   "id": "write",
-   "n": "4",
-   "kind": "agent",
-   "title": "Writer",
-   "actor": "AI",
-   "agents": [
-    {
-     "persona": "qa"
-    }
-   ],
-   "task": "write-user-flow",
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "REPORT",
-     "Delta"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ]
-   ],
-   "out": [
-    [
-     "WIKI",
-     "Proposed user flow: steps, expected observable result at each step, personas concerned (existing ones only), status specified, and its \"Candidates\" section (one line per step \"to create\")"
-    ],
-    [
-     "LOG",
-     "If the user flow already exists: a new line added, with the decision, discarded alternatives and reason"
-    ]
-   ]
-  },
-  {
-   "id": "validate",
-   "n": "5",
-   "kind": "validator",
-   "title": "Validator",
-   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
-   "agents": [
-    {
-     "persona": "pm"
-    }
-   ],
-   "task": "validate",
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "WIKI",
-     "Proposed user flow"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "List of defects, free critique"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "check",
-   "n": "6",
-   "kind": "check",
-   "title": "Code checks",
-   "actor": "Script",
-   "check": "user-flow.check",
-   "in": [
-    [
-     "WIKI",
-     "Proposed user flow"
-    ],
-    [
-     "LOG",
-     "The entry's log, before and after"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Valid schema, scope from the vocabulary, ambiguous words, cited personas exist, each step has an observable result, each step tied to a need entry or marked \"to create\" with its candidate request line"
-    ],
-    [
-     "REPORT",
-     "Log: previous lines unchanged, a new line if the user flow already exists, full format"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "judge",
-   "n": "7",
-   "kind": "judge",
-   "title": "Judge",
-   "actor": "AI, three fixed questions, citation required",
-   "task": "judge",
-   "judge": "user-flow.judge",
-   "questions": [
-    {
-     "q": "Is each step observable?",
-     "fail_on": "no"
-    },
-    {
-     "q": "Does the flow contradict an existing criterion?",
-     "fail_on": "yes"
-    },
-    {
-     "q": "Is a cited persona irrelevant to this flow?",
-     "fail_on": "yes"
-    }
-   ],
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "WIKI",
-     "Proposed user flow"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Yes or no: is each step observable? does the flow contradict an existing criterion? is a cited persona irrelevant to this flow?"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "gate",
-   "n": "8",
-   "kind": "human-gate",
-   "title": "Gate · Review",
-   "actor": "Human F",
-   "in": [
-    [
-     "WIKI",
-     "Proposed user flow"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "LOG",
-     "New log line, if any"
-    ],
-    [
-     "REPORT",
-     "Code checks and judge, all green"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "User flow at status specified, scope and log validated"
-    ],
-    [
-     "TEXT",
-     "Or changes: back to the intent"
-    ]
-   ],
-   "on_reject": [
-    {
-     "label": "fond",
-     "to": "start"
-    }
-   ]
-  },
-  {
    "id": "end",
-   "n": "9",
    "kind": "end",
    "title": "Accepted · merge",
    "in": [
@@ -297,7 +173,8 @@
      "WIKI",
      "User flow in the wiki, status specified, available for the Recette. Its \"Candidates\" section: one line per step \"to create\", in the format of the Need intent (source, who, expected, why, proposed scope), at status candidate"
     ]
-   ]
+   ],
+   "after": "gate"
   }
  ],
  "doc": {

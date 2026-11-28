@@ -1573,6 +1573,66 @@ class WorkflowDataTests(unittest.TestCase):
             pilot.run_workflow(types.SimpleNamespace(action="show", id="nope", step=None))
 
 
+class PatternTests(unittest.TestCase):
+    PATTERNS = {"doc": {"params": {"who": {"default": "Human F"}, "lead": {}, "text": {}, "ask": {"default": None}, "w": {}},
+                        "steps": [{"id": "start", "kind": "human-start", "actor": "${who}", "out": "${text}"},
+                                  {"id": "${w}", "kind": "agent", "agents": [{"persona": "${lead}"}], "ask": "${ask}",
+                                   "on_fail": {"to": "start", "max": 2, "then": "gate"}},
+                                  {"id": "gate", "kind": "human-gate", "title": "Gate of ${id}"}]}}
+
+    def expand(self, **wf):
+        raw = {"x": {"id": "x", "pattern": "doc", "steps": [], **wf}}
+        return pilot.expand(raw, "x", self.PATTERNS)
+
+    def test_a_pattern_is_filled_with_defaults_params_and_the_workflow_id(self):
+        wf = self.expand(params={"lead": "pm", "text": [["TEXT", "t"]], "w": "write"})
+        steps = wf["steps"]
+        self.assertEqual([s["id"] for s in steps], ["start", "write", "gate"])
+        self.assertEqual(steps[0], {"id": "start", "kind": "human-start", "actor": "Human F", "out": [["TEXT", "t"]], "n": "1"})
+        self.assertEqual(steps[1]["agents"], [{"persona": "pm"}])
+        self.assertNotIn("ask", steps[1])  # a None parameter drops its field
+        self.assertEqual(steps[2]["title"], "Gate of x")
+        self.assertNotIn("_problems", wf)
+        for key in ("pattern", "params", "patch"):
+            self.assertNotIn(key, wf)
+
+    def test_own_steps_follow_their_anchor_or_the_step_before_and_a_patch_changes_a_step(self):
+        wf = self.expand(params={"lead": "pm", "text": [], "w": "write", "ask": "q"},
+                         patch={"write": {"on_fail": {"then": "q"}, "title": "T"}},
+                         steps=[{"id": "q", "kind": "human-optional", "after": "write"}, {"id": "end", "kind": "end", "after": "gate"}, {"id": "end2", "kind": "end"}])
+        self.assertEqual([s["id"] for s in wf["steps"]], ["start", "write", "q", "gate", "end", "end2"])
+        self.assertEqual([s["n"] for s in wf["steps"]], ["1", "2", "3", "4", "5", "6"])
+        self.assertEqual(wf["steps"][1]["on_fail"], {"to": "start", "max": 2, "then": "q"})  # on_fail merges
+        self.assertEqual(wf["steps"][1]["title"], "T")
+
+    def test_errors_are_reported_as_problems(self):
+        def codes(**wf):
+            raw = {"x": {"id": "x", "title": "X", "category": "admin", **{"steps": [], **wf}}}
+            found = pilot.workflow_problems({"x": pilot.expand(raw, "x", self.PATTERNS)})
+            return {(p["code"], p.get("parameter") or p.get("anchor") or p.get("pattern")) for p in found if "code" in p}
+        ok = {"lead": "pm", "text": [], "w": "w"}
+        self.assertIn(("unknown-pattern", "nope"), codes(pattern="nope"))
+        self.assertIn(("missing-parameter", "lead"), codes(pattern="doc", params={"text": [], "w": "w"}))
+        self.assertIn(("unknown-parameter", "extra"), codes(pattern="doc", params={**ok, "extra": 1}))
+        self.assertIn(("unknown-anchor", "nowhere"), codes(pattern="doc", params=ok, steps=[{"id": "e", "kind": "end", "after": "nowhere"}]))
+        self.assertIn(("unknown-anchor", "ghost"), codes(pattern="doc", params=ok, patch={"ghost": {}}))
+
+    def test_pattern_problems_find_an_undeclared_placeholder_an_unused_parameter_and_an_unused_pattern(self):
+        patterns = {"p": {"params": {"a": {}, "b": {}}, "steps": [{"id": "${a}", "title": "${c} ${id}"}]}, "unused": {"params": {}, "steps": []}}
+        found = {(p["pattern"], p["code"], p.get("parameter")) for p in pilot.pattern_problems({"x": {"pattern": "p"}}, patterns)}
+        self.assertEqual(found, {("p", "undeclared-placeholder", "c"), ("p", "unused-parameter", "b"), ("unused", "unused-pattern", None)})
+
+    def test_the_shipped_patterns_are_used_and_the_source_of_a_workflow_is_served(self):
+        raw, patterns = pilot.load_raw()
+        self.assertEqual(pilot.pattern_problems(raw, patterns), [])
+        self.assertNotIn("document", pilot.load_workflows())  # a pattern is not a workflow
+        out = pilot.run_workflow(types.SimpleNamespace(action="show", id="persona", step=None, raw=True))
+        self.assertEqual(out["raw"]["pattern"], "document")
+        self.assertEqual(pilot.run_workflow(types.SimpleNamespace(action="check", id=None, step=None, raw=False))["problems"], [])
+        steps = pilot.run_workflow(types.SimpleNamespace(action="show", id="persona", step=None, raw=False))["steps"]
+        self.assertEqual([s["id"] for s in steps][:3], ["start", "audit", "challenge"])
+
+
 def ticket(number, status="ready", level="story", labels=(), **kw):
     return issue(number, [f"status:{status}", f"level:{level}", "type:feature", *labels], **kw)
 

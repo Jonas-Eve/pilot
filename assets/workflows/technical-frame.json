@@ -2,272 +2,150 @@
  "id": "technical-frame",
  "title": "Technical frame",
  "category": "admin",
+ "pattern": "document",
+ "params": {
+  "human": "Human T",
+  "start_in": [
+   [
+    "TEXT",
+    "The concern, in their words: a new rule to set, or the change to an existing guideline"
+   ]
+  ],
+  "start_out": [
+   [
+    "TEXT",
+    "Technical intent"
+   ]
+  ],
+  "lead": "architect",
+  "audit_in": [
+   [
+    "TEXT",
+    "Technical intent"
+   ],
+   [
+    "GLOBAL ARCHITECTURE",
+    "Overview and guidelines whose scope overlaps the intent's. Selected by script, index first. Never the code"
+   ]
+  ],
+  "audit_out": [
+   [
+    "REPORT",
+    "Delta: overlaps, contradicts, modifies, hole. Three fields per line: entry, consequence, proposed resolution. Empty if nothing to report"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope, drawn from the project vocabulary. To validate at the gate"
+   ]
+  ],
+  "write_task": "write-technical-frame",
+  "write_in": [
+   [
+    "TEXT",
+    "Technical intent"
+   ],
+   [
+    "REPORT",
+    "Delta"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ]
+  ],
+  "write_out": [
+   [
+    "GLOBAL ARCHITECTURE",
+    "Proposed guideline, or overview update: the rule, its reason in a few lines, what it replaces, how to verify it (linter, test, build or judgment), its scope. New guideline: a file created at `guidelines/<id>.md`. Existing entry: that same file, same id"
+   ]
+  ],
+  "validator": "techlead",
+  "validate_in": [
+   [
+    "TEXT",
+    "Technical intent"
+   ],
+   [
+    "GLOBAL ARCHITECTURE",
+    "Proposed guideline"
+   ]
+  ],
+  "check_in": [
+   [
+    "GLOBAL ARCHITECTURE",
+    "Proposed guideline"
+   ]
+  ],
+  "check_out": [
+   [
+    "REPORT",
+    "Valid schema, scope present and from the vocabulary, cited identifiers exist, each statement cites its source, ambiguous words, verification filled in, no scope overlap with an accepted guideline without \"replaces\""
+   ]
+  ],
+  "judge_actor": "AI, four fixed questions, citation required",
+  "judge_questions": [
+   {
+    "q": "Is each sentence of the intent carried?",
+    "fail_on": "no"
+   },
+   {
+    "q": "Is a statement unsupported by its cited source?",
+    "fail_on": "yes"
+   },
+   {
+    "q": "Is there a contradiction with a cited guideline?",
+    "fail_on": "yes"
+   },
+   {
+    "q": "Do two statements contradict each other?",
+    "fail_on": "yes"
+   }
+  ],
+  "judge_in": [
+   [
+    "TEXT",
+    "Technical intent"
+   ],
+   [
+    "GLOBAL ARCHITECTURE",
+    "Proposed guideline"
+   ]
+  ],
+  "judge_out": [
+   [
+    "REPORT",
+    "Yes or no, with citation: is each sentence of the intent carried? a statement unsupported by its cited source? contradiction with a cited guideline? two statements contradicting each other?"
+   ]
+  ],
+  "gate_title": "Gate 1 · Review",
+  "gate_in": [
+   [
+    "GLOBAL ARCHITECTURE",
+    "Proposed guideline"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "REPORT",
+    "Code checks and judge, all green"
+   ]
+  ],
+  "gate_out": [
+   [
+    "VALIDATION",
+    "Text and scope validated. The guideline stays proposed until the rule is merged"
+   ],
+   [
+    "TEXT",
+    "Or changes: back to the intent"
+   ]
+  ]
+ },
  "steps": [
   {
-   "id": "start",
-   "n": "1",
-   "kind": "human-start",
-   "title": "Intent",
-   "actor": "Human T",
-   "in": [
-    [
-     "TEXT",
-     "The concern, in their words: a new rule to set, or the change to an existing guideline"
-    ]
-   ],
-   "out": [
-    [
-     "TEXT",
-     "Technical intent"
-    ]
-   ]
-  },
-  {
-   "id": "audit",
-   "n": "2",
-   "kind": "agent",
-   "title": "Auditor",
-   "actor": "AI: a single auditor, who holds the discussion with the human",
-   "agents": [
-    {
-     "persona": "architect"
-    }
-   ],
-   "task": "audit",
-   "in": [
-    [
-     "TEXT",
-     "Technical intent"
-    ],
-    [
-     "GLOBAL ARCHITECTURE",
-     "Overview and guidelines whose scope overlaps the intent's. Selected by script, index first. Never the code"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Delta: overlaps, contradicts, modifies, hole. Three fields per line: entry, consequence, proposed resolution. Empty if nothing to report"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
-    ]
-   ]
-  },
-  {
-   "id": "challenge",
-   "n": "3",
-   "kind": "human-optional",
-   "title": "Challenge",
-   "actor": "Human T, opened by script only if the delta is not empty",
-   "in": [
-    [
-     "REPORT",
-     "The delta, short and in fixed form"
-    ],
-    [
-     "TEXT",
-     "On request: a question to the auditor about a line of the delta"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Keeps or modifies the intent"
-    ],
-    [
-     "TEXT",
-     "Revised intent, back to the audit"
-    ],
-    [
-     "REPORT",
-     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
-    ]
-   ],
-   "open_if": "delta-not-empty",
-   "loop_to": "audit"
-  },
-  {
-   "id": "write",
-   "n": "4",
-   "kind": "agent",
-   "title": "Writer",
-   "actor": "AI",
-   "agents": [
-    {
-     "persona": "architect"
-    }
-   ],
-   "task": "write-technical-frame",
-   "in": [
-    [
-     "TEXT",
-     "Technical intent"
-    ],
-    [
-     "REPORT",
-     "Delta"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ]
-   ],
-   "out": [
-    [
-     "GLOBAL ARCHITECTURE",
-     "Proposed guideline, or overview update: the rule, its reason in a few lines, what it replaces, how to verify it (linter, test, build or judgment), its scope. New guideline: a file created at `guidelines/<id>.md`. Existing entry: that same file, same id"
-    ]
-   ]
-  },
-  {
-   "id": "validate",
-   "n": "5",
-   "kind": "validator",
-   "title": "Validator",
-   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
-   "agents": [
-    {
-     "persona": "techlead"
-    }
-   ],
-   "task": "validate",
-   "in": [
-    [
-     "TEXT",
-     "Technical intent"
-    ],
-    [
-     "GLOBAL ARCHITECTURE",
-     "Proposed guideline"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "List of defects, free critique"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "check",
-   "n": "6",
-   "kind": "check",
-   "title": "Code checks",
-   "actor": "Script",
-   "check": "technical-frame.check",
-   "in": [
-    [
-     "GLOBAL ARCHITECTURE",
-     "Proposed guideline"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Valid schema, scope present and from the vocabulary, cited identifiers exist, each statement cites its source, ambiguous words, verification filled in, no scope overlap with an accepted guideline without \"replaces\""
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "judge",
-   "n": "7",
-   "kind": "judge",
-   "title": "Judge",
-   "actor": "AI, four fixed questions, citation required",
-   "task": "judge",
-   "judge": "technical-frame.judge",
-   "questions": [
-    {
-     "q": "Is each sentence of the intent carried?",
-     "fail_on": "no"
-    },
-    {
-     "q": "Is a statement unsupported by its cited source?",
-     "fail_on": "yes"
-    },
-    {
-     "q": "Is there a contradiction with a cited guideline?",
-     "fail_on": "yes"
-    },
-    {
-     "q": "Do two statements contradict each other?",
-     "fail_on": "yes"
-    }
-   ],
-   "in": [
-    [
-     "TEXT",
-     "Technical intent"
-    ],
-    [
-     "GLOBAL ARCHITECTURE",
-     "Proposed guideline"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Yes or no, with citation: is each sentence of the intent carried? a statement unsupported by its cited source? contradiction with a cited guideline? two statements contradicting each other?"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "gate",
-   "n": "8",
-   "kind": "human-gate",
-   "title": "Gate 1 · Review",
-   "actor": "Human T",
-   "in": [
-    [
-     "GLOBAL ARCHITECTURE",
-     "Proposed guideline"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "REPORT",
-     "Code checks and judge, all green"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Text and scope validated. The guideline stays proposed until the rule is merged"
-    ],
-    [
-     "TEXT",
-     "Or changes: back to the intent"
-    ]
-   ],
-   "on_reject": [
-    {
-     "label": "fond",
-     "to": "start"
-    }
-   ]
-  },
-  {
    "id": "implement",
-   "n": "9",
    "kind": "agent",
    "title": "Implementer",
    "actor": "AI",
@@ -297,11 +175,11 @@
      "CODE",
      "Configuration in architecture/ and the project"
     ]
-   ]
+   ],
+   "after": "gate"
   },
   {
    "id": "ask",
-   "n": "10",
    "kind": "human-optional",
    "title": "Implementer's question",
    "actor": "Human T, only if the implementer is blocked: answers its question",
@@ -322,7 +200,6 @@
   },
   {
    "id": "validate-2",
-   "n": "11",
    "kind": "validator",
    "title": "Validator",
    "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
@@ -360,7 +237,6 @@
   },
   {
    "id": "check-2",
-   "n": "12",
    "kind": "check",
    "title": "Code checks and case file",
    "actor": "Script",
@@ -397,7 +273,6 @@
   },
   {
    "id": "judge-2",
-   "n": "13",
    "kind": "judge",
    "title": "Judge",
    "actor": "AI, fixed question, citation required",
@@ -433,7 +308,6 @@
   },
   {
    "id": "pr-ci",
-   "n": "14",
    "kind": "check",
    "title": "PR opening and CI",
    "actor": "Script",
@@ -467,7 +341,6 @@
   },
   {
    "id": "gate-2",
-   "n": "15",
    "kind": "human-gate",
    "title": "Gate 2 · Verification",
    "actor": "Human T",
@@ -516,7 +389,6 @@
   },
   {
    "id": "end",
-   "n": "16",
    "kind": "end",
    "title": "Accepted · merge",
    "in": [

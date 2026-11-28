@@ -1,0 +1,198 @@
+{
+ "document": {
+  "params": {
+   "human": {
+    "default": "Human F"
+   },
+   "start_title": {
+    "default": "Intent"
+   },
+   "start_in": {},
+   "start_out": {},
+   "lead": {},
+   "audit_in": {},
+   "audit_out": {},
+   "challenge_out": {
+    "default": [
+     [
+      "VALIDATION",
+      "Keeps or modifies the intent"
+     ],
+     [
+      "TEXT",
+      "Revised intent, back to the audit"
+     ],
+     [
+      "REPORT",
+      "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
+     ]
+    ]
+   },
+   "write": {
+    "default": "write"
+   },
+   "write_title": {
+    "default": "Writer"
+   },
+   "write_actor": {
+    "default": "AI"
+   },
+   "write_task": {},
+   "ask": {
+    "default": null
+   },
+   "write_in": {},
+   "write_out": {},
+   "validator": {},
+   "validate_in": {},
+   "validate_out": {
+    "default": [
+     [
+      "REPORT",
+      "List of defects, free critique"
+     ]
+    ]
+   },
+   "check_in": {},
+   "check_out": {},
+   "judge_actor": {
+    "default": "AI, two fixed questions, citation required"
+   },
+   "judge_questions": {},
+   "judge_in": {},
+   "judge_out": {},
+   "fail_then": {
+    "default": "gate"
+   },
+   "gate_title": {
+    "default": "Gate · Review"
+   },
+   "gate_in": {},
+   "gate_out": {},
+   "reject": {
+    "default": [
+     {
+      "label": "fond",
+      "to": "start"
+     }
+    ]
+   }
+  },
+  "steps": [
+   {
+    "id": "start",
+    "kind": "human-start",
+    "title": "${start_title}",
+    "actor": "${human}",
+    "in": "${start_in}",
+    "out": "${start_out}"
+   },
+   {
+    "id": "audit",
+    "kind": "agent",
+    "title": "Auditor",
+    "actor": "AI: a single auditor, who holds the discussion with the human",
+    "agents": [
+     {
+      "persona": "${lead}"
+     }
+    ],
+    "task": "audit",
+    "in": "${audit_in}",
+    "out": "${audit_out}"
+   },
+   {
+    "id": "challenge",
+    "kind": "human-optional",
+    "title": "Challenge",
+    "actor": "${human}, opened by script only if the delta is not empty",
+    "in": [
+     [
+      "REPORT",
+      "The delta, short and in fixed form"
+     ],
+     [
+      "TEXT",
+      "On request: a question to the auditor about a line of the delta"
+     ]
+    ],
+    "out": "${challenge_out}",
+    "open_if": "delta-not-empty",
+    "loop_to": "audit"
+   },
+   {
+    "id": "${write}",
+    "kind": "agent",
+    "title": "${write_title}",
+    "actor": "${write_actor}",
+    "agents": [
+     {
+      "persona": "${lead}"
+     }
+    ],
+    "task": "${write_task}",
+    "ask": "${ask}",
+    "in": "${write_in}",
+    "out": "${write_out}"
+   },
+   {
+    "id": "validate",
+    "kind": "validator",
+    "title": "Validator",
+    "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
+    "agents": [
+     {
+      "persona": "${validator}"
+     }
+    ],
+    "task": "validate",
+    "in": "${validate_in}",
+    "out": "${validate_out}",
+    "on_fail": {
+     "to": "${write}",
+     "max": 2,
+     "then": "${fail_then}"
+    }
+   },
+   {
+    "id": "check",
+    "kind": "check",
+    "title": "Code checks",
+    "actor": "Script",
+    "check": "${id}.check",
+    "in": "${check_in}",
+    "out": "${check_out}",
+    "on_fail": {
+     "to": "${write}",
+     "max": 2,
+     "then": "${fail_then}"
+    }
+   },
+   {
+    "id": "judge",
+    "kind": "judge",
+    "title": "Judge",
+    "actor": "${judge_actor}",
+    "task": "judge",
+    "judge": "${id}.judge",
+    "questions": "${judge_questions}",
+    "in": "${judge_in}",
+    "out": "${judge_out}",
+    "on_fail": {
+     "to": "${write}",
+     "max": 2,
+     "then": "${fail_then}"
+    }
+   },
+   {
+    "id": "gate",
+    "kind": "human-gate",
+    "title": "${gate_title}",
+    "actor": "${human}",
+    "in": "${gate_in}",
+    "out": "${gate_out}",
+    "on_reject": "${reject}"
+   }
+  ]
+ }
+}

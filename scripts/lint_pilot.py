@@ -119,7 +119,7 @@ class Linter:
         """The workflow data against the files it names: its own problems, the task docs, the personas and their duty lists, a skill per workflow."""
         mod = load_pilot(self.root)
         wfs = mod.load_workflows()
-        for prob in mod.workflow_problems(wfs):
+        for prob in mod.workflow_problems(wfs) + mod.pattern_problems(*mod.load_raw()):
             self.add("error", "workflow", "assets/workflows", json.dumps(prob, ensure_ascii=False))
         existing, names = {p.name for p in docs}, {p.stem for p in agents}
         duties = {}

@@ -100,6 +100,7 @@ button.tile{cursor:pointer;font:inherit;color:inherit}
 .card a.up{font-size:12px;color:var(--muted);text-decoration:none}
 .card a.up:hover{text-decoration:underline}
 .card .bar{margin-top:4px}
+.row>.ans{grid-column:1/-1;background:var(--bg)} .row .meta2 .q,.card .q{overflow-wrap:anywhere}
 .tlwrap{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:8px}
 .tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
 .tl li{display:grid;grid-template-columns:22px 1fr;gap:2px 8px;padding:4px 6px;border-radius:6px;align-items:start}
@@ -351,7 +352,12 @@ var EN={
 "Règles d’usage":"Usage rules",
 "Réduire":"Collapse",
 "Réinitialiser":"Reset",
-"Répondre sur GitHub":"Reply on GitHub",
+"Répondre":"Answer",
+"Question : ":"Question: ",
+"Votre réponse":"Your answer",
+"La commande est écrite, pas envoyée. Une fois la réponse enregistrée dans le run, il reprend de lui-même depuis son enregistrement.":"The command is written, not sent. Once the answer is recorded in the run, it resumes by itself from its record.",
+"brouillon sauvegardé sur ":"draft saved on ",
+"escalade : un contrôle, un juge ou un validateur n’a pas abouti, un humain reprend le run avec --resume":"escalation: a check, a judge or a validator did not pass, a human resumes the run with --resume",
 "Statuts":"Statuses",
 "Terminés":"Finished",
 "Tester":"Test",
@@ -625,7 +631,7 @@ var SAMPLE=[
 var S={
   repo:'{{REPO}}', adminKey:null,
   role:store('cp.role')||'tech', me:(store('cp.me')||'').trim(),
-  tab:'file', epic:0, view:store('cp.view')==='liste'?'liste':'board', expanded:{}, so:{produit:{},tech:{},tous:{}}, wfOpen:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaKind:null, design:null, wiki:null, flowRuns:{}, fl:{newKind:'frame',newText:'',newOpen:0,pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoImp:0, viewHelp:0, viewProto:0, sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'},
+  tab:'file', epic:0, view:store('cp.view')==='liste'?'liste':'board', expanded:{}, so:{produit:{},tech:{},tous:{}}, wfOpen:{}, ans:{}, q:'', levels:{}, types:{}, states:{}, flags:{}, assignees:{}, ro:{}, ideaKind:null, design:null, wiki:null, flowRuns:{}, fl:{newKind:'frame',newText:'',newOpen:0,pick:{}}, arch:null, protos:{}, html:{}, protoOpen:{}, protoImp:0, viewHelp:0, viewProto:0, sub:{aide:'principes',design:'charter',prototypes:'encours',wiki:'tous',architecture:'tous'},
   db:null, snaps:{}, events:{}, runs:{},
   gh:{state:'init',msg:'',live:[],at:null}
 };
@@ -731,7 +737,8 @@ function statusTimes(t){
 function workGroup(t){
   var k=actionFor(t).kind, r=S.runs[t.n];
   if(k==='hold')return 'pause';
-  if(k==='human'||(r&&r.state==='waiting-human'))return 'human';
+  if(r&&r.state!=='done'){if(r.state==='waiting-human')return 'human';} /* a run's record decides; its ticket's needs-human is only the signal of an open question */
+  else if(k==='human')return 'human';
   if(['planning','building','reviewing'].indexOf(t.status)>-1||(r&&r.state==='running'))return 'going';
   return k==='none'?'idle':'queue';
 }
@@ -781,26 +788,55 @@ function wfPanel(t){
 /* the runs under way: those the events say are not done, and the open run issues no event has spoken of yet */
 function runList(){
   var out=[], seen={};
-  Object.keys(S.runs).forEach(function(k){var e=S.runs[k]; seen[e.n]=1; if(e.state!=='done')out.push({n:e.n,wf:e.workflow,step:e.step,state:e.state,loops:e.loops||{},at:e.at});});
+  Object.keys(S.runs).forEach(function(k){var e=S.runs[k]; seen[e.n]=1; if(e.state!=='done')out.push({n:e.n,wf:e.workflow,step:e.step,state:e.state,loops:e.loops||{},at:e.at,question:e.question||'',branch:e.branch||'',escalated:e.escalated||null});});
   issues().forEach(function(t){if(t.run&&!seen[t.n])out.push({n:t.n,wf:t.run,step:'',state:'open',loops:{},at:t.updated});});
   return out.sort(function(a,b){return String(b.at).localeCompare(String(a.at));});
 }
 /* ---------- the workflow timeline: the steps of the run's workflow (from the snapshot's `workflowSteps`) done, current and upcoming, who acts at each, what is awaited ---------- */
 var KIND_LABEL={'human-start':'humain','human-gate':'humain (gate)','human-optional':'humain (si besoin)','agent':'agent','validator':'validateur','judge':'juge','check':'contrôle','wait':'attente','end':'fin'};
 var AWAITED={'human-gate':'décision humaine à ce gate','human-optional':'réponse humaine à la question posée','human-start':'direction donnée par l’humain','wait':'un humain doit lever la condition d’attente'};
+/* a run waiting on a human is a question (its record carries the text) or an escalation (a check, judge or validator out of loops); its draft sits on a branch */
+function runQ(n){var r=S.runs[n]; return r&&r.state==='waiting-human'&&r.question?String(r.question):'';}
+function runBranch(n){var r=S.runs[n]; return r&&r.state!=='done'&&r.branch?String(r.branch):'';}
+function branchNote(b){return b?h('span',{class:'note'},'brouillon sauvegardé sur ',h('code',{},b)):null;}
+function escNote(e){return h('span',{class:'note'},'escalade : un contrôle, un juge ou un validateur n’a pas abouti, un humain reprend le run avec --resume',e&&e.from?[' (',e.failures?L('après '+e.failures+' échecs à l’étape ','after '+e.failures+' failures at step '):L('étape ','step '),e.from,')']:null);}
+function ansCmd(n,text){return 'python3 .pilot/pilot.py run answer '+n+' --text "'+String(text||'').replace(/\s*\n\s*/g,' ').trim().replace(/(["\\$`])/g,'\\$1')+'"';}
+/* the inline answer: the question above a textarea, the command written (never sent) with the usual open/copy buttons */
+function answerPanel(n,q){
+  var o=S.ans[n]; if(!o||!o.open)return null;
+  var cmdEl=h('div',{class:'cmd'}), open=h('a',{class:'btn primary',target:'_blank',rel:'noopener'},'Ouvrir dans Claude Code'),
+      copy=h('button',{class:'btn ghost',type:'button',onclick:function(e){var t=o.text.trim(); if(t)copyCmd(ansCmd(n,t),e.target);}},'Copier la commande');
+  function upd(){var t=o.text.trim(); cmdEl.textContent=ansCmd(n,t||'…');
+    if(t){open.setAttribute('href',claudeCodeUrl(ansCmd(n,t)));open.removeAttribute('aria-disabled');}else{open.removeAttribute('href');open.setAttribute('aria-disabled','true');}
+    copy.disabled=!t;}
+  var ta=h('textarea',{id:'ans'+n,rows:3,maxlength:1500,oninput:function(e){o.text=e.target.value;upd();}}); ta.value=o.text||'';
+  upd();
+  return h('div',{class:'idea ans'},
+    h('p',{},h('strong',{},'Question : '),q),
+    h('label',{for:'ans'+n,class:'note'},'Votre réponse'),ta,
+    h('p',{class:'note'},'La commande est écrite, pas envoyée. Une fois la réponse enregistrée dans le run, il reprend de lui-même depuis son enregistrement.'),
+    cmdEl,h('div',{class:'refresh'},open,copy));
+}
+function answerToggle(n){
+  var o=S.ans[n]||(S.ans[n]={open:false,text:''});
+  return h('button',{class:'btn primary',type:'button','aria-expanded':String(!!o.open),onclick:function(){o.open=!o.open;render();if(o.open)setTimeout(function(){var t=document.getElementById('ans'+n);if(t)t.focus();},0);}},'Répondre');
+}
 function wfStepsOf(wid){var w=S.gh&&S.gh.workflowSteps; return w&&Array.isArray(w[wid])&&w[wid].length?w[wid]:null;}
 function personaName(p){for(var i=0;i<AGENTS.length;i++)if(AGENTS[i][0]===p)return AGENTS[i][1];return String(p);}
 function wfTimeline(wid,run,t){
   var steps=wfStepsOf(wid); if(!steps)return null;
   var cur=-1, done=!!run&&run.state==='done', loops=(run&&run.loops)||{};
   if(run&&run.step)steps.forEach(function(x,i){if(x.id===run.step)cur=i;});
-  var failed=!!run&&run.state==='failed', waiting=(!!run&&run.state==='waiting-human')||(!!t&&has(t,'needs-human'));
+  var failed=!!run&&run.state==='failed', waiting=!!run&&run.state==='waiting-human', q=run&&run.question?String(run.question):'';
   var items=steps.map(function(x,i){
     var st=done||(cur>-1&&i<cur)?'done':i===cur?'cur':'next', lp=Number(loops[x.id])||0, wait=st==='cur'&&waiting&&!failed;
     var sub=[h('span',{class:'chip'},KIND_LABEL[x.kind]||String(x.kind))].concat((Array.isArray(x.agents)?x.agents:[]).map(function(a){return h('span',{class:'chip acc'},personaName(a));}));
     if(lp)sub.push(h('span',{class:'chip warn'},lp+' boucle'+(lp>1?'s':'')));
     if(st==='cur'&&failed)sub.push(h('span',{class:'note'},'run échoué à cette étape'));
-    else if(wait)sub.push(h('span',{class:'note'},'Attendu : '+(AWAITED[x.kind]||'un humain doit lever le blocage (voir le commentaire sur GitHub)')));
+    else if(wait&&q)sub.push(h('span',{class:'note'},'Attendu : '+q));
+    else if(wait&&AWAITED[x.kind])sub.push(h('span',{class:'note'},'Attendu : '+AWAITED[x.kind]));
+    else if(wait)sub.push(escNote(run.escalated));
+    if(st==='cur'&&run&&run.branch&&!done)sub.push(branchNote(run.branch));
     return h('li',{class:st+(wait?' wait':''),'aria-current':st==='cur'?'step':null},
       h('span',{class:'mk','aria-hidden':'true'},st==='done'?'✓':st==='cur'?'●':'○'),
       h('div',{},h('span',{class:'ti'},(i+1)+'. '+str(x.title,60)),' ',h('span',{class:'note'},st==='done'?'fait':st==='cur'?(failed?'échoué':wait?'attend un humain':'en cours'):'à venir')),
@@ -825,19 +861,22 @@ function moduleRuns(wids){
 var RUN_STATE={'running':['acc','en cours'],'waiting-human':['warn','attend un humain'],'failed':['crit','échoué'],'open':['','ouvert']};
 function runRow(r){
   var t=issueBy(r.n), info=wfInfo(r.wf), st=RUN_STATE[r.state]||['',r.state], loops=0, acts=[];
-  var title=t?t.title.replace(/^run:\S+\s*/,''):'', flag=!!t&&has(t,'needs-human'), waiting=r.state==='waiting-human'||flag;
+  var title=t?t.title.replace(/^run:\S+\s*/,''):'', waiting=r.state==='waiting-human', q=waiting&&r.question?String(r.question):'';
   Object.keys(r.loops).forEach(function(k){loops+=Number(r.loops[k])||0;});
-  if(flag)acts.push(ghLink(t,'Répondre sur GitHub'));
+  if(q)acts.push(answerToggle(r.n));
   else if(info&&info[2]&&(r.state!=='running'||(t&&has(t,'can-resume'))))acts.push(openLink(info[1]+' --resume '+r.n,'Reprendre',true));
-  if(!flag)acts.push(ghLink({n:r.n},'Voir sur GitHub'));
+  acts.push(ghLink({n:r.n},'Voir sur GitHub'));
   acts.push(wfButton('r'+r.n,r.wf));
   return h('div',{class:'row'+(waiting?' flag':'')},
     h('div',{class:'main'},
       h('div',{class:'t'},h('span',{class:'num'},'#'+r.n+' '),title||(info?L(info[3],info[4]):r.wf)),
       h('div',{class:'meta'},h('span',{class:'chip acc'},info?L(info[3],info[4]):r.wf),wfI(r.wf),h('span',{class:'chip '+st[0]},st[0]==='warn'?h('span',{class:'dot'}):null,st[1]),
         r.step?h('span',{class:'chip'},r.step):null,loops?h('span',{class:'chip'},loops+' boucle'+(loops>1?'s':'')):null,
-        t&&has(t,'can-resume')?h('span',{class:'chip'},FLAG_FR['can-resume']):null,h('span',{class:'note'},ago(r.at)))),
+        t&&has(t,'can-resume')?h('span',{class:'chip'},FLAG_FR['can-resume']):null,h('span',{class:'note'},ago(r.at))),
+      q?h('p',{class:'note'},h('strong',{},'Question : '),q):waiting?h('p',{class:'note'},escNote(r.escalated)):null,
+      branchNote(r.branch)),
     h('div',{class:'acts'},acts),
+    q?answerPanel(r.n,q):null,
     S.wfOpen['r'+r.n]?wfTimeline(r.wf,r,t):null);
 }
 /* the Work tab lists the runs of the workflows that take a ticket; an admin workflow's run shows in its module's tab */
@@ -880,7 +919,7 @@ function flagChips(t){
 function actButtons(t,a,full){
   var acts=[];
   if(a.kind==='run'){acts.push(openLink(a.cmd,a.label,full)); if(full)acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(e){copyCmd(a.cmd,e.target);}},'Copier'));}
-  else acts.push(ghLink(t,a.kind==='human'?'Répondre sur GitHub':'Voir sur GitHub'));
+  else{if(a.kind==='human'&&runQ(t.n))acts.push(answerToggle(t.n)); acts.push(ghLink(t,'Voir sur GitHub'));}
   if(t.r)acts.push(h('a',{class:'btn ghost',href:'https://github.com/'+S.repo+'/pull/'+t.r,target:'_blank',rel:'noopener'},'PR #'+t.r));
   return acts;
 }
@@ -894,18 +933,25 @@ function stageOpen(k,n){
 }
 function setStage(k,v){(S.so[S.role]=S.so[S.role]||{})[k]=v;}
 /* a card is a number, a title (the link to the ticket's page), at most one chip, and at most one action; the rest is on the ticket's page. The status is the column. */
-function cardAction(t){var a=actionFor(t); return a.kind==='run'?openLink(a.cmd,a.label,false):a.kind==='human'?ghLink(t,'Répondre sur GitHub'):null;}
+function cardAction(t){
+  var a=actionFor(t);
+  if(a.kind==='run')return openLink(a.cmd,a.label,false);
+  if(a.kind!=='human')return null;
+  if(runQ(t.n))return h('button',{class:'btn primary',type:'button',onclick:function(){(S.ans[t.n]=S.ans[t.n]||{open:false,text:''}).open=true;location.hash='#file/'+t.n;}},'Répondre');
+  return ghLink(t,'Voir sur GitHub');
+}
 function boardCard(r,child){
   var t=r.t, flag=has(t,'needs-human'), epic=has(t,'level:epic'), on=S.epic===t.n, par=parentsOf(t)[0], d=t.k&&t.k[1]?Math.round(100*t.k[0]/t.k[1]):0, act;
   if(epic)act=h('button',{class:'btn'+(on?' primary':''),type:'button','aria-pressed':String(on),onclick:function(){S.epic=on?0:t.n;render();}},on?'Tout afficher':'Filtrer sur cette epic');
   else act=cardAction(t);
-  var showMeta=flag||t.k||par;
+  var q=runQ(t.n), showMeta=flag||q||t.k||par;
   return h('div',{class:'card g-'+r.group+(flag?' flag':'')+(child?' child':'')+(epic?' epic':'')+(on?' sel':'')},
     h('div',{class:'t'},h('a',{href:'#file/'+t.n},h('span',{class:'num mono'},'#'+t.n+' '),t.title)),
     t.k&&t.k[1]?h('div',{class:'bar',role:'img','aria-label':t.k[0]+'/'+t.k[1]+' terminés'},h('i',{style:'width:'+d+'%'})):null,
     showMeta?h('div',{class:'meta2'},
       flag?h('span',{class:'chip warn',title:FLAG_FR['needs-human']},h('span',{class:'dot'}),FLAG_FR['needs-human']):null,
       t.k?h('span',{class:'prog'},t.k[0]+'/'+t.k[1]):null,
+      q?h('span',{class:'note q',title:q},h('strong',{},'Question : '),str(q,90)+(q.length>90?'…':'')):null,
       par?h('a',Object.assign({class:'up',href:parentHref(par),title:par.title},par.missing?{target:'_blank',rel:'noopener'}:{}),'↑ #'+par.n):null):null,
     act?h('div',{class:'acts'},act):null);
 }
@@ -1016,10 +1062,13 @@ function ticketRow(t,withLevel,depth,extra){
         t.k?h('span',{class:'chip'},t.k[0]+'/'+t.k[1]+' terminés'):null,
         h('span',{class:'note'},ago(t.updated)),
         a.kind==='run'?h('span',{class:'cmd'},a.cmd):null),
+      runQ(t.n)?h('p',{class:'note'},h('strong',{},'Question : '),runQ(t.n)):null,
+      branchNote(runBranch(t.n)),
       extra||null),
     h('div',{class:'acts'},actButtons(t,a,true),
       S.wf!==t.n&&(t.status||kids.length)?h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#file/'+t.n;}},'Détail'):null,
       kids.length?h('button',{class:'btn ghost',type:'button','aria-expanded':String(o.kids),onclick:function(){o.kids=!o.kids;render();}},(o.kids?'▾':'▸')+' Sous-tickets ('+kids.length+')'):null),
+    runQ(t.n)?answerPanel(t.n,runQ(t.n)):null,
     kids.length&&o.kids?h('div',{class:'kids'},kids.map(function(c){return ticketRow(c,true,(depth||0)+1);})):null);
 }
 
@@ -1243,7 +1292,7 @@ function updateAdmin(){
 function protoList(){
   return Object.keys(S.protos).map(function(k){
     var m=S.protos[k], n=Number(k), r=S.runs[n], iss=issueBy(n), live=r?r.state!=='done':!!iss;
-    return {n:n,title:m.title||('#'+n),meta:m,state:r?r.state:iss?'open':'',flag:!!iss&&has(iss,'needs-human'),result:(r&&r.state==='done'&&r.result)||'',group:live?'encours':'termines',updated:m.at||''};
+    return {n:n,title:m.title||('#'+n),meta:m,state:r?r.state:iss?'open':'',flag:false,result:(r&&r.state==='done'&&r.result)||'',group:live?'encours':'termines',updated:m.at||''};
   });
 }
 function protoCounts(){var c={}; protoList().forEach(function(e){c[e.group]=(c[e.group]||0)+1;}); return c;}
@@ -1267,8 +1316,9 @@ function protoFrame(n,full){
 function protoRow(e){
   var m=e.meta, n=e.n, open=!!S.protoOpen[n], hasHtml=Math.floor(Number(m.parts)||0)>0, acts=[];
   if(e.group==='encours'){
-    if(e.flag||e.state==='waiting-human')acts.push(ghLink({n:n},'Répondre sur GitHub'));
-    if(!e.flag)acts.push(openLink('/pilot-proto --resume '+n,'Reprendre',true));
+    if(runQ(n))acts.push(answerToggle(n));
+    else if(e.state!=='running')acts.push(openLink('/pilot-proto --resume '+n,'Reprendre',true));
+    acts.push(ghLink({n:n},'Voir sur GitHub'));
     acts.push(openLink('/pilot-proto '+n+' --reject','Rejeter'));
   }else if(e.result!=='rejected')acts.push(openLink('/pilot-need --proto '+n,'Lancer le besoin',true));
   if(hasHtml)acts.push(h('button',{class:'btn ghost',type:'button',onclick:function(){location.hash='#proto/'+n;}},'Plein écran'));
@@ -1281,8 +1331,11 @@ function protoRow(e){
         e.group==='encours'?h('span',{class:'chip '+(e.flag||e.state==='waiting-human'?'warn':'acc')},(RUN_STATE[e.state]||RUN_STATE.open)[1]):null,
         h('span',{class:'note'},ago(m.at)),
         hasHtml?null:h('span',{class:'note'},'Pas de maquette enregistrée')),
+      runQ(n)?h('p',{class:'note'},h('strong',{},'Question : '),runQ(n)):null,
+      branchNote(runBranch(n)),
       m.brief?h('p',{class:'note'},str(m.brief,300)):null),
     acts.length?h('div',{class:'acts'},acts):null,
+    runQ(n)?answerPanel(n,runQ(n)):null,
     open?h('div',{class:'kids'},protoFrame(n)):null);
 }
 function vProtoFull(n){
@@ -1715,6 +1768,19 @@ function vHowWorkflows(){
 }
 
 /* ---- Tickets: levels, types, statuses and the command that takes each, priority, claim, flags ---- */
+/* the steps that can ask: those whose workflow data carries `ask` (else the agent step right before a human-optional ask step) */
+function askers(){
+  var w=(S.gh&&S.gh.workflowSteps)||{}, out=[];
+  Object.keys(w).sort().forEach(function(id){(w[id]||[]).forEach(function(x,i,a){
+    var nx=a[i+1]; if(x.kind==='agent'&&(x.ask||(nx&&nx.kind==='human-optional'&&/(^|-)ask$/.test(nx.id))))out.push(id+'.'+x.id);});});
+  return out;
+}
+function vQuestionsHelp(){
+  var a=askers();
+  return h('div',{},
+    h('p',{},L('Une étape d’agent dont la donnée du workflow porte « ask » peut poser une question quand un choix n’est couvert par aucune décision : le run s’arrête, le travail est sauvegardé sur une branche pilot-run/<n°>, et la question s’affiche sur le run, la carte et la frise. La réponse se donne dans le run : « Répondre » écrit la commande run answer, et le run reprend de lui-même depuis son enregistrement. Sans question, un run en attente est une escalade (un contrôle, un juge ou un validateur sans issue après deux boucles) : « Reprendre » le relance.','A step whose workflow data carries “ask” can ask a question when a choice is covered by no decision: the run stops, the work is saved on a pilot-run/<n> branch, and the question shows on the run, the card and the timeline. The answer lives in the run: “Answer” writes the run answer command, and the run resumes by itself from its record. With no question, a waiting run is an escalation (a check, a judge or a validator out of options after two loops): “Resume” restarts it.')),
+    a.length?h('p',{class:'note'},L('Étapes qui peuvent poser une question : ','Steps that can ask: '),a.map(function(x,i){return [i?', ':null,code(x)];})):null);
+}
 function vHowTickets(){
   var chain=function(l){return LEVEL_STATUSES[l].join(' → ');};
   var next=STATUSES.map(function(s){var a=actionFor({status:s,n:'<n°>',labels:[]}); return [s,a.kind==='run'?code(a.cmd):'—'];});
@@ -1727,7 +1793,8 @@ function vHowTickets(){
       [L('Statut','Status'),h('div',{},['epic','story','task'].map(function(l){return h('div',{},h('strong',{},l+' : '),chain(l));}),h('div',{},L('Un seul à la fois, calculé par le script (jamais à la main, sauf les deux clôtures humaines). forming : prend encore des entrées jusqu’à ce qu’un humain le clôture. merged : attend la recette. done : la recette est passée ; wont-do : jamais construit.','One at a time, computed by the script (never by hand, except the two human closings). forming: still takes entries until a human closes it. merged: awaits the recette. done: the recette passed; wont-do: never built.')))],
       [L('Priorité','Priority'),L('P0 (le plus haut) → P2. Jamais sur un epic. Sans consigne de ticket, une file prend d’abord la priorité la plus haute, puis un ticket qui en bloque un autre, puis le plus ancien.','P0 (highest) → P2. Never on an epic. With no ticket given, a queue takes the highest priority first, then a ticket that blocks another, then the oldest.')],
       [L('Prise en charge','Claim'),L('Un workflow qui travaille un ticket se l’assigne et passe son statut à « en cours » ; personne d’autre ne le prend. Un ticket en pause, en attente d’un humain ou qui dépend d’un ticket ouvert (« Depends on #N » dans le corps) n’est dans aucune file.','A workflow that works a ticket assigns it to itself and moves it to “in progress”; nobody else takes it. A ticket on hold, waiting on a human or depending on an open ticket (“Depends on #N” in the body) is in no queue.')],
-      [L('Drapeaux','Flags'),L('needs-human : une question bloquante, avec un commentaire ; un humain le retire. on-hold : en pause pour un chantier plus grand. can-resume : un humain signale qu’un run interrompu peut reprendre. express : fait par le workflow express. fix : ticket de correction créé par une recette. gap : dépend d’un ticket dont la recette est en écart.','needs-human: a blocking question, with a comment; a human removes it. on-hold: paused for something bigger. can-resume: a human’s signal that an interrupted run is safe to continue. express: made by the express workflow. fix: a correction ticket made by a recette. gap: depends on a ticket whose recette is in gap.')]
+      [L('Drapeaux','Flags'),L('needs-human : signale une question ouverte du run, avec un commentaire ; il se retire quand la réponse est enregistrée. on-hold : en pause pour un chantier plus grand. can-resume : un humain signale qu’un run interrompu peut reprendre. express : fait par le workflow express. fix : ticket de correction créé par une recette. gap : dépend d’un ticket dont la recette est en écart.','needs-human: signals an open question of the run, with a comment; it goes away once the answer is recorded. on-hold: paused for something bigger. can-resume: a human’s signal that an interrupted run is safe to continue. express: made by the express workflow. fix: a correction ticket made by a recette. gap: depends on a ticket whose recette is in gap.')]
+      ,[L('Questions','Questions'),vQuestionsHelp()]
     ])),
     sec('La commande de chaque statut','The command of each status'),
     simpleTable([L('Statut','Status'),L('Commande qui le prend','Command that takes it')],next));

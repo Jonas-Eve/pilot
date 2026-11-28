@@ -2,276 +2,156 @@
  "id": "design-system",
  "title": "Design system",
  "category": "admin",
+ "pattern": "document",
+ "params": {
+  "start_in": [
+   [
+    "TEXT",
+    "The design need, in their words"
+   ],
+   [
+    "REPORT",
+    "If it comes from a prototype: the list of elements outside the design system decided \"to integrate\""
+   ]
+  ],
+  "start_out": [
+   [
+    "TEXT",
+    "Design intent"
+   ]
+  ],
+  "lead": "designer",
+  "audit_in": [
+   [
+    "TEXT",
+    "Design intent"
+   ],
+   [
+    "DESIGN",
+    "Existing design system: named values (tokens), components, usage rules. Selected by script, index first"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Vision, functional guidelines, vocabulary, personas including their accessibility needs"
+   ]
+  ],
+  "audit_out": [
+   [
+    "REPORT",
+    "Delta: overlaps, contradicts, component duplicate, gap with the vision, principles or vocabulary (flagged, never blocking), hole, existing components and screens touched"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope, drawn from the project vocabulary. To validate at the gate"
+   ]
+  ],
+  "write": "build",
+  "write_title": "Designer",
+  "write_actor": "AI, with its design-system writing instruction",
+  "write_task": "write-design-system",
+  "write_in": [
+   [
+    "TEXT",
+    "Design intent"
+   ],
+   [
+    "REPORT",
+    "Delta"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ]
+  ],
+  "write_out": [
+   [
+    "DESIGN",
+    "Proposed entry in fixed format: named values called tokens (color, typography, spacing, radius), component with its states, or usage rule, with what it replaces"
+   ],
+   [
+    "PROTO",
+    "Demo page: each component in each of its states"
+   ]
+  ],
+  "validator": "architect",
+  "validate_in": [
+   [
+    "TEXT",
+    "Design intent"
+   ],
+   [
+    "DESIGN",
+    "Proposed entry"
+   ]
+  ],
+  "check_in": [
+   [
+    "DESIGN",
+    "Proposed entry"
+   ]
+  ],
+  "check_out": [
+   [
+    "REPORT",
+    "Valid schema, scope from the vocabulary, AA contrast computed for each color pair, complete light and dark themes, referenced tokens exist, each component declares all states required by its category, no duplicate name or value, naming respected"
+   ]
+  ],
+  "judge_actor": "AI, fixed question, citation required",
+  "judge_questions": [
+   {
+    "q": "Does the component duplicate, by its function, an existing one?",
+    "fail_on": "yes"
+   }
+  ],
+  "judge_in": [
+   [
+    "TEXT",
+    "Design intent"
+   ],
+   [
+    "DESIGN",
+    "Proposed entry"
+   ]
+  ],
+  "judge_out": [
+   [
+    "REPORT",
+    "Yes or no: does the component duplicate, by its function, an existing one?"
+   ]
+  ],
+  "gate_title": "Gate 1 · Review",
+  "gate_in": [
+   [
+    "DESIGN",
+    "Proposed entry"
+   ],
+   [
+    "PROTO",
+    "Demo page"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "REPORT",
+    "Code checks and judge, all green"
+   ]
+  ],
+  "gate_out": [
+   [
+    "VALIDATION",
+    "Text, demo and scope validated. The entry stays proposed until the code and the rule are merged"
+   ],
+   [
+    "TEXT",
+    "Or changes: back to the intent"
+   ]
+  ]
+ },
  "steps": [
   {
-   "id": "start",
-   "n": "1",
-   "kind": "human-start",
-   "title": "Intent",
-   "actor": "Human F",
-   "in": [
-    [
-     "TEXT",
-     "The design need, in their words"
-    ],
-    [
-     "REPORT",
-     "If it comes from a prototype: the list of elements outside the design system decided \"to integrate\""
-    ]
-   ],
-   "out": [
-    [
-     "TEXT",
-     "Design intent"
-    ]
-   ]
-  },
-  {
-   "id": "audit",
-   "n": "2",
-   "kind": "agent",
-   "title": "Auditor",
-   "actor": "AI: a single auditor, who holds the discussion with the human",
-   "agents": [
-    {
-     "persona": "designer"
-    }
-   ],
-   "task": "audit",
-   "in": [
-    [
-     "TEXT",
-     "Design intent"
-    ],
-    [
-     "DESIGN",
-     "Existing design system: named values (tokens), components, usage rules. Selected by script, index first"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Vision, functional guidelines, vocabulary, personas including their accessibility needs"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Delta: overlaps, contradicts, component duplicate, gap with the vision, principles or vocabulary (flagged, never blocking), hole, existing components and screens touched"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
-    ]
-   ]
-  },
-  {
-   "id": "challenge",
-   "n": "3",
-   "kind": "human-optional",
-   "title": "Challenge",
-   "actor": "Human F, opened by script only if the delta is not empty",
-   "in": [
-    [
-     "REPORT",
-     "The delta, short and in fixed form"
-    ],
-    [
-     "TEXT",
-     "On request: a question to the auditor about a line of the delta"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Keeps or modifies the intent"
-    ],
-    [
-     "TEXT",
-     "Revised intent, back to the audit"
-    ],
-    [
-     "REPORT",
-     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
-    ]
-   ],
-   "open_if": "delta-not-empty",
-   "loop_to": "audit"
-  },
-  {
-   "id": "build",
-   "n": "4",
-   "kind": "agent",
-   "title": "Designer",
-   "actor": "AI, with its design-system writing instruction",
-   "agents": [
-    {
-     "persona": "designer"
-    }
-   ],
-   "task": "write-design-system",
-   "in": [
-    [
-     "TEXT",
-     "Design intent"
-    ],
-    [
-     "REPORT",
-     "Delta"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ]
-   ],
-   "out": [
-    [
-     "DESIGN",
-     "Proposed entry in fixed format: named values called tokens (color, typography, spacing, radius), component with its states, or usage rule, with what it replaces"
-    ],
-    [
-     "PROTO",
-     "Demo page: each component in each of its states"
-    ]
-   ]
-  },
-  {
-   "id": "validate",
-   "n": "5",
-   "kind": "validator",
-   "title": "Validator",
-   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
-   "agents": [
-    {
-     "persona": "architect"
-    }
-   ],
-   "task": "validate",
-   "in": [
-    [
-     "TEXT",
-     "Design intent"
-    ],
-    [
-     "DESIGN",
-     "Proposed entry"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "List of defects, free critique"
-    ]
-   ],
-   "on_fail": {
-    "to": "build",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "check",
-   "n": "6",
-   "kind": "check",
-   "title": "Code checks",
-   "actor": "Script",
-   "check": "design-system.check",
-   "in": [
-    [
-     "DESIGN",
-     "Proposed entry"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Valid schema, scope from the vocabulary, AA contrast computed for each color pair, complete light and dark themes, referenced tokens exist, each component declares all states required by its category, no duplicate name or value, naming respected"
-    ]
-   ],
-   "on_fail": {
-    "to": "build",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "judge",
-   "n": "7",
-   "kind": "judge",
-   "title": "Judge",
-   "actor": "AI, fixed question, citation required",
-   "task": "judge",
-   "judge": "design-system.judge",
-   "questions": [
-    {
-     "q": "Does the component duplicate, by its function, an existing one?",
-     "fail_on": "yes"
-    }
-   ],
-   "in": [
-    [
-     "TEXT",
-     "Design intent"
-    ],
-    [
-     "DESIGN",
-     "Proposed entry"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Yes or no: does the component duplicate, by its function, an existing one?"
-    ]
-   ],
-   "on_fail": {
-    "to": "build",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "gate",
-   "n": "8",
-   "kind": "human-gate",
-   "title": "Gate 1 · Review",
-   "actor": "Human F",
-   "in": [
-    [
-     "DESIGN",
-     "Proposed entry"
-    ],
-    [
-     "PROTO",
-     "Demo page"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "REPORT",
-     "Code checks and judge, all green"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Text, demo and scope validated. The entry stays proposed until the code and the rule are merged"
-    ],
-    [
-     "TEXT",
-     "Or changes: back to the intent"
-    ]
-   ],
-   "on_reject": [
-    {
-     "label": "fond",
-     "to": "start"
-    }
-   ]
-  },
-  {
    "id": "theme",
-   "n": "9",
    "kind": "check",
    "title": "Theme generation",
    "actor": "Script",
@@ -293,11 +173,11 @@
     "to": "build",
     "max": 2,
     "then": "gate"
-   }
+   },
+   "after": "gate"
   },
   {
    "id": "implement",
-   "n": "10",
    "kind": "agent",
    "title": "Implementer",
    "actor": "AI",
@@ -339,7 +219,6 @@
   },
   {
    "id": "ask",
-   "n": "11",
    "kind": "human-optional",
    "title": "Implementer's question",
    "actor": "Human F or T, only if the implementer is blocked: answers its question",
@@ -360,7 +239,6 @@
   },
   {
    "id": "validate-2",
-   "n": "12",
    "kind": "validator",
    "title": "Validator",
    "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
@@ -402,7 +280,6 @@
   },
   {
    "id": "check-2",
-   "n": "13",
    "kind": "check",
    "title": "Code checks and case file",
    "actor": "Script",
@@ -443,7 +320,6 @@
   },
   {
    "id": "judge-2",
-   "n": "14",
    "kind": "judge",
    "title": "Judge",
    "actor": "AI, fixed question, citation required",
@@ -483,7 +359,6 @@
   },
   {
    "id": "pr-ci",
-   "n": "15",
    "kind": "check",
    "title": "PR opening and CI",
    "actor": "Script",
@@ -517,7 +392,6 @@
   },
   {
    "id": "gate-2",
-   "n": "16",
    "kind": "human-gate",
    "title": "Gate 2 · Verification",
    "actor": "Human F",
@@ -566,7 +440,6 @@
   },
   {
    "id": "end",
-   "n": "17",
    "kind": "end",
    "title": "Accepted · merge",
    "in": [

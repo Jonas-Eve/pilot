@@ -2,272 +2,148 @@
  "id": "functional-frame",
  "title": "Functional frame",
  "category": "admin",
+ "pattern": "document",
+ "params": {
+  "start_in": [
+   [
+    "TEXT",
+    "The product concern, in their words: a new entry to create, or the change to an existing entry"
+   ]
+  ],
+  "start_out": [
+   [
+    "TEXT",
+    "Functional intent: the entry to create, or the entry to change and how"
+   ]
+  ],
+  "lead": "pm",
+  "audit_in": [
+   [
+    "TEXT",
+    "Functional intent"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Vision, functional guidelines and vocabulary, plus the entries whose scope overlaps the intent's (the entry to change, when there is one). Selected by script, index first. Never the code"
+   ],
+   [
+    "WIKI",
+    "Need entries and parcours whose scope overlaps the intent's. Selected by script, index first"
+   ]
+  ],
+  "audit_out": [
+   [
+    "REPORT",
+    "Delta: overlaps, contradicts, modifies, hole, existing flows touched. Three fields per line: entry, consequence, proposed resolution. Empty if nothing to report"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope, drawn from the project vocabulary. To validate at the gate"
+   ]
+  ],
+  "write_task": "write-functional-frame",
+  "write_in": [
+   [
+    "TEXT",
+    "Functional intent"
+   ],
+   [
+    "REPORT",
+    "Delta"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ]
+  ],
+  "write_out": [
+   [
+    "WIKI GLOBAL",
+    "Proposed entry in fixed format: vision, functional guideline or vocabulary, with its scope and what it replaces. New entry: a file created at `<domain>/<id>.md`. Existing entry: that same file, same id"
+   ]
+  ],
+  "validator": "architect",
+  "validate_in": [
+   [
+    "TEXT",
+    "Functional intent"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Proposed entry"
+   ]
+  ],
+  "check_in": [
+   [
+    "WIKI GLOBAL",
+    "Proposed entry"
+   ]
+  ],
+  "check_out": [
+   [
+    "REPORT",
+    "Valid schema, scope from the vocabulary, ambiguous words, vocabulary without duplicates, each statement cites its source, no scope overlap with an accepted entry without \"replaces\""
+   ]
+  ],
+  "judge_actor": "AI, three fixed questions, citation required",
+  "judge_questions": [
+   {
+    "q": "Is each sentence of the intent carried?",
+    "fail_on": "no"
+   },
+   {
+    "q": "Is a statement unsupported by its cited source?",
+    "fail_on": "yes"
+   },
+   {
+    "q": "Is there a contradiction with a cited entry?",
+    "fail_on": "yes"
+   }
+  ],
+  "judge_in": [
+   [
+    "TEXT",
+    "Functional intent"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Proposed entry"
+   ]
+  ],
+  "judge_out": [
+   [
+    "REPORT",
+    "Yes or no: is each sentence of the intent carried? a statement unsupported by its cited source? a contradiction with a cited entry?"
+   ]
+  ],
+  "gate_in": [
+   [
+    "WIKI GLOBAL",
+    "Proposed entry"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "REPORT",
+    "Code checks and judge, all green"
+   ]
+  ],
+  "gate_out": [
+   [
+    "VALIDATION",
+    "Entry accepted, scope validated"
+   ],
+   [
+    "TEXT",
+    "Or changes: back to the intent"
+   ]
+  ]
+ },
  "steps": [
   {
-   "id": "start",
-   "n": "1",
-   "kind": "human-start",
-   "title": "Intent",
-   "actor": "Human F",
-   "in": [
-    [
-     "TEXT",
-     "The product concern, in their words: a new entry to create, or the change to an existing entry"
-    ]
-   ],
-   "out": [
-    [
-     "TEXT",
-     "Functional intent: the entry to create, or the entry to change and how"
-    ]
-   ]
-  },
-  {
-   "id": "audit",
-   "n": "2",
-   "kind": "agent",
-   "title": "Auditor",
-   "actor": "AI: a single auditor, who holds the discussion with the human",
-   "agents": [
-    {
-     "persona": "pm"
-    }
-   ],
-   "task": "audit",
-   "in": [
-    [
-     "TEXT",
-     "Functional intent"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Vision, functional guidelines and vocabulary, plus the entries whose scope overlaps the intent's (the entry to change, when there is one). Selected by script, index first. Never the code"
-    ],
-    [
-     "WIKI",
-     "Need entries and parcours whose scope overlaps the intent's. Selected by script, index first"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Delta: overlaps, contradicts, modifies, hole, existing flows touched. Three fields per line: entry, consequence, proposed resolution. Empty if nothing to report"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
-    ]
-   ]
-  },
-  {
-   "id": "challenge",
-   "n": "3",
-   "kind": "human-optional",
-   "title": "Challenge",
-   "actor": "Human F, opened by script only if the delta is not empty",
-   "in": [
-    [
-     "REPORT",
-     "The delta, short and in fixed form"
-    ],
-    [
-     "TEXT",
-     "On request: a question to the auditor about a line of the delta"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Keeps or modifies the intent"
-    ],
-    [
-     "TEXT",
-     "Revised intent, back to the audit"
-    ],
-    [
-     "REPORT",
-     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
-    ]
-   ],
-   "open_if": "delta-not-empty",
-   "loop_to": "audit"
-  },
-  {
-   "id": "write",
-   "n": "4",
-   "kind": "agent",
-   "title": "Writer",
-   "actor": "AI",
-   "agents": [
-    {
-     "persona": "pm"
-    }
-   ],
-   "task": "write-functional-frame",
-   "in": [
-    [
-     "TEXT",
-     "Functional intent"
-    ],
-    [
-     "REPORT",
-     "Delta"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ]
-   ],
-   "out": [
-    [
-     "WIKI GLOBAL",
-     "Proposed entry in fixed format: vision, functional guideline or vocabulary, with its scope and what it replaces. New entry: a file created at `<domain>/<id>.md`. Existing entry: that same file, same id"
-    ]
-   ]
-  },
-  {
-   "id": "validate",
-   "n": "5",
-   "kind": "validator",
-   "title": "Validator",
-   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
-   "agents": [
-    {
-     "persona": "architect"
-    }
-   ],
-   "task": "validate",
-   "in": [
-    [
-     "TEXT",
-     "Functional intent"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Proposed entry"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "List of defects, free critique"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "check",
-   "n": "6",
-   "kind": "check",
-   "title": "Code checks",
-   "actor": "Script",
-   "check": "functional-frame.check",
-   "in": [
-    [
-     "WIKI GLOBAL",
-     "Proposed entry"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Valid schema, scope from the vocabulary, ambiguous words, vocabulary without duplicates, each statement cites its source, no scope overlap with an accepted entry without \"replaces\""
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "judge",
-   "n": "7",
-   "kind": "judge",
-   "title": "Judge",
-   "actor": "AI, three fixed questions, citation required",
-   "task": "judge",
-   "judge": "functional-frame.judge",
-   "questions": [
-    {
-     "q": "Is each sentence of the intent carried?",
-     "fail_on": "no"
-    },
-    {
-     "q": "Is a statement unsupported by its cited source?",
-     "fail_on": "yes"
-    },
-    {
-     "q": "Is there a contradiction with a cited entry?",
-     "fail_on": "yes"
-    }
-   ],
-   "in": [
-    [
-     "TEXT",
-     "Functional intent"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Proposed entry"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Yes or no: is each sentence of the intent carried? a statement unsupported by its cited source? a contradiction with a cited entry?"
-    ]
-   ],
-   "on_fail": {
-    "to": "write",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "gate",
-   "n": "8",
-   "kind": "human-gate",
-   "title": "Gate · Review",
-   "actor": "Human F",
-   "in": [
-    [
-     "WIKI GLOBAL",
-     "Proposed entry"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "REPORT",
-     "Code checks and judge, all green"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Entry accepted, scope validated"
-    ],
-    [
-     "TEXT",
-     "Or changes: back to the intent"
-    ]
-   ],
-   "on_reject": [
-    {
-     "label": "fond",
-     "to": "start"
-    }
-   ]
-  },
-  {
    "id": "end",
-   "n": "9",
    "kind": "end",
    "title": "Accepted · merge",
    "in": [
@@ -281,7 +157,8 @@
      "WIKI GLOBAL",
      "Entry created or changed in the wiki, accepted, with its scope. The Prototype and Need read it"
     ]
-   ]
+   ],
+   "after": "gate"
   }
  ],
  "doc": {

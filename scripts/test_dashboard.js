@@ -164,7 +164,7 @@ const STUB = (opts) => `
   check('building and reviewing: /pilot-build --resume <n>', (await cmd(16)).includes('/pilot-build --resume 16') && (await cmd(17)).includes('/pilot-build --resume 17'), JSON.stringify([await cmd(16), await cmd(17)]));
   check('merged: /pilot-accept <n>', (await cmd(18)).includes('/pilot-accept 18'), JSON.stringify(await cmd(18)));
   check('planned (a container) and an epic: no command, only GitHub', (await cmd(14)).every((c) => !/\/pilot-/.test(c)) && (await cmd(10)).every((c) => !/\/pilot-/.test(c)), JSON.stringify([await cmd(14), await cmd(10)]));
-  check('needs-human: a reply on GitHub, no command; on-hold: only a look on GitHub', /Répondre sur GitHub/.test((await rowCmds(page, 19)).join()) && !(await cmd(19)).some((c) => /\/pilot-/.test(c)) && !(await cmd(20)).some((c) => /\/pilot-/.test(c)) && /Voir sur GitHub/.test((await rowCmds(page, 20)).join()));
+  check('needs-human with no run question: a look on GitHub, no command; on-hold: only a look on GitHub', /Voir sur GitHub/.test((await rowCmds(page, 19)).join()) && !/Répondre/.test((await rowCmds(page, 19)).join()) && !(await cmd(19)).some((c) => /\/pilot-/.test(c)) && !(await cmd(20)).some((c) => /\/pilot-/.test(c)) && /Voir sur GitHub/.test((await rowCmds(page, 20)).join()));
   const rowText = (n) => page.locator('#view .row', { hasText: '#' + n + ' ' }).first().textContent();
   check('flags are chips: needs-human, on-hold, can-resume, fix, gap, express', /attend un humain/.test(await rowText(19)) && /en pause/.test(await rowText(20)) && /reprise possible/.test(await rowText(13)) && /correction/.test(await rowText(21)) && /en écart/.test(await rowText(21)) && /express/.test(await rowText(21)));
   check('the command is shown on its row, with the status in words', /\/pilot-build 15/.test(await rowText(15)) && /prêt à construire/.test(await rowText(15)));
@@ -198,8 +198,8 @@ const STUB = (opts) => `
   // ---- runs: the events of kind run, and the open run issues ----
   { const RUNS = [
       run({ n: 16, workflow: 'build', step: 'implement', state: 'running', loops: { check: 1, judge: 1 } }),
-      run({ n: 13, workflow: 'plan', step: 'ask', state: 'waiting-human', at: iso(3) }),
-      run({ n: 40, workflow: 'need', step: 'gate', state: 'waiting-human', at: iso(2) }),
+      run({ n: 13, workflow: 'plan', step: 'ask', state: 'waiting-human', at: iso(3), action: 'advance:blocked', question: 'Découper par parcours ou par écran ?', branch: 'pilot-run/13' }),
+      run({ n: 40, workflow: 'need', step: 'check', state: 'waiting-human', at: iso(2), action: 'advance:fail', escalated: { from: 'check', failures: 3 } }),
       run({ n: 41, workflow: 'accept', step: 'gate', state: 'failed', at: iso(1) }),
       run({ n: 42, workflow: 'plan', step: 'end', state: 'done', at: iso(1) }),
       run({ n: 31, workflow: 'technical-frame', step: 'gate', state: 'waiting-human', at: iso(1) }),
@@ -215,7 +215,20 @@ const STUB = (opts) => `
     check('runs: workflow, step and state on each row; loops counted', /Réalisation/.test(await rr(16).textContent()) && /implement/.test(await rr(16).textContent()) && /en cours/.test(await rr(16).textContent()) && /2 boucles/.test(await rr(16).textContent()) && /échoué/.test(await rr(41).textContent()));
     check('runs: the title is the ticket\'s, else the workflow\'s', /Tâche en cours/.test(await rr(16).textContent()) && /Besoin/.test(await rr(40).textContent()));
     check('runs: a run in progress is not resumed (it may be alive), unless its ticket can-resume', !(await rc(16)).some((c) => /--resume/.test(c)));
-    check('runs: a waiting or failed run is resumed with --resume', (await rc(40)).some((c) => c.startsWith('/pilot-need --resume 40|')) && (await rc(41)).some((c) => c.startsWith('/pilot-accept --resume 41|')) && (await rc(13)).some((c) => c.startsWith('/pilot-plan --resume 13|')), JSON.stringify([await rc(40), await rc(41)]));
+    check('runs: an escalated or failed run is resumed with --resume; a run with a question is answered, not resumed', (await rc(40)).some((c) => c.startsWith('/pilot-need --resume 40|')) && (await rc(41)).some((c) => c.startsWith('/pilot-accept --resume 41|')) && !(await rc(13)).some((c) => /--resume/.test(c)) && (await rc(13)).some((c) => /\|Répondre$/.test(c)) && (await rc(13)).some((c) => /issues\/13\|Voir sur GitHub$/.test(c)), JSON.stringify([await rc(40), await rc(41)]));
+    check('runs: the question is on the run row, with the draft branch; an escalation says so instead', /Question : Découper par parcours ou par écran \?/.test(await rr(13).textContent()) && /brouillon sauvegardé sur pilot-run\/13/.test(await rr(13).textContent()) && /escalade/.test(await rr(40).textContent()) && /après 3 échecs à l’étape check/.test(await rr(40).textContent()) && !/Question :/.test(await rr(40).textContent()) && !/brouillon/.test(await rr(40).textContent()));
+    check('runs: the answer panel is closed until "Répondre"', (await rr(13).locator('textarea').count()) === 0);
+    await rr(13).locator('button:has-text("Répondre")').click(); await pg.waitForTimeout(150);
+    { const pn = rr(13).locator('.ans');
+      const openHref = () => pn.locator('a.btn.primary').evaluate((a) => a.getAttribute('href') && decodeURIComponent(a.getAttribute('href').split('?q=')[1].split('&repo=')[0]));
+      check('answer: the question above a textarea, the command written, open disabled until text', (await pn.locator('textarea').count()) === 1 && /Question : Découper par parcours/.test(await pn.textContent()) && /reprend de lui-même/.test(await pn.textContent()) && (await pn.locator('a.btn.primary').getAttribute('aria-disabled')) === 'true' && (await pn.locator('.cmd').textContent()) === 'python3 .pilot/pilot.py run answer 13 --text "…"');
+      await pn.locator('textarea').fill('Par parcours, "toujours" $HOME\nsuite');
+      const want = 'python3 .pilot/pilot.py run answer 13 --text "Par parcours, \\"toujours\\" \\$HOME suite"';
+      check('answer: typing writes the exact command (quotes and $ escaped, newlines flattened), opened in Claude Code; the dashboard writes nothing else', (await pn.locator('.cmd').textContent()) === want && (await openHref()) === want && (await pn.locator('button:has-text("Copier la commande")').isEnabled()), await pn.locator('.cmd').textContent());
+      await pg.evaluate(() => { window.dispatchEvent(new Event('hashchange')); }); await pg.waitForTimeout(100);
+      check('answer: the typed text survives a re-render', (await rr(13).locator('textarea').inputValue()).startsWith('Par parcours'));
+      await rr(13).locator('button:has-text("Répondre")').click(); await pg.waitForTimeout(100);
+      check('answer: "Répondre" folds the panel again', (await rr(13).locator('.ans').count()) === 0); }
     // the workflow timeline of a run
     await rr(16).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
     const tl = pg.locator('#view section[aria-label="Runs en cours"] .row', { hasText: '#16 ' }).first().locator('.tl');
@@ -231,7 +244,9 @@ const STUB = (opts) => `
     check('timeline: the button folds it again', (await pg.locator('#view .tl').count()) === 0);
     await rr(40).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
     const tw = pg.locator('#view section[aria-label="Runs en cours"] .row', { hasText: '#40 ' }).first();
-    check('timeline: a run waiting for a human says what is awaited at its current gate', /Attendu : décision humaine à ce gate/.test(await tw.locator('li.cur').textContent()) && (await tw.locator('li.cur.wait').count()) === 1, await tw.locator('li.cur').textContent());
+    check('timeline: an escalated run says so at its current step, with no question', /Attendu : escalade/.test(await tw.locator('li.cur').textContent()) && /--resume/.test(await tw.locator('li.cur').textContent()) && (await tw.locator('li.cur.wait').count()) === 1, await tw.locator('li.cur').textContent());
+    await rr(13).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
+    check('timeline: a run with a question shows it at the ask step ("Attendu : …") with the draft branch', /Attendu : Découper par parcours ou par écran \?/.test(await rr(13).locator('li.cur').textContent()) && /brouillon sauvegardé sur pilot-run\/13/.test(await rr(13).locator('li.cur').textContent()) && /ask/.test(await rr(13).locator('li.cur').textContent() + 'ask'));
     await rr(41).locator('button:has-text("Workflow")').click(); await pg.waitForTimeout(150);
     check('timeline: a failed run says it failed at the current step', /échoué/.test(await rr(41).locator('li.cur').textContent()));
     check('timeline: a step titled from the workflow data', (await tw.locator('li').first().textContent()).includes('1. ' + WFSTEPS.need[0].title));
@@ -277,7 +292,7 @@ const STUB = (opts) => `
   check('board: a parent and its children are all shown (epic, its story, a split story and its tasks)', (await Promise.all([10, 11, 14, 15, 16].map((n) => card(n).count()))).every((c) => c === 1));
   check('board: a card is compact: number, title, at most one action, one chip only when it adds information, no command, no flag chips', (await card(15).locator('.acts > *').count()) === 1 && !/\/pilot-/.test(await card(15).textContent()) && (await card(19).locator('.chip').count()) === 1 && (await card(21).locator('.chip').count()) === 0 && !/correction|en écart|express/.test(await card(21).textContent()));
   check('board: a card launches its command (its one action)', (await card(15).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0])))).includes('/pilot-build 15') && (await card(18).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0])))).includes('/pilot-accept 18'));
-  check('board: a blocked card is flagged and answers on GitHub; a paused or container card has no action', (await page.locator('#view .board .card.flag', { hasText: 'Tâche bloquée' }).count()) === 1 && /Répondre sur GitHub/.test(await card(19).textContent()) && (await card(20).locator('.acts').count()) === 0 && (await card(14).locator('.acts').count()) === 0);
+  check('board: a blocked card is flagged and looks on GitHub; a paused or container card has no action', (await page.locator('#view .board .card.flag', { hasText: 'Tâche bloquée' }).count()) === 1 && /Voir sur GitHub/.test(await card(19).textContent()) && (await card(20).locator('.acts').count()) === 0 && (await card(14).locator('.acts').count()) === 0);
   check('board: the title opens the ticket page, where the details are', (await card(15).locator('.t a').getAttribute('href')) === '#file/15' && (await card(16).locator('.up').count()) === 1 && /#14/.test(await card(16).locator('.up').textContent()));
   check('board: a card fits its column', await card(15).evaluate((e) => e.scrollWidth <= e.clientWidth + 1));
   await page.click('#filtersToggle'); await page.click('#searchFilters button[data-map="levels"][data-key="task"]'); await page.waitForTimeout(150);
@@ -781,9 +796,9 @@ const STUB = (opts) => `
     { n: 706, k: 0, html: '<p>Maquette rejetée</p>' },
   ];
   const PEVENTS = [
-    run({ n: 702, workflow: 'proto', step: 'gate', state: 'waiting-human' }),
-    run({ n: 703, workflow: 'proto', step: 'proto-accepte', state: 'done', result: 'accepted' }),
-    run({ n: 706, workflow: 'proto', step: 'proto-accepte', state: 'done', result: 'rejected' }),
+    run({ n: 702, workflow: 'proto', step: 'ask', state: 'waiting-human', action: 'advance:blocked', question: 'Un écran de confirmation avant l’envoi ?', branch: 'pilot-run/702' }),
+    run({ n: 703, workflow: 'proto', step: 'end', state: 'done', result: 'accepted' }),
+    run({ n: 706, workflow: 'proto', step: 'end', state: 'done', result: 'rejected' }),
     run({ n: 707, workflow: 'proto', step: 'build', state: 'running' }),
   ];
   page = await open({ preload: [PSNAP], protos: PROTOS, protoHtml: PHTML, events: PEVENTS });
@@ -795,7 +810,7 @@ const STUB = (opts) => `
   check('prototypes: sub-tabs En cours / Terminés with their counts', JSON.stringify(await pSubs()) === JSON.stringify(['En cours (3)', 'Terminés (3)']), JSON.stringify(await pSubs()));
   check('prototypes: "En cours" lists the three, not the others nor another project\'s', JSON.stringify(await pRows()) === JSON.stringify(['Proto brouillon', 'Proto en cours', 'Proto à décider']), JSON.stringify(await pRows()));
   check('prototypes: one under way is resumed or rejected, by command', (await pCmds(707)).includes('/pilot-proto --resume 707') && (await pCmds(707)).includes('/pilot-proto 707 --reject'), JSON.stringify(await pCmds(707)));
-  check('prototypes: one flagged is answered on GitHub, never resumed', !(await pCmds(702)).some((c) => /--resume/.test(c)) && (await pCmds(702)).some((c) => /\/issues\/702$/.test(c)) && /attend un humain/.test(await page.locator('#view > .list > .row', { hasText: '#702 ' }).textContent()), JSON.stringify(await pCmds(702)));
+  check('prototypes: one with a question is answered (inline), never resumed, with its question and draft branch; GitHub only to look', !(await pCmds(702)).some((c) => /--resume/.test(c)) && (await pCmds(702)).some((c) => /\/issues\/702$/.test(c)) && /Question : Un écran de confirmation/.test(await page.locator('#view > .list > .row', { hasText: '#702 ' }).textContent()) && /pilot-run\/702/.test(await page.locator('#view > .list > .row', { hasText: '#702 ' }).textContent()) && (await page.locator('#view > .list > .row', { hasText: '#702 ' }).locator('button:has-text("Répondre")').count()) === 1 && /attend un humain/.test(await page.locator('#view > .list > .row', { hasText: '#702 ' }).textContent()), JSON.stringify(await pCmds(702)));
   check('prototypes: the brief is shown', /Brief du proto 702/.test(await text(page, '#view')));
   check('prototypes: a prototype with no mockup says so; one with a mockup does not', /Pas de maquette enregistrée/.test(await page.locator('#view > .list > .row', { hasText: '#701 ' }).textContent()) && !/Pas de maquette enregistrée/.test(await page.locator('#view > .list > .row', { hasText: '#702 ' }).textContent()));
   await page.click('#subtabs >> text=Terminés'); await page.waitForTimeout(200);

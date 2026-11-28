@@ -55,6 +55,15 @@ class LintTests(unittest.TestCase):
         self.edit(".claude/skills/pilot-build/SKILL.md", lambda t: t + "\nRun `python3 .pilot/pilot.py nope --x`.\n")
         self.assertTrue(self.errors("command"))
 
+    def test_a_pattern_parameter_a_workflow_forgets_or_nothing_uses(self):
+        import json
+        self.edit("assets/workflows/persona.json", lambda t: json.dumps({k: v for k, v in json.loads(t).items() if k != "params"} | {
+            "params": {k: v for k, v in json.loads(t)["params"].items() if k != "write_task"}}))
+        self.assertTrue(any("missing-parameter" in f[3] for f in self.errors("workflow")))
+        for name in ("persona", "need", "express", "technical-frame", "design-system", "functional-frame", "user-flow", "proto"):
+            self.edit(f"assets/workflows/{name}.json", lambda t: t.replace('"pattern": "document"', '"pattern": "other"'))
+        self.assertTrue(any("unused-pattern" in f[3] for f in self.errors("workflow")))
+
     def test_a_count_of_personas_that_is_no_longer_true(self):
         self.edit("CLAUDE.md", lambda t: t.replace("the seven personas", "the six personas", 1))
         self.assertTrue(self.errors("named-list"))

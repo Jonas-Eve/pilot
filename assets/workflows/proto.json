@@ -2,145 +2,202 @@
  "id": "proto",
  "title": "Prototype",
  "category": "run",
+ "pattern": "document",
+ "params": {
+  "start_title": "Idea",
+  "start_in": [
+   [
+    "TEXT",
+    "The raw idea"
+   ]
+  ],
+  "start_out": [
+   [
+    "TEXT",
+    "Intent: who, what problem, why"
+   ]
+  ],
+  "lead": "designer",
+  "audit_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "WIKI GLOBAL",
+    "Vision, functional guidelines and vocabulary, plus the entries whose scope overlaps the intent's. Selected by script, index first. Never the code"
+   ],
+   [
+    "DESIGN",
+    "The project's design system"
+   ]
+  ],
+  "audit_out": [
+   [
+    "REPORT",
+    "Delta: duplicate, inconsistency with an existing flow, gap with the vision, principles or vocabulary (flagged, never blocking), hole"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope, drawn from the project vocabulary. To validate at the gate"
+   ]
+  ],
+  "write": "build",
+  "write_title": "Designer",
+  "write_task": "build-proto",
+  "ask": "ask",
+  "write_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "DESIGN",
+    "The project's design system"
+   ],
+   [
+    "TEXT",
+    "In later rounds: the human's answer, or their feedback from the gate"
+   ]
+  ],
+  "write_out": [
+   [
+    "PROTO",
+    "Clickable prototype"
+   ],
+   [
+    "TEXT",
+    "List of the parcours it shows"
+   ],
+   [
+    "TEXT",
+    "Hypotheses: each gap filled (a screen, a label, a rule), with a question and a default value. The designer continues with the default value"
+   ],
+   [
+    "QUESTION",
+    "Only if a point blocks it: see the next step"
+   ]
+  ],
+  "validator": "pm",
+  "validate_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "PROTO",
+    "Prototype"
+   ]
+  ],
+  "check_in": [
+   [
+    "PROTO",
+    "Prototype"
+   ],
+   [
+    "TEXT",
+    "List of parcours"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "DESIGN",
+    "Design-system tokens and components"
+   ]
+  ],
+  "check_out": [
+   [
+    "REPORT",
+    "A single self-contained document with no external resource, under 200 KB, readable from 360 px wide, touch targets of at least 44 px, AA contrast, keyboard usable, screens and links reachable, each listed parcours has its screens, scope from the vocabulary"
+   ],
+   [
+    "REPORT",
+    "Elements outside the design system: the exact list of the prototype's values and components not in it, computed by comparison with its tokens"
+   ]
+  ],
+  "judge_questions": [
+   {
+    "q": "Is each parcours of the intent present in the parcours list?",
+    "fail_on": "no"
+   },
+   {
+    "q": "Is a screen outside the intent?",
+    "fail_on": "yes"
+   }
+  ],
+  "judge_in": [
+   [
+    "TEXT",
+    "Intent"
+   ],
+   [
+    "PROTO",
+    "Prototype"
+   ],
+   [
+    "TEXT",
+    "Parcours"
+   ]
+  ],
+  "judge_out": [
+   [
+    "REPORT",
+    "Yes or no: is each parcours of the intent present? a screen outside the intent?"
+   ]
+  ],
+  "gate_title": "Gate · Acceptance",
+  "gate_in": [
+   [
+    "PROTO",
+    "Clickable prototype, to try"
+   ],
+   [
+    "SCOPE",
+    "Proposed scope"
+   ],
+   [
+    "TEXT",
+    "The designer's hypotheses, with their default value"
+   ],
+   [
+    "REPORT",
+    "Elements outside the design system, element by element"
+   ],
+   [
+    "REPORT",
+    "Code checks and judge, all green"
+   ]
+  ],
+  "gate_out": [
+   [
+    "VALIDATION",
+    "Proto and scope accepted"
+   ],
+   [
+    "TEXT",
+    "For each element outside the design system: \"to integrate\" (it becomes the intent of the Design system workflow) or \"local exception\" (recorded in the proto entry, provisional, with a catch-up)"
+   ],
+   [
+    "TEXT",
+    "Or back to the designer if the form or a hypothesis must be corrected, or to the intent if the substance"
+   ]
+  ],
+  "reject": [
+   {
+    "label": "fond",
+    "to": "start"
+   },
+   {
+    "label": "formulation",
+    "to": "build"
+   }
+  ]
+ },
  "steps": [
   {
-   "id": "start",
-   "n": "1",
-   "kind": "human-start",
-   "title": "Idea",
-   "actor": "Human F",
-   "in": [
-    [
-     "TEXT",
-     "The raw idea"
-    ]
-   ],
-   "out": [
-    [
-     "TEXT",
-     "Intent: who, what problem, why"
-    ]
-   ]
-  },
-  {
-   "id": "audit",
-   "n": "2",
-   "kind": "agent",
-   "title": "Auditor",
-   "actor": "AI: a single auditor, who holds the discussion with the human",
-   "agents": [
-    {
-     "persona": "designer"
-    }
-   ],
-   "task": "audit",
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Vision, functional guidelines and vocabulary, plus the entries whose scope overlaps the intent's. Selected by script, index first. Never the code"
-    ],
-    [
-     "DESIGN",
-     "The project's design system"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Delta: duplicate, inconsistency with an existing flow, gap with the vision, principles or vocabulary (flagged, never blocking), hole"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope, drawn from the project vocabulary. To validate at the gate"
-    ]
-   ]
-  },
-  {
-   "id": "challenge",
-   "n": "3",
-   "kind": "human-optional",
-   "title": "Challenge",
-   "actor": "Human F, opened by script only if the delta is not empty",
-   "in": [
-    [
-     "REPORT",
-     "The delta, short and in fixed form"
-    ],
-    [
-     "TEXT",
-     "On request: a question to the auditor about a line of the delta"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Keeps or modifies the intent"
-    ],
-    [
-     "TEXT",
-     "Revised intent, back to the audit"
-    ],
-    [
-     "REPORT",
-     "The auditor's answer, read-only, quoting the entry concerned. It modifies no document: only a revised intent has an effect"
-    ]
-   ],
-   "open_if": "delta-not-empty",
-   "loop_to": "audit"
-  },
-  {
-   "id": "build",
-   "n": "4",
-   "kind": "agent",
-   "title": "Designer",
-   "actor": "AI",
-   "agents": [
-    {
-     "persona": "designer"
-    }
-   ],
-   "task": "build-proto",
-   "ask": "ask",
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "DESIGN",
-     "The project's design system"
-    ],
-    [
-     "TEXT",
-     "In later rounds: the human's answer, or their feedback from the gate"
-    ]
-   ],
-   "out": [
-    [
-     "PROTO",
-     "Clickable prototype"
-    ],
-    [
-     "TEXT",
-     "List of the parcours it shows"
-    ],
-    [
-     "TEXT",
-     "Hypotheses: each gap filled (a screen, a label, a rule), with a question and a default value. The designer continues with the default value"
-    ],
-    [
-     "QUESTION",
-     "Only if a point blocks it: see the next step"
-    ]
-   ]
-  },
-  {
    "id": "ask",
-   "n": "5",
    "kind": "human-optional",
    "title": "Designer's question",
    "actor": "Human F, only if the designer is blocked: answers its question",
@@ -157,183 +214,11 @@
     ]
    ],
    "open_if": "blocked",
-   "loop_to": "build"
-  },
-  {
-   "id": "validate",
-   "n": "6",
-   "kind": "validator",
-   "title": "Validator",
-   "actor": "Persona distinct from the lead: it receives the deliverable alone, never the discussion",
-   "agents": [
-    {
-     "persona": "pm"
-    }
-   ],
-   "task": "validate",
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "PROTO",
-     "Prototype"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "List of defects, free critique"
-    ]
-   ],
-   "on_fail": {
-    "to": "build",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "check",
-   "n": "7",
-   "kind": "check",
-   "title": "Code checks",
-   "actor": "Script",
-   "check": "proto.check",
-   "in": [
-    [
-     "PROTO",
-     "Prototype"
-    ],
-    [
-     "TEXT",
-     "List of parcours"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "DESIGN",
-     "Design-system tokens and components"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "A single self-contained document with no external resource, under 200 KB, readable from 360 px wide, touch targets of at least 44 px, AA contrast, keyboard usable, screens and links reachable, each listed parcours has its screens, scope from the vocabulary"
-    ],
-    [
-     "REPORT",
-     "Elements outside the design system: the exact list of the prototype's values and components not in it, computed by comparison with its tokens"
-    ]
-   ],
-   "on_fail": {
-    "to": "build",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "judge",
-   "n": "8",
-   "kind": "judge",
-   "title": "Judge",
-   "actor": "AI, two fixed questions, citation required",
-   "task": "judge",
-   "judge": "proto.judge",
-   "questions": [
-    {
-     "q": "Is each parcours of the intent present in the parcours list?",
-     "fail_on": "no"
-    },
-    {
-     "q": "Is a screen outside the intent?",
-     "fail_on": "yes"
-    }
-   ],
-   "in": [
-    [
-     "TEXT",
-     "Intent"
-    ],
-    [
-     "PROTO",
-     "Prototype"
-    ],
-    [
-     "TEXT",
-     "Parcours"
-    ]
-   ],
-   "out": [
-    [
-     "REPORT",
-     "Yes or no: is each parcours of the intent present? a screen outside the intent?"
-    ]
-   ],
-   "on_fail": {
-    "to": "build",
-    "max": 2,
-    "then": "gate"
-   }
-  },
-  {
-   "id": "gate",
-   "n": "9",
-   "kind": "human-gate",
-   "title": "Gate · Acceptance",
-   "actor": "Human F",
-   "in": [
-    [
-     "PROTO",
-     "Clickable prototype, to try"
-    ],
-    [
-     "SCOPE",
-     "Proposed scope"
-    ],
-    [
-     "TEXT",
-     "The designer's hypotheses, with their default value"
-    ],
-    [
-     "REPORT",
-     "Elements outside the design system, element by element"
-    ],
-    [
-     "REPORT",
-     "Code checks and judge, all green"
-    ]
-   ],
-   "out": [
-    [
-     "VALIDATION",
-     "Proto and scope accepted"
-    ],
-    [
-     "TEXT",
-     "For each element outside the design system: \"to integrate\" (it becomes the intent of the Design system workflow) or \"local exception\" (recorded in the proto entry, provisional, with a catch-up)"
-    ],
-    [
-     "TEXT",
-     "Or back to the designer if the form or a hypothesis must be corrected, or to the intent if the substance"
-    ]
-   ],
-   "on_reject": [
-    {
-     "label": "fond",
-     "to": "start"
-    },
-    {
-     "label": "formulation",
-     "to": "build"
-    }
-   ]
+   "loop_to": "build",
+   "after": "build"
   },
   {
    "id": "wait-design-system",
-   "n": "10",
    "kind": "wait",
    "title": "Waiting for the design system",
    "actor": "A script evaluates the condition at entry and at each resume request. Human F says \"it's good\" when the Design system workflow is finished",
@@ -360,11 +245,11 @@
      "REPORT",
      "At each \"it's good\" from the human: the same check. If it passes, the workflow continues"
     ]
-   ]
+   ],
+   "after": "gate"
   },
   {
    "id": "end",
-   "n": "11",
    "kind": "end",
    "title": "Proto accepted",
    "in": [
