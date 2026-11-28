@@ -251,31 +251,39 @@ const STUB = (opts) => `
     check('no run: no runs section', (await none.$('#view section[aria-label="Runs en cours"]')) === null);
     await none.close(); }
 
-  // ---- the board: four stages, the exact status a chip on a compact card ----
-  const STAGE_NAMES = ['À cadrer', 'En conception', 'En réalisation', 'À recetter'];
+  // ---- the board: one column per status in workflow order, under a band per stage ----
+  const COLS = ['en formation', 'à planifier', 'planification en cours', 'planifié', 'prêt à construire', 'construction en cours', 'relecture en cours', 'fusionné, à recetter'];
   page = await open({ preload: [V6], view: 'board' });
   await tab(page, 'Travail');
-  const cols = () => page.$$eval('#view .board section.col > button.sh strong', (e) => e.map((x) => x.textContent));
+  const cols = () => page.$$eval('#view .board section.col:not(.done-fold)', (e) => e.map((x) => x.getAttribute('aria-label')));
   const stage = (name) => page.locator(`#view .board section.col[aria-label="${name}"]`);
+  const bands = (pg = page) => pg.$$eval('#view .board button.band', (e) => e.map((x) => x.textContent.replace(/^[▾▸]/, '')));
   const card = (n) => page.locator('#view .board .card', { has: page.locator(`.t a[href="#file/${n}"]`) });
-  check('board: four stages in order, not one column per status', JSON.stringify(await cols()) === JSON.stringify(STAGE_NAMES), JSON.stringify(await cols()));
-  check('board: the stages hold their statuses (frame: forming, to-plan; design: planning, planned; build: ready to reviewing; accept: merged)',
-        (await stage('À cadrer').locator('.card').count()) === 2 && (await stage('En conception').locator('.card').count()) === 3 && (await stage('En réalisation').locator('.card').count()) === 6 && (await stage('À recetter').locator('.card').count()) === 1,
-        JSON.stringify(await Promise.all(STAGE_NAMES.map((n) => stage(n).locator('.card').count()))));
-  check('board: the exact status is the chip of the card', /prêt à construire/.test(await text(page, '#view .board .card:has(a[href="#file/15"]) .chip')) && /construction en cours/.test(await card(16).locator('.chip').first().textContent()) && /relecture en cours/.test(await card(17).locator('.chip').first().textContent()) && /planification en cours/.test(await card(13).locator('.chip').first().textContent()));
-  check('board: the stage header counts its cards and the blocked ones', (await stage('En réalisation').locator('button.sh .chip.warn').count()) === 1 && /6/.test(await stage('En réalisation').locator('button.sh .chips').textContent()));
-  check('board: no run issue as a card, nor a done column', !/Mon proto/.test(await text(page, '#view .board')) && (await page.locator('#view .done-fold').count()) === 0);
-  check('board: epics are cards, at their own stage, with progress and the epic filter', (await stage('En conception').locator('.card.epic', { hasText: 'Epic planifié' }).count()) === 1 && (await card(10).locator('.bar').count()) === 1 && /1\/3/.test(await card(10).textContent()) && (await card(10).locator('button:has-text("Filtrer sur cette epic")').count()) === 1);
+  const cnt = (name) => stage(name).locator('.card').count();
+  check('board: one column per status, in workflow order', JSON.stringify(await cols()) === JSON.stringify(COLS), JSON.stringify(await cols()));
+  check('board: a thin band per stage above its columns', JSON.stringify(await bands()) === JSON.stringify(['À cadrer', 'En conception', 'En réalisation', 'À recetter']), JSON.stringify(await bands()));
+  { const g = await page.$$eval('#view .board button.band', (b) => b.map((x) => x.style.gridColumn)); check('board: each band spans its columns (2, 2, 3, 1)', JSON.stringify(g) === JSON.stringify(['1 / span 2', '3 / span 2', '5 / span 3', '8 / span 1']), JSON.stringify(g)); }
+  { const pos = await page.$$eval('#view .board section.col', (s) => s.map((x) => Math.round(x.getBoundingClientRect().left))); check('board: columns sit side by side, left to right', pos.every((x, i) => i === 0 || x > pos[i - 1]), JSON.stringify(pos)); }
+  { const w = await page.$$eval('#view .board section.col', (s) => s.map((x) => Math.round(x.getBoundingClientRect().width))); check('board: wide columns are at least 200px', w.every((x) => x >= 199), JSON.stringify(w)); }
+  check('board: the columns hold their statuses', (await cnt('en formation')) + (await cnt('à planifier')) === 2 && (await cnt('planification en cours')) + (await cnt('planifié')) === 3 && (await cnt('prêt à construire')) + (await cnt('construction en cours')) + (await cnt('relecture en cours')) === 6 && (await cnt('fusionné, à recetter')) === 1,
+        JSON.stringify(await Promise.all(COLS.map((n) => cnt(n)))));
+  check('board: the card has no status chip (the column is the status)', !/prêt à construire|construction en cours|relecture en cours|planification en cours/.test(await text(page, '#view .board .card')) && (await card(15).locator('.chip').count()) === 0);
+  check('board: the sticky header of a column holds its name, blocked and count', (await stage('construction en cours').locator('.sh .chip.warn').count()) + (await stage('relecture en cours').locator('.sh .chip.warn').count()) + (await stage('prêt à construire').locator('.sh .chip.warn').count()) === 1 && /\d/.test(await stage('prêt à construire').locator('.sh .chips').textContent()) && (await page.$$eval('#view .board section.col:not(.shut) .sh', (h) => h.every((x) => getComputedStyle(x).position === 'sticky'))));
+  { const b = page.locator('#view .board'); const sc = await b.evaluate((e) => { e.scrollTop = 0; return e.scrollHeight > e.clientHeight; });
+    if (sc) { await b.evaluate((e) => { e.scrollTop = 60; }); const t0 = await b.evaluate((e) => e.getBoundingClientRect().top), t1 = await page.locator('#view .board section.col .sh').first().evaluate((e) => e.getBoundingClientRect().top); check('board: the header stays visible when the board scrolls', t1 - t0 < 80, String(t1 - t0)); await b.evaluate((e) => { e.scrollTop = 0; }); }
+    else check('board: (no vertical overflow with the demo data, sticky checked by style)', true); }
+  check('board: no run issue as a card, nor a done strip when nothing is done', !/Mon proto/.test(await text(page, '#view .board')) && (await page.locator('#view .done-fold').count()) === 0);
+  check('board: epics are cards, at their own stage, with progress and the epic filter', (await stage('planifié').locator('.card.epic', { hasText: 'Epic planifié' }).count()) === 1 && (await card(10).locator('.bar').count()) === 1 && /1\/3/.test(await card(10).textContent()) && (await card(10).locator('button:has-text("Filtrer sur cette epic")').count()) === 1);
   check('board: a parent and its children are all shown (epic, its story, a split story and its tasks)', (await Promise.all([10, 11, 14, 15, 16].map((n) => card(n).count()))).every((c) => c === 1));
-  check('board: a card is compact: number, title, one state chip, at most one action, no command, no flag chips', (await card(15).locator('.chip').count()) === 1 && (await card(15).locator('.acts > *').count()) === 1 && !/\/pilot-/.test(await card(15).textContent()) && (await card(19).locator('.chip').count()) === 1 && (await card(21).locator('.chip').count()) === 1 && !/correction|en écart|express/.test(await card(21).textContent()));
+  check('board: a card is compact: number, title, at most one action, one chip only when it adds information, no command, no flag chips', (await card(15).locator('.acts > *').count()) === 1 && !/\/pilot-/.test(await card(15).textContent()) && (await card(19).locator('.chip').count()) === 1 && (await card(21).locator('.chip').count()) === 0 && !/correction|en écart|express/.test(await card(21).textContent()));
   check('board: a card launches its command (its one action)', (await card(15).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0])))).includes('/pilot-build 15') && (await card(18).locator('a.btn').evaluateAll((as) => as.map((a) => decodeURIComponent((a.href.split('?q=')[1] || a.href).split('&repo=')[0])))).includes('/pilot-accept 18'));
   check('board: a blocked card is flagged and answers on GitHub; a paused or container card has no action', (await page.locator('#view .board .card.flag', { hasText: 'Tâche bloquée' }).count()) === 1 && /Répondre sur GitHub/.test(await card(19).textContent()) && (await card(20).locator('.acts').count()) === 0 && (await card(14).locator('.acts').count()) === 0);
   check('board: the title opens the ticket page, where the details are', (await card(15).locator('.t a').getAttribute('href')) === '#file/15' && (await card(16).locator('.up').count()) === 1 && /#14/.test(await card(16).locator('.up').textContent()));
   check('board: a card fits its column', await card(15).evaluate((e) => e.scrollWidth <= e.clientWidth + 1));
   await page.click('#filtersToggle'); await page.click('#searchFilters button[data-map="levels"][data-key="task"]'); await page.waitForTimeout(150);
-  check('board: filtering shows the matching cards only, in the same four stages', JSON.stringify(await cols()) === JSON.stringify(STAGE_NAMES) && (await page.locator("#view .board .card").count()) === 5, String(await page.locator('#view .board .card').count()));
+  check('board: filtering on tasks keeps the columns a task can have (ready to merged) and their cards', JSON.stringify(await cols()) === JSON.stringify(COLS.slice(4)) && (await page.locator("#view .board .card").count()) === 5, JSON.stringify(await cols()) + await page.locator('#view .board .card').count());
   await page.click('#searchFilters button[data-map="levels"][data-key="task"]'); await page.click('#searchFilters button[data-map="levels"][data-key="epic"]'); await page.waitForTimeout(150);
-  check('board: filtering on epics keeps the epic and the stages that hold nothing are folded', (await page.locator('#view .board .card').count()) === 1 && (await stage('En réalisation').locator('.card').count()) === 0);
+  check('board: filtering on epics shows the epic statuses only (forming to planned), the epic present', JSON.stringify(await cols()) === JSON.stringify(COLS.slice(0, 4)) && (await page.locator('#view .board .card').count()) === 1 && (await bands()).join() === 'À cadrer,En conception', JSON.stringify(await cols()));
   await page.click('#activeFilters >> text=Réinitialiser'); await page.waitForTimeout(150);
   await card(10).locator('button:has-text("Filtrer sur cette epic")').click(); await page.waitForTimeout(150);
   check('board: filtering on an epic keeps it and its tickets', /Story en formation/.test(await text(page, '#view .board')) && !/Story à planifier/.test(await text(page, '#view .board')));
@@ -286,28 +294,30 @@ const STUB = (opts) => `
   await page.close();
   page = await open({ preload: [Object.assign({}, V6, { issues: V6.issues.concat([ticket(50, ['type:feature', 'level:story', 'status:done'], { t: 'Story terminée' }), ticket(51, ['type:feature', 'level:story', 'status:wont-do'], { t: 'Story écartée' })]) })], view: 'board' });
   await tab(page, 'Travail');
-  check('board: done and dropped are folded away, with their count', /Terminés \(2\)/.test(await text(page, '#view .done-fold')) && !/Story terminée/.test(await text(page, '#view')), await text(page, '#view .done-fold'));
+  check('board: done and dropped are a collapsed strip at the end, with their count', /Terminés \(2\)/.test(await page.locator('#view .done-fold button').getAttribute('title')) && !/Story terminée/.test(await text(page, '#view')) && (await page.$$eval('#view .board > section', (s) => s[s.length - 1].classList.contains('done-fold'))), await text(page, '#view .done-fold'));
   await page.click('#view .done-fold button'); await page.waitForTimeout(150);
   check('board: one click shows them', /Story terminée/.test(await text(page, '#view .done-fold')) && /Story écartée/.test(await text(page, '#view .done-fold')));
   await page.close();
 
-  // ---- the board by role: Product opens To frame and To accept, Tech opens In design and In build, the rest folds ----
-  { const open_ = async (pg) => pg.$$eval('#view .board section.col', (ss) => ss.map((x) => x.querySelector('button.sh').getAttribute('aria-expanded') + ':' + x.getAttribute('aria-label')));
+  // ---- the board by role: the stages a role does not own stay in place as narrow columns ----
+  { const st = async (pg) => pg.$$eval('#view .board section.col:not(.done-fold)', (ss) => ss.map((x) => (x.classList.contains('shut') ? 'n' : 'w')).join(''));
+    const pos = async (pg) => pg.$$eval('#view .board section.col:not(.done-fold)', (ss) => ss.map((x) => x.getAttribute('aria-label')));
     let pg = await open({ preload: [V6], view: 'board', role: 'produit' });
     await tab(pg, 'Travail');
-    check('role Produit: To frame and To accept open, the other two folded', JSON.stringify(await open_(pg)) === JSON.stringify(['true:À cadrer', 'false:En conception', 'false:En réalisation', 'true:À recetter']), JSON.stringify(await open_(pg)));
-    check('role Produit: a folded stage shows only its header and count', (await pg.locator('#view .board section.col[aria-label="En réalisation"] .card').count()) === 0 && /\d/.test(await pg.locator('#view .board section.col[aria-label="En réalisation"] button.sh').textContent()));
-    await pg.click('#view .board section.col[aria-label="En conception"] button.sh'); await pg.waitForTimeout(120);
-    check('role Produit: one click opens a folded stage', (await pg.locator('#view .board section.col[aria-label="En conception"] .card').count()) > 0);
+    check('role Produit: To frame and To accept wide, In design and In build narrow, all eight columns still in order', (await st(pg)) === 'wwnnnnnw' && JSON.stringify(await pos(pg)) === JSON.stringify(COLS), await st(pg));
+    { const nw = await pg.$$eval('#view .board section.col.shut', (ss) => ss.map((x) => Math.round(x.getBoundingClientRect().width))); check('role Produit: a narrow column is a slim strip', nw.length === 5 && nw.every((x) => x <= 60), JSON.stringify(nw)); }
+    check('role Produit: a narrow column shows only its count and vertical name, no card', (await pg.locator('#view .board section.col.shut .card').count()) === 0 && /\d/.test(await pg.locator('#view .board section.col[aria-label="construction en cours"] button.sh').textContent()) && (await pg.locator('#view .board section.col.shut .nm.vert').count()) === 5);
+    check('role Produit: the band of a narrow stage stays above it', (await bands(pg)).length === 4 && (await pg.locator('#view .board button.band.shut').count()) === 2);
+    await pg.click('#view .board section.col[aria-label="planifié"] button.sh'); await pg.waitForTimeout(120);
+    check('role Produit: one click on a narrow column widens it (its stage), position kept', (await st(pg)) === 'wwwwnnnw' && JSON.stringify(await pos(pg)) === JSON.stringify(COLS) && (await pg.locator('#view .board section.col[aria-label="planifié"] .card').count()) > 0, await st(pg));
     await pg.click('#roleSeg >> text=Tech'); await pg.waitForTimeout(150);
-    check('role Tech: In design and In build open, To frame and To accept folded', JSON.stringify(await open_(pg)) === JSON.stringify(['false:À cadrer', 'true:En conception', 'true:En réalisation', 'false:À recetter']), JSON.stringify(await open_(pg)));
-    await pg.click('#view .board section.col[aria-label="À cadrer"] button.sh'); await pg.waitForTimeout(120);
+    check('role Tech: In design and In build wide, To frame and To accept narrow', (await st(pg)) === 'nnwwwwwn', await st(pg));
+    await pg.click('#view .board button.band[title="À cadrer"]'); await pg.waitForTimeout(120);
+    check('the band of a narrow stage widens it too', (await st(pg)) === 'wwwwwwwn', await st(pg));
     await pg.click('#roleSeg >> text=Produit'); await pg.waitForTimeout(150);
-    check('the choice is kept per role, in memory: Produit still has In design open', JSON.stringify(await open_(pg)) === JSON.stringify(['true:À cadrer', 'true:En conception', 'false:En réalisation', 'true:À recetter']), JSON.stringify(await open_(pg)));
-    await pg.click('#roleSeg >> text=Tech'); await pg.waitForTimeout(150);
-    check('the choice is kept per role: Tech still has To frame open', (await open_(pg))[0] === 'true:À cadrer');
+    check('the choice is kept per role, in memory: Produit still has In design wide', (await st(pg)) === 'wwwwnnnw', await st(pg));
     await pg.click('#roleSeg >> text=Tous'); await pg.waitForTimeout(150);
-    check('role Tous: every stage open', (await open_(pg)).every((x) => x.startsWith('true:')));
+    check('role Tous: every column wide', (await st(pg)) === 'wwwwwwww', await st(pg));
     check('nothing is stored for the stages: only the role, the view and the language', (await pg.evaluate(() => Object.keys(localStorage).sort().join())) === 'cp.lang,cp.role,cp.view', await pg.evaluate(() => Object.keys(localStorage).sort().join()));
     await pg.close();
     const NEST = snapshot([
@@ -318,8 +328,9 @@ const STUB = (opts) => `
     ], 120);
     pg = await open({ preload: [NEST], view: 'board' });
     await tab(pg, 'Travail');
-    const order = await pg.$$eval('#view .board section[aria-label="En conception"] .card', (cs) => cs.map((c) => c.querySelector('.t a').getAttribute('href').slice(6) + (c.classList.contains('child') ? 'c' : '')));
-    check('board: children sit under their parent in the same stage, and every card is there', order.length === 4 && order.indexOf('60') < order.indexOf('61c') && order.indexOf('60') < order.indexOf('62c') && order.includes('63'), JSON.stringify(order));
+    const order = await pg.$$eval('#view .board section[aria-label="planifié"] .card', (cs) => cs.map((c) => c.querySelector('.t a').getAttribute('href').slice(6) + (c.classList.contains('child') ? 'c' : '')));
+    const o2 = await pg.$$eval('#view .board section[aria-label="planification en cours"] .card', (cs) => cs.map((c) => c.querySelector('.t a').getAttribute('href').slice(6) + (c.classList.contains('child') ? 'c' : '')));
+    check('board: a child sits under its parent in the same column; one in another column stands on its own with its parent link; every card is there', order.length === 3 && order.indexOf('60') < order.indexOf('61c') && order.includes('63') && JSON.stringify(o2) === '["62"]' && (await pg.locator('#view .board .card:has(a[href="#file/62"]) a.up').count()) === 1, JSON.stringify([order, o2]));
     await pg.close(); }
 
   // ---- a ticket's page: the chain of its level with the time in each status, its sub-tickets ----
