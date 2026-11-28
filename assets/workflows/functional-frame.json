@@ -12,13 +12,13 @@
    "in": [
     [
      "TEXT",
-     "The product concern, in their words"
+     "The product concern, in their words: a new entry to create, or the change to an existing entry"
     ]
    ],
    "out": [
     [
      "TEXT",
-     "Functional intent"
+     "Functional intent: the entry to create, or the entry to change and how"
     ]
    ]
   },
@@ -41,7 +41,7 @@
     ],
     [
      "WIKI GLOBAL",
-     "Vision, functional guidelines and vocabulary, plus the entries whose scope overlaps the intent's. Selected by script, index first. Never the code"
+     "Vision, functional guidelines and vocabulary, plus the entries whose scope overlaps the intent's (the entry to change, when there is one). Selected by script, index first. Never the code"
     ],
     [
      "WIKI",
@@ -121,7 +121,7 @@
    "out": [
     [
      "WIKI GLOBAL",
-     "Proposed entry in fixed format: vision, functional guideline or vocabulary, with its scope and what it replaces"
+     "Proposed entry in fixed format: vision, functional guideline or vocabulary, with its scope and what it replaces. New entry: a file created at `<domain>/<id>.md`. Existing entry: that same file, same id"
     ]
    ]
   },
@@ -279,7 +279,7 @@
    "out": [
     [
      "WIKI GLOBAL",
-     "Entry accepted in the wiki, with its scope. The Prototype and Need read it"
+     "Entry created or changed in the wiki, accepted, with its scope. The Prototype and Need read it"
     ]
    ]
   }
@@ -288,11 +288,11 @@
   "contract": [
    [
     "Triggered by",
-    "A product concern: principle to set, recurring line, vocabulary to fix, new scope to define, or a repeated local rule (promotion)."
+    "A product concern: a principle to set, a recurring line, vocabulary to fix, a new scope to define, a repeated local rule (promotion), or a correction of an existing frame entry."
    ],
    [
     "Produces",
-    "An accepted global wiki entry: vision, functional guideline or vocabulary."
+    "An accepted global wiki entry, new or changed: vision, functional guideline or vocabulary."
    ],
    [
     "Human",
@@ -303,6 +303,10 @@
    [
     "When the challenge opens",
     "A script opens it only if the auditor's delta is not empty. Otherwise writing follows directly. The discussion is a loop between the human and the auditor, with no maximum number of rounds: at each round, the auditor receives the delta and the messages exchanged since its last round."
+   ],
+   [
+    "Create or change",
+    "The same workflow creates a new entry or changes an existing one (its id never changes). Removing an entry is not a run: a human decides it, and the script refuses while another entry cites it."
    ],
    [
     "Landmarks, not locks",
@@ -321,15 +325,15 @@
     "Performance, security and accessibility stay in the Technical frame, decided by human T alone."
    ],
    [
-    "Personas and flows",
-    "They belong to the Personas and user flows workflow: they are different entries, serving the Recette."
-   ],
-   [
     "Like the technical frame",
     "The audit ignores the code. Discarded alternatives: nothing is kept for now."
+   ],
+   [
+    "Personas and flows",
+    "They belong to the Persona and User flow workflows: they are different entries, serving the Recette."
    ]
   ],
-  "lede": "A human F sets a broad product line that depends on no need: vision, functional guideline, vocabulary. It becomes an accepted global wiki entry. These are landmarks that the Prototype and Need read for awareness, not blocking rules.",
-  "eyebrow": "Admin · functional landmarks"
+  "lede": "The functional frame is what the product does in shared terms: its vision, its vocabulary and the rules several behaviors have in common. A human F creates or changes one of its entries, which becomes an accepted global wiki entry. These are landmarks that the Prototype and Need read for awareness, not blocking rules.",
+  "eyebrow": "Admin · functional frame"
  }
 }

@@ -612,13 +612,9 @@
    [
     "The \"tokens only\" rule",
     "It requires an \"to integrate\" element to go through here before the Build of the need: the CI would otherwise refuse a hard-coded value. This is why the Prototype waits, paused, for this workflow to end."
-   ],
-   [
-    "The units already exist",
-    "The designer persona and its design-system writing instruction are those the repo uses for its design command. This workflow puts them under the same control as the others."
    ]
   ],
-  "lede": "A human F decides what the design is: a brand, a component, a usage rule. This becomes an accepted design-system entry, translated into a theme and components in the code, with a rule that forbids hard-coded values.",
+  "lede": "The design system is how the product looks and behaves in shared parts: brand, colors, typography, components, usage rules. A human F decides what the design is. This becomes an accepted design-system entry, translated into a theme and components in the code, with a rule that forbids hard-coded values.",
   "eyebrow": "Admin · design system"
  }
 }

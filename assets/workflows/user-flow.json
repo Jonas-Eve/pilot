@@ -1,6 +1,6 @@
 {
- "id": "personas-flows",
- "title": "Personas and user flows",
+ "id": "user-flow",
+ "title": "User flow",
  "category": "admin",
  "steps": [
   {
@@ -12,17 +12,13 @@
    "in": [
     [
      "TEXT",
-     "Entry 1: who this user is, in their words: goals, skills, constraints, vocabulary"
-    ],
-    [
-     "TEXT",
-     "Entry 2: the flow, in their words: who, to do what, expected result"
+     "The flow, in their words: who, to do what, expected result"
     ]
    ],
    "out": [
     [
      "TEXT",
-     "Intent: the persona or flow to describe"
+     "Intent: the user flow to describe"
     ]
    ]
   },
@@ -34,12 +30,7 @@
    "actor": "AI: a single auditor, who holds the discussion with the human",
    "agents": [
     {
-     "persona": "designer",
-     "when": "persona"
-    },
-    {
-     "persona": "qa",
-     "when": "user flow"
+     "persona": "qa"
     }
    ],
    "task": "audit",
@@ -54,13 +45,13 @@
     ],
     [
      "WIKI",
-     "Entry 2: need entries and user flows whose scope overlaps the flow's, with their log"
+     "Need entries and user flows whose scope overlaps the flow's, with their log"
     ]
    ],
    "out": [
     [
      "REPORT",
-     "Delta: duplicate, contradiction, hole, gap with the vision, principles or vocabulary (flagged, never blocking). Entry 1: overlap with an existing persona. Entry 2: step without a need entry, missing persona"
+     "Delta: duplicate, contradiction, hole, gap with the vision, principles or vocabulary (flagged, never blocking), step without a need entry, missing persona"
     ],
     [
      "SCOPE",
@@ -109,15 +100,10 @@
    "actor": "AI",
    "agents": [
     {
-     "persona": "designer",
-     "when": "a persona"
-    },
-    {
-     "persona": "qa",
-     "when": "a user flow"
+     "persona": "qa"
     }
    ],
-   "task": "write-persona-flow",
+   "task": "write-user-flow",
    "in": [
     [
      "TEXT",
@@ -134,16 +120,12 @@
    ],
    "out": [
     [
-     "WIKI GLOBAL",
-     "Entry 1: persona proposed in fixed format (goals, skills, constraints, vocabulary, usage context, way of using the product: device, input mode, accessibility needs), without status. Entry 2, missing persona: a persona is proposed in the same pass"
-    ],
-    [
      "WIKI",
-     "Entry 2: proposed user flow: steps, expected observable result at each step, personas concerned, status specified, and its \"Candidates\" section (one line per step \"to create\")"
+     "Proposed user flow: steps, expected observable result at each step, personas concerned (existing ones only), status specified, and its \"Candidates\" section (one line per step \"to create\")"
     ],
     [
      "LOG",
-     "Entry 2, if the user flow already exists: a new line added, with the decision, discarded alternatives and reason"
+     "If the user flow already exists: a new line added, with the decision, discarded alternatives and reason"
     ]
    ]
   },
@@ -163,10 +145,6 @@
     [
      "TEXT",
      "Intent"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Proposed persona"
     ],
     [
      "WIKI",
@@ -191,12 +169,8 @@
    "kind": "check",
    "title": "Code checks",
    "actor": "Script",
-   "check": "personas-flows.check",
+   "check": "user-flow.check",
    "in": [
-    [
-     "WIKI GLOBAL",
-     "Proposed persona"
-    ],
     [
      "WIKI",
      "Proposed user flow"
@@ -209,7 +183,7 @@
    "out": [
     [
      "REPORT",
-     "Valid schema, scope from the vocabulary, ambiguous words. Entry 1: no duplicate, way of using the product filled in. Entry 2: cited personas exist, each step has an observable result, each step tied to a need entry or marked \"to create\" with its candidate request line"
+     "Valid schema, scope from the vocabulary, ambiguous words, cited personas exist, each step has an observable result, each step tied to a need entry or marked \"to create\" with its candidate request line"
     ],
     [
      "REPORT",
@@ -227,44 +201,27 @@
    "n": "7",
    "kind": "judge",
    "title": "Judge",
-   "actor": "AI, two or three fixed questions depending on the entry, citation required",
+   "actor": "AI, three fixed questions, citation required",
    "task": "judge",
-   "judge": "personas-flows.judge",
+   "judge": "user-flow.judge",
    "questions": [
     {
-     "q": "Is the persona distinct from the other personas?",
-     "fail_on": "no",
-     "when": "entry-1"
-    },
-    {
-     "q": "Is the persona free of prescribed behavior?",
-     "fail_on": "no",
-     "when": "entry-1"
-    },
-    {
      "q": "Is each step observable?",
-     "fail_on": "no",
-     "when": "entry-2"
+     "fail_on": "no"
     },
     {
      "q": "Does the flow contradict an existing criterion?",
-     "fail_on": "yes",
-     "when": "entry-2"
+     "fail_on": "yes"
     },
     {
      "q": "Is a cited persona irrelevant to this flow?",
-     "fail_on": "yes",
-     "when": "entry-2"
+     "fail_on": "yes"
     }
    ],
    "in": [
     [
      "TEXT",
      "Intent"
-    ],
-    [
-     "WIKI GLOBAL",
-     "Proposed persona"
     ],
     [
      "WIKI",
@@ -274,7 +231,7 @@
    "out": [
     [
      "REPORT",
-     "Yes or no. Entry 1: distinct from other personas? free of prescribed behavior? Entry 2: is each step observable? does the flow contradict an existing criterion? is a cited persona irrelevant to this flow?"
+     "Yes or no: is each step observable? does the flow contradict an existing criterion? is a cited persona irrelevant to this flow?"
     ]
    ],
    "on_fail": {
@@ -290,10 +247,6 @@
    "title": "Gate · Review",
    "actor": "Human F",
    "in": [
-    [
-     "WIKI GLOBAL",
-     "Proposed persona"
-    ],
     [
      "WIKI",
      "Proposed user flow"
@@ -314,7 +267,7 @@
    "out": [
     [
      "VALIDATION",
-     "Persona accepted, or user flow at status specified, scope and log validated"
+     "User flow at status specified, scope and log validated"
     ],
     [
      "TEXT",
@@ -341,10 +294,6 @@
    ],
    "out": [
     [
-     "WIKI GLOBAL",
-     "Persona in the wiki, available for the Recette"
-    ],
-    [
      "WIKI",
      "User flow in the wiki, status specified, available for the Recette. Its \"Candidates\" section: one line per step \"to create\", in the format of the Need intent (source, who, expected, why, proposed scope), at status candidate"
     ]
@@ -355,11 +304,11 @@
   "contract": [
    [
     "Triggered by",
-    "Entry 1: a type of user to describe. Entry 2: a flow to describe, often across several features."
+    "A flow to describe, often across several features, played by personas that already exist."
    ],
    [
     "Produces",
-    "An accepted persona, or a user flow at status specified with, in the flow's entry, a \"Candidates\" section: one line per step \"to create\", that Need can pick up. Both are available for the Recette."
+    "A user flow at status specified with, in the flow's entry, a \"Candidates\" section: one line per step \"to create\", that Need can pick up. Available for the Recette."
    ],
    [
     "Human",
@@ -372,20 +321,12 @@
     "A script opens it only if the auditor's delta is not empty. Otherwise writing follows directly. The discussion is a loop between the human and the auditor, with no maximum number of rounds: at each round, the auditor receives the delta and the messages exchanged since its last round."
    ],
    [
-    "Two entries, one workflow",
-    "The steps are identical. Only what the code checks and the judge verify changes, and the type of what comes out."
-   ],
-   [
-    "A persona promises no behavior",
-    "It has no status and is not itself recetted: it steers the Recettes that use it."
+    "Personas must exist",
+    "A flow cites existing persona ids only. A missing persona is created first by the Persona workflow."
    ],
    [
     "Status of a user flow",
     "It follows that of the needs it cites. \"Verified\" is derived from the last successful Recette whose flow and persona hashes match."
-   ],
-   [
-    "The AI rephrases, it does not invent",
-    "The intent comes from human F, with what they know of their real users. A persona invented by the AI would only be a cliché."
    ],
    [
     "Candidates",
@@ -394,9 +335,13 @@
    [
     "A flow crosses several features",
     "Criteria stay in the need entries. The user flow chains them and does not redefine them."
+   ],
+   [
+    "The AI rephrases, it does not invent",
+    "The intent comes from human F, with what they know of their real users."
    ]
   ],
-  "lede": "A human F describes a persona or a flow. The result is a wiki entry that the Recette uses to steer or define what it plays. The AI rephrases, it does not invent.",
-  "eyebrow": "Admin · personas and user flows"
+  "lede": "A human F describes a journey: who does what, with which expected result at each step. The result is a user-flow entry of the wiki that the Recette plays as the personas it cites, and whose uncovered steps Need can pick up.",
+  "eyebrow": "Admin · user flow"
  }
 }

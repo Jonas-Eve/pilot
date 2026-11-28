@@ -12,7 +12,7 @@
    "in": [
     [
      "TEXT",
-     "The concern, in their words"
+     "The concern, in their words: a new rule to set, or the change to an existing guideline"
     ]
    ],
    "out": [
@@ -117,7 +117,7 @@
    "out": [
     [
      "GLOBAL ARCHITECTURE",
-     "Proposed guideline, or overview update: the rule, its reason in a few lines, what it replaces, how to verify it (linter, test, build or judgment), its scope"
+     "Proposed guideline, or overview update: the rule, its reason in a few lines, what it replaces, how to verify it (linter, test, build or judgment), its scope. New guideline: a file created at `guidelines/<id>.md`. Existing entry: that same file, same id"
     ]
    ]
   },
@@ -523,7 +523,7 @@
   "contract": [
    [
     "Triggered by",
-    "A technical concern: debt, incident, new constraint, stack evolution, non-functional requirement (performance, security, accessibility), new scope to define, or a repeated local ADR (promotion)."
+    "A technical concern: debt, incident, new constraint, stack evolution, non-functional requirement (performance, security, accessibility), new scope to define, a repeated local ADR (promotion), or the change or acceptance of an existing guideline."
    ],
    [
     "Produces",
@@ -572,7 +572,7 @@
     "A guideline's reason is carried by the guideline itself. Discarded alternatives are not kept for now."
    ]
   ],
-  "lede": "A human T sets a technical decision that depends on no need. It becomes a guideline and a rule verifiable in CI.",
-  "eyebrow": "Admin · cross-cutting technical decisions"
+  "lede": "The technical frame is how the code is built: stack, structure, guidelines and the decisions behind them. A human T sets a technical decision that depends on no need. It becomes a guideline and a rule verifiable in CI.",
+  "eyebrow": "Admin · technical frame"
  }
 }
